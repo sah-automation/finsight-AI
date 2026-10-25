@@ -14,9 +14,16 @@ Status of the automated enforcement for `CODING_STANDARDS.md`.
 | Architecture invariants | `make arch-test` (`pytest tests/architecture`) | env reads, `company_id`, `Decimal` money, hidden construction, naming, READMEs |
 | Switch paths | `make test-switches` | every `SwitchesConfig` field has ON and OFF tests |
 | Suite markers | `tests/conftest.py` | `-m unit`, `-m integration`, etc. always select the right tests |
+| Pre-commit in CI | `make pre-commit` (CI `Pre-commit` job) | YAML, shell, large files, whitespace, commit messages |
+| Coverage floor | `make coverage` (`--cov-fail-under=50`) | line+branch coverage of `src/finsight` stays at or above 50% |
+| Config profiles | `make config-check` | every environment overlay loads through the typed loader |
+| Migrations | CI `Migrations` job | `alembic upgrade head`, `downgrade base`, re-apply |
+| Dependency audit | CI `Dependency Audit` job (`pip-audit`) | no known-vulnerable installed packages |
+| Dependency review | CI `Dependency Review` job | PRs cannot add high/critical vulnerable dependencies |
 
-`make check` runs all of the above. `make ci` adds coverage. CI mirrors the same
-commands in `.github/workflows/ci.yml`.
+`make check` runs every gate once except coverage. `make ci` runs the same gates
+plus the coverage floor. CI mirrors the commands in `.github/workflows/ci.yml`.
+
 
 Deliberately **not** automated: one job per class, SOLID intent, "small boring
 code", and naming quality. These stay in review and in the section 17
@@ -26,17 +33,22 @@ checklist.
 
 ### 1. Enforce coverage with a ratchet
 
-Current state: `pytest-cov` is configured, `fail_under = 0`, and no CI gate.
+Implemented: the floor is `fail_under = 50` in `pyproject.toml`, and
+`make coverage` (also the CI `Coverage` job) fails below it with
+`--cov-fail-under=50`. Branch coverage is on and the source is
+`src/finsight`. The measured baseline at adoption was 52.51% line coverage.
 
-Plan:
+Next ratchet steps:
 1. Add `diff-cover` to dev dependencies.
-2. In CI, run the unit and contract suites with `--cov-report=xml`.
-3. Fail a PR when changed lines in `src/finsight/domain` or
+2. Fail a PR when changed lines in `src/finsight/domain` or
    `src/finsight/application` are below 85% coverage.
-4. Once `domain` and `application` have real code, add an absolute
+3. Once `domain` and `application` have real code, add an absolute
    `fail_under = 85` for those packages only, not for adapters or entrypoints.
-5. Record the current percentage in this document each time the absolute gate
-   moves.
+4. Raise the global floor 50 → 60 → 70 as the suite grows, and record the new
+   percentage here each time.
+
+Do not exclude adapters to hit the number. Only migrations, `conftest.py`, and
+generated code are excluded.
 
 Definition of done: a PR that adds an untested branch in `domain` fails CI, and
 the failure message names the uncovered lines.
@@ -111,26 +123,39 @@ before release.
 
 ### 6. Pull request checklist automation
 
-Current state: section 17 is manual.
+Current state: `.github/pull_request_template.md` renders the section 17
+checklist automatically, and `.github/ISSUE_TEMPLATE/` provides bug, feature,
+and infrastructure templates. The checklist is still manual: no action fails a
+PR with an untouched checklist yet.
 
 Plan:
-1. Add `.github/pull_request_template.md` containing the section 17 checklist.
-2. Add a CI check that fails when the checklist is not filled in (simple text
-   match on the PR body), or use a `checklist` action.
-3. Link the checklist items to the gates that enforce them, so reviewers know
+1. Link the checklist items to the gates that enforce them, so reviewers know
    which items are machine-checked.
+2. Add a CI check that fails when required checklist boxes are not ticked
+   (simple text match on the PR body), or use a `checklist` action.
 
 Definition of done: a PR cannot merge with an untouched checklist.
 
 ### 7. Secret scanning and dependency hygiene
 
+Implemented:
+- `pip-audit` runs in the CI `Dependency Audit` job on every push and PR. It
+  audits the installed environment (`--local --skip-editable`) so it sees the
+  lockfile resolution.
+- `actions/dependency-review-action` runs on PRs and fails on high/critical
+  severity findings.
+- Dependabot opens grouped weekly updates for `uv` and GitHub Actions
+  (`.github/dependabot.yml`).
+
+Remaining:
 - Tune `.secrets.baseline` after the first real adapters and config files land;
   never blanket-exclude `src/`.
-- Add `pip-audit` (or `uv audit`) to CI for known-vulnerable dependencies.
 - Add a scheduled job that runs `make check` against upgraded dependencies to
   catch drift before a release branch.
 - Keep `uv.lock` committed. CI uses `--frozen`; an uncommitted lockfile breaks
   reproducible installs.
+- Waivers: add `--ignore-vuln <ID>` with a justification in the
+  `Dependency Audit` job and link the tracking issue. See `SECURITY.md`.
 
 ### 8. End-to-end gate verification
 

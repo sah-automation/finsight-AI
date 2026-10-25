@@ -159,7 +159,9 @@ omit = [
 precision = 2
 show_missing = true
 skip_covered = false
-fail_under = 0
+# Ratchet: raise this floor as the suite grows. See
+# docs/plans/quality-standards-enforcement.md.
+fail_under = 50
 [tool.coverage.html]
 directory = "htmlcov"
 [tool.importlinter]

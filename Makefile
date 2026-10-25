@@ -1,8 +1,10 @@
 # FinSight AI - Makefile
 # Usage: make <target>
-# Key targets: check, test, lint, typecheck, arch-test, install-hooks
+# Key targets: check, ci, test, format, config-check
 
-.PHONY: help install install-dev install-hooks check lint typecheck test test-unit test-integration test-golden test-contract test-architecture test-switches arch-test clean coverage ci
+COVERAGE_MIN ?= 50
+
+.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches arch-test coverage coverage-html config-check migrate migration docker-up docker-down clean update-deps
 
 # Default target
 help:
@@ -14,19 +16,22 @@ help:
 	@echo "  install-hooks  - Install pre-commit hooks"
 	@echo ""
 	@echo "Quality Gates (run all):"
-	@echo "  check          - Run all quality checks (lint + typecheck + imports + vulture + secrets + tests)"
-	@echo "  ci             - Full CI pipeline (same as check but with coverage)"
+	@echo "  check          - Run every gate once (lint + typecheck + imports + vulture + secrets + tests)"
+	@echo "  ci             - CI pipeline (lint + typecheck + imports + vulture + secrets + coverage)"
+	@echo "  pre-commit     - Run pre-commit on all files"
 	@echo ""
 	@echo "Individual Checks:"
+	@echo "  format         - Auto-format and auto-fix src and tests"
 	@echo "  lint           - Run ruff (lint + format check)"
 	@echo "  typecheck      - Run mypy --strict"
 	@echo "  imports        - Run import-linter"
 	@echo "  vulture        - Run dead code detection"
 	@echo "  secrets        - Run detect-secrets"
+	@echo "  config-check   - Validate every config profile through the loader"
 	@echo "  arch-test      - Run architecture invariant tests"
 	@echo ""
 	@echo "Tests:"
-	@echo "  test           - Run all tests (unit + integration + contract + architecture + switches)"
+	@echo "  test           - Run all tests (unit + contract + architecture + switches)"
 	@echo "  test-unit      - Run unit tests only"
 	@echo "  test-integration - Run integration tests only"
 	@echo "  test-golden    - Run golden set tests"
@@ -34,8 +39,14 @@ help:
 	@echo "  test-architecture - Run architecture invariant tests"
 	@echo "  test-switches  - Run switch path tests"
 	@echo ""
+	@echo "Database:"
+	@echo "  docker-up      - Start the local test stack (Postgres, LocalStack, Redis, OTel)"
+	@echo "  docker-down    - Stop the local test stack and delete its volumes"
+	@echo "  migrate        - Apply all migrations (alembic upgrade head)"
+	@echo "  migration      - Create a migration (make migration m=\"message\")"
+	@echo ""
 	@echo "Coverage:"
-	@echo "  coverage       - Generate coverage report"
+	@echo "  coverage       - Generate coverage report and enforce the floor (COVERAGE_MIN, default 50)"
 	@echo "  coverage-html  - Generate HTML coverage report"
 	@echo ""
 	@echo "Maintenance:"
@@ -58,11 +69,15 @@ install-hooks:
 # ============================================================
 # Quality Gates
 # ============================================================
-check: lint typecheck imports vulture secrets arch-test test
+check: lint typecheck imports vulture secrets test
 	@echo "✓ All quality checks passed"
 
-ci: check coverage
+ci: lint typecheck imports vulture secrets coverage
 	@echo "✓ CI pipeline passed"
+
+format:
+	uv run ruff format src tests
+	uv run ruff check --fix src tests
 
 lint:
 	uv run ruff check src tests --exit-non-zero-on-fix
@@ -79,6 +94,12 @@ vulture:
 
 secrets:
 	uv run detect-secrets-hook --baseline .secrets.baseline $$(git ls-files -co --exclude-standard)
+
+pre-commit:
+	uv run pre-commit run --all-files
+
+config-check:
+	uv run python scripts/check_config.py
 
 # ============================================================
 # Architecture Tests
@@ -111,11 +132,28 @@ test-switches:
 	uv run pytest tests/unit/switches -v --tb=short -m "switch"
 
 # ============================================================
+# Database
+# ============================================================
+migrate:
+	uv run alembic upgrade head
+
+migration:
+	@test -n "$(m)" || (echo "Usage: make migration m=\"describe the change\"" && exit 1)
+	uv run alembic revision -m "$(m)"
+
+docker-up:
+	docker compose -f docker-compose.test.yml up -d --wait
+
+docker-down:
+	docker compose -f docker-compose.test.yml down -v
+
+# ============================================================
 # Coverage
 # ============================================================
 coverage:
 	uv run pytest tests/unit tests/contract tests/architecture \
-		--cov=src/finsight --cov-report=term-missing --cov-report=xml
+		--cov=src/finsight --cov-report=term-missing --cov-report=xml \
+		--cov-fail-under=$(COVERAGE_MIN)
 
 coverage-html:
 	uv run pytest tests/unit tests/contract tests/architecture \

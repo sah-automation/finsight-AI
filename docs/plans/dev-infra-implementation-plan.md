@@ -1,6 +1,6 @@
 # Development Infrastructure Implementation Plan
 
-Status: P0 implemented (DI-01 to DI-06 and DI-25 are closed; DI-17 is also implemented. See sections 13 and 14 for execution logs)
+Status: P0 and P1 implemented (DI-01 to DI-13 and DI-25 are closed; DI-17 is also implemented. See sections 13, 14, and 15 for execution logs)
 Date: 2026-10-26
 Source: static review of the repository, CI workflow, local service stack, OpenCode configuration, and the GitHub remote, followed by an execution pass on a machine with Docker
 Scope: development, CI, local environment, repository governance, and deployment scaffolding
@@ -1373,3 +1373,45 @@ The local stack reached `healthy` for all four services and created the S3,
 SQS, and DynamoDB resources listed above. The integration suite remains a
 placeholder skip until adapters exist; the configuration path itself is
 verified by `tests/unit/core/config/test_loader.py`.
+
+---
+
+## 15. P1 execution log (2026-10-26)
+
+P1 was implemented in PR #3 (`feat(dev-infra): implement P1 development
+infrastructure`). Unlike P0, the work landed through a pull request; the
+workstreams share `.github/workflows/ci.yml` and `Makefile`, so they were kept
+in one PR to avoid avoidable merge conflicts. The repository remains `PUBLIC`.
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| DI-07 | Done | `alembic.ini`, `migrations/env.py`, `migrations/script.py.mako`, and `migrations/versions/0001_initial_schema.py` exist. `env.py` builds a synchronous `psycopg` URL from `finsight.core.config` (no hard-coded URL). The initial migration creates the `vector` extension and `companies`, `users`, `documents`, `document_chunks`, `metrics`, `answers`, and `audit_logs`, with company-scoped indexes and an HNSW index on `document_chunks.embedding`. `make migrate` / `make migration m="..."` exist, and the CI `Migrations` job runs upgrade → downgrade → upgrade against compose Postgres. `alembic check` is not adopted because `target_metadata` is `None` until ORM models land; the plan marks it optional. |
+| DI-08 | Done | The CI `Pre-commit` job runs `uv run pre-commit run --all-files --show-diff-on-failure`, and `Summary` fails when it fails. Ruff, mypy, and import-linter remain in the lint job deliberately; pre-commit also runs them, but keeping the explicit steps makes failures easier to read. |
+| DI-09 | Done | `pyproject.toml` sets `fail_under = 50`; `make coverage` passes `--cov-fail-under=$(COVERAGE_MIN)` (default 50) and writes `coverage.xml`; the CI `Coverage` job uploads it. Measured baseline at adoption was 52.51% line coverage. Ratchet steps and the current floor are recorded in `docs/plans/quality-standards-enforcement.md`. |
+| DI-10 | Done | `.github/dependabot.yml` configures grouped weekly `uv` and `github-actions` updates. The CI `Dependency Audit` job runs `pip-audit` against the installed environment (`--local --skip-editable`). The `Dependency Review` job runs `actions/dependency-review-action` on PRs with `fail-on-severity: high`. Policy and waiver rules are in `SECURITY.md`. CodeQL is not added (optional in the plan). |
+| DI-11 | Done | `.github/pull_request_template.md` renders the section-17 checklist. `.github/ISSUE_TEMPLATE/` contains bug, feature, and infrastructure templates plus `config.yml` (blank issues disabled). `.github/CODEOWNERS` covers `src/finsight/core/`, `config/`, `infra/`, `.github/`, and the protected plan folders. `SECURITY.md` documents private disclosure and the dependency policy. |
+| DI-12 | Done | `check: lint typecheck imports vulture secrets test` runs the architecture suite once (through `test`). `ci: lint typecheck imports vulture secrets coverage` runs tests once with coverage. New targets: `format`, `pre-commit`, `docker-up`, `docker-down`, `migrate`, `migration`, `config-check`, `coverage-html`. `.PHONY` and `make help` cover every target. `test-security` is deferred until DI-16 (P2). |
+| DI-13 | Done | `.python-version` contains `3.12` and is tracked (removed from `.gitignore`). Every CI job uses `python-version-file: .python-version`. `uv python find` reports the 3.12 interpreter from the project venv. |
+
+Also fixed while wiring `config-check`: staging and production `llm.fallback_models`
+entries were missing required fields, and `config/schema.yaml` did not define
+`caches.role_cache.max_entry_size_bytes`. Both profiles now load through the
+typed loader.
+
+Verification run during this pass:
+
+```bash
+make check
+make coverage
+make config-check
+uv run pre-commit run --all-files
+COVERAGE_MIN=99 make coverage          # expected failure
+ENVIRONMENT=test uv run alembic upgrade head
+ENVIRONMENT=test uv run alembic downgrade base
+ENVIRONMENT=test uv run alembic upgrade head
+```
+
+The migration sequence created the seven core tables plus `alembic_version`,
+the `vector` extension, and the HNSW index, then dropped them cleanly. The
+integration and golden suites remain placeholder skips until adapters and the
+golden harness exist.

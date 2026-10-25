@@ -24,12 +24,20 @@ llm:
     max_tokens: 8192
     timeout_seconds: 60
   fallback_models:
-    - model_id: "anthropic/claude-3-5-haiku-20241022"
+    - provider: "litellm"
+      model_id: "anthropic/claude-3-5-haiku-20241022"
       max_tokens: 8192
+      temperature: 0.0
       timeout_seconds: 30
-    - model_id: "openai/gpt-4o-mini"
+      max_retries: 2
+      retry_base_delay_seconds: 1.0
+    - provider: "litellm"
+      model_id: "openai/gpt-4o-mini"
       max_tokens: 4096
+      temperature: 0.0
       timeout_seconds: 30
+      max_retries: 2
+      retry_base_delay_seconds: 1.0
 
 vector_store:
   host: "${VECTOR_DB_HOST}"
