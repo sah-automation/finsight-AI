@@ -185,7 +185,7 @@ grep -n "License" README.md pyproject.toml
 
 ### DI-04 — Install hooks and fix the `commit-msg` no-op
 
-**Status: partly implemented.** The hook set now runs cleanly (see DI-17), but the hooks were not installed into `.git/hooks` and no `commit-msg` hook was added.
+**Status: implemented.** The hook set now runs cleanly (see DI-17), the hooks are installed into `.git/hooks`, and a `commit-msg` hook enforces Conventional Commits. See section 14.
 
 **Evidence**
 
@@ -1338,8 +1338,15 @@ The most important still-open items after this pass:
 
 P0 was implemented on `main` in commit `395c63a` (the pushed commit) and
 verified against GitHub and the local Docker stack. The first `main` CI run
-(`40231109458`) passed every job, including `Summary`. P1 and later items
-remain open unless section 13 already marks them implemented.
+(`40231109458`) passed every job, including `Summary`. The execution-log
+follow-up merged as PR #1 (`055fce4`), and its `main` CI run (`40231386998`)
+also passed every job. P1 and later items remain open unless section 13
+already marks them implemented.
+
+P0 landed as a single commit (`395c63a`) rather than one pull request per
+workstream, because the repository had no remote branch and no protected
+`main` until DI-01 was completed. Every subsequent change goes through a
+pull request.
 
 | ID | Status | Evidence |
 | --- | --- | --- |
