@@ -7,7 +7,7 @@ requires-python = "==3.12.*"
 license = {text = "Apache-2.0"}
 authors = [{name = "FinSight AI Team"}]
 dependencies = [
-    "fastapi>=0.115.0,<0.116",
+    "fastapi>=0.115.0,<0.162",
     "uvicorn[standard]>=0.34.0,<0.35",
     "pydantic>=2.10.0,<3",
     "pydantic-settings>=2.6.0,<3",
