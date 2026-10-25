@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    {
+      "action": "edit",
+      "resource": "*docs/plans/project_requirement/**",
+      "effect": "ask"
+    },
+    {
+      "action": "edit",
+      "resource": "*docs/plans/architecture/**",
+      "effect": "ask"
+    },
+    {
+      "action": "write",
+      "resource": "*docs/plans/project_requirement/**",
+      "effect": "ask"
+    },
+    {
+      "action": "write",
+      "resource": "*docs/plans/architecture/**",
+      "effect": "ask"
+    },
+    {
+      "action": "bash",
+      "resource": "*docs/plans/project_requirement*",
+      "effect": "ask"
+    },
+    {
+      "action": "bash",
+      "resource": "*docs/plans/architecture*",
+      "effect": "ask"
+    }
+  ]
+}

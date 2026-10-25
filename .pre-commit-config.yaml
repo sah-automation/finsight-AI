@@ -1,5 +1,9 @@
 # Pre-commit hooks for FinSight AI
-# Run: pre-commit install && pre-commit run --all-files
+# Run: make install-hooks && pre-commit run --all-files
+
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
 
 repos:
   # General code quality
@@ -12,31 +16,35 @@ repos:
       - id: ruff-format
         types_or: [python, pyi]
 
-  # Type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+  # Commit messages must follow Conventional Commits.
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+
+  # Type checking and import architecture run in the project environment
+  # (via uv) so installed dependencies and the `finsight` package resolve,
+  # matching `make typecheck` and `make imports`. An isolated hook env cannot
+  # see the project's test/runtime dependencies.
+  - repo: local
     hooks:
       - id: mypy
-        args: [--strict, --show-error-codes]
-        additional_dependencies: [
-            "pydantic>=2.10",
-            "types-requests>=2.32",
-            "types-PyYAML>=6.0",
-            "python-json-logger>=2.0",
-        ]
-        types_or: [python, pyi]
-
-  # Import architecture
-  - repo: https://github.com/seddonym/import-linter
-    rev: "1.12.1"
-    hooks:
+        name: mypy (uv run, src only)
+        entry: uv run mypy src --strict --show-error-codes
+        language: system
+        files: ^src/.*\.py$
+        pass_filenames: false
       - id: import-linter
-        args: [--verbose]
-        types: [python]
+        name: import-linter (uv run)
+        entry: uv run lint-imports --verbose
+        language: system
+        files: ^src/finsight/.*\.py$
+        pass_filenames: false
 
   # Dead code detection
-  - repo: https://github.com/vulture/vulture
-    rev: v2.10
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.16
     hooks:
       - id: vulture
         args: [--min-confidence=80, src/finsight]

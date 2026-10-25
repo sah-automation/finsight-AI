@@ -96,7 +96,7 @@ test-unit:
 	uv run pytest tests/unit -v --tb=short -m "unit"
 
 test-integration:
-	uv run pytest tests/integration -v --tb=short -m "integration"
+	ENVIRONMENT=test uv run pytest tests/integration -v --tb=short -m "integration"
 
 test-golden:
 	uv run pytest tests/golden -v --tb=short -m "golden"

@@ -6,7 +6,7 @@ Schema and environment-specific config files.
 - `schema.yaml` - config schema (source of truth)
 - `permissions.yaml` - role/action/category matrix
 - `prices.yaml` - model/service pricing
-- `dev.yaml`, `staging.yaml`, `prod.yaml` - environment values
+- `dev.yaml`, `test.yaml`, `staging.yaml`, `prod.yaml` - environment values
 
 **Rules:**
 - Only `core/config` reads these files

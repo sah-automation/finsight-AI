@@ -81,6 +81,17 @@ class TestConfigLoader:
                 ]:
                     del os.environ[key]
 
+    def test_load_test_config_from_environment_variable(self, monkeypatch) -> None:
+        """Test that ENVIRONMENT=test selects config/test.yaml and its local stack values."""
+        monkeypatch.setenv('ENVIRONMENT', 'test')
+
+        config = load_config()
+
+        assert config.app.environment == Environment.TEST
+        assert config.vector_store.database == 'test'
+        assert config.storage.documents_bucket == 'documents'
+        assert config.queue.ingestion_queue_url == ('http://localhost:4566/000000000000/ingestion')
+
     def test_missing_env_var_raises(self, tmp_path) -> None:
         """Test that missing env var raises ConfigError."""
         # Create temp config with env var pattern for host

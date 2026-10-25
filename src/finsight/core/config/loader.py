@@ -43,6 +43,7 @@ class ConfigLoader:
         self._schema_path = self.config_dir / 'schema.yaml'
         self._env_file_map = {
             Environment.DEVELOPMENT: 'dev.yaml',
+            Environment.TEST: 'test.yaml',
             Environment.STAGING: 'staging.yaml',
             Environment.PRODUCTION: 'prod.yaml',
         }

@@ -21,6 +21,7 @@ _MIN_ROLE_CACHE_TTL_SECONDS = 60
 
 class Environment(StrEnum):
     DEVELOPMENT = 'development'
+    TEST = 'test'
     STAGING = 'staging'
     PRODUCTION = 'production'
 

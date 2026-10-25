@@ -29,18 +29,29 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install dependencies
 uv sync --frozen --all-extras
 
-# Install pre-commit hooks
-uv run pre-commit install
+# Copy the local environment template and export it in your shell
+cp .env.example .env
+set -a; source .env; set +a
+
+# Install pre-commit hooks (pre-commit + commit-msg)
+make install-hooks
 ```
+
+`.env.example` targets the local test profile (`ENVIRONMENT=test`), which matches
+`docker-compose.test.yml` and `config/test.yaml`. Every variable in it is a safe
+placeholder. See the comments in the file for what each value controls.
 
 ### Local Development
 
 ```bash
 # Start local services (PostgreSQL, LocalStack, Redis, OTel)
-docker compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.test.yml up -d --wait
 
 # Run tests
 make test
+
+# Run integration tests against the local stack (uses ENVIRONMENT=test)
+make test-integration
 
 # Run quality checks
 make check
@@ -118,7 +129,7 @@ docs/                   # Architecture, plans, ADRs
 All configuration lives in `config/`:
 
 - `schema.yaml` - Single source of truth (structure, defaults, validation)
-- `dev.yaml` / `staging.yaml` / `prod.yaml` - Environment overrides
+- `dev.yaml` / `test.yaml` / `staging.yaml` / `prod.yaml` - Environment overrides
 - `permissions.yaml` - RBAC rules
 - `prices.yaml` - Model pricing for metering
 
@@ -188,6 +199,13 @@ See `docs/plans/Project Requirement/finsight_config_switches.md` for:
 - `docs/adr/` - Architecture Decision Records (to be created)
 - `GLOSSARY.md` - Domain vocabulary (to be created)
 
+## Commit Messages
+
+Commits must follow [Conventional Commits](https://www.conventionalcommits.org/)
+(`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `ci:`, ...). The `commit-msg`
+pre-commit hook enforces this. `make install-hooks` installs both the
+`pre-commit` and `commit-msg` hooks.
+
 ## License
 
-Proprietary - All rights reserved.
+Licensed under the [Apache License, Version 2.0](LICENSE).
