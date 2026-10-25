@@ -7,7 +7,9 @@ name: CI Pipeline
     branches: [main, develop]
 
 env:
-  UV_VERSION: "0.5.0"
+  # Pinned to the local uv that generated uv.lock (revision 5). Upgrade this
+  # and commit the regenerated lockfile together; see CONTRIBUTING.md.
+  UV_VERSION: "0.13.0"
 
 jobs:
   lint-and-typecheck:
@@ -48,7 +50,7 @@ jobs:
         run: uv run vulture src/finsight --min-confidence=80
 
       - name: Run detect-secrets
-        run: uv run detect-secrets-hook --baseline .secrets.baseline $(git ls-files -co --exclude-standard)
+        run: uv run pre-commit run detect-secrets --all-files
 
   pre-commit:
     name: Pre-commit
@@ -342,7 +344,7 @@ jobs:
         run: uv sync --frozen --all-extras
 
       - name: Run security tests
-        run: uv run pytest tests/unit -v --tb=short -k "security or company_filter or cache_key or metering or citation"
+        run: uv run pytest tests/security -v --tb=short -m "security"
 
   dependency-audit:
     name: Dependency Audit

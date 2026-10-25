@@ -4,7 +4,7 @@
 
 COVERAGE_MIN ?= 50
 
-.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches arch-test coverage coverage-html config-check migrate migration docker-up docker-down clean update-deps
+.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check migrate migration docker-up docker-down clean update-deps
 
 # Default target
 help:
@@ -16,8 +16,8 @@ help:
 	@echo "  install-hooks  - Install pre-commit hooks"
 	@echo ""
 	@echo "Quality Gates (run all):"
-	@echo "  check          - Run every gate once (lint + typecheck + imports + vulture + secrets + tests)"
-	@echo "  ci             - CI pipeline (lint + typecheck + imports + vulture + secrets + coverage)"
+	@echo "  check          - Run every gate once (lint + typecheck + imports + vulture + secrets + tests + security)"
+	@echo "  ci             - CI pipeline (lint + typecheck + imports + vulture + secrets + coverage incl. security)"
 	@echo "  pre-commit     - Run pre-commit on all files"
 	@echo ""
 	@echo "Individual Checks:"
@@ -38,6 +38,7 @@ help:
 	@echo "  test-contract  - Run contract tests"
 	@echo "  test-architecture - Run architecture invariant tests"
 	@echo "  test-switches  - Run switch path tests"
+	@echo "  test-security  - Run security tests (isolation, permissions, cache keys, evidence, PII)"
 	@echo ""
 	@echo "Database:"
 	@echo "  docker-up      - Start the local test stack (Postgres, LocalStack, Redis, OTel)"
@@ -69,7 +70,7 @@ install-hooks:
 # ============================================================
 # Quality Gates
 # ============================================================
-check: lint typecheck imports vulture secrets test
+check: lint typecheck imports vulture secrets test test-security
 	@echo "✓ All quality checks passed"
 
 ci: lint typecheck imports vulture secrets coverage
@@ -93,7 +94,7 @@ vulture:
 	uv run vulture src/finsight --min-confidence=80
 
 secrets:
-	uv run detect-secrets-hook --baseline .secrets.baseline $$(git ls-files -co --exclude-standard)
+	uv run pre-commit run detect-secrets --all-files  # pragma: allowlist secret
 
 pre-commit:
 	uv run pre-commit run --all-files
@@ -131,6 +132,9 @@ test-architecture:
 test-switches:
 	uv run pytest tests/unit/switches -v --tb=short -m "switch"
 
+test-security:
+	uv run pytest tests/security -v --tb=short -m "security"
+
 # ============================================================
 # Database
 # ============================================================
@@ -151,12 +155,12 @@ docker-down:
 # Coverage
 # ============================================================
 coverage:
-	uv run pytest tests/unit tests/contract tests/architecture \
+	uv run pytest tests/unit tests/contract tests/architecture tests/security \
 		--cov=src/finsight --cov-report=term-missing --cov-report=xml \
 		--cov-fail-under=$(COVERAGE_MIN)
 
 coverage-html:
-	uv run pytest tests/unit tests/contract tests/architecture \
+	uv run pytest tests/unit tests/contract tests/architecture tests/security \
 		--cov=src/finsight --cov-report=html
 
 # ============================================================

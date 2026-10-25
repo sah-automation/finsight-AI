@@ -10,6 +10,17 @@ from pathlib import Path
 
 import pytest
 
+from tests.support.ast_inspection import (
+    find_class_defs,
+    find_folders_missing_readme,
+    find_forbidden_constructor_calls,
+    find_function_defs,
+    find_methods_without_company_id,
+    get_all_imports,
+    get_python_files,
+    parse_python_file,
+)
+
 # ============================================================
 # Helpers
 # ============================================================
@@ -67,80 +78,11 @@ VENDOR_BRANCHING_PATTERNS = [
 ]
 
 # Functions/classes that should only be instantiated in composition/adapters
-FORBIDDEN_CONSTRUCTORS = {
-    'boto3.client',
-    'boto3.resource',
-    'httpx.Client',
-    'httpx.AsyncClient',
-    'litellm',
-    'LiteLLM',
-    'OpenAI',
-    'Anthropic',
-    'CohereClient',
-    'AsyncCohereClient',
-}
+# are defined in tests/support/ast_inspection.py.
 
 # Maximum lines per file/function (warn level)
 MAX_FILE_LINES = 300
 MAX_FUNCTION_LINES = 30
-
-
-def get_python_files(package: str) -> list[Path]:
-    """Get all Python files in a package."""
-    package_path = SRC_ROOT / package
-    if not package_path.exists():
-        return []
-    return list(package_path.rglob('*.py'))
-
-
-def parse_python_file(filepath: Path) -> ast.Module:
-    """Parse a Python file into an AST."""
-    content = filepath.read_text()
-    return ast.parse(content, filename=str(filepath))
-
-
-def get_all_imports(tree: ast.Module) -> set[str]:
-    """Extract all import names from an AST."""
-    imports = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.add(alias.name.split('.')[0])
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            imports.add(node.module.split('.')[0])
-    return imports
-
-
-def get_all_calls(tree: ast.Module) -> list[tuple[str, int]]:
-    """Extract all function calls with line numbers."""
-    calls = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name):
-                calls.append((node.func.id, node.lineno))
-            elif isinstance(node.func, ast.Attribute):
-                calls.append((node.func.attr, node.lineno))
-    return calls
-
-
-def find_class_defs(tree: ast.Module) -> list[tuple[str, int, int]]:
-    """Find all class definitions with start/end lines."""
-    classes = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            end_line = node.end_lineno or node.lineno
-            classes.append((node.name, node.lineno, end_line))
-    return classes
-
-
-def find_function_defs(tree: ast.Module) -> list[tuple[str, int, int]]:
-    """Find all function definitions with start/end lines."""
-    functions = []
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            end_line = node.end_lineno or node.lineno
-            functions.append((node.name, node.lineno, end_line))
-    return functions
 
 
 # ============================================================
@@ -155,7 +97,7 @@ class TestNoEnvVarsOutsideConfig:
     @pytest.mark.parametrize('module', NO_ENV_MODULES)
     def test_no_os_getenv(self, module: str) -> None:
         """No os.getenv calls outside core/config."""
-        for filepath in get_python_files(module):
+        for filepath in get_python_files(SRC_ROOT / module):
             tree = parse_python_file(filepath)
             for node in ast.walk(tree):
                 if (
@@ -174,7 +116,7 @@ class TestNoEnvVarsOutsideConfig:
     @pytest.mark.parametrize('module', NO_ENV_MODULES)
     def test_no_os_environ(self, module: str) -> None:
         """No os.environ access outside core/config."""
-        for filepath in get_python_files(module):
+        for filepath in get_python_files(SRC_ROOT / module):
             tree = parse_python_file(filepath)
             for node in ast.walk(tree):
                 if (
@@ -202,7 +144,7 @@ class TestNoVendorImportsInBusinessCode:
     @pytest.mark.parametrize('module', ['domain', 'application'])
     def test_no_forbidden_imports(self, module: str) -> None:
         """No forbidden vendor imports in domain/application."""
-        for filepath in get_python_files(module):
+        for filepath in get_python_files(SRC_ROOT / module):
             tree = parse_python_file(filepath)
             imports = get_all_imports(tree)
             forbidden_found = imports & FORBIDDEN_VENDORS
@@ -214,7 +156,7 @@ class TestNoVendorImportsInBusinessCode:
     @pytest.mark.parametrize('module', ['domain', 'application'])
     def test_no_vendor_branching(self, module: str) -> None:
         """No vendor-name string comparisons in business logic."""
-        for filepath in get_python_files(module):
+        for filepath in get_python_files(SRC_ROOT / module):
             tree = parse_python_file(filepath)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Compare):
@@ -245,59 +187,7 @@ class TestCompanyIdOnAllQueries:
 
     def _find_methods_without_company_id(self, package: str) -> list[tuple[str, str, int]]:
         """Find methods that don't have company_id parameter."""
-        violations = []
-        for filepath in get_python_files(package):
-            tree = parse_python_file(filepath)
-            for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    # Skip private methods, properties, and __init__
-                    if node.name.startswith('_'):
-                        continue
-                    if any(
-                        isinstance(d, ast.Decorator)
-                        for d in node.decorator_list
-                        if isinstance(d.func, ast.Name) and d.func.id == 'property'
-                    ):
-                        continue
-
-                    # Check parameters
-                    args = node.args
-                    param_names = [arg.arg for arg in args.args]
-                    param_names += [arg.arg for arg in args.kwonlyargs]
-                    if args.vararg:
-                        param_names.append(args.vararg.arg)
-                    if args.kwarg:
-                        param_names.append(args.kwarg.arg)
-
-                    # Check if this looks like a data access method
-                    method_name = node.name.lower()
-                    is_data_method = any(
-                        keyword in method_name
-                        for keyword in [
-                            'get',
-                            'find',
-                            'search',
-                            'query',
-                            'fetch',
-                            'load',
-                            'list',
-                            'retrieve',
-                            'read',
-                            'save',
-                            'write',
-                            'create',
-                            'update',
-                            'delete',
-                            'upsert',
-                            'insert',
-                            'execute',
-                        ]
-                    )
-
-                    if is_data_method and 'company_id' not in param_names:
-                        violations.append((str(filepath), node.name, node.lineno))
-
-        return violations
+        return find_methods_without_company_id(SRC_ROOT / package)
 
     def test_repositories_require_company_id(self) -> None:
         """All repository methods must take company_id."""
@@ -362,7 +252,7 @@ class TestMoneyUsesDecimal:
 
     def test_no_float_in_value_objects(self) -> None:
         """No float type annotations in value_objects package."""
-        for filepath in get_python_files('domain/value_objects'):
+        for filepath in get_python_files(SRC_ROOT / 'domain/value_objects'):
             tree = parse_python_file(filepath)
             for node in ast.walk(tree):
                 if (
@@ -388,15 +278,10 @@ class TestNoHiddenDependencyConstruction:
     @pytest.mark.parametrize('module', ['domain', 'application', 'entrypoints'])
     def test_no_direct_client_construction(self, module: str) -> None:
         """No direct boto3/httpx/litellm client construction in business code."""
-        for filepath in get_python_files(module):
-            tree = parse_python_file(filepath)
-            calls = get_all_calls(tree)
-            for func_name, lineno in calls:
-                if func_name in FORBIDDEN_CONSTRUCTORS:
-                    pytest.fail(
-                        f'{filepath}:{lineno}: Direct construction of {func_name} found. '
-                        f'Use dependency injection via composition root.'
-                    )
+        violations = find_forbidden_constructor_calls(SRC_ROOT / module)
+        assert not violations, 'Direct external client construction found:\n' + '\n'.join(
+            f'  {filepath}:{lineno} {name}' for filepath, name, lineno in violations
+        )
 
 
 # ============================================================
@@ -486,23 +371,8 @@ class TestFolderReadmes:
     """Ensure every package folder has a README.md."""
 
     def test_all_folders_have_readme(self) -> None:
-        """Every directory under src/finsight should have README.md."""
-        missing = []
-        for dirpath in SRC_ROOT.rglob('*'):
-            if dirpath.is_dir() and not dirpath.name.startswith('.'):
-                # Skip __pycache__ and similar
-                if dirpath.name == '__pycache__':
-                    continue
-                readme = dirpath / 'README.md'
-                if not readme.exists():
-                    # Check if it's a leaf package (has .py files) or has subpackages
-                    has_py = any(dirpath.glob('*.py'))
-                    has_subdirs = any(
-                        d.is_dir() for d in dirpath.iterdir() if not d.name.startswith('.')
-                    )
-                    if has_py or has_subdirs:
-                        missing.append(str(dirpath.relative_to(SRC_ROOT)))
-
+        """Every package folder, including src/finsight itself, has README.md."""
+        missing = find_folders_missing_readme(SRC_ROOT)
         assert not missing, 'Missing README.md in folders:\n' + '\n'.join(
             f'  src/finsight/{m}' for m in missing
         )
@@ -564,7 +434,7 @@ class TestNoEnvironmentChecksInBusinessCode:
     @pytest.mark.parametrize('module', ['domain', 'application', 'adapters', 'entrypoints'])
     def test_no_prod_checks(self, module: str) -> None:
         """No Environment.PRODUCTION or 'production' string checks in business code."""
-        for filepath in get_python_files(module):
+        for filepath in get_python_files(SRC_ROOT / module):
             tree = parse_python_file(filepath)
 
             # Check for direct 'production' comparisons.

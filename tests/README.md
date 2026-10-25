@@ -9,6 +9,7 @@ Test organization mirroring src structure.
 - `golden/` - 100+ question set, runs on pilot and standard config
 - `contract/` - one shared test per port, run against every adapter
 - `architecture/` - AST-based invariant tests for rules static tools cannot express
+- `security/` - isolation, permission, cache-key, evidence, PII, and secret-scope tests
 
 **Enforcement gates:**
 - `ruff` - style, imports, security lint rules
@@ -17,6 +18,7 @@ Test organization mirroring src structure.
 - `vulture` - dead code
 - `detect-secrets` - no committed credentials
 - `pytest tests/architecture` - AST invariants (company_id, Decimal money, env reads, naming)
+- `pytest tests/security -m security` - tenant isolation, permissions, cache keys, evidence, PII, secret scope
 - `pytest tests/unit/switches` - every switch has ON and OFF tests
 
 **Rules:**

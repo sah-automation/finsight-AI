@@ -14,6 +14,7 @@ _MARKER_BY_DIR = {
     'golden': pytest.mark.golden,
     'contract': pytest.mark.contract,
     'architecture': pytest.mark.architecture,
+    'security': pytest.mark.security,
 }
 
 

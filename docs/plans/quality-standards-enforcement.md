@@ -12,6 +12,7 @@ Status of the automated enforcement for `CODING_STANDARDS.md`.
 | Dead code | `make vulture` | unused code in `src/` |
 | Secrets | `make secrets` (`detect-secrets`) | no committed credentials |
 | Architecture invariants | `make arch-test` (`pytest tests/architecture`) | env reads, `company_id`, `Decimal` money, hidden construction, naming, READMEs |
+| Security suite | `make test-security` (`pytest tests/security -m security`) | tenant isolation, permissions, cache keys, evidence, PII, secret-scan scope |
 | Switch paths | `make test-switches` | every `SwitchesConfig` field has ON and OFF tests |
 | Suite markers | `tests/conftest.py` | `-m unit`, `-m integration`, etc. always select the right tests |
 | Pre-commit in CI | `make pre-commit` (CI `Pre-commit` job) | YAML, shell, large files, whitespace, commit messages |
@@ -146,6 +147,9 @@ Implemented:
   severity findings.
 - Dependabot opens grouped weekly updates for `uv` and GitHub Actions
   (`.github/dependabot.yml`).
+- `detect-secrets` scans production code and `tests/` with the same file set in
+  pre-commit, `make secrets`, and CI. The baseline contains only reviewed
+  placeholders (`test`/`prod`/`postgres`) in dev/test configuration.
 
 Remaining:
 - Tune `.secrets.baseline` after the first real adapters and config files land;
@@ -165,6 +169,11 @@ Before the first feature PR:
    and confirm the matching gate fails.
 2. Delete the throwaway branch.
 3. Record the results in this document.
+
+The P2 architecture and security gates were verified this way on 2026-10-26
+(adapter → application, core → adapters, missing `company_id`, dummy secret
+under `tests/`, weakened cache key); the results are recorded in
+`docs/plans/dev-infra-implementation-plan.md` section 16.
 
 Definition of done: every implemented gate has been observed failing for the
 reason it claims to catch.
