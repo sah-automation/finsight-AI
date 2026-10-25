@@ -1,6 +1,6 @@
 # Development Infrastructure Implementation Plan
 
-Status: Proposed (DI-04, DI-17 and DI-25 are implemented; see section 13 for the execution log)
+Status: P0 implemented (DI-01 to DI-06 and DI-25 are closed; DI-17 is also implemented. See sections 13 and 14 for execution logs)
 Date: 2026-10-26
 Source: static review of the repository, CI workflow, local service stack, OpenCode configuration, and the GitHub remote, followed by an execution pass on a machine with Docker
 Scope: development, CI, local environment, repository governance, and deployment scaffolding
@@ -1331,3 +1331,38 @@ The most important still-open items after this pass:
 - DI-08: pre-commit is not run in CI, so all 18 hooks are still local-only.
 - DI-09: coverage floor is `0`.
 - DI-16: the security job tests nothing.
+
+---
+
+## 14. P0 execution log (2026-10-26)
+
+P0 was implemented on `main` in commit `395c63a` (the pushed commit) and
+verified against GitHub and the local Docker stack. The first `main` CI run
+(`40231109458`) passed every job, including `Summary`. P1 and later items
+remain open unless section 13 already marks them implemented.
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| DI-01 | Done | `origin/main` points at `395c63a`. The repository is still `PUBLIC`. Ruleset `Protect main` (ID `25836226`) requires a pull request, the `Summary` check, an up-to-date branch, and conversation resolution; it blocks force pushes and deletion, and has no bypass actors. |
+| DI-02 | Done | `grep -R "cache: uv" .github/workflows` returns nothing. `enable-cache: true` remains on `astral-sh/setup-uv` in every job. |
+| DI-03 | Done | Keep-public option applied: Apache-2.0 `LICENSE` added, `README.md` links it, and `pyproject.toml` declares `license = {text = "Apache-2.0"}`. The built wheel includes `dist-info/licenses/LICENSE`. |
+| DI-04 | Done | `conventional-pre-commit` `v4.4.0` is wired at the `commit-msg` stage. `default_install_hook_types` installs both hooks; `.git/hooks/pre-commit` and `.git/hooks/commit-msg` are executable. A non-conventional message fails and a conventional message passes. `pre-commit run --all-files` passes. |
+| DI-05 | Done | `Environment.TEST` and `config/test.yaml` exist. Test values match `docker-compose.test.yml` and `infra/localstack/init.sh` (database `test`/`test`, buckets `documents`/`reports`/`backups`, queues `ingestion`/`reprocessing`/`reports`/`dlq`, tables `answer_cache`/`role_cache`/`metering`). CI integration uses `ENVIRONMENT=test`, dummy AWS credentials, `AWS_ENDPOINT_URL`, and `docker compose ... up -d --wait`. `make test-integration` selects the test profile. |
+| DI-06 | Done | `.env.example` exists with grouped, commented, safe placeholders; it is not gitignored; `detect-secrets` passes; `README.md` references it and explains that it targets the test profile. |
+| DI-25 | Done | `opencode.json` is committed. Its six `edit`/`write`/`bash` rules validate against the documented shape, and the protected paths are `docs/plans/project_requirement/**` and `docs/plans/architecture/**`. |
+
+Verification run during this pass:
+
+```bash
+ENVIRONMENT=test uv run python -c "from finsight.core.config import load_config; c=load_config(); print(c.app.environment, c.storage.documents_bucket)"
+uv run pre-commit run --all-files
+make check
+make test-integration
+docker compose -f docker-compose.test.yml up -d --wait
+docker compose -f docker-compose.test.yml down -v
+```
+
+The local stack reached `healthy` for all four services and created the S3,
+SQS, and DynamoDB resources listed above. The integration suite remains a
+placeholder skip until adapters exist; the configuration path itself is
+verified by `tests/unit/core/config/test_loader.py`.
