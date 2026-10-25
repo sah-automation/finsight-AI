@@ -21,6 +21,20 @@ make install-hooks
 `uv sync` is the only supported install path. Local and CI both read
 `.python-version`, so the interpreter cannot drift.
 
+## Toolchain versions
+
+`uv` is pinned in `.github/workflows/ci.yml` (`UV_VERSION`) and must match the
+local `uv` that generated `uv.lock`. To upgrade:
+
+```bash
+# install the new uv locally, then
+uv lock
+# commit uv.lock and the UV_VERSION bump in the same pull request
+```
+
+A mismatch between the pinned CI `uv` and the lockfile revision can produce a
+different dependency graph in CI than locally.
+
 ## Local services
 
 ```bash
@@ -59,9 +73,10 @@ Rules:
 
 ```bash
 make format       # ruff format + ruff check --fix
-make check        # every gate once: lint, types, imports, vulture, secrets, tests
+make check        # every gate once: lint, types, imports, vulture, secrets, tests, security
 make ci           # same gates plus the coverage floor
-make coverage     # coverage floor (COVERAGE_MIN, default 50)
+make coverage     # coverage floor (COVERAGE_MIN, default 50), includes tests/security
+make test-security # tenant isolation, permissions, cache keys, evidence, PII
 make config-check # load every config profile through the typed loader
 ```
 
@@ -82,5 +97,7 @@ branch-protection status.
 
 ## Security
 
-Never commit credentials. Report vulnerabilities privately as described in
-`SECURITY.md`, not in a public issue.
+Never commit credentials. `make secrets` and the pre-commit `detect-secrets`
+hook scan the same file set, including `tests/`; the baseline in
+`.secrets.baseline` is reviewed, not blindly regenerated. Report
+vulnerabilities privately as described in `SECURITY.md`, not in a public issue.

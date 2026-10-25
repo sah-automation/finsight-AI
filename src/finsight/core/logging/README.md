@@ -6,6 +6,7 @@ Logger setup and trace tag utilities.
 - Logger configuration
 - Trace context management
 - Structured logging helpers
+- Sensitive-field redaction (`redaction.py`)
 
 **Does not belong here:**
 - Business logic

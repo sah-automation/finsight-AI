@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 
 from pythonjsonlogger import jsonlogger
 
+from .redaction import redact_sensitive_fields
+
 if TYPE_CHECKING:
     from types import TracebackType
 
@@ -57,6 +59,8 @@ class TraceFormatter(jsonlogger.JsonFormatter):
         switches = _switch_values.get()
         if switches:
             log_record['switches'] = switches
+
+        log_record.update(redact_sensitive_fields(log_record))
 
 
 class TextFormatter(logging.Formatter):

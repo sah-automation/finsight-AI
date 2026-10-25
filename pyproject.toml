@@ -146,6 +146,7 @@ markers = [
     "contract: Contract tests for ports",
     "architecture: Architecture invariant tests",
     "switch: Switch path tests",
+    "security: Security tests (isolation, permissions, cache keys, evidence, PII)",
 ]
 [tool.coverage.run]
 source = ["src"]
@@ -192,46 +193,40 @@ source_modules = ["finsight.entrypoints"]
 forbidden_modules = ["finsight.adapters"]
 
 [[tool.importlinter.contracts]]
-name = "LLM adapter must not import sibling adapters"
+name = "Application must not import the composition root"
 type = "forbidden"
-source_modules = ["finsight.adapters.llm"]
+source_modules = ["finsight.application"]
+forbidden_modules = ["finsight.composition"]
+
+[[tool.importlinter.contracts]]
+name = "Adapters must not import outer layers"
+type = "forbidden"
+source_modules = ["finsight.adapters"]
 forbidden_modules = [
-    "finsight.adapters.embedding",
-    "finsight.adapters.vector_store",
-    "finsight.adapters.rerank",
-    "finsight.adapters.readers",
-    "finsight.adapters.repositories",
-    "finsight.adapters.storage",
-    "finsight.adapters.queue",
-    "finsight.adapters.cache",
-    "finsight.adapters.auth",
-    "finsight.adapters.metering",
+    "finsight.application",
+    "finsight.entrypoints",
+    "finsight.composition",
 ]
 
 [[tool.importlinter.contracts]]
-name = "Embedding adapter must not import sibling adapters"
+name = "Core must not import outer layers"
 type = "forbidden"
-source_modules = ["finsight.adapters.embedding"]
+source_modules = ["finsight.core"]
 forbidden_modules = [
-    "finsight.adapters.llm",
-    "finsight.adapters.vector_store",
-    "finsight.adapters.rerank",
-    "finsight.adapters.readers",
-    "finsight.adapters.repositories",
-    "finsight.adapters.storage",
-    "finsight.adapters.queue",
-    "finsight.adapters.cache",
-    "finsight.adapters.auth",
-    "finsight.adapters.metering",
+    "finsight.domain",
+    "finsight.application",
+    "finsight.adapters",
+    "finsight.entrypoints",
+    "finsight.composition",
 ]
 
 [[tool.importlinter.contracts]]
-name = "Vector store adapter must not import sibling adapters"
-type = "forbidden"
-source_modules = ["finsight.adapters.vector_store"]
-forbidden_modules = [
+name = "Adapters must be independent"
+type = "independence"
+modules = [
     "finsight.adapters.llm",
     "finsight.adapters.embedding",
+    "finsight.adapters.vector_store",
     "finsight.adapters.rerank",
     "finsight.adapters.readers",
     "finsight.adapters.repositories",
@@ -246,6 +241,9 @@ forbidden_modules = [
 name = "Domain must not import vendor libraries"
 type = "forbidden"
 source_modules = ["finsight.domain"]
+# Domain may import our shared type layer; core.types owns its Pydantic
+# dependency. Direct vendor imports by domain are still forbidden.
+ignore_imports = ["finsight.domain.** -> finsight.core.types"]
 forbidden_modules = [
     "boto3",
     "litellm",
@@ -304,6 +302,34 @@ forbidden_modules = [
     "pydantic",
     "email_validator",
     "python_multipart",
+]
+
+[[tool.importlinter.contracts]]
+name = "Core must not import adapter vendor libraries"
+type = "forbidden"
+source_modules = ["finsight.core"]
+# core/config, core/logging, and core/types legitimately use Pydantic,
+# PyYAML, python-json-logger, and OpenTelemetry. Ban the adapter vendors.
+forbidden_modules = [
+    "boto3",
+    "litellm",
+    "langchain",
+    "langgraph",
+    "fastapi",
+    "httpx",
+    "openai",
+    "anthropic",
+    "pandas",
+    "sqlalchemy",
+    "psycopg",
+    "asyncpg",
+    "redis",
+    "aiobotocore",
+    "cohere",
+    "pdfplumber",
+    "pytesseract",
+    "docx",
+    "openpyxl",
 ]
 
 [tool.vulture]

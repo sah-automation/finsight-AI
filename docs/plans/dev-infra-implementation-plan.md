@@ -1,6 +1,6 @@
 # Development Infrastructure Implementation Plan
 
-Status: P0 and P1 implemented (DI-01 to DI-13 and DI-25 are closed; DI-17 is also implemented. See sections 13, 14, and 15 for execution logs)
+Status: P0, P1, and P2 implemented (DI-01 to DI-19 and DI-25 are closed; see sections 13, 14, 15, and 16 for execution logs)
 Date: 2026-10-26
 Source: static review of the repository, CI workflow, local service stack, OpenCode configuration, and the GitHub remote, followed by an execution pass on a machine with Docker
 Scope: development, CI, local environment, repository governance, and deployment scaffolding
@@ -593,6 +593,8 @@ grep -R "python-version-file" .github/workflows
 
 ### DI-14 — Complete import-linter contracts
 
+**Status: implemented.** See section 16.
+
 **Evidence**
 
 `pyproject.toml:169-306` currently forbids:
@@ -640,6 +642,8 @@ uv run lint-imports --verbose
 
 ### DI-15 — Fix dead architecture-test checks
 
+**Status: implemented.** See section 16.
+
 **Evidence**
 
 - `tests/architecture/test_invariants.py:256-260` checks `isinstance(d, ast.Decorator)`. `ast.Decorator` does not exist in the `ast` module, so the property exemption never applies. The intent was to skip `@property` methods; the check should inspect `ast.Name`/`ast.Attribute` decorators.
@@ -676,6 +680,8 @@ uv run pytest tests/architecture -v -m architecture --tb=short
 ---
 
 ### DI-16 — Replace the `security-tests` name filter
+
+**Status: implemented.** See section 16.
 
 **Evidence**
 
@@ -764,6 +770,8 @@ make typecheck
 
 ### DI-18 — Align detect-secrets scope
 
+**Status: implemented.** See section 16.
+
 **Evidence**
 
 - `.pre-commit-config.yaml:47-52` runs `detect-secrets` with `exclude: ^tests/`.
@@ -795,6 +803,8 @@ make secrets
 ---
 
 ### DI-19 — Align the CI `uv` version with the lockfile
+
+**Status: implemented.** See section 16.
 
 **Evidence**
 
@@ -1415,3 +1425,64 @@ The migration sequence created the seven core tables plus `alembic_version`,
 the `vector` extension, and the HNSW index, then dropped them cleanly. The
 integration and golden suites remain placeholder skips until adapters and the
 golden harness exist.
+
+---
+
+## 16. P2 execution log (2026-10-26)
+
+P2 was implemented in the P2 pull request (`feat(dev-infra): implement P2
+architecture and security gates`). The workstreams share `pyproject.toml`, the
+`Makefile`, and `.github/workflows/ci.yml`, so they landed together. DI-17 was
+already complete from the P1/P2 pre-work (section 13) and was not reworked.
+The repository remains `PUBLIC`.
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| DI-14 | Done | `pyproject.toml` now has 10 contracts: domain → outer layers, application → adapters/entrypoints, application → composition, entrypoints → adapters, adapters → application/entrypoints/composition, core → every outer layer, adapter independence across all 11 adapter subpackages, and vendor bans for domain, application, and core. `tests/architecture/test_import_contracts.py` guards contract coverage so a new top-level package or adapter cannot silently escape. The domain vendor contract carries a documented `ignore_imports` exception for `finsight.domain.** -> finsight.core.types`, because `core.types` owns its Pydantic dependency; direct domain → vendor imports remain forbidden. |
+| DI-15 | Done | Shared AST helpers live in `tests/support/ast_inspection.py`; architecture and security tests use the same repaired checks. Fixed property-decorator detection, dotted call-name extraction, and root README checking. `tests/architecture/test_invariant_helpers.py` adds regression tests that prove each repaired check fails on a synthetic violation. |
+| DI-16 | Done | The name-filter job is gone. `tests/security/` is a real suite with a directory-injected `security` marker: tenant isolation, tenant-scoped cache keys, permission matrix, citation/evidence gate, PII redaction wired into `TraceFormatter`, secret-scan scope, and an explicit visible skip for the not-yet-implemented prompt-injection input gate. Supporting pure primitives live in `domain/services/` and `core/logging/redaction.py`. |
+| DI-17 | Done previously | Section 13 records the local `uv` mypy/import-linter hooks. No P2 change was needed. |
+| DI-18 | Done | Removed `exclude: ^tests/` from the `detect-secrets` hook. `make secrets`, the pre-commit hook, and CI all run `pre-commit run detect-secrets --all-files` over the same file set. Regenerated and reviewed `.secrets.baseline`: removed the stale Makefile false positive, updated the `ci.yml` line number, and kept only reviewed placeholders (`test`/`prod`/`postgres`) in dev/test configuration. A dummy high-entropy value under `tests/` fails the hook. |
+| DI-19 | Done | CI pins `UV_VERSION: "0.13.0"`, matching local `uv 0.13.0` and `uv.lock` revision 5. The pin has an upgrade comment, and `CONTRIBUTING.md` documents regenerating the lockfile and bumping the pin together. |
+
+### Gate results
+
+```text
+make check
+  10 import contracts kept, 0 broken
+  architecture: 44 passed, 1 skipped
+  security:     50 passed, 1 skipped
+make coverage
+  107 passed, 23 skipped
+  70.07% total coverage (floor 50%)
+make config-check
+  4 profiles validated
+make secrets / pre-commit detect-secrets
+  Passed over the tracked and untracked file set
+uv run pre-commit run --all-files
+  All hooks passed (requirements hook skipped: no files)
+uv lock --check
+  Resolved 156 packages; lockfile unchanged
+```
+
+### Deliberate failure checks
+
+Each violation was added temporarily, the relevant gate was run, and the
+violation was removed before the final green run.
+
+| Injected violation | Gate | Observed result |
+| --- | --- | --- |
+| Adapter imported `finsight.application` | `lint-imports` | Exit 1; `Adapters must not import outer layers BROKEN`; 9 kept, 1 broken. |
+| `core` imported `finsight.adapters` | `lint-imports` | Exit 1; `Core must not import outer layers BROKEN`. |
+| Cache method `load(key)` lacked `company_id` | architecture `test_cache_requires_company_id` | Exit 1; violation reported at the temporary file and line. |
+| Dummy high-entropy value under `tests/security/` | pre-commit `detect-secrets` | Exit 1; reported `Hex High Entropy String` and `Secret Keyword`. |
+| Cache key omitted `company_id` | `test_company_id_changes_the_key` | Exit 1; two tenants produced the same SHA-256 key. |
+
+### Notes and deliberate exceptions
+
+- The `security` suite includes `tests/security` in `make coverage`, so the new
+  primitives are covered rather than existing only in an isolated job.
+- Prompt-injection detection remains an explicit `pytest.skip` with a reason.
+  It is visible in every security run; it is not a passing placeholder.
+- The only import-contract exception is domain → `core.types`, documented in
+  `pyproject.toml`. No outer-layer or direct vendor import is exempted.
