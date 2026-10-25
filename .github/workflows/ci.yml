@@ -1,0 +1,340 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.5.0"
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run ruff (lint)
+        run: uv run ruff check src tests --exit-non-zero-on-fix
+
+      - name: Run ruff (format check)
+        run: uv run ruff format --check src tests
+
+      - name: Run mypy
+        run: uv run mypy src --strict --show-error-codes
+
+      - name: Run import-linter
+        run: uv run lint-imports --verbose
+
+      - name: Run vulture
+        run: uv run vulture src/finsight --min-confidence=80
+
+      - name: Run detect-secrets
+        run: uv run detect-secrets-hook --baseline .secrets.baseline $(git ls-files -co --exclude-standard)
+
+  architecture-tests:
+    name: Architecture Invariant Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run architecture tests
+        run: uv run pytest tests/architecture -v --tb=short
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run unit tests
+        run: |
+          uv run pytest tests/unit -v --tb=short -m "unit" \
+            --cov=src/finsight --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage.xml
+          retention-days: 7
+          if-no-files-found: warn
+
+  contract-tests:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run contract tests
+        run: uv run pytest tests/contract -v --tb=short -m "contract"
+
+  switch-tests:
+    name: Switch Path Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run switch tests
+        run: uv run pytest tests/unit/switches -v --tb=short -m "switch"
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Start local services
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          sleep 10
+
+      - name: Run integration tests
+        run: uv run pytest tests/integration -v --tb=short -m "integration"
+        env:
+          VECTOR_DB_HOST: localhost
+          VECTOR_DB_NAME: test
+          VECTOR_DB_USER: test
+          VECTOR_DB_PASSWORD: test
+          AWS_REGION: us-east-1
+          ANSWER_CACHE_TABLE: test
+          ROLE_CACHE_TABLE: test
+          INGESTION_QUEUE_URL: http://localhost:4566/000000000000/ingestion
+          REPROCESSING_QUEUE_URL: http://localhost:4566/000000000000/reprocessing
+          REPORTS_QUEUE_URL: http://localhost:4566/000000000000/reports
+          DLQ_URL: http://localhost:4566/000000000000/dlq
+          DOCUMENTS_BUCKET: test
+          REPORTS_BUCKET: test
+          BACKUPS_BUCKET: test
+          COGNITO_USER_POOL_ID: test
+          COGNITO_CLIENT_ID: test
+          METERING_TABLE: test
+          OTLP_ENDPOINT: http://localhost:4317
+
+      - name: Stop local services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
+  golden-tests:
+    name: Golden Set Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run golden tests (pilot config)
+        run: uv run pytest tests/golden -v --tb=short -m "golden"
+        env:
+          ENVIRONMENT: development
+
+      - name: Run golden tests (standard config)
+        run: uv run pytest tests/golden -v --tb=short -m "golden"
+        env:
+          ENVIRONMENT: staging
+
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run security tests
+        run: uv run pytest tests/unit -v --tb=short -k "security or company_filter or cache_key or metering or citation"
+
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint-and-typecheck, architecture-tests, unit-tests, contract-tests, switch-tests]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: uv
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Verify package builds
+        run: uv build --wheel
+
+  summary:
+    name: Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [lint-and-typecheck, architecture-tests, unit-tests, contract-tests, switch-tests, integration-tests, golden-tests, security-tests, build-check]
+    if: always()
+    steps:
+      - name: Check job status
+        run: |
+          if [[ "${{ needs.lint-and-typecheck.result }}" != "success" ]] || \
+             [[ "${{ needs.architecture-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.contract-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.switch-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.security-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.build-check.result }}" != "success" ]]; then
+            echo "❌ Some required jobs failed"
+            exit 1
+          fi
+          if [[ "${{ needs.integration-tests.result }}" != "success" ]] && \
+             [[ "${{ needs.integration-tests.result }}" != "skipped" ]]; then
+            echo "❌ Integration tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.golden-tests.result }}" != "success" ]] && \
+             [[ "${{ needs.golden-tests.result }}" != "skipped" ]]; then
+            echo "❌ Golden tests failed"
+            exit 1
+          fi
+          echo "✅ All required jobs passed"

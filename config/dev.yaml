@@ -1,0 +1,99 @@
+# Development Environment Configuration
+# Values here override schema.yaml defaults.
+# Secrets should be in environment variables, not in this file.
+
+app:
+  environment: "development"
+
+switches:
+  reranker_enabled: true
+  backup_request_enabled: true
+  parallel_retrieval_enabled: false  # simpler for dev
+  per_sentence_citation_check: true
+  async_textract_enabled: false  # use sync/pdfplumber in dev
+  ocr_fallback_enabled: true
+  answer_cache_enabled: true
+  role_cache_enabled: true
+  detailed_tracing_enabled: true
+  usage_metering_enabled: false  # disable in dev
+
+llm:
+  primary_model:
+    model_id: "anthropic/claude-3-5-haiku-20241022"  # cheaper for dev
+    max_tokens: 4096
+    timeout_seconds: 30
+  fallback_models:
+    - provider: "litellm"
+      model_id: "openai/gpt-4o-mini"
+      max_tokens: 4096
+      temperature: 0.0
+      timeout_seconds: 20
+      max_retries: 2
+      retry_base_delay_seconds: 1.0
+  embedding_model:
+    model_id: "amazon/titan-embed-text-v2:0"
+    batch_size: 50
+
+vector_store:
+  host: "localhost"
+  port: 5432
+  database: "finsight_dev"
+  username: "postgres"
+  password: "postgres"
+  ssl_mode: "disable"
+  pool_size: 5
+  max_overflow: 2
+
+readers:
+  textract:
+    async_enabled: false
+    region: "us-east-1"
+
+reranker:
+  provider: "local"  # use local reranker in dev
+
+caches:
+  answer_cache:
+    table_name: "finsight-dev-answer-cache"
+    max_entry_size_bytes: 400000
+  role_cache:
+    table_name: "finsight-dev-role-cache"
+    max_entry_size_bytes: 400000
+
+queue:
+  ingestion_queue_url: "http://localhost:4566/000000000000/finsight-dev-ingestion"
+  reprocessing_queue_url: "http://localhost:4566/000000000000/finsight-dev-reprocessing"
+  reports_queue_url: "http://localhost:4566/000000000000/finsight-dev-reports"
+  dead_letter_queue_url: "http://localhost:4566/000000000000/finsight-dev-dlq"
+
+storage:
+  documents_bucket: "finsight-dev-documents"
+  reports_bucket: "finsight-dev-reports"
+  backups_bucket: "finsight-dev-backups"
+  region: "us-east-1"
+
+auth:
+  user_pool_id: "us-east-1_devpool"
+  client_id: "devclient"
+  region: "us-east-1"
+
+metering:
+  table_name: "finsight-dev-metering"
+
+observability:
+  log_level: "DEBUG"
+  log_format: "text"
+  trace_sample_rate: 1.0
+  otlp_endpoint: "http://localhost:4317"
+  alerts:
+    fallback_model_3_used: false
+    reranker_down: false
+    embedding_retries_exceeded: 10
+    job_in_retry_list: false
+    role_cache_stale_seconds: 86400
+
+security:
+  require_company_id_on_all_queries: true
+  pii_detection_enabled: false  # disable for easier dev
+  pii_action: "log"
+  prompt_injection_detection_enabled: false

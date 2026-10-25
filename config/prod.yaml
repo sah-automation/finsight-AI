@@ -1,0 +1,95 @@
+# Production Environment Configuration
+# Values here override schema.yaml defaults.
+# ALL secrets MUST come from environment variables or AWS Secrets Manager.
+# No hardcoded values allowed in production.
+
+app:
+  environment: "production"
+
+switches:
+  reranker_enabled: true
+  backup_request_enabled: true
+  parallel_retrieval_enabled: true
+  per_sentence_citation_check: true
+  async_textract_enabled: true
+  ocr_fallback_enabled: true
+  answer_cache_enabled: true
+  role_cache_enabled: true
+  detailed_tracing_enabled: true
+  usage_metering_enabled: true
+
+llm:
+  primary_model:
+    model_id: "anthropic/claude-3-5-sonnet-20241022"
+    max_tokens: 8192
+    timeout_seconds: 60
+  fallback_models:
+    - model_id: "anthropic/claude-3-5-haiku-20241022"
+      max_tokens: 8192
+      timeout_seconds: 30
+    - model_id: "openai/gpt-4o-mini"
+      max_tokens: 4096
+      timeout_seconds: 30
+
+vector_store:
+  host: "${VECTOR_DB_HOST}"
+  port: 5432
+  database: "${VECTOR_DB_NAME}"
+  username: "${VECTOR_DB_USER}"
+  password: "${VECTOR_DB_PASSWORD}"
+  ssl_mode: "require"
+  pool_size: 20
+  max_overflow: 10
+
+readers:
+  textract:
+    async_enabled: true
+    region: "${AWS_REGION}"
+
+reranker:
+  provider: "cohere"
+  model: "rerank-english-v3.0"
+
+caches:
+  answer_cache:
+    table_name: "${ANSWER_CACHE_TABLE}"
+  role_cache:
+    table_name: "${ROLE_CACHE_TABLE}"
+
+queue:
+  ingestion_queue_url: "${INGESTION_QUEUE_URL}"
+  reprocessing_queue_url: "${REPROCESSING_QUEUE_URL}"
+  reports_queue_url: "${REPORTS_QUEUE_URL}"
+  dead_letter_queue_url: "${DLQ_URL}"
+
+storage:
+  documents_bucket: "${DOCUMENTS_BUCKET}"
+  reports_bucket: "${REPORTS_BUCKET}"
+  backups_bucket: "${BACKUPS_BUCKET}"
+  region: "${AWS_REGION}"
+
+auth:
+  user_pool_id: "${COGNITO_USER_POOL_ID}"
+  client_id: "${COGNITO_CLIENT_ID}"
+  region: "${AWS_REGION}"
+
+metering:
+  table_name: "${METERING_TABLE}"
+
+observability:
+  log_level: "INFO"
+  log_format: "json"
+  trace_sample_rate: 0.1
+  otlp_endpoint: "${OTLP_ENDPOINT}"
+  alerts:
+    fallback_model_3_used: true
+    reranker_down: true
+    embedding_retries_exceeded: 3
+    job_in_retry_list: true
+    role_cache_stale_seconds: 7200
+
+security:
+  require_company_id_on_all_queries: true
+  pii_detection_enabled: true
+  pii_action: "mask"
+  prompt_injection_detection_enabled: true

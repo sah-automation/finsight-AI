@@ -1,0 +1,235 @@
+# FinSight AI Configuration Schema
+# Source of truth for all configuration. Validated at startup.
+# Environment-specific files (dev.yaml, staging.yaml, prod.yaml) provide values.
+
+# ============================================================
+# Application Metadata
+# ============================================================
+app:
+  name: "finsight-ai"
+  version: "0.1.0"
+  environment: "development"  # development, staging, production
+
+# ============================================================
+# Feature Switches (both paths must exist and be tested)
+# ============================================================
+switches:
+  # LLM & Retrieval
+  reranker_enabled: true
+  backup_request_enabled: true
+  parallel_retrieval_enabled: true
+  per_sentence_citation_check: true
+
+  # Ingestion
+  async_textract_enabled: true
+  ocr_fallback_enabled: true
+
+  # Caching
+  answer_cache_enabled: true
+  role_cache_enabled: true
+
+  # Observability
+  detailed_tracing_enabled: true
+  usage_metering_enabled: true
+
+# ============================================================
+# LLM Configuration
+# ============================================================
+llm:
+  # Primary model (model 1 in fallback chain)
+  primary_model:
+    provider: "litellm"
+    model_id: "anthropic/claude-3-5-sonnet-20241022"
+    max_tokens: 8192
+    temperature: 0.0
+    timeout_seconds: 60
+    max_retries: 3
+    retry_base_delay_seconds: 1.0
+
+  # Fallback models (model 2, 3 in chain)
+  fallback_models:
+    - provider: "litellm"
+      model_id: "anthropic/claude-3-5-haiku-20241022"
+      max_tokens: 8192
+      temperature: 0.0
+      timeout_seconds: 30
+      max_retries: 2
+      retry_base_delay_seconds: 1.0
+    - provider: "litellm"
+      model_id: "openai/gpt-4o-mini"
+      max_tokens: 4096
+      temperature: 0.0
+      timeout_seconds: 30
+      max_retries: 2
+      retry_base_delay_seconds: 1.0
+
+  # Embedding model
+  embedding_model:
+    provider: "litellm"
+    model_id: "amazon/titan-embed-text-v2:0"
+    dimensions: 1024
+    batch_size: 100
+    timeout_seconds: 30
+    max_retries: 3
+
+  # LiteLLM router settings
+  router:
+    num_retries: 3
+    retry_after: 60
+    allowed_fails: 3
+    cooldown_time: 300
+
+# ============================================================
+# Vector Store (Aurora pgvector)
+# ============================================================
+vector_store:
+  host: "${VECTOR_DB_HOST}"
+  port: 5432
+  database: "${VECTOR_DB_NAME}"
+  username: "${VECTOR_DB_USER}"
+  password: "${VECTOR_DB_PASSWORD}"
+  ssl_mode: "require"
+  pool_size: 10
+  max_overflow: 5
+  pool_timeout_seconds: 30
+  pool_recycle_seconds: 3600
+  hnsw_ef_search: 100
+  hnsw_ef_construction: 200
+  hnsw_m: 16
+
+# ============================================================
+# Document Readers
+# ============================================================
+readers:
+  # Default reader priority order (first match wins)
+  priority:
+    - "pdfplumber"
+    - "textract"
+    - "tesseract"
+    - "excel"
+    - "csv"
+    - "docx"
+
+  # Textract async settings
+  textract:
+    async_enabled: true
+    poll_interval_seconds: 5
+    max_poll_attempts: 120
+    feature_types:
+      - "TABLES"
+      - "FORMS"
+    region: "${AWS_REGION}"
+
+  # OCR settings
+  tesseract:
+    languages: ["eng"]
+    dpi: 300
+    config: "--psm 6"
+
+  # Chunking settings
+  chunking:
+    strategy: "semantic"  # semantic, fixed, recursive
+    max_chunk_tokens: 512
+    overlap_tokens: 50
+    min_chunk_tokens: 50
+    respect_boundaries: true
+
+# ============================================================
+# Reranker
+# ============================================================
+reranker:
+  provider: "cohere"
+  model: "rerank-english-v3.0"
+  top_n: 20
+  timeout_seconds: 10
+  max_retries: 2
+  batch_size: 50
+
+# ============================================================
+# Caches (DynamoDB)
+# ============================================================
+caches:
+  answer_cache:
+    table_name: "${ANSWER_CACHE_TABLE}"
+    ttl_seconds: 86400  # 24 hours
+    key_prefix: "ans:"
+    max_entry_size_bytes: 400000  # 400KB DynamoDB limit
+
+  role_cache:
+    table_name: "${ROLE_CACHE_TABLE}"
+    ttl_seconds: 3600  # 1 hour
+    key_prefix: "role:"
+    refresh_ahead_seconds: 300  # refresh 5 min before expiry
+
+# ============================================================
+# Queue (SQS)
+# ============================================================
+queue:
+  ingestion_queue_url: "${INGESTION_QUEUE_URL}"
+  reprocessing_queue_url: "${REPROCESSING_QUEUE_URL}"
+  reports_queue_url: "${REPORTS_QUEUE_URL}"
+  dead_letter_queue_url: "${DLQ_URL}"
+  visibility_timeout_seconds: 300
+  max_receive_count: 3
+  batch_size: 10
+  wait_time_seconds: 20
+
+# ============================================================
+# Storage (S3)
+# ============================================================
+storage:
+  documents_bucket: "${DOCUMENTS_BUCKET}"
+  reports_bucket: "${REPORTS_BUCKET}"
+  backups_bucket: "${BACKUPS_BUCKET}"
+  region: "${AWS_REGION}"
+  presigned_url_expiry_seconds: 3600
+  multipart_threshold_mb: 100
+  multipart_chunksize_mb: 50
+
+# ============================================================
+# Authentication (Cognito)
+# ============================================================
+auth:
+  user_pool_id: "${COGNITO_USER_POOL_ID}"
+  client_id: "${COGNITO_CLIENT_ID}"
+  region: "${AWS_REGION}"
+  jwks_cache_ttl_seconds: 3600
+  token_verification_clock_skew_seconds: 60
+
+# ============================================================
+# Metering & Pricing
+# ============================================================
+metering:
+  table_name: "${METERING_TABLE}"
+  flush_interval_seconds: 60
+  batch_size: 100
+  # Prices loaded from config/prices.yaml
+
+# ============================================================
+# Observability
+# ============================================================
+observability:
+  log_level: "INFO"
+  log_format: "json"  # json, text
+  trace_sample_rate: 1.0
+  service_name: "finsight-ai"
+  otlp_endpoint: "${OTLP_ENDPOINT}"
+  otlp_headers: {}
+  # Alert thresholds
+  alerts:
+    fallback_model_3_used: true
+    reranker_down: true
+    embedding_retries_exceeded: 3
+    job_in_retry_list: true
+    role_cache_stale_seconds: 7200
+
+# ============================================================
+# Security & Company Separation
+# ============================================================
+security:
+  require_company_id_on_all_queries: true
+  pii_detection_enabled: true
+  pii_action: "mask"  # mask, block, log
+  prompt_injection_detection_enabled: true
+  max_question_length: 10000
+  max_context_tokens: 100000

@@ -1,0 +1,110 @@
+# Permissions Configuration
+# Role/Action/Category matrix. Single source of truth for authorization.
+# Loaded by core/config and used by domain/services/permission_spec.py
+
+# Roles defined in the system
+roles:
+  - id: "admin"
+    name: "Administrator"
+    description: "Full system access"
+  - id: "analyst"
+    name: "Financial Analyst"
+    description: "Can ask questions, view reports, create forecasts"
+  - id: "viewer"
+    name: "Viewer"
+    description: "Read-only access to reports and answers"
+  - id: "approver"
+    name: "Approver"
+    description: "Can approve decisions and recommendations"
+
+# Categories of data/actions
+categories:
+  - id: "financials"
+    name: "Financial Statements"
+    description: "Income statement, balance sheet, cash flow"
+    sensitivity: "high"
+  - id: "metrics"
+    name: "Financial Metrics"
+    description: "Ratios, KPIs, calculated metrics"
+    sensitivity: "medium"
+  - id: "forecasts"
+    name: "Forecasts & Projections"
+    description: "Future-looking estimates"
+    sensitivity: "high"
+  - id: "risks"
+    name: "Risk Alerts"
+    description: "Anomaly detection, threshold breaches"
+    sensitivity: "high"
+  - id: "decisions"
+    name: "Decisions & Recommendations"
+    description: "AI-generated recommendations, approval workflows"
+    sensitivity: "high"
+  - id: "documents"
+    name: "Source Documents"
+    description: "Uploaded PDFs, spreadsheets, raw data"
+    sensitivity: "high"
+  - id: "audit"
+    name: "Audit Trail"
+    description: "Question history, data lineage, changes"
+    sensitivity: "medium"
+
+# Actions that can be performed
+actions:
+  - id: "read"
+    name: "Read"
+    description: "View data and answers"
+  - id: "write"
+    name: "Write"
+    description: "Create/update data"
+  - id: "delete"
+    name: "Delete"
+    description: "Remove data"
+  - id: "approve"
+    name: "Approve"
+    description: "Approve recommendations/decisions"
+  - id: "upload"
+    name: "Upload"
+    description: "Upload new documents"
+  - id: "configure"
+    name: "Configure"
+    description: "Change system settings"
+
+# Permission matrix: role -> category -> allowed actions
+# Wildcard "*" means all actions
+permissions:
+  admin:
+    "*": ["*"]  # admin has all permissions on all categories
+
+  analyst:
+    financials: ["read"]
+    metrics: ["read", "write"]
+    forecasts: ["read", "write"]
+    risks: ["read", "write"]
+    decisions: ["read", "write"]
+    documents: ["read", "upload"]
+    audit: ["read"]
+
+  viewer:
+    financials: ["read"]
+    metrics: ["read"]
+    forecasts: ["read"]
+    risks: ["read"]
+    decisions: ["read"]
+    documents: ["read"]
+    audit: ["read"]
+
+  approver:
+    decisions: ["read", "approve"]
+    forecasts: ["read"]
+    risks: ["read"]
+    audit: ["read"]
+
+# Company-level overrides (optional, for specific tenant customization)
+# company_overrides:
+#   "company-uuid-here":
+#     analyst:
+#       forecasts: ["read"]  # restrict analyst from writing forecasts for this company
+
+# Default permissions for any role not explicitly listed
+default:
+  "*": ["read"]

@@ -1,0 +1,317 @@
+[project]
+name = "finsight-ai"
+version = "0.1.0"
+description = "Financial Intelligence Platform"
+readme = "README.md"
+requires-python = "==3.12.*"
+license = {text = "Proprietary"}
+authors = [{name = "FinSight AI Team"}]
+dependencies = [
+    "fastapi>=0.115.0,<0.116",
+    "uvicorn[standard]>=0.34.0,<0.35",
+    "pydantic>=2.10.0,<3",
+    "pydantic-settings>=2.6.0,<3",
+    "pydantic-extra-types>=2.10.0,<3",
+    "sqlalchemy[asyncio]>=2.0.36,<3",
+    "asyncpg>=0.29.0,<1",
+    "psycopg[binary,pool]>=3.2.0,<4",
+    "pgvector>=0.5.0,<1",
+    "alembic>=1.13.0,<2",
+    "litellm>=1.58.0,<2",
+    "cohere>=5.3.0,<6",
+    "pdfplumber>=0.11.0,<1",
+    "python-docx>=1.1.0,<2",
+    "openpyxl>=3.1.0,<4",
+    "pytesseract>=0.3.10,<1",
+    "boto3>=1.35.0,<2",
+    "aiobotocore>=2.18.0,<3",
+    "redis>=5.1.0,<6",
+    "python-json-logger>=2.0.0,<3",
+    "opentelemetry-api>=1.28.0,<2",
+    "opentelemetry-sdk>=1.28.0,<2",
+    "opentelemetry-exporter-otlp>=1.28.0,<2",
+    "opentelemetry-instrumentation-fastapi>=0.48b0,<1",
+    "opentelemetry-instrumentation-sqlalchemy>=0.48b0,<1",
+    "opentelemetry-instrumentation-httpx>=0.48b0,<1",
+    "python-multipart>=0.0.18,<1",
+    "email-validator>=2.2.0,<3",
+    "pyyaml>=6.0.0,<7",
+    "tenacity>=8.5.0,<9",
+    "structlog>=25.1.0,<26",
+]
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0,<9",
+    "pytest-asyncio>=0.24.0,<1",
+    "pytest-cov>=5.0.0,<6",
+    "pytest-mock>=3.14.0,<4",
+    "pytest-xdist>=3.6.0,<4",
+    "pytest-timeout>=2.3.0,<3",
+    "ruff>=0.7.0,<1",
+    "mypy>=1.13.0,<2",
+    "types-requests>=2.32.0,<3",
+    "types-PyYAML>=6.0.0,<7",
+    "import-linter>=1.0.0,<2",
+    "vulture>=2.10.0,<3",
+    "detect-secrets>=1.5.0,<2",
+    "pre-commit>=4.0.0,<5",
+    "freezegun>=1.5.0,<2",
+    "faker>=34.0.0,<35",
+]
+[project.urls]
+Homepage = "https://github.com/sah-automation/finsight-AI"
+Repository = "https://github.com/sah-automation/finsight-AI"
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+package = true
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "TID", "TD", "ERA", "ANN", "ARG", "PTH", "PL", "TRY", "NPY", "PIE", "RUF", "S", "A", "Q", "DTZ", "TCH", "INT", "RET", "FLY", "PGH", "BLE", "PERF", "ICN", "LOG", "ISC"
+]
+ignore = [
+    "ANN001",  # Missing type annotation for function argument - allowed in tests
+    "ARG001",  # Unused argument - allowed for protocol compliance
+    "ARG002",  # Unused argument - allowed for protocol compliance
+    "B008",    # Do not perform function calls in argument defaults - intentional for config
+    "PTH118",  # Use pathlib - allowed in tests
+    "S101",    # Use of assert - allowed in tests
+    "S105",    # Possible hardcoded password - allowed in test fixtures
+    "S106",    # Possible hardcoded password - allowed in tests/fixtures
+    "TID251",  # No TODOs - we track in GitHub issues
+    "TRY003",  # Avoid specifying long messages outside the exception class - allowed
+    "ERA001",  # Commented-out code - sometimes useful for debugging
+    "PERF401", # List comprehension suggestion - not required
+]
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["S101", "S106", "PTH118", "ARG001", "ARG002", "E501"]
+"src/finsight/core/config/models.py" = ["B008"]
+# The config loader parses arbitrary YAML (so Any is honest), imports the
+# logger lazily to avoid a circular import, and owns the deliberate
+# module-level config singleton described in CODING_STANDARDS section 6.
+"src/finsight/core/config/loader.py" = ["ANN401", "PLC0415", "PLW0602", "PLW0603"]
+# PolicyBlocked / InsufficientData names are mandated by CODING_STANDARDS
+# section 10, so they intentionally do not carry an "Error" suffix.
+"src/finsight/core/errors/__init__.py" = ["N818"]
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+no_implicit_reexport = true
+ignore_missing_imports = false
+show_error_codes = true
+pretty = true
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src"
+plugins = ["pydantic.mypy"]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "-q",
+    "--timeout=60",
+]
+markers = [
+    "unit: Unit tests (fast, no network)",
+    "integration: Integration tests (real services)",
+    "golden: Golden set tests",
+    "contract: Contract tests for ports",
+    "architecture: Architecture invariant tests",
+    "switch: Switch path tests",
+]
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "tests/*",
+    "*/migrations/*",
+    "*/conftest.py",
+]
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 0
+[tool.coverage.html]
+directory = "htmlcov"
+[tool.importlinter]
+root_package = "finsight"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain must not import outer layers"
+type = "forbidden"
+source_modules = ["finsight.domain"]
+forbidden_modules = [
+    "finsight.application",
+    "finsight.adapters",
+    "finsight.entrypoints",
+    "finsight.composition",
+]
+
+[[tool.importlinter.contracts]]
+name = "Application must not import adapters or entrypoints"
+type = "forbidden"
+source_modules = ["finsight.application"]
+forbidden_modules = ["finsight.adapters", "finsight.entrypoints"]
+
+[[tool.importlinter.contracts]]
+name = "Entrypoints must not import adapters directly"
+type = "forbidden"
+source_modules = ["finsight.entrypoints"]
+forbidden_modules = ["finsight.adapters"]
+
+[[tool.importlinter.contracts]]
+name = "LLM adapter must not import sibling adapters"
+type = "forbidden"
+source_modules = ["finsight.adapters.llm"]
+forbidden_modules = [
+    "finsight.adapters.embedding",
+    "finsight.adapters.vector_store",
+    "finsight.adapters.rerank",
+    "finsight.adapters.readers",
+    "finsight.adapters.repositories",
+    "finsight.adapters.storage",
+    "finsight.adapters.queue",
+    "finsight.adapters.cache",
+    "finsight.adapters.auth",
+    "finsight.adapters.metering",
+]
+
+[[tool.importlinter.contracts]]
+name = "Embedding adapter must not import sibling adapters"
+type = "forbidden"
+source_modules = ["finsight.adapters.embedding"]
+forbidden_modules = [
+    "finsight.adapters.llm",
+    "finsight.adapters.vector_store",
+    "finsight.adapters.rerank",
+    "finsight.adapters.readers",
+    "finsight.adapters.repositories",
+    "finsight.adapters.storage",
+    "finsight.adapters.queue",
+    "finsight.adapters.cache",
+    "finsight.adapters.auth",
+    "finsight.adapters.metering",
+]
+
+[[tool.importlinter.contracts]]
+name = "Vector store adapter must not import sibling adapters"
+type = "forbidden"
+source_modules = ["finsight.adapters.vector_store"]
+forbidden_modules = [
+    "finsight.adapters.llm",
+    "finsight.adapters.embedding",
+    "finsight.adapters.rerank",
+    "finsight.adapters.readers",
+    "finsight.adapters.repositories",
+    "finsight.adapters.storage",
+    "finsight.adapters.queue",
+    "finsight.adapters.cache",
+    "finsight.adapters.auth",
+    "finsight.adapters.metering",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain must not import vendor libraries"
+type = "forbidden"
+source_modules = ["finsight.domain"]
+forbidden_modules = [
+    "boto3",
+    "litellm",
+    "langchain",
+    "langgraph",
+    "fastapi",
+    "httpx",
+    "openai",
+    "anthropic",
+    "pandas",
+    "sqlalchemy",
+    "psycopg",
+    "asyncpg",
+    "redis",
+    "aiobotocore",
+    "cohere",
+    "pdfplumber",
+    "pytesseract",
+    "docx",
+    "openpyxl",
+    "tenacity",
+    "structlog",
+    "opentelemetry",
+    "pydantic",
+    "email_validator",
+    "python_multipart",
+]
+
+[[tool.importlinter.contracts]]
+name = "Application must not import vendor libraries"
+type = "forbidden"
+source_modules = ["finsight.application"]
+forbidden_modules = [
+    "boto3",
+    "litellm",
+    "langchain",
+    "langgraph",
+    "fastapi",
+    "httpx",
+    "openai",
+    "anthropic",
+    "pandas",
+    "sqlalchemy",
+    "psycopg",
+    "asyncpg",
+    "redis",
+    "aiobotocore",
+    "cohere",
+    "pdfplumber",
+    "pytesseract",
+    "docx",
+    "openpyxl",
+    "tenacity",
+    "structlog",
+    "opentelemetry",
+    "pydantic",
+    "email_validator",
+    "python_multipart",
+]
+
+[tool.vulture]
+min_confidence = 80
+paths = ["src/finsight"]
+ignore_names = ["cls"]
+exclude = [
+    "*/tests/*",
+    "*/migrations/*",
+]
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["finsight*"]

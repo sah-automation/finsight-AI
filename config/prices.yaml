@@ -1,0 +1,117 @@
+# Pricing Configuration
+# Model and service prices in USD per million tokens/units.
+# Single source of truth for cost calculation and metering.
+# Updated quarterly or when provider prices change.
+# Loaded by core/config and used by adapters/metering/
+
+# Last updated: 2026-10-25
+# Source: Provider public pricing pages
+
+# LLM Models (per 1M tokens)
+llm_models:
+  # Anthropic (via LiteLLM)
+  "anthropic/claude-3-5-sonnet-20241022":
+    input: 3.00
+    output: 15.00
+    cache_read: 0.30
+    cache_write: 3.75
+  "anthropic/claude-3-5-haiku-20241022":
+    input: 0.80
+    output: 4.00
+    cache_read: 0.08
+    cache_write: 1.00
+  "anthropic/claude-3-opus-20240229":
+    input: 15.00
+    output: 75.00
+    cache_read: 1.50
+    cache_write: 18.75
+
+  # OpenAI (via LiteLLM)
+  "openai/gpt-4o":
+    input: 2.50
+    output: 10.00
+    cache_read: 0.25
+    cache_write: 1.25
+  "openai/gpt-4o-mini":
+    input: 0.15
+    output: 0.60
+    cache_read: 0.015
+    cache_write: 0.075
+  "openai/gpt-4-turbo":
+    input: 10.00
+    output: 30.00
+    cache_read: 1.00
+    cache_write: 3.75
+
+  # Amazon Bedrock (via LiteLLM)
+  "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0":
+    input: 3.00
+    output: 15.00
+  "bedrock/anthropic.claude-3-haiku-20240307-v1:0":
+    input: 0.25
+    output: 1.25
+
+# Embedding Models (per 1M tokens)
+embedding_models:
+  "amazon/titan-embed-text-v2:0":
+    input: 0.02
+  "openai/text-embedding-3-large":
+    input: 0.13
+  "openai/text-embedding-3-small":
+    input: 0.02
+  "cohere/embed-english-v3.0":
+    input: 0.10
+
+# Reranker (per 1K documents)
+reranker_models:
+  "cohere/rerank-english-v3.0":
+    per_1k_docs: 1.00
+  "cohere/rerank-multilingual-v3.0":
+    per_1k_docs: 1.00
+
+# AWS Services
+aws_services:
+  # Textract (per page)
+  textract:
+    detect_document_text: 0.0015
+    analyze_document_forms: 0.05
+    analyze_document_tables: 0.015
+    analyze_document_both: 0.065
+
+  # S3 (per GB/month)
+  s3:
+    storage_standard: 0.023
+    storage_ia: 0.0125
+    put_requests_per_1k: 0.005
+    get_requests_per_1k: 0.0004
+    data_transfer_out_per_gb: 0.09
+
+  # DynamoDB (per million requests)
+  dynamodb:
+    write_request_units: 1.25
+    read_request_units: 0.25
+    storage_per_gb: 0.25
+
+  # SQS (per million requests)
+  sqs:
+    requests: 0.40
+
+  # Lambda (per 1M requests, per GB-second)
+  lambda:
+    requests: 0.20
+    gb_second: 0.0000166667
+
+  # Aurora PostgreSQL (per hour, db.r6g.xlarge)
+  aurora:
+    db_r6g_xlarge_hourly: 0.48
+    storage_per_gb_month: 0.10
+    iops_per_month: 0.10
+
+# Cohere API (direct, if not via LiteLLM)
+cohere:
+  rerank_per_1k: 1.00
+  embed_per_1m: 0.10
+
+# Currency and units
+currency: "USD"
+unit: "per_million_tokens"  # for models
