@@ -159,6 +159,7 @@ caches:
     table_name: "${ROLE_CACHE_TABLE}"
     ttl_seconds: 3600  # 1 hour
     key_prefix: "role:"
+    max_entry_size_bytes: 400000
     refresh_ahead_seconds: 300  # refresh 5 min before expiry
 
 # ============================================================

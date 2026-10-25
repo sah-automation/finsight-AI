@@ -7,7 +7,6 @@ name: CI Pipeline
     branches: [main, develop]
 
 env:
-  PYTHON_VERSION: "3.12"
   UV_VERSION: "0.5.0"
 
 jobs:
@@ -28,7 +27,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras
@@ -51,6 +50,31 @@ jobs:
       - name: Run detect-secrets
         run: uv run detect-secrets-hook --baseline .secrets.baseline $(git ls-files -co --exclude-standard)
 
+  pre-commit:
+    name: Pre-commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run pre-commit
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
   architecture-tests:
     name: Architecture Invariant Tests
     runs-on: ubuntu-latest
@@ -68,7 +92,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras
@@ -93,20 +117,43 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras
 
       - name: Run unit tests
-        run: |
-          uv run pytest tests/unit -v --tb=short -m "unit" \
-            --cov=src/finsight --cov-report=term-missing --cov-report=xml
+        run: uv run pytest tests/unit -v --tb=short -m "unit"
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run coverage gate
+        run: make coverage
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-unit
+          name: coverage-report
           path: coverage.xml
           retention-days: 7
           if-no-files-found: warn
@@ -128,7 +175,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras
@@ -153,7 +200,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras
@@ -179,7 +226,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras
@@ -201,6 +248,44 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.test.yml down -v
 
+  migrations:
+    name: Migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Start Postgres
+        run: docker compose -f docker-compose.test.yml up -d --wait postgres
+
+      - name: Apply migrations
+        run: ENVIRONMENT=test uv run alembic upgrade head
+
+      - name: Roll back and re-apply
+        run: |
+          ENVIRONMENT=test uv run alembic downgrade base
+          ENVIRONMENT=test uv run alembic upgrade head
+
+      - name: Stop Postgres
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
   golden-tests:
     name: Golden Set Tests
     runs-on: ubuntu-latest
@@ -219,7 +304,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras
@@ -251,13 +336,54 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras
 
       - name: Run security tests
         run: uv run pytest tests/unit -v --tb=short -k "security or company_filter or cache_key or metering or citation"
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Audit installed dependencies
+        run: uv run --with pip-audit==2.10.1 pip-audit --local --skip-editable --progress-spinner off
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
 
   build-check:
     name: Build Check
@@ -277,7 +403,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version-file: .python-version
 
       - name: Install dependencies
         run: uv sync --frozen
@@ -291,36 +417,50 @@ jobs:
     timeout-minutes: 5
     needs:
       - lint-and-typecheck
+      - pre-commit
       - architecture-tests
       - unit-tests
+      - coverage
       - contract-tests
       - switch-tests
       - integration-tests
+      - migrations
       - golden-tests
       - security-tests
+      - dependency-audit
+      - dependency-review
       - build-check
     if: always()
     steps:
-      - name: Check job status
+      - name: Check required jobs
         run: |
-          if [[ "${{ needs.lint-and-typecheck.result }}" != "success" ]] || \
-             [[ "${{ needs.architecture-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.contract-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.switch-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.security-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.build-check.result }}" != "success" ]]; then
-            echo "❌ Some required jobs failed"
-            exit 1
-          fi
-          if [[ "${{ needs.integration-tests.result }}" != "success" ]] && \
-             [[ "${{ needs.integration-tests.result }}" != "skipped" ]]; then
-            echo "❌ Integration tests failed"
-            exit 1
-          fi
-          if [[ "${{ needs.golden-tests.result }}" != "success" ]] && \
-             [[ "${{ needs.golden-tests.result }}" != "skipped" ]]; then
-            echo "❌ Golden tests failed"
-            exit 1
-          fi
+          for result in \
+            "${{ needs.lint-and-typecheck.result }}" \
+            "${{ needs.pre-commit.result }}" \
+            "${{ needs.architecture-tests.result }}" \
+            "${{ needs.unit-tests.result }}" \
+            "${{ needs.coverage.result }}" \
+            "${{ needs.contract-tests.result }}" \
+            "${{ needs.switch-tests.result }}" \
+            "${{ needs.security-tests.result }}" \
+            "${{ needs.dependency-audit.result }}" \
+            "${{ needs.build-check.result }}"; do
+            if [[ "$result" != "success" ]]; then
+              echo "❌ A required job failed"
+              exit 1
+            fi
+          done
+
+      - name: Check conditional jobs
+        run: |
+          for result in \
+            "${{ needs.integration-tests.result }}" \
+            "${{ needs.migrations.result }}" \
+            "${{ needs.golden-tests.result }}" \
+            "${{ needs.dependency-review.result }}"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              echo "❌ A conditional job failed"
+              exit 1
+            fi
+          done
           echo "✅ All required jobs passed"

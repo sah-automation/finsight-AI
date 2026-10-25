@@ -15,7 +15,7 @@ Financial Intelligence Platform - Multi-tenant platform for document ingestion, 
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.12 (the tracked `.python-version` file pins it; `uv` reads it)
 - uv (recommended) or pip
 - Docker + Docker Compose (for local services)
 - AWS CLI (for deployment)
@@ -26,7 +26,7 @@ Financial Intelligence Platform - Multi-tenant platform for document ingestion, 
 # Install uv if not present
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies
+# Install dependencies (selects Python 3.12 from .python-version)
 uv sync --frozen --all-extras
 
 # Copy the local environment template and export it in your shell
@@ -45,7 +45,10 @@ placeholder. See the comments in the file for what each value controls.
 
 ```bash
 # Start local services (PostgreSQL, LocalStack, Redis, OTel)
-docker compose -f docker-compose.test.yml up -d --wait
+make docker-up
+
+# Apply database migrations
+ENVIRONMENT=test make migrate
 
 # Run tests
 make test
@@ -55,6 +58,12 @@ make test-integration
 
 # Run quality checks
 make check
+
+# Validate every config profile
+make config-check
+
+# Stop local services and delete volumes
+make docker-down
 
 # Start API server (when implemented)
 uv run uvicorn src.finsight.entrypoints.api.main:app --reload
@@ -121,6 +130,8 @@ tests/
   architecture/         # Invariant tests (AST-based)
 
 infra/                  # Infrastructure code
+migrations/             # Alembic migrations (schema history)
+scripts/                # Developer and CI helper scripts
 docs/                   # Architecture, plans, ADRs
 ```
 
@@ -139,15 +150,41 @@ All configuration lives in `config/`:
 - Both paths of every switch must exist and be tested
 - Invalid config fails loudly at startup
 
+## Database Migrations
+
+Alembic migrations live in `migrations/`. The database URL is built in
+`migrations/env.py` from `finsight.core.config`, so migrations use the active
+profile instead of a hard-coded URL.
+
+```bash
+make docker-up                     # start Postgres + pgvector
+ENVIRONMENT=test make migrate      # apply every migration
+make migration m="add invoices"    # create a migration
+ENVIRONMENT=test uv run alembic downgrade base   # roll back
+```
+
+The CI `Migrations` job runs `upgrade head` → `downgrade base` → `upgrade head`
+against the compose Postgres. See `CONTRIBUTING.md` for the rules.
+
 ## Quality Gates
 
 Run locally:
 ```bash
-make check        # lint + typecheck + imports + vulture + secrets + architecture + tests
+make check        # lint + typecheck + imports + vulture + secrets + tests
+make ci           # the same gates plus the coverage floor
+make format       # auto-format and auto-fix src and tests
+make pre-commit   # run every pre-commit hook on all files
+make coverage     # coverage floor (COVERAGE_MIN, default 50)
+make config-check # validate every environment profile through the loader
 make test         # unit + contract + architecture + switch suites
 make arch-test    # architecture invariant tests only
 make test-switches # switch ON/OFF path tests only
 ```
+
+Coverage is enforced at 50% line+branch for `src/finsight`
+(`fail_under` in `pyproject.toml`, `--cov-fail-under` in `make coverage`).
+Migrations, `conftest.py`, and generated code are excluded. Raise the floor as
+the suite grows; see `docs/plans/quality-standards-enforcement.md`.
 
 Standards enforcement status and remaining work:
 `docs/plans/quality-standards-enforcement.md`. Decision record:
@@ -159,14 +196,18 @@ CI Pipeline (`.github/workflows/ci.yml`):
 3. Import architecture (lint-imports)
 4. Dead code detection (vulture)
 5. Secret detection (detect-secrets)
-6. Architecture invariant tests
-7. Unit tests
-8. Contract tests
-9. Switch path tests
-10. Integration tests (with LocalStack/PostgreSQL)
-11. Golden set tests (pilot + standard config)
-12. Security tests
-13. Build verification
+6. Pre-commit (all hooks, including YAML and shell checks)
+7. Architecture invariant tests
+8. Unit tests
+9. Coverage floor (50% line+branch) with `coverage.xml` artifact
+10. Contract tests
+11. Switch path tests
+12. Integration tests (with LocalStack/PostgreSQL)
+13. Database migrations (upgrade, downgrade, re-apply)
+14. Golden set tests (pilot + standard config)
+15. Security tests
+16. Dependency audit (`pip-audit`) and dependency review on PRs
+17. Build verification
 
 ## Coding Standards
 
@@ -198,6 +239,12 @@ See `docs/plans/Project Requirement/finsight_config_switches.md` for:
 - `docs/plans/architecture/phase1/finsight_mvp_hld.svg` - High-level design diagram
 - `docs/adr/` - Architecture Decision Records (to be created)
 - `GLOSSARY.md` - Domain vocabulary (to be created)
+
+## Contributing
+
+See `CONTRIBUTING.md` for setup, migrations, tests, and the pull request
+process. Every PR uses the template in `.github/pull_request_template.md` and
+the section 17 checklist from `CODING_STANDARDS.md`.
 
 ## Commit Messages
 

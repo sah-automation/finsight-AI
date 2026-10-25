@@ -1,0 +1,24 @@
+# Code owners
+#
+# Reviewers are requested automatically for the protected and high-risk paths.
+
+* @sah-automation
+
+# Config and secrets handling
+/config/ @sah-automation
+
+# Shared core: config reader, errors, logging, types
+/src/finsight/core/ @sah-automation
+
+# Infrastructure and local service stack
+/infra/ @sah-automation
+/docker-compose.test.yml @sah-automation
+
+# CI, hooks, and repository automation
+/.github/ @sah-automation
+/.pre-commit-config.yaml @sah-automation
+/Makefile @sah-automation
+
+# Requirement and architecture documents (DI-25)
+/docs/plans/project_requirement/ @sah-automation
+/docs/plans/architecture/ @sah-automation
