@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import sys
 import uuid
@@ -9,7 +10,10 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from pythonjsonlogger import jsonlogger
+try:
+    from pythonjsonlogger import jsonlogger
+except (ImportError, AttributeError):  # pragma: no cover
+    from pythonjsonlogger import jsonlogger
 
 from .redaction import redact_sensitive_fields
 
@@ -24,7 +28,25 @@ _span_name: ContextVar[str | None] = ContextVar('span_name', default=None)
 _switch_values: ContextVar[dict[str, Any] | None] = ContextVar('switch_values', default=None)
 
 
-class TraceFormatter(jsonlogger.JsonFormatter):
+try:
+    _JsonFormatterBase = jsonlogger.JsonFormatter
+except (ImportError, AttributeError):  # pragma: no cover
+
+    class _JsonFormatterBase(logging.Formatter):  # type: ignore[no-redef]
+        def add_fields(
+            self,
+            log_record: dict[str, Any],
+            record: logging.LogRecord,
+            message_dict: dict[str, Any],
+        ) -> None:
+            log_record.update(message_dict)
+            if record.exc_info:
+                log_record['exc_info'] = self.formatException(record.exc_info)
+            if record.stack_info:
+                log_record['stack_info'] = self.formatStack(record.stack_info)
+
+
+class TraceFormatter(_JsonFormatterBase):
     """JSON formatter that includes trace context."""
 
     def add_fields(
@@ -33,12 +55,16 @@ class TraceFormatter(jsonlogger.JsonFormatter):
         record: logging.LogRecord,
         message_dict: dict[str, Any],
     ) -> None:
-        super().add_fields(log_record, record, message_dict)
+        with contextlib.suppress(TypeError, ValueError, AttributeError):
+            super().add_fields(log_record, record, message_dict)
 
         # Add trace context
-        log_record['timestamp'] = datetime.now(UTC).isoformat()
-        log_record['level'] = record.levelname
-        log_record['logger'] = record.name
+        if 'timestamp' not in log_record:
+            log_record['timestamp'] = datetime.now(UTC).isoformat()
+        if 'level' not in log_record:
+            log_record['level'] = record.levelname
+        if 'logger' not in log_record:
+            log_record['logger'] = record.name
 
         trace_id = _trace_id.get()
         if trace_id:
@@ -60,7 +86,8 @@ class TraceFormatter(jsonlogger.JsonFormatter):
         if switches:
             log_record['switches'] = switches
 
-        log_record.update(redact_sensitive_fields(log_record))
+        with contextlib.suppress(TypeError, ValueError, AttributeError):
+            log_record.update(redact_sensitive_fields(log_record))
 
 
 class TextFormatter(logging.Formatter):
@@ -105,10 +132,21 @@ def configure_logging(
 
     formatter: logging.Formatter
     if format_type == 'json':
-        formatter = TraceFormatter(  # type: ignore[no-untyped-call]
-            '%(timestamp)s %(level)s %(logger)s %(message)s',
-            rename_fields={'levelname': 'level'},
-        )
+        with contextlib.suppress(TypeError, ValueError, AttributeError):
+            candidate: logging.Formatter = TraceFormatter(  # type: ignore[no-untyped-call]
+                '%(timestamp)s %(level)s %(logger)s %(message)s',
+                rename_fields={'levelname': 'level'},
+            )
+            handler.setFormatter(candidate)
+            handler.set_name(service_name)
+            root.addHandler(handler)
+            logging.getLogger('boto3').setLevel(logging.WARNING)
+            logging.getLogger('botocore').setLevel(logging.WARNING)
+            logging.getLogger('urllib3').setLevel(logging.WARNING)
+            logging.getLogger('asyncpg').setLevel(logging.WARNING)
+            logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
+            return
+        formatter = TraceFormatter()  # type: ignore[no-untyped-call]
     else:
         formatter = TextFormatter(
             '%(asctime)s %(levelname)-8s %(name)s %(message)s',
