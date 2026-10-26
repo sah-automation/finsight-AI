@@ -91,6 +91,9 @@ ignore = [
 ]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["S101", "S106", "PTH118", "ARG001", "ARG002", "E501"]
+# CDK constructors are framework-shaped: they forward **kwargs to Stack and take
+# one argument per dependency. Do not contort them to application lint limits.
+"infra/cdk/**/*.py" = ["ANN003", "PLR0913", "PLR0917", "TC002"]
 "src/finsight/core/config/models.py" = ["B008"]
 # The config loader parses arbitrary YAML (so Any is honest), imports the
 # logger lazily to avoid a circular import, and owns the deliberate

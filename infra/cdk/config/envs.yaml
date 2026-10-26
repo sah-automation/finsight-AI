@@ -1,0 +1,9 @@
+dev:
+  name: dev
+  removal_policy: destroy
+staging:
+  name: staging
+  removal_policy: destroy
+prod:
+  name: prod
+  removal_policy: retain

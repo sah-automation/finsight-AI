@@ -1,6 +1,6 @@
 # Development Infrastructure Implementation Plan
 
-Status: P0, P1, and P2 implemented (DI-01 to DI-19 and DI-25 are closed; see sections 13, 14, 15, and 16 for execution logs)
+Status: P0, P1, and P2 implemented (DI-01 to DI-19 and DI-25 are closed; see sections 13, 14, 15, and 16). P3 and Docs partially implemented: DI-20 and DI-21 ship as validated scaffolds, DI-22 is deferred (issue #10), DI-23 is closed, and DI-24 is closed except the two unread config files (issue #11). See section 17.
 Date: 2026-10-26
 Source: static review of the repository, CI workflow, local service stack, OpenCode configuration, and the GitHub remote, followed by an execution pass on a machine with Docker
 Scope: development, CI, local environment, repository governance, and deployment scaffolding
@@ -840,6 +840,13 @@ uv lock --check
 
 ### DI-20 — Add infrastructure as code
 
+**Status: partially implemented (scaffold).** `infra/cdk/` synthesizes six
+stacks (Network, Data, Messaging, Auth, Compute, Observability) with no AWS
+credentials, and the CI `Infra Synth` job runs `make infra-synth` and
+`make infra-test`. Remaining: Step Functions, CloudWatch dashboards/alarms,
+Secrets Manager wiring, per-function IAM, and the Aurora pgvector bootstrap.
+Tracked in issue #10.
+
 **Evidence**
 
 - `infra/` contains only `README.md`, `localstack/init.sh`, `postgres/init.sql`, and `otel/collector.yaml`.
@@ -880,6 +887,14 @@ cd infra && cdk synth --all
 
 ### DI-21 — Add container and Lambda packaging
 
+**Status: partially implemented.** `Dockerfile`, `.dockerignore`, and
+`scripts/build_lambda.py` exist. The image builds, runs as a non-root user, and
+imports the package; the Lambda zip is deterministic and includes `src/finsight`
+plus `config/`. CI builds the wheel, the zip, and the image. Remaining:
+vendoring runtime dependencies into the Lambda zip (it currently contains no
+third-party packages), and a real health check once an API entrypoint exists.
+Tracked in issue #10.
+
 **Evidence**
 
 - README says the backend is deployed as AWS Lambda zip packages (`README.md:7`).
@@ -919,6 +934,13 @@ unzip -l dist/lambda/api.zip | head
 ---
 
 ### DI-22 — Add deploy, release, and rollback workflow
+
+**Status: deferred.** No deploy workflow exists. A placeholder `deploy.yml`
+that only printed an `echo` was removed rather than left to look functional.
+`docs/deployment.md` and `docs/runbook.md` now state the scaffolding status and
+describe the intended flow. Deferred because there is no AWS account, OIDC
+role, or GitHub Environment yet, and Phase 1 does not deploy. Tracked in
+issue #10.
 
 **Evidence**
 
@@ -968,6 +990,12 @@ gh api repos/sah-automation/finsight-AI/environments
 
 ### DI-23 — Fix README and documentation gaps
 
+**Status: implemented.** Broken links and capitalization fixed; `GLOSSARY.md`,
+`CONTRIBUTING.md`, `LICENSE`, and `.editorconfig` exist; `src/finsight/README.md`
+exists; `docs/deployment.md`, `docs/onboarding.md`, and `docs/runbook.md` exist.
+`make docs-check` verifies every relative Markdown link and runs in the CI
+pre-commit job.
+
 **Evidence**
 
 - `README.md:177` links `docs/plans/Project Requirement/finsight_config_switches.md`. The actual path is `docs/plans/project_requirement/finsight_config_switches.md` (lowercase, underscore).
@@ -1015,6 +1043,12 @@ uvx lychee README.md docs/README.md docs/plans/*.md
 ---
 
 ### DI-24 — Resolve unused config files and missing root docs
+
+**Status: implemented except two files.** `GLOSSARY.md`, `config-check`, and
+the status-doc cleanup are done. `config/permissions.yaml` and
+`config/prices.yaml` remain unread by code; both are now explicitly marked
+`STATUS: planned` and tracked in issue #11, which also records the role
+vocabulary mismatch (`approver` vs `finance_manager`).
 
 **Evidence**
 
@@ -1213,8 +1247,8 @@ Exit criteria: a tag can deploy to `dev` with OIDC, production requires approval
 | Coverage | `make ci` | `unit-tests` / coverage step | below floor |
 | Dependencies | `uvx pip-audit` | `dependency-audit` | vulnerable dependency |
 | Packaging | `docker build .` / `uv build` | `build-check` | build failure |
-| IaC | `cdk synth --all` | `infra-synth` | invalid template |
-| Docs | `lychee ...` | `docs` (optional) | broken link |
+| IaC | `make infra-synth` / `make infra-test` | `infra-synth` | invalid or missing template |
+| Docs | `make docs-check` | `pre-commit` | broken relative link |
 
 Document any job that is intentionally skipped, and make the skip visible in `Summary`.
 
@@ -1239,6 +1273,7 @@ Document any job that is intentionally skipped, and make the skip visible in `Su
 - All P0 items are closed.
 - Every P1 item is closed or explicitly deferred with a linked issue and a reason.
 - P2 gates can fail when deliberately violated and have regression tests proving it.
+- P3 may remain partially implemented or deferred with a linked issue; it does not gate Phase 1 feature work.
 - The requirement and architecture directories prompt before edits in every OpenCode session in this repository.
 - `README.md`, `CONTRIBUTING.md`, and `docs/README.md` agree with the actual repository layout.
 - A new contributor can go from clone to `make check` using only the committed documentation and `.env.example`.
@@ -1486,3 +1521,65 @@ violation was removed before the final green run.
   It is visible in every security run; it is not a passing placeholder.
 - The only import-contract exception is domain → `core.types`, documented in
   `pyproject.toml`. No outer-layer or direct vendor import is exempted.
+
+---
+
+## 17. P3 and Docs execution log (2026-10-26)
+
+P3 (deployment scaffolding) and Docs were reviewed, corrected, and landed as a
+single pull request. Two DI-20 and DI-21 acceptance criteria are not met, so
+both are recorded as partial rather than done. DI-22 is deferred. This section
+records the gaps that the scaffold had as drafted and what was fixed before
+merge.
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| DI-20 | Partial | `infra/cdk/` has an app, `config/envs.yaml`, six stacks, and real smoke tests. `make infra-synth` synthesizes all six stacks with no AWS credentials, and the CI `Infra Synth` job runs both `make infra-synth` and `make infra-test`. Missing: Step Functions, CloudWatch dashboards and alarms, Secrets Manager/SSM wiring, per-function IAM, and the Aurora pgvector bootstrap. Tracked in issue #10. |
+| DI-21 | Partial | `Dockerfile` builds and runs as a non-root user, `.dockerignore` is complete, and `scripts/build_lambda.py` produces a deterministic `api.zip` plus SHA-256. CI `build-check` now builds the wheel, the Lambda zip, and the container image. Missing: third-party dependencies are not vendored into the Lambda zip, and the health check is absent because no API entrypoint exists. Tracked in issue #10. |
+| DI-22 | Deferred | A placeholder `deploy.yml` that only printed `echo` on a `v*` tag was removed; a workflow that cannot deploy must not look like it can. `docs/deployment.md` and `docs/runbook.md` now state the scaffolding status. No AWS account, OIDC role, or GitHub Environment exists yet. Tracked in issue #10. |
+| DI-23 | Done | Links and capitalization fixed in `README.md` and `docs/README.md`; `GLOSSARY.md`, `src/finsight/README.md`, `docs/deployment.md`, `docs/onboarding.md`, and `docs/runbook.md` exist. `scripts/check_links.py` + `make docs-check` verify relative links and run in the CI `Pre-commit` job. |
+| DI-24 | Done except #11 | `GLOSSARY.md` exists, `config-check` covers all four profiles, and `quality-standards-enforcement.md` distinguishes implemented from planned gates. `config/permissions.yaml` and `config/prices.yaml` are marked `STATUS: planned` and tracked in issue #11, which also records the role vocabulary mismatch (`approver` vs `finance_manager`). |
+
+### Defects found in the scaffold and fixed
+
+1. `cdk synth` could not run at all: `cdk.json` executed `python3 app/app.py`, which puts `app/` on `sys.path`, not `infra/cdk/`, so `from stacks...` failed with `ModuleNotFoundError: No module named 'stacks'`. Switched to `python3 -m app.app`, added `infra/cdk/app/__init__.py`, and documented the invocation.
+2. `infra/cdk/tests/test_synth.py` was `assert True`. It now synthesizes into a temporary `CDK_OUTDIR`, asserts all six stack names, and asserts an unknown `ENVIRONMENT` fails loudly.
+3. `docker build .` failed at `COPY README.md`: `.dockerignore` excluded the file that `pyproject.toml` names as its readme. The ignore file now allows it, and the Dockerfile copies the build inputs before `uv sync`, then installs the project with `--no-editable`.
+4. A dead `lambda_.Code.from_asset(...) if False else ...` expression and an unused import were replaced with a real conditional: use `dist/lambda/api.zip` when it exists, otherwise inline placeholder code.
+5. `config/permissions.yaml` claimed it was loaded by a `permission_spec.py` that does not exist, and `config/prices.yaml` claimed a metering adapter does. Both comments are corrected and the files are marked planned.
+6. `make clean` was defined twice; consolidated and extended to remove `infra/cdk/cdk.out`.
+
+### Verification run
+
+```text
+make check
+  ✓ lint, format check, mypy, 10 import contracts, vulture, detect-secrets,
+    architecture, unit, contract, switches, security (50 passed, 1 skip)
+
+make config-check
+  4 profiles validated
+
+make docs-check
+  Checked relative links in 19 Markdown files
+
+make infra-synth
+  Synth succeeded; six stacks in the cloud assembly
+
+make infra-test
+  2 passed
+
+make lambda-build
+  api.zip 47,275 bytes, 89 files, deterministic timestamp + SHA-256
+
+docker build -t finsight-ai:local .
+  Successfully built; `docker run --rm` prints "FinSight AI container ready"
+
+uv run pre-commit run --all-files
+  All hooks passed
+```
+
+### What this pass did not close
+
+- No AWS deployment path. DI-22 and the rest of DI-20/21 stay open in issue #10.
+- The Lambda zip does not include third-party dependencies.
+- Phase 1 feature work is unblocked; none of the open items above block ingestion or RAG Q&A.

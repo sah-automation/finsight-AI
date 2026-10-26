@@ -4,8 +4,8 @@ Schema and environment-specific config files.
 
 **Files:**
 - `schema.yaml` - config schema (source of truth)
-- `permissions.yaml` - role/action/category matrix
-- `prices.yaml` - model/service pricing
+- `permissions.yaml` - role/action/category matrix (**planned**, not read by code yet; issue #11)
+- `prices.yaml` - model/service pricing (**planned**, not read by code yet; issue #11)
 - `dev.yaml`, `test.yaml`, `staging.yaml`, `prod.yaml` - environment values
 
 **Rules:**

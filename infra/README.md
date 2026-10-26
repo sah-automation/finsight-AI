@@ -1,22 +1,36 @@
 # Infrastructure
 
-Infrastructure as code.
+This directory contains infrastructure definitions for FinSight AI.
 
-**Belongs here:**
-- CDK/Terraform/Pulumi stacks
-- Aurora cluster, pgvector extension
-- DynamoDB tables (cache, metering, roles)
-- S3 buckets (documents, reports, backups)
-- SQS queues (ingestion, reprocessing, reports, dead-letter)
-- Lambda functions (API, workers, scheduled)
-- Step Functions state machines
-- Cognito user pools
-- IAM roles and policies
-- VPC, subnets, security groups
-- CloudWatch dashboards and alarms
+## Local development
+- `docker-compose.test.yml` (repo root) for local services (Postgres+pgvector, LocalStack, Redis, OTel)
+- `localstack/`, `postgres/`, `otel/` contain bootstrap/config for local stack
 
-**Rules:**
-- Config-driven (no hardcoded values)
-- Environment parity (dev/staging/prod same structure)
-- No manual console edits - all changes via IaC
-- Secrets in Secrets Manager, referenced by config
+## Production/deployment (IaC)
+We use AWS CDK in Python under `infra/cdk/` (decision record:
+`docs/adr/0002-infrastructure-as-code.md`).
+
+**Implemented (scaffold):**
+- Network (VPC, subnets, security groups)
+- Data (Aurora PostgreSQL, DynamoDB tables, S3 buckets)
+- Messaging (SQS queues + DLQs)
+- Auth (Cognito user pool + app client)
+- Compute (placeholder Lambda function and IAM role)
+- Observability (CloudWatch log group)
+
+**Not implemented yet:** Step Functions, CloudWatch dashboards and alarms,
+Secrets Manager/SSM wiring, real function packages, and the deploy workflow.
+
+## CI
+`make infra-synth` and `make infra-test` run in the `Infra Synth` CI job on
+every PR. They synthesize every stack and need no AWS credentials.
+
+```bash
+make infra-synth   # cdk app.synth()
+make infra-test    # smoke tests, including unknown-environment rejection
+```
+
+## Secrets
+No secrets committed. Use AWS Secrets Manager or SSM Parameter Store. Deploys
+will use GitHub OIDC once the deploy workflow exists (see
+`docs/deployment.md`).

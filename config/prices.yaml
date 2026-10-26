@@ -1,8 +1,8 @@
 # Pricing Configuration
+# STATUS: planned. Not read by any code yet; tracked in issue #11.
 # Model and service prices in USD per million tokens/units.
-# Single source of truth for cost calculation and metering.
-# Updated quarterly or when provider prices change.
-# Loaded by core/config and used by adapters/metering/
+# Intended single source of truth for cost calculation and metering.
+# It will be loaded by core/config and used by the metering adapter.
 
 # Last updated: 2026-10-25
 # Source: Provider public pricing pages
