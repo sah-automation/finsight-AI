@@ -8,7 +8,7 @@
 | Metric | Extracted business metric/value with context and provenance. |
 | Answer | Generated response to a question, grounded in evidence with citations. |
 | Citation | Reference linking an answer back to a specific chunk/document. |
-| Role | User permission level (admin, finance manager, analyst, viewer). |
+| Role | User permission level (`executive_leadership`, `corporate_finance_planners`, `audit_compliance`, `system_admin`). |
 | Switch | Config-driven feature flag with both ON/OFF paths tested. |
 | RAG | Retrieval-Augmented Generation combining vector/keyword search with LLM. |
 | pgvector | PostgreSQL extension for vector similarity search. |

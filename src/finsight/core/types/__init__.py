@@ -30,12 +30,18 @@ TraceId = NewType('TraceId', str)
 
 
 class Role(StrEnum):
-    """User roles in the system."""
+    """User roles in the system.
 
-    ADMIN = 'admin'
-    ANALYST = 'analyst'
-    VIEWER = 'viewer'
-    APPROVER = 'approver'
+    The IDs match the four roles in the config switch guide (5.29) and the
+    `users.role` check constraint in the initial migration. ADR-0003 records
+    the decision to retire the earlier `admin`/`analyst`/`viewer`/`approver`
+    and `finance_manager` vocabularies.
+    """
+
+    EXECUTIVE_LEADERSHIP = 'executive_leadership'
+    CORPORATE_FINANCE_PLANNERS = 'corporate_finance_planners'
+    AUDIT_COMPLIANCE = 'audit_compliance'
+    SYSTEM_ADMIN = 'system_admin'
 
 
 class Category(StrEnum):

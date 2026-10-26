@@ -50,7 +50,14 @@ def upgrade() -> None:
             company_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
             email text NOT NULL,
             role text NOT NULL
-                CHECK (role IN ('admin', 'finance_manager', 'analyst', 'viewer')),
+                CHECK (
+                    role IN (
+                        'executive_leadership',
+                        'corporate_finance_planners',
+                        'audit_compliance',
+                        'system_admin'
+                    )
+                ),
             created_at timestamptz NOT NULL DEFAULT now(),
             updated_at timestamptz NOT NULL DEFAULT now(),
             CONSTRAINT uq_users_company_email UNIQUE (company_id, email)

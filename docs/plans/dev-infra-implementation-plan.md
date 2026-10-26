@@ -1045,10 +1045,12 @@ uvx lychee README.md docs/README.md docs/plans/*.md
 ### DI-24 — Resolve unused config files and missing root docs
 
 **Status: implemented except two files.** `GLOSSARY.md`, `config-check`, and
-the status-doc cleanup are done. `config/permissions.yaml` and
-`config/prices.yaml` remain unread by code; both are now explicitly marked
-`STATUS: planned` and tracked in issue #11, which also records the role
-vocabulary mismatch (`approver` vs `finance_manager`).
+the status-doc cleanup are done. `config/prices.yaml` remains unread by code.
+`config/permissions.yaml` has no runtime consumer but is exercised by the
+security tests. Both are explicitly marked `STATUS: planned` and tracked in
+issue #11. The role vocabulary was reconciled to the four business roles in the
+config switch guide (5.29); ADR-0003 records the decision and retires
+`approver` and `finance_manager`.
 
 **Evidence**
 
@@ -1538,7 +1540,7 @@ merge.
 | DI-21 | Partial | `Dockerfile` builds and runs as a non-root user, `.dockerignore` is complete, and `scripts/build_lambda.py` produces a deterministic `api.zip` plus SHA-256. CI `build-check` now builds the wheel, the Lambda zip, and the container image. Missing: third-party dependencies are not vendored into the Lambda zip, and the health check is absent because no API entrypoint exists. Tracked in issue #10. |
 | DI-22 | Deferred | A placeholder `deploy.yml` that only printed `echo` on a `v*` tag was removed; a workflow that cannot deploy must not look like it can. `docs/deployment.md` and `docs/runbook.md` now state the scaffolding status. No AWS account, OIDC role, or GitHub Environment exists yet. Tracked in issue #10. |
 | DI-23 | Done | Links and capitalization fixed in `README.md` and `docs/README.md`; `GLOSSARY.md`, `src/finsight/README.md`, `docs/deployment.md`, `docs/onboarding.md`, and `docs/runbook.md` exist. `scripts/check_links.py` + `make docs-check` verify relative links and run in the CI `Pre-commit` job. |
-| DI-24 | Done except #11 | `GLOSSARY.md` exists, `config-check` covers all four profiles, and `quality-standards-enforcement.md` distinguishes implemented from planned gates. `config/permissions.yaml` and `config/prices.yaml` are marked `STATUS: planned` and tracked in issue #11, which also records the role vocabulary mismatch (`approver` vs `finance_manager`). |
+| DI-24 | Done except #11 | `GLOSSARY.md` exists, `config-check` covers all four profiles, and `quality-standards-enforcement.md` distinguishes implemented from planned gates. `config/permissions.yaml` (no runtime consumer; read by security tests) and `config/prices.yaml` are marked `STATUS: planned` and tracked in issue #11. The role vocabulary is reconciled in ADR-0003. |
 
 ### Defects found in the scaffold and fixed
 
