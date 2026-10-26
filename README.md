@@ -62,11 +62,14 @@ make check
 # Validate every config profile
 make config-check
 
+# Validate every relative Markdown link
+make docs-check
+
 # Stop local services and delete volumes
 make docker-down
 
 # Start API server (when implemented)
-uv run uvicorn src.finsight.entrypoints.api.main:app --reload
+uv run uvicorn finsight.entrypoints.api.main:app --reload  # when entrypoint exists
 ```
 
 ## Project Structure
@@ -170,12 +173,13 @@ against the compose Postgres. See `CONTRIBUTING.md` for the rules.
 
 Run locally:
 ```bash
-make check        # lint + typecheck + imports + vulture + secrets + tests
+make check        # lint + typecheck + imports + vulture + secrets + tests + security
 make ci           # the same gates plus the coverage floor
 make format       # auto-format and auto-fix src and tests
 make pre-commit   # run every pre-commit hook on all files
 make coverage     # coverage floor (COVERAGE_MIN, default 50)
 make config-check # validate every environment profile through the loader
+make docs-check   # verify every relative Markdown link resolves
 make test         # unit + contract + architecture + switch suites
 make arch-test    # architecture invariant tests only
 make test-switches # switch ON/OFF path tests only
@@ -196,7 +200,7 @@ CI Pipeline (`.github/workflows/ci.yml`):
 3. Import architecture (lint-imports)
 4. Dead code detection (vulture)
 5. Secret detection (detect-secrets)
-6. Pre-commit (all hooks, including YAML and shell checks)
+6. Pre-commit (all hooks, including YAML and shell checks) and Markdown link check
 7. Architecture invariant tests
 8. Unit tests
 9. Coverage floor (50% line+branch) with `coverage.xml` artifact
@@ -207,7 +211,21 @@ CI Pipeline (`.github/workflows/ci.yml`):
 14. Golden set tests (pilot + standard config)
 15. Security tests
 16. Dependency audit (`pip-audit`) and dependency review on PRs
-17. Build verification
+17. Build verification (wheel, Lambda zip, container image)
+18. Infrastructure synth (CDK stacks + smoke tests, non-deploying)
+
+## Packaging and Infrastructure
+
+```bash
+make lambda-build   # build dist/lambda/api.zip + sha256 (app + config only)
+make docker-build   # build the runtime container image
+make infra-synth    # synthesize every CDK stack, no AWS credentials
+make infra-test     # CDK smoke tests
+```
+
+Deployment is **not wired yet**: `infra/cdk/` is a validated scaffold, there is
+no deploy workflow, and no AWS resources exist. See
+[`docs/deployment.md`](docs/deployment.md) and issue #10.
 
 ## Coding Standards
 
@@ -226,7 +244,7 @@ See `CODING_STANDARDS.md` for:
 
 ## Config Switches
 
-See `docs/plans/Project Requirement/finsight_config_switches.md` for:
+See `docs/plans/project_requirement/finsight_config_switches.md` for:
 - 5 pilot switches + AI model swap
 - Strict rules (no hard-coding, one config reader, both paths tested, fail loudly)
 - Validation rules
@@ -235,10 +253,13 @@ See `docs/plans/Project Requirement/finsight_config_switches.md` for:
 
 ## Documentation
 
-- `docs/plans/Project Requirement/FinSightAI.md` - Project requirements
+- `docs/plans/project_requirement/finsightAI.md` - Project requirements
 - `docs/plans/architecture/phase1/finsight_mvp_hld.svg` - High-level design diagram
-- `docs/adr/` - Architecture Decision Records (to be created)
-- `GLOSSARY.md` - Domain vocabulary (to be created)
+- `docs/adr/` - Architecture Decision Records
+- `docs/deployment.md` - Deployment guide (scaffolding status)
+- `docs/onboarding.md` - Developer onboarding
+- `docs/runbook.md` - Operational procedures (scaffolding status)
+- [`GLOSSARY.md`](GLOSSARY.md) - Domain vocabulary
 
 ## Contributing
 

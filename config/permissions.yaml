@@ -1,6 +1,11 @@
 # Permissions Configuration
-# Role/Action/Category matrix. Single source of truth for authorization.
-# Loaded by core/config and used by domain/services/permission_spec.py
+# STATUS: planned. Not read by any code yet; tracked in issue #11.
+# Role/Action/Category matrix. Intended single source of truth for authorization.
+# It will be loaded by core/config and enforced by a domain policy service.
+#
+# Role vocabulary must be reconciled before this is wired: this file lists
+# admin/analyst/viewer/approver, while the database migration and the
+# requirement document use admin/finance_manager/analyst/viewer.
 
 # Roles defined in the system
 roles:
