@@ -4,7 +4,7 @@
 
 COVERAGE_MIN ?= 50
 
-.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check migrate migration docker-up docker-down clean update-deps
+.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps
 
 # Default target
 help:
@@ -28,6 +28,7 @@ help:
 	@echo "  vulture        - Run dead code detection"
 	@echo "  secrets        - Run detect-secrets"
 	@echo "  config-check   - Validate every config profile through the loader"
+	@echo "  docs-check     - Verify every relative Markdown link resolves"
 	@echo "  arch-test      - Run architecture invariant tests"
 	@echo ""
 	@echo "Tests:"
@@ -45,6 +46,12 @@ help:
 	@echo "  docker-down    - Stop the local test stack and delete its volumes"
 	@echo "  migrate        - Apply all migrations (alembic upgrade head)"
 	@echo "  migration      - Create a migration (make migration m=\"message\")"
+	@echo ""
+	@echo "Packaging and infrastructure:"
+	@echo "  lambda-build   - Build the Lambda zip package and checksum"
+	@echo "  docker-build   - Build the application container image"
+	@echo "  infra-synth    - Synthesize every CDK stack (non-deploying)"
+	@echo "  infra-test     - Run the CDK smoke tests"
 	@echo ""
 	@echo "Coverage:"
 	@echo "  coverage       - Generate coverage report and enforce the floor (COVERAGE_MIN, default 50)"
@@ -101,6 +108,24 @@ pre-commit:
 
 config-check:
 	uv run python scripts/check_config.py
+
+docs-check:
+	uv run python scripts/check_links.py
+
+# ============================================================
+# Packaging and Infrastructure
+# ============================================================
+infra-synth:
+	cd infra/cdk && CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 uv run --no-project --with-requirements requirements.txt python -m app.app
+
+infra-test:
+	cd infra/cdk && JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 uv run --no-project --with-requirements requirements.txt python -m pytest tests -q
+
+lambda-build:
+	uv run python scripts/build_lambda.py --output dist/lambda
+
+docker-build:
+	docker build -t finsight-ai:local .
 
 # ============================================================
 # Architecture Tests
@@ -168,6 +193,7 @@ coverage-html:
 # ============================================================
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov .coverage coverage.xml
+	rm -rf dist build infra/cdk/cdk.out
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 
