@@ -52,7 +52,7 @@ Build a web-based, multi-tenant platform where a company uploads financial docum
 
 ## 6. Non-Functional Requirements
 
-- **Security:** per-company data isolation, role-based access (admin, finance manager, analyst, viewer), encryption at rest and in transit, audit logs.
+- **Security:** per-company data isolation, role-based access (executive leadership, corporate finance & planners, audit & compliance, system admin), encryption at rest and in transit, audit logs.
 - **Data Residency:** All data (raw files, extracted metrics, vector embeddings, logs, backups) must be stored and processed in-country; if in-country hosting is not feasible, in-region is the fallback.
 - **Accuracy:** at least 95% numeric accuracy on an agreed test set; the system must say "insufficient data" instead of guessing. Consistency > Availability (eventual consistency)
 - **Performance & Latency:** typical question answered in under 15 seconds; a 50-page document processed in under 5 minutes; First token / first streamed response: p95 3s, p99 5s, and p99.9 7s.

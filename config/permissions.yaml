@@ -1,26 +1,26 @@
 # Permissions Configuration
-# STATUS: planned. Not read by any code yet; tracked in issue #11.
+# STATUS: planned. No runtime code reads this file yet; tracked in issue #11.
+# It is exercised by tests/security/test_permissions.py.
 # Role/Action/Category matrix. Intended single source of truth for authorization.
 # It will be loaded by core/config and enforced by a domain policy service.
 #
-# Role vocabulary must be reconciled before this is wired: this file lists
-# admin/analyst/viewer/approver, while the database migration and the
-# requirement document use admin/finance_manager/analyst/viewer.
+# The four role IDs match the config switch guide (5.29), the known-risks
+# review (risk 24), the `users.role` migration check, and ADR-0003.
 
 # Roles defined in the system
 roles:
-  - id: "admin"
-    name: "Administrator"
-    description: "Full system access"
-  - id: "analyst"
-    name: "Financial Analyst"
-    description: "Can ask questions, view reports, create forecasts"
-  - id: "viewer"
-    name: "Viewer"
-    description: "Read-only access to reports and answers"
-  - id: "approver"
-    name: "Approver"
-    description: "Can approve decisions and recommendations"
+  - id: "executive_leadership"
+    name: "Executive Leadership"
+    description: "CEO, CFO, VP of Finance: read access and decision approval"
+  - id: "corporate_finance_planners"
+    name: "Corporate Finance & Planners"
+    description: "Ask questions, upload documents, create forecasts and metrics"
+  - id: "audit_compliance"
+    name: "Audit & Compliance"
+    description: "Read-only access to every category, including the audit trail"
+  - id: "system_admin"
+    name: "System Admin"
+    description: "Manage users and settings; no access to financial content"
 
 # Categories of data/actions
 categories:
@@ -74,22 +74,32 @@ actions:
     name: "Configure"
     description: "Change system settings"
 
-# Permission matrix: role -> category -> allowed actions
-# Wildcard "*" means all actions
+# Permission matrix: role -> category -> allowed actions.
+# Every category is listed for every role so that a denied category is explicit.
+# `delete` is intentionally not granted to any pilot role; it stays ungranted
+# until a retention policy exists.
+# System Admin uses `configure` on content categories because there is no
+# separate settings category. It never gets `read` on financial content.
 permissions:
-  admin:
-    "*": ["*"]  # admin has all permissions on all categories
+  executive_leadership:
+    financials: ["read"]
+    metrics: ["read"]
+    forecasts: ["read"]
+    risks: ["read"]
+    decisions: ["read", "approve"]
+    documents: ["read"]
+    audit: []
 
-  analyst:
+  corporate_finance_planners:
     financials: ["read"]
     metrics: ["read", "write"]
     forecasts: ["read", "write"]
     risks: ["read", "write"]
     decisions: ["read", "write"]
     documents: ["read", "upload"]
-    audit: ["read"]
+    audit: []
 
-  viewer:
+  audit_compliance:
     financials: ["read"]
     metrics: ["read"]
     forecasts: ["read"]
@@ -98,18 +108,19 @@ permissions:
     documents: ["read"]
     audit: ["read"]
 
-  approver:
-    decisions: ["read", "approve"]
-    forecasts: ["read"]
-    risks: ["read"]
+  system_admin:
+    financials: ["configure"]
+    metrics: ["configure"]
+    forecasts: ["configure"]
+    risks: ["configure"]
+    decisions: ["configure"]
+    documents: ["configure"]
     audit: ["read"]
 
 # Company-level overrides (optional, for specific tenant customization)
 # company_overrides:
 #   "company-uuid-here":
-#     analyst:
-#       forecasts: ["read"]  # restrict analyst from writing forecasts for this company
+#     corporate_finance_planners:
+#       forecasts: ["read"]  # restrict forecast writes for this company
 
-# Default permissions for any role not explicitly listed
-default:
-  "*": ["read"]
+# There is no default fallback. A role with no entry is denied.

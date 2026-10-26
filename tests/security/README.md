@@ -18,8 +18,9 @@ uv run pytest tests/security -v -m security
 - `test_cache_keys.py` — answer cache keys are deterministic, tenant-scoped, and
   sensitive to role, access scope, question, and document stamp.
 - `test_permissions.py` — the `config/permissions.yaml` matrix is checked against
-  the typed `Role`, `Category`, and `Action` enums, and the expected admin,
-  analyst, viewer, approver, and unknown-role behaviour is asserted.
+  the typed `Role`, `Category`, and `Action` enums and against the
+  `users.role` check in the latest migration. Every role/action/category pair is
+  asserted, retired role IDs are denied, and unknown roles have no default.
 - `test_evidence.py` — empty, blank, or invalid citations cannot count as
   evidence.
 - `test_pii_redaction.py` — sensitive structured-log fields are redacted, and

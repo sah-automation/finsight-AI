@@ -14,7 +14,7 @@ SHA256_HEX_LENGTH = 64
 
 def _context(
     company_id: str = 'company-a',
-    role: Role = Role.ANALYST,
+    role: Role = Role.CORPORATE_FINANCE_PLANNERS,
     access_scope: list[Category] | None = None,
 ) -> RequestContext:
     return RequestContext(
@@ -43,8 +43,12 @@ class TestAnswerCacheKey:
         assert first != second
 
     def test_role_changes_the_key(self) -> None:
-        first = build_answer_cache_key(_context(role=Role.ANALYST), 'What is revenue?', 'stamp-1')
-        second = build_answer_cache_key(_context(role=Role.VIEWER), 'What is revenue?', 'stamp-1')
+        first = build_answer_cache_key(
+            _context(role=Role.CORPORATE_FINANCE_PLANNERS), 'What is revenue?', 'stamp-1'
+        )
+        second = build_answer_cache_key(
+            _context(role=Role.AUDIT_COMPLIANCE), 'What is revenue?', 'stamp-1'
+        )
 
         assert first != second
 

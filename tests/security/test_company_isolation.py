@@ -19,7 +19,7 @@ def _context(company_id: str = 'company-a') -> RequestContext:
     return RequestContext(
         company_id=company_id,
         user_id='user-a',
-        role=Role.ANALYST,
+        role=Role.CORPORATE_FINANCE_PLANNERS,
         trace_id='trace-a',
         permissions={},
         access_scope=[Category.METRICS],
@@ -37,7 +37,7 @@ class TestRequestContextIsolation:
         with pytest.raises(ValidationError):
             RequestContext(
                 user_id='user-a',
-                role=Role.ANALYST,
+                role=Role.CORPORATE_FINANCE_PLANNERS,
                 trace_id='trace-a',
                 permissions={},
                 access_scope=[],
