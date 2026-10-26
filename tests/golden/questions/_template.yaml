@@ -1,0 +1,38 @@
+# Copy this file to <category>.yaml and add questions.
+# One question per list item. See README.md for coverage and scoring rules.
+version: 1
+
+questions:
+  - id: q001
+    question: "What was total revenue in Q3 2025?"
+    category: metrics
+    difficulty: easy            # easy | medium | hard
+    role: corporate_finance_planners
+    company: company-a
+    expected:
+      answer: "Total revenue was $12,400,000."
+      numbers:
+        - value: "12400000"
+          currency: "USD"
+          unit: "1"
+      citations:
+        - document: pdf__company-a__2025-Q3__income-statement.pdf
+          page: 4
+          table: "Consolidated income statement"
+      insufficient_data: false
+    tags: [revenue, single_document]
+    notes: "The number must come from code, not the model."
+
+  - id: q002
+    question: "What was marketing spend in 2022?"
+    category: insufficient_data
+    difficulty: easy
+    role: corporate_finance_planners
+    company: company-a
+    expected:
+      answer: null
+      numbers: []
+      citations: []
+      insufficient_data: true
+    tags: [out_of_range, no_guess]
+    notes: "No 2022 documents exist; the system must say insufficient data."

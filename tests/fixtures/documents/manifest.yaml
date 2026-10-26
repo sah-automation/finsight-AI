@@ -1,0 +1,25 @@
+# Sample document manifest.
+# Every file in this folder must have one entry. Tests use this to find
+# documents by type and feature instead of hard-coding file names.
+version: 1
+
+# documents:
+#   - path: pdf__company-a__2025-Q3__income-statement.pdf
+#     file_type: pdf            # pdf | scan | image | xlsx | xls | csv | tsv | docx
+#     category: financial_statement
+#     period: 2025-Q3
+#     pages: 12
+#     features: [text, tables, multi_page]
+#     anonymized: true
+#     notes: "Born-digital PDF with a three-column income statement on page 4."
+#
+#   - path: scan__company-a__2025-Q3__bank-statement.pdf
+#     file_type: scan
+#     category: bank_statement
+#     period: 2025-Q3
+#     pages: 3
+#     features: [ocr, low_confidence_page]
+#     anonymized: true
+#     notes: "Scanned pages; page 2 is skewed to exercise the low-confidence path."
+
+documents: []
