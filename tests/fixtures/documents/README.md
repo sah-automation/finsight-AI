@@ -41,5 +41,13 @@ Use `company-a`, `company-b` and similar placeholders, never a real company name
 
 **Size**
 
-- Each file under 5 MB, whole folder under 50 MB.
-- If a file is larger, use Git LFS and say so in the manifest.
+- Each file under 500 KB, whole folder under 5 MB. The pre-commit
+  `check-added-large-files` hook enforces the 500 KB per-file limit.
+- If a file legitimately needs to be larger, stop and ask before adding it.
+
+**Generated files**
+
+The current contents are produced by `uv run python scripts/fixture_builder`.
+Do not edit them by hand: change the generator and rebuild, or the manifest, the
+questions and the documents will drift apart. The generator also validates the
+question set against the documents it just wrote.

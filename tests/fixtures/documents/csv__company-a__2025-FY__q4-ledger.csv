@@ -1,0 +1,29 @@
+entry_date;account_code;account_name;cost_centre;description;debit;credit
+2025-07-02;6100;Software subscriptions;CC-100;Design suite renewal;18400.00;0.00
+2025-07-03;6200;Travel and entertainment;CC-200;Customer visit airfare;2150.00;0.00
+2025-07-08;6400;Marketing programs;CC-200;Regional campaign;46000.00;0.00
+2025-07-10;6300;Professional fees;CC-300;External audit fee;82500.00;0.00
+2025-07-15;6500;Office and facilities;CC-400;Office rent;61200.00;0.00
+2025-07-18;6100;Software subscriptions;CC-300;Analytics platform;27900.00;0.00
+2025-07-22;6200;Travel and entertainment;CC-100;Engineering offsite;5480.00;0.00
+2025-07-25;6400;Marketing programs;CC-200;Partner event;31750.00;0.00
+2025-07-31;6300;Professional fees;CC-100;Patent filing;9600.00;0.00
+2025-08-04;6500;Office and facilities;CC-400;Utilities;7340.00;0.00
+2025-08-06;6100;Software subscriptions;CC-200;Sales enablement tool;12600.00;0.00
+2025-08-11;6200;Travel and entertainment;CC-200;Sales conference;14900.00;0.00
+2025-08-14;6400;Marketing programs;CC-200;Digital advertising;58300.00;0.00
+2025-08-19;6300;Professional fees;CC-300;Tax advisory;24000.00;0.00
+2025-08-21;6500;Office and facilities;CC-400;Facilities maintenance;3850.00;0.00
+2025-08-26;6100;Software subscriptions;CC-100;Cloud compute;44700.00;0.00
+2025-08-29;6200;Travel and entertainment;CC-300;Audit committee travel;1980.00;0.00
+2025-09-03;6400;Marketing programs;CC-200;Product launch;72400.00;0.00
+2025-09-05;6300;Professional fees;CC-100;Recruitment fees;16500.00;0.00
+2025-09-09;6500;Office and facilities;CC-400;Security services;5220.00;0.00
+2025-09-12;6100;Software subscriptions;CC-300;ERP licence;33800.00;0.00
+2025-09-16;6200;Travel and entertainment;CC-100;Team offsite;6750.00;0.00
+2025-09-19;6400;Marketing programs;CC-200;Analyst briefing;8900.00;0.00
+2025-09-23;6300;Professional fees;CC-300;Legal fees;41000.00;0.00
+2025-09-25;6100;Software subscriptions;CC-100;Cloud compute;39250.00;0.00
+2025-09-26;6200;Travel and entertainment;CC-200;Sales conference;12300.00;0.00
+2025-09-27;6400;Marketing programs;CC-200;Media agency rebate;0.00;5000.00
+2025-09-27;6500;Office and facilities;CC-400;Landlord credit;0.00;2100.00

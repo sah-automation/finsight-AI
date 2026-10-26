@@ -57,6 +57,7 @@ dev = [
     "pre-commit>=4.0.0,<5",
     "freezegun>=1.5.0,<2",
     "faker>=34.0.0,<41",
+    "reportlab>=4.2.0,<5",
 ]
 [project.urls]
 Homepage = "https://github.com/sah-automation/finsight-AI"
@@ -91,6 +92,12 @@ ignore = [
 ]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["S101", "S106", "PTH118", "ARG001", "ARG002", "E501"]
+# The fixture builder is a data generator, not application code. Question text,
+# answer prose and statement labels are written on one line so the generated
+# YAML reads as prose. Each document writer lays out pages top to bottom and each
+# question group is one block, so the statement and argument counts follow the
+# content rather than a class design.
+"scripts/fixture_builder/**/*" = ["E501", "PLR0913", "PLR0915", "PLR0917"]
 # CDK constructors are framework-shaped: they forward **kwargs to Stack and take
 # one argument per dependency. Do not contort them to application lint limits.
 "infra/cdk/**/*.py" = ["ANN003", "PLR0913", "PLR0917", "TC002"]

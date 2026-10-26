@@ -2,7 +2,9 @@
 
 The 100+ canonical questions used to score Phase 1. This folder holds the questions only; the runner and scorer are built later.
 
-Add one YAML file per category, for example `revenue.yaml`, `margins.yaml`, `citations.yaml`, `insufficient_data.yaml`, `access.yaml`. Start from `_template.yaml`.
+One YAML file per topic, for example `revenue.yaml`, `margins.yaml`, `citations.yaml`, `insufficient_data.yaml`, `access.yaml`. `_template.yaml` shows the shape of a single entry.
+
+**These files are generated.** `uv run python scripts/fixture_builder` writes them from the same model that renders the sample documents, then validates every citation and every expected number. Do not edit them by hand: change `scripts/fixture_builder/questions.py` and rebuild. The release gate lives in `thresholds.yaml`.
 
 **Coverage rules**
 
