@@ -10,10 +10,7 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-try:
-    from pythonjsonlogger import jsonlogger
-except (ImportError, AttributeError):  # pragma: no cover
-    from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 
 from .redaction import redact_sensitive_fields
 
@@ -28,25 +25,7 @@ _span_name: ContextVar[str | None] = ContextVar('span_name', default=None)
 _switch_values: ContextVar[dict[str, Any] | None] = ContextVar('switch_values', default=None)
 
 
-try:
-    _JsonFormatterBase = jsonlogger.JsonFormatter
-except (ImportError, AttributeError):  # pragma: no cover
-
-    class _JsonFormatterBase(logging.Formatter):  # type: ignore[no-redef]
-        def add_fields(
-            self,
-            log_record: dict[str, Any],
-            record: logging.LogRecord,
-            message_dict: dict[str, Any],
-        ) -> None:
-            log_record.update(message_dict)
-            if record.exc_info:
-                log_record['exc_info'] = self.formatException(record.exc_info)
-            if record.stack_info:
-                log_record['stack_info'] = self.formatStack(record.stack_info)
-
-
-class TraceFormatter(_JsonFormatterBase):
+class TraceFormatter(JsonFormatter):
     """JSON formatter that includes trace context."""
 
     def add_fields(
@@ -133,7 +112,7 @@ def configure_logging(
     formatter: logging.Formatter
     if format_type == 'json':
         with contextlib.suppress(TypeError, ValueError, AttributeError):
-            candidate: logging.Formatter = TraceFormatter(  # type: ignore[no-untyped-call]
+            candidate: logging.Formatter = TraceFormatter(
                 '%(timestamp)s %(level)s %(logger)s %(message)s',
                 rename_fields={'levelname': 'level'},
             )
@@ -146,7 +125,7 @@ def configure_logging(
             logging.getLogger('asyncpg').setLevel(logging.WARNING)
             logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
             return
-        formatter = TraceFormatter()  # type: ignore[no-untyped-call]
+        formatter = TraceFormatter()
     else:
         formatter = TextFormatter(
             '%(asctime)s %(levelname)-8s %(name)s %(message)s',

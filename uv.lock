@@ -671,7 +671,7 @@ requires-dist = [
     { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.3.0,<3" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.6.0,<4" },
     { name = "python-docx", specifier = ">=1.1.0,<2" },
-    { name = "python-json-logger", specifier = ">=2.0.0,<5" },
+    { name = "python-json-logger", specifier = ">=3.0.0,<5" },
     { name = "python-multipart", specifier = ">=0.0.18,<1" },
     { name = "pyyaml", specifier = ">=6.0.0,<7" },
     { name = "redis", specifier = ">=5.1.0,<9" },
