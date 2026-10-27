@@ -9,7 +9,7 @@ from typing import Any as _Any
 
 from fastapi import APIRouter, Body, HTTPException
 
-from finsight.application.onboarding import CreateCompany, CreateCompanyInput
+from finsight.application.onboarding import CreateCompany
 from finsight.core.errors import AuthorizationError, ValidationError, to_user_message
 from finsight.core.types import Role
 
@@ -204,7 +204,7 @@ async def _resolve_use_case(
                 resolved = await resolved
             if resolved is not None:
                 return resolved
-    except Exception:  # noqa: BLE001,S110
+    except (ImportError, AttributeError, TypeError, RuntimeError):  # noqa: S110
         pass
     return CreateCompany()
 
@@ -251,13 +251,11 @@ def _as_response(outcome: Any, request_key: str | None) -> dict[str, Any]:
                 if value is not None:
                     response[attr] = value
     status_value = response.get('status')
-    if status_value is not None:
-        response['status'] = str(status_value).lower().replace('_', '-')
-    result_status = getattr(outcome, 'status', None)
-    if result_status is not None:
-        response['status'] = str(result_status)
-    if 'status' not in response or response.get('status') is None:
-        response['status'] = 'ready'
+    if status_value is None or str(status_value).lower() in ('none', 'null'):
+        status_value = getattr(outcome, 'status', None)
+    if status_value is None:
+        status_value = 'setting-up'
+    response['status'] = str(status_value)
     if request_key is not None and response.get('request_key') is None:
         response['request_key'] = request_key
     # preserve original result for callers/tests that inspect it
@@ -372,31 +370,7 @@ async def _handle(*args: Any, **kwargs: Any) -> dict[str, Any]:
         if request_key is None:
             request_key = None
 
-    # Validate early, before submit (use case also validates).
-    company_name = _get(
-        data, 'company_name', 'name', 'display_name', 'company_display_name', 'company'
-    )
-    region = _get(data, 'region', 'preferred_region', 'hosting_region')
-    admin_email = _get(
-        data, 'admin_email', 'first_admin_email', 'email', 'admin_user_email', 'user_email'
-    )
-    if not company_name:
-        raise _BadRequestError('company name is required')
-    if not region:
-        raise _BadRequestError('region is required')
-    if not admin_email:
-        raise _BadRequestError('a valid admin email is required')
-
-    try:
-        CreateCompanyInput(
-            company_name=str(company_name),
-            region=str(region),
-            admin_email=str(admin_email),
-            request_key=request_key,
-        )
-    except Exception as exc:
-        raise _BadRequestError(to_user_message(exc)) from exc
-
+    # Validation is performed by the onboarding use case itself, before submit.
     use_case = await _resolve_use_case(use_case_candidate)
 
     try:
