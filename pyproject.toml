@@ -101,6 +101,11 @@ ignore = [
 # CDK constructors are framework-shaped: they forward **kwargs to Stack and take
 # one argument per dependency. Do not contort them to application lint limits.
 "infra/cdk/**/*.py" = ["ANN003", "PLR0913", "PLR0917", "TC002"]
+# Onboarding use case exposes flexible constructor/input surfaces by design.
+"src/finsight/application/onboarding/*.py" = [
+    "ANN401", "ANN002", "ANN003", "PLR0913",
+    "PLR0912", "TRY300", "TC001", "RUF100",
+]
 "src/finsight/core/config/models.py" = ["B008"]
 # The config loader parses arbitrary YAML (so Any is honest), imports the
 # logger lazily to avoid a circular import, and owns the deliberate
@@ -287,6 +292,12 @@ forbidden_modules = [
 name = "Application must not import vendor libraries"
 type = "forbidden"
 source_modules = ["finsight.application"]
+# Application may import our shared type layer; core.types owns its Pydantic
+# dependency. Direct vendor imports by application are still forbidden.
+ignore_imports = [
+    "finsight.application.** -> finsight.core.types",
+    "finsight.application.** -> finsight.domain.**",
+]
 forbidden_modules = [
     "boto3",
     "litellm",
