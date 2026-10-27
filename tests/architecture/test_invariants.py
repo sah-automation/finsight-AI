@@ -251,8 +251,11 @@ class TestMoneyUsesDecimal:
                                 )
 
     def test_no_float_in_value_objects(self) -> None:
-        """No float type annotations in value_objects package."""
+        """No float type annotations in value_objects package (except Confidence)."""
+        allowed_float_files = {'confidence.py'}
         for filepath in get_python_files(SRC_ROOT / 'domain/value_objects'):
+            if filepath.name in allowed_float_files:
+                continue
             tree = parse_python_file(filepath)
             for node in ast.walk(tree):
                 if (

@@ -2,6 +2,22 @@
 
 **Parent Plan:** This is a child plan derived from `docs/plans/project_requirement/finsightAI.md` and `docs/plans/architecture/phase1/finsight_mvp_hld.svg` (Phase 1 HLD). Both must be treated as the source of truth. Do not deviate from their scope, architecture, flows, or requirements — only make child-level decisions and concrete implementation details here. If any proposal would conflict with the parent plan, the parent plan is authoritative. Stop and escalate instead of deviating.
 
+## Architectural Design (Phase 1)
+
+The diagrams below live in `docs/plans/architecture/phase1/` and are binding alongside the Phase 1 HLD. Before implementing any slice, read the diagram that covers it; the HLD is the overall map and these are the detail zooms. Treat all of them as authoritative — no deviation without clearance.
+
+| Artifact | Covers | When to read |
+|---|---|---|
+| `finsight_mvp_hld.svg` | Overall Phase 1 high-level design: upload, ingestion, Q&A, citations, source viewer, infrastructure. | Always first; map for every slice. |
+| `finsight_company_isolation.svg` | How one company's data is kept separate: per-company Aurora partition, row-level rules second lock, company id on every call. | Tenancy + onboarding slice; any data access. |
+| `document_lifecycle.svg` | Document/DocumentVersion states and transitions (received -> stored -> processing -> committed/failed/needs_review, superseded, rejected) plus retention. | Ingestion, updates, delete, reprocess. |
+| `journey_signup_company.svg` | Signing up a company: tenancy + partition creation before any upload; upload blocked until onboarding succeeds. | Onboarding slice. |
+| `journey_upload_document.svg` | Uploading a document: strict form, tenant/duplicate gates, virus scan, idempotent Step Functions pipeline, transactional commit. | Ingestion slice. |
+| `journey_ask_question.svg` | Asking a question: chat question in, cited answer out; numbers from code only; insufficient data path. | Q&A backend slice. |
+| `journey_open_citation.svg` | Opening a citation: fetch + render cited page/table; access re-checked on every fetch; citation id alone is never enough. | Source viewer slice. |
+
+If a diagram and this plan disagree, the diagram (and the parent HLD) is authoritative; stop and escalate.
+
 ## Phase 1 Goal
 
 Document ingestion + RAG Q&A with citations. This includes a simple chat screen for users to ask questions, as well as a source viewer to allow them to verify the citations that are returned.
@@ -59,33 +75,33 @@ We must build from the inside out to enforce the dependency direction (`entrypoi
 ### 1) Foundation (Core) - Do First
 Establish all shared blocks that everything else will rely on.
 
-- [ ] **core/config** - The *only* place to read environment variables and config files. Must be typed, frozen, validated at startup and fail loudly (Enforce every validation rule from the Config Switch Guide).
-- [ ] **core/errors** - `UserFacingError`, `RetryableError`, `PolicyBlocked`, `InsufficientData`, and any other errors that need to be mapped at the entrypoint level.
-- [ ] **core/logging** - Structured logging with trace IDs. Absolutely no question text, chunk text, PII or answers within logs.
-- [ ] **core/types** - Shared IDs and enums (`CompanyId`, `Role`, `DocumentId`, `ChunkId`, `CitationId`, `JobId`, etc.)
-- [ ] **core/constants** - Only constants that are truly constant. Everything else must go into config.
+- [x] **core/config** - The *only* place to read environment variables and config files. Must be typed, frozen, validated at startup and fail loudly (Enforce every validation rule from the Config Switch Guide).
+- [x] **core/errors** - `UserFacingError`, `RetryableError`, `PolicyBlocked`, `InsufficientData`, and any other errors that need to be mapped at the entrypoint level.
+- [x] **core/logging** - Structured logging with trace IDs. Absolutely no question text, chunk text, PII or answers within logs.
+- [x] **core/types** - Shared IDs and enums (`CompanyId`, `Role`, `DocumentId`, `ChunkId`, `CitationId`, `JobId`, etc.)
+- [x] **core/constants** - Only constants that are truly constant. Everything else must go into config.
 
 
 
 ### 2) Domain Layer - Pure Business Logic
 No vendor, AWS, HTTP or UI imports. This is the heart of the application.
 
-- [ ] **domain/value_objects** - `Money` (Decimal only), `Period`, `Citation` (must contain enough locator information for the source viewer), `Confidence`. All immutable.
-- [ ] **domain/entities** - `Document` (states: `received` -> `stored` -> `processing` -> `committed`, with `failed` and `needs_review` exits), `DocumentVersion`, `Chunk` (stable chunk ids), `Metric` (extracted figures only), `Answer`. No `Recommendation` in Phase 1 (D6). Enforce transitions, versioning and soft delete.
+- [x] **domain/value_objects** - `Money` (Decimal only), `Period`, `Citation` (must contain enough locator information for the source viewer, including the cited document version, not just latest), `Confidence`. All immutable.
+- [ ] **domain/entities** - States are tracked per `DocumentVersion`. Allowed states: `received`, `stored`, `processing`, `committed`/`done` (ready for citations), `failed` (terminal after retries/DLQ or worker timeout), `needs_review` (split into chunk-level and whole-document), `superseded`, `rejected` (virus scan failed). Transitions: `received` -> `stored` | `rejected`; `stored` -> `processing`; `processing` -> `committed` (chunk-level needs_review may still commit but flag chunks), `processing` -> `needs_review` (chunk-level or whole-document), `processing` -> `failed` (step error, retries exhausted after `job_max_receive_count`, or heartbeat/worker timeout). Whole-document `needs_review` does not commit (no visible chunks/vectors). On commit of a new version, the previous version becomes `superseded` (kept for `version_retention_days`, old answers/citations remain valid). Exit from `needs_review` is only by uploading a corrected file as an `Update` (no in-app reviewer in Phase 1). `DocumentVersion`, `Chunk` (stable chunk ids), `Metric` (extracted figures only), `Answer`. No `Recommendation` in Phase 1 (D6). Enforce transitions, versioning and soft delete.
 - [ ] **domain/ports** - Interfaces for every external dependency. Examples: `DocumentReader`, `LLMGateway`, `EmbeddingProvider`, `VectorSearch`, `VectorWrite`, `HybridSearch`, `Reranker`, `ObjectStorage`, `DocumentRepository`, `ChunkRepository`, `JobRepository`, `AuditLog`, `PartitionManager`, `AnswerCache`, `RoleCache`, `VirusScanner`, `UnitOfWork`, `Metering`. Every data access method must require `company_id`.
-- [ ] **domain/services** - `InputGate` (PII + prompt-injection checks), `EvidenceChecker`, `CitationChecker`, `OutputGate`, conflict resolution, `DeltaDiffer`, `DocumentStamp`, and any other pure business rules.
+- [x] **domain/services** - `InputGate` (PII + prompt-injection checks), `EvidenceChecker`, `CitationChecker`, `OutputGate`, conflict resolution, `DeltaDiffer`, `DocumentStamp`, and any other pure business rules.
 
 
 
 ### 3) Application Layer - Use Cases
 Orchestrate the domain and ports. No adapter imports, only domain.
 
-- [ ] **application/onboarding** - Child-level addition approved by D6. Responsible for creating a company's partition (tables/indexes/vector indexes) before the first upload. Must be idempotent, transaction safe, auditable and block uploads until completed.
-- [ ] **application/ingest_document** - Pipeline of steps (validate upload form, classify, read via page router, parse, chunk by structure, delta diff against previous version, embed, store, update the document stamp, clear cache). Must fully implement delta tracking and versioning.
+- [ ] **application/onboarding** - Child-level addition approved by D6. Responsible for creating a company's partition (tables/indexes/vector indexes) before the first upload. Must be idempotent via `request_key` (retries return the same company), transaction safe (company stays `incomplete` until the final commit, `ready` only as the last step), auditable, validate the requested region against the approved list, allow email verification to complete after company creation, and block uploads until completed. Surface setting-up/ready status and clear, non-leaking errors to the admin.
+- [ ] **application/ingest_document** - Pipeline of steps (validate upload form, classify, read via page router, parse, chunk by structure, delta diff against previous version, embed, store, update the document stamp, clear cache). After file lands, run virus scan: on failure set version state to `rejected` (never queued/stored), on success proceed to `stored` and enqueue. Track state per version; chunk-level `needs_review` allows commit but flags chunks and excludes them from numbers/citations; whole-document `needs_review` does not commit (no visible chunks/vectors). Enforce heartbeat/worker timeout -> `failed` (terminal after retries/DLQ). Must fully implement delta tracking and versioning.
 - [ ] **application/delete_document** - Soft delete, clear the answer cache, remove chunks, vectors and metrics after `deleted_retention_days`, and keep the audit entry. Must be idempotent.
-- [ ] **application/reprocess** - Rolling reprocess after a chunking or embedding change. Lower priority than live questions, a few companies at a time, and safe to repeat without duplicate chunks.
+- [ ] **application/reprocess** - Rolling reprocess after a chunking or embedding change. Lower priority than live questions, a few companies at a time, and safe to repeat without duplicate chunks. The document stays on the current done version until the new reprocessed version commits atomically in one transaction; old and new vectors/chunks are never mixed. On commit, the old version becomes `superseded`. Chunk ids remain stable where unchanged.
 - [ ] **application/ask_question** - Q&A flow (input gate, answer cache, waiting line, understand, hybrid search, rerank, "calculate with code", evidence gate, model router, generate answer, verify citations via OutputGate, stream). Must enforce "numbers from code only", company isolation and must return fully populated `Citation` objects, or `InsufficientData` instead of guessing.
-- [ ] **application/source_viewer** - Fetch a specific cited source. Validate that the requesting user has access to the document (RBAC + company_id), fetch the original content for that citation (text/table + page) from storage/repositories and return it in a renderable shape. This is critical to prevent cross-company data leakage.
+- [ ] **application/source_viewer** - Fetch the cited (answer-time) version of a source. Validate company, role and access scope, and return a renderable citation page/table. Read from storage/repositories before signing S3; sign an S3 link only for "view original file". Handle no-access, removed/unavailable and temporary-failure states with one non-leaking 'not available' response, including denied attempts in the audit, never log signed links, and show 'a newer version exists' when applicable plus a 'needs review' badge for flagged chunks. This is critical to prevent cross-company data leakage.
 - [ ] **application/shared** - Step interfaces, contexts (`RequestContext` with company/user/role/access scope), the `UnitOfWork` transaction boundary, and shared helpers.
 
 
@@ -121,10 +137,11 @@ Implement all ports. For Phase 1, we are building *all* of the readers and the a
 Thin doors, no business logic. Composition root is the only place that instantiates concrete classes.
 
 #### API (Backend)
-- [ ] **composition/** - Wire pilot and standard sets based off of config. Apply DI to every use case (No `new` inside of application/domain). Construct the reader registry (all readers) and the Step Functions worker set regardless of pilot settings. Wire Aurora, DynamoDB, S3, SQS, Cognito and metering.
+- [x] **composition/** - Wire pilot and standard sets based off of config. Apply DI to every use case (No `new` inside of application/domain). Construct the reader registry (all readers) and the Step Functions worker set regardless of pilot settings. Wire Aurora, DynamoDB, S3, SQS, Cognito and metering.
 - [ ] **entrypoints/api/contract** - Publish an OpenAPI contract for onboarding, upload, status, question (streaming) and source viewer; generate the UI client from it.
-- [ ] **entrypoints/api/onboarding** - Internal/admin endpoint or job trigger to run onboarding for a company (create partitions). This *must* be able to run prior to any upload and be idempotent.
-- [ ] **entrypoints/api/upload** - Upload endpoint. Returns a pre-signed S3 upload link. After the file lands, run the virus scan and only then queue the job. Must accept and validate: `company_id`, `document_category` (from `documents.categories`), `period` (e.g `YYYY-QX` or `YYYY-MM`), `status` (`draft` | `final`), `upload_type` (`new` | `update` | `delete`), `replaces_document_id` (required if `update`), and the file(s). Enforce duplicate check, metadata validation, and reject upload if partition does not exist.
+- [ ] **entrypoints/api/onboarding** - Internal/admin endpoint or job trigger to run onboarding for a company (create partitions). This *must* be able to run prior to any upload, accept a `request_key` for safe retries, validate region/company-form inputs before submit, surface setting-up/ready status and clear error messages, keep email verification non-blocking, and mark the company ready only after the final commit.
+- [ ] **entrypoints/api/upload** - Upload endpoint. Returns a pre-signed S3 upload link. After the file lands, run the virus scan and only then queue the job. If virus scan fails, set the document version to `rejected` (terminal, never enqueued/stored as visible content). Must accept and validate: `company_id`, `document_category` (from `documents.categories`), `period` (e.g `YYYY-QX` or `YYYY-MM`), `status` (`draft` | `final`), `upload_type` (`new` | `update`), `replaces_document_id` (required if `update`), and the file(s). Enforce duplicate check, metadata validation, and reject upload if partition does not exist. Whole-document `needs_review` results in no visible chunks/vectors and does not commit until fixed (exit only via corrected file as an Update). Upload no longer handles delete; document lifecycle is managed through the document library endpoints below.
+- [ ] **entrypoints/api/documents** - Document library and lifecycle endpoints: list/search documents by company/category/period/owner/date/status; get document metadata; soft delete a document to the recycle bin; restore within `deleted_retention_days`; permanent purge (privileged, audited); read recycle bin contents. All operations enforce company, role and access scope, and take effect immediately on retrieval and the answer cache.
 - [ ] **entrypoints/api/status** - Ingestion/job status (by job id and document id). Aurora is the truth; show progress and queue place from the DynamoDB view.
 - [ ] **entrypoints/api/question** - Chat question endpoint. Build `RequestContext` from the Cognito authorizer (with role check), call `ask_question` and stream the answer with citations.
 - [ ] **entrypoints/api/source_viewer** - Source retrieval endpoint (e.g `GET /source` or `GET /documents/{id}/citations/{citation_id}/source`). Must authorize against the citation (validate company + role + access scope), call `source_viewer` use case and return the renderable source (original text, table HTML/JSON, page number, document name and highlight info). Never leak data from other companies.
@@ -135,7 +152,8 @@ Thin doors, no business logic. Composition root is the only place that instantia
 #### UI (Frontend) - Simple Chat + Source Viewer
 As this is a web based platform, we need a minimal Next.js UI to satisfy the "Q&A with citations" requirement.
 
-- [ ] **Upload Form** - Explicit form fields for `Category`, `Period`, `Status` (Draft/Final), `Upload Type` (New/Update/Delete), `Replace Document` (if update), file picker with allowed extensions (PDF, XLSX, XLS, CSV, DOCX). Show duplicate warnings, validation errors and the partition-missing message from the API.
+- [ ] **Upload Form** - Explicit form fields for `Category`, `Period`, `Status` (Draft/Final), `Upload Type` (New/Update), `Replace Document` (if update), file picker with allowed extensions (PDF, XLSX, XLS, CSV, DOCX). Show duplicate warnings, validation errors and the partition-missing message from the API. No delete action appears here.
+- [ ] **Document Library & Recycle Bin** - Searchable list of company documents with metadata, owner, status and retention state; row actions for View, Update, soft Delete; recycle-bin view with Restore (inside `deleted_retention_days`) and Permanent Delete (privileged, audited). Deleted items are excluded from RAG and citations immediately.
 - [ ] **Chat Screen** - A simple chat interface (message thread). Allow users to type questions, show loading and streaming states, render answers, and display citations as clickable elements (e.g `[1]`, `[Doc - Page X, Table Y]`). Show "insufficient data" and "busy" clearly.
 - [ ] **Source Viewer** - Either a modal, side panel or dedicated page. When a citation is clicked, fetch from the source viewer API and render the cited content (preserve tables as tables, show page number, document title, and highlight the relevant span if possible). Must respect the current user's company/role.
 - [ ] **API Client** - Call the API endpoints with auth. Handle errors gracefully (e.g "insufficient data", rate limits, waking up messages, partition missing, etc).
@@ -145,10 +163,10 @@ As this is a web based platform, we need a minimal Next.js UI to satisfy the "Q&
 
 ### 6) Config, Migrations, Infra & Tests
 - [ ] **config/schema.yaml** - Enforce *every* validation rule from the Config Switch Guide (combinations, model chains, key modes, sizes, partitions, onboarding, etc). This must fail startup on invalid config.
-- [ ] **config/*.yaml** - `dev.yaml`, `test.yaml`, `staging.yaml`, `prod.yaml`, `permissions.yaml`, `prices.yaml`. Use pilot values to start off with. The pilot will just toggle flags, not remove code paths.
+- [x] **config/*.yaml** - `dev.yaml`, `test.yaml`, `staging.yaml`, `prod.yaml`, `permissions.yaml`, `prices.yaml`. Use pilot values to start off with. The pilot will just toggle flags, not remove code paths.
 - [ ] **migrations/** - Alembic migrations for companies, users/roles, documents, document versions, pages, chunks (hashes + stable ids), vectors (pgvector), metrics (extracted figures), jobs, answer cache references, audit logs, and *partition metadata*. Must create a partition per company with its own vector index, enable row-level rules, enforce `company_id` indexes, and be able to run `upgrade`/`downgrade` across every partition. The existing `0001` is plain tables and must be extended or replaced before ingestion work starts.
 - [ ] **infra/cdk/** - Leverage the existing scaffold. Add only what the pilot needs: S3, Aurora (serverless + pgvector), SQS + DLQ, Step Functions, Lambda, API Gateway, DynamoDB (progress view, answer cache, role cache) and Cognito, gated by switches. Ensure infrastructure supports creating per-company partitions/indexes as per D1.
-- [ ] **tests/** - Unit (domain/application with fakes), contract (one per port against every adapter - including every reader), architecture (import direction, rules), switch path (both ON/OFF), golden set (pilot config, 95% numeric accuracy), security (RBAC, company filter, cache key, cross-company isolation, RLS), partition tests (onboarding before upload, partition missing blocked), delta tracking/version/delete tests, auth tests, performance tests, and integration tests.
+- [x] **tests/** - Unit (domain/application with fakes), contract (one per port against every adapter - including every reader), architecture (import direction, rules), switch path (both ON/OFF), golden set (pilot config, 95% numeric accuracy), security (RBAC, company filter, cache key, cross-company isolation, RLS), partition tests (onboarding before upload, partition missing blocked), delta tracking/version/delete tests, auth tests, performance tests, and integration tests.
 
 
 
@@ -158,12 +176,12 @@ As this is a web based platform, we need a minimal Next.js UI to satisfy the "Q&
 ## Key Principles For This MVP
 
 - **All readers are first class.** We build support for PDF (plumber), scanned PDF/OCR (Tesseract and Textract), table/layout pages, Excel (xlsx/xls), CSV (csv/tsv) and DOCX from the start. Pilot config may set `scan_reader` / `table_reader` to free options, however no reader code path may be missing. The page router and table reader must work with all of them.
-- **Upload form is strict.** `category`, `period`, `status` (draft/final), `upload_type` (new/update/delete) and `replaces_document_id` (for updates) are all required where applicable. The API must validate against `documents.categories` and reject unknown values. Duplicate checks (same file hash or same company/category/period/name) must suggest an update.
+- **Upload form is strict.** `category`, `period`, `status` (draft/final), `upload_type` (`new`/`update`) and `replaces_document_id` (for updates) are all required where applicable. The API must validate against `documents.categories` and reject unknown values. Duplicate checks (same file hash or same company/category/period/name) must suggest an update. Delete, restore and permanent purge are handled through the document library and recycle bin, not the upload form.
 - **Delta tracking is enforced.** With `delta_tracking: true` (pilot default where applicable), we must hash pages and chunk ids, embed only new/changed chunks, mark removed chunks inactive, change the document stamp on update (clearing cached answers), publish a change event for Phase 2/3 consumers, and flag other documents in the same company/period as "may be affected". Other documents are never edited automatically. Old versions are kept for `version_retention_days`; delete is soft for `deleted_retention_days`, then purged. Both `delta_tracking: true` and `false` paths must be implemented and tested.
 - **Partitions are required.** One Aurora per cell, shared tables partitioned per company, with row-level rules as a second lock (D1). Every company must have its partition created via the onboarding use case before its first upload is accepted. The `onboarding` service must create partitions/indexes/vector indexes, be idempotent, auditable, and the upload endpoint must block with a clear error if the partition does not exist. Partition metadata must be tracked, and all repository/vector queries must target the correct partition.
 - **Scope is bounded (D6).** Phase 1 is ingestion, Q&A with citations, source viewer and the onboarding gate. No metrics store, dashboards, forecasts, alerts, recommendations or multi-agent code. Numbers found during ingestion may be stored as extracted figures; the LLM still never calculates.
 - **Citations are first class.** The `Answer` entity cannot exist without citations, and answers cite the latest final document version. The output gate must block answers without valid citations, and the UI must always display them as clickable links to the source viewer.
-- **Source viewer is secured.** Fetching a source must always authorize via `RequestContext` (company + role + access scope). You must never be able to fetch another company's document via a citation id alone.
+- **Source viewer is secured.** Fetching a source must always authorize via `RequestContext` (company + role + access scope). You must never be able to fetch another company's document via a citation id alone. Opening the original file is governed by a separate, still-to-be-added view-original/download permission action that must be decided per role.
 - **Numbers from code only.** Any calculated figures (margins, sums, ratios) must come from SQL/pandas in the application layer. The LLM can only cite these results, it can never compute them.
 - **Architecture is enforced.** No vendor imports in domain/application, DI everywhere, ports and adapters for everything, only `core/config` reads config/env. Import-linter must pass.
 - **Config driven.** No hardcoded model names, limits, timeouts or vendors. Every switch must have both paths implemented and tested.
@@ -201,7 +219,7 @@ Phase 1 will be considered complete only when all of the following are true.
 ### Functional
 - [ ] **Ingestion works for all required types** - Can upload and process PDF, scanned PDF (OCR), Excel (xlsx/xls), CSV and DOCX. Page numbers and tables are preserved.
 - [ ] **Onboarding enforced** - A company without a partition cannot upload. Onboarding creates the partition successfully and is idempotent.
-- [ ] **Upload flow complete** - Upload form captures category, period, status (draft/final), upload type (new/update/delete), and handles updates via `replaces_document_id`. Duplicate check warns and suggests update.
+- [ ] **Upload flow complete** - Upload form captures category, period, status (draft/final), upload type (new/update), and handles updates via `replaces_document_id`. Duplicate check warns and suggests update. Delete, restore and permanent purge are exercised through the document library and recycle bin.
 - [ ] **Delta tracking verified** - Updating a document with only changed pages/chunks only reprocesses what changed (verified by job logs/tests). Changing a document invalidates the answer cache, changes the stamp, and publishes a change event.
 - [ ] **Delete and reprocess work** - Delete is soft for `deleted_retention_days` then purges chunks, vectors, metrics and cache while keeping the audit entry. Reprocess is rolling, lower priority than questions, and produces no duplicate chunks.
 - [ ] **Login and roles enforced** - Cognito login maps to `RequestContext`; the four roles and `permissions.yaml` are checked on every request, including the source viewer.

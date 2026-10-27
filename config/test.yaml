@@ -1,39 +1,50 @@
 # Test Environment Configuration
-# Used by the local docker-compose.test.yml stack and CI integration tests.
-# Values must match docker-compose.test.yml and infra/localstack/init.sh.
-# No real credentials belong in this file.
 
 app:
   environment: "test"
 
 switches:
-  reranker_enabled: true
+  parallel_steps: true
   backup_request_enabled: true
-  parallel_retrieval_enabled: false  # keep the local test path simple
-  per_sentence_citation_check: true
-  async_textract_enabled: false  # LocalStack does not run Textract
-  ocr_fallback_enabled: true
+  prompt_cache_enabled: true
   answer_cache_enabled: true
-  role_cache_enabled: true
-  detailed_tracing_enabled: true
-  usage_metering_enabled: false  # adapter not implemented yet
 
 llm:
   primary_model:
-    model_id: "anthropic/claude-3-5-haiku-20241022"
+    provider: "litellm"
+    model_id: "test/primary"
     max_tokens: 4096
+    temperature: 0.0
     timeout_seconds: 30
+    max_retries: 3
+    retry_base_delay_seconds: 1.0
   fallback_models:
     - provider: "litellm"
-      model_id: "openai/gpt-4o-mini"
+      model_id: "test/fallback-1"
       max_tokens: 4096
       temperature: 0.0
-      timeout_seconds: 20
+      timeout_seconds: 30
+      max_retries: 2
+      retry_base_delay_seconds: 1.0
+    - provider: "litellm"
+      model_id: "test/fallback-2"
+      max_tokens: 4096
+      temperature: 0.0
+      timeout_seconds: 30
       max_retries: 2
       retry_base_delay_seconds: 1.0
   embedding_model:
-    model_id: "amazon/titan-embed-text-v2:0"
-    batch_size: 50
+    provider: "litellm"
+    model_id: "test/embedding"
+    dimensions: 1024
+    batch_size: 10
+    timeout_seconds: 30
+    max_retries: 3
+  router:
+    num_retries: 3
+    retry_after: 60
+    allowed_fails: 3
+    cooldown_time: 300
 
 vector_store:
   host: "localhost"
@@ -44,57 +55,150 @@ vector_store:
   ssl_mode: "disable"
   pool_size: 5
   max_overflow: 2
+  pool_timeout_seconds: 30
+  pool_recycle_seconds: 3600
+  hnsw_ef_search: 50
+  hnsw_ef_construction: 100
+  hnsw_m: 8
 
 readers:
+  priority:
+    - "pdfplumber"
+    - "textract"
+    - "tesseract"
+    - "excel"
+    - "csv"
+    - "docx"
   textract:
     async_enabled: false
+    poll_interval_seconds: 5
+    max_poll_attempts: 10
+    feature_types:
+      - "TABLES"
+      - "FORMS"
     region: "us-east-1"
+  tesseract:
+    languages: ["eng"]
+    dpi: 300
+    config: "--psm 6"
+  chunking:
+    strategy: "semantic"
+    max_chunk_tokens: 512
+    overlap_tokens: 50
+    min_chunk_tokens: 50
+    respect_boundaries: true
 
 reranker:
-  provider: "local"  # Cohere is not available in CI
+  provider: "cohere"
+  model: "test"
+  top_n: 10
+  timeout_seconds: 10
+  max_retries: 2
+  batch_size: 50
 
 caches:
   answer_cache:
-    table_name: "answer_cache"
+    table_name: "test-answers"
+    ttl_seconds: 86400
+    key_prefix: "ans:"
     max_entry_size_bytes: 400000
   role_cache:
-    table_name: "role_cache"
+    table_name: "test-roles"
+    ttl_seconds: 3600
+    key_prefix: "role:"
     max_entry_size_bytes: 400000
+    refresh_ahead_seconds: 300
 
 queue:
-  ingestion_queue_url: "http://localhost:4566/000000000000/ingestion"
-  reprocessing_queue_url: "http://localhost:4566/000000000000/reprocessing"
-  reports_queue_url: "http://localhost:4566/000000000000/reports"
-  dead_letter_queue_url: "http://localhost:4566/000000000000/dlq"
+  ingestion_queue_url: "https://sqs.test/ingest"
+  reprocessing_queue_url: "https://sqs.test/reprocess"
+  reports_queue_url: "https://sqs.test/reports"
+  dead_letter_queue_url: "https://sqs.test/dlq"
+  visibility_timeout_seconds: 300
+  max_receive_count: 3
+  batch_size: 10
+  wait_time_seconds: 20
 
 storage:
-  documents_bucket: "documents"
-  reports_bucket: "reports"
-  backups_bucket: "backups"
+  documents_bucket: "test-docs"
+  reports_bucket: "test-reports"
+  backups_bucket: "test-backups"
   region: "us-east-1"
+  presigned_url_expiry_seconds: 3600
+  multipart_threshold_mb: 100
+  multipart_chunksize_mb: 50
 
 auth:
-  user_pool_id: "us-east-1_testpool"
-  client_id: "testclient"
+  user_pool_id: "test"
+  client_id: "test"
   region: "us-east-1"
+  jwks_cache_ttl_seconds: 3600
+  token_verification_clock_skew_seconds: 60
 
 metering:
-  table_name: "metering"
+  table_name: "test-metering"
+  flush_interval_seconds: 60
+  batch_size: 100
 
 observability:
   log_level: "INFO"
   log_format: "json"
   trace_sample_rate: 1.0
-  otlp_endpoint: "http://localhost:4317"
+  service_name: "finsight-ai"
+  otlp_endpoint: ""
+  otlp_headers: {}
   alerts:
-    fallback_model_3_used: false
-    reranker_down: false
-    embedding_retries_exceeded: 10
-    job_in_retry_list: false
-    role_cache_stale_seconds: 86400
+    fallback_model_3_used: true
+    reranker_down: true
+    embedding_retries_exceeded: 3
+    job_in_retry_list: true
+    role_cache_stale_seconds: 7200
 
 security:
   require_company_id_on_all_queries: true
-  pii_detection_enabled: false  # local test fixtures are not production data
-  pii_action: "log"
-  prompt_injection_detection_enabled: false
+  pii_detection_enabled: true
+  pii_action: "mask"
+  prompt_injection_detection_enabled: true
+  max_question_length: 10000
+  max_context_tokens: 100000
+
+ingestion:
+  max_document_size_mb: 100
+  allowed_mime_types: ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "image/png", "image/jpeg", "image/tiff"]
+  virus_scan_enabled: true
+
+documents:
+  categories: ["invoice", "bank_statement", "financial_statement", "budget", "contract", "board_report"]
+  upload_types: ["new", "update"]
+  delta_tracking: true
+  duplicate_check: true
+  version_retention_days: 365
+  deleted_retention_days: 30
+
+retrieval:
+  hybrid_search_enabled: true
+  vector_weight: 0.7
+  keyword_weight: 0.3
+  top_k: 50
+  rerank_top_n: 20
+
+question_flow:
+  first_word_timeout_seconds: 2.0
+  max_wait_seconds: 30
+  evidence_threshold: 0.7
+
+output_gate:
+  per_sentence_citation_check: true
+  number_check_enabled: true
+  block_on_failure: true
+
+consistency:
+  check_interval_seconds: 300
+
+answer_check:
+  enabled: true
+
+access:
+  roles: ["executive_leadership", "corporate_finance_planners", "audit_compliance", "system_admin"]
+  permissions_file: "config/permissions.yaml"
+  role_cache_seconds_privileged: 0

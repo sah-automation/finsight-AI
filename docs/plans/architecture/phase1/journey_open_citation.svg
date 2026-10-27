@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1419" width="100%" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1500" height="1419" fill="#ffffff"/>
+<text x="40" y="44" font-size="25" font-weight="bold" fill="#1f2937" text-anchor="start">FinSight AI, Phase 1: user journey - opening a citation</text>
+<text x="40" y="70" font-size="13" font-weight="normal" fill="#374151" text-anchor="start">Clicking a citation in an answer fetches and renders the cited page or table. Access is re-checked on every fetch; a citation id alone is never enough.</text>
+<text x="40" y="88" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">Standard setup shown. Grounded in phase1_mvp_plan.md (source_viewer) and finsight_mvp_hld.svg (source viewer function).</text>
+<rect x="40" y="104" width="24" height="20" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="72" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Identity, routing, store</text>
+<rect x="262" y="104" width="24" height="20" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="294" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Compute</text>
+<rect x="484" y="104" width="24" height="20" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="516" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Write / tenant create</text>
+<rect x="706" y="104" width="24" height="20" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="738" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Read / answer</text>
+<rect x="928" y="104" width="24" height="20" rx="4" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="960" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Gate that refuses</text>
+<rect x="1150" y="104" width="24" height="20" rx="4" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="1182" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Config, rules, evidence</text>
+<rect x="40" y="140" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="162" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">A. Trigger and auth</text>
+<text x="750.0" y="182" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">The citation link is rendered in the chat; the viewer is authorised before data moves.</text>
+<rect x="40" y="215" width="1420" height="73" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="237" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">User clicks a citation</text>
+<text x="750.0" y="255" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Citation appears as [1] or [Doc - Page X, Table Y] in the streamed answer.</text>
+<text x="750.0" y="268" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">UI calls the source viewer endpoint (GET /documents/{id}/citations/{citation_id}/source).</text>
+<text x="750.0" y="281" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The citation carries enough locator info: document, version, page, table, span.</text>
+<polyline points="750.0,199 750.0,213" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="306" width="1420" height="60" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="328" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Auth and RequestContext</text>
+<text x="750.0" y="346" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Authorizer rebuilds RequestContext from the token (company, user, role, scope).</text>
+<text x="750.0" y="359" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Role checked against permissions.yaml on this call too, not only on the question.</text>
+<polyline points="750.0,290 750.0,304" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="384" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="406" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">B. Authorisation checks (all must pass)</text>
+<text x="750.0" y="426" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">A citation id on its own is never enough. Every check must pass before a single row is read.</text>
+<polyline points="750.0,368 750.0,382" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="459" width="1420" height="73" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="481" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">1. Company check</text>
+<text x="750.0" y="499" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The citation resolves to a document inside the context's company (lock 2).</text>
+<text x="750.0" y="512" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Cross-company, missing, removed, access-denied and temporary-failure cases return the same non-leaking 'not available' state.</text>
+<text x="750.0" y="525" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">company_id comes from the token, never from the request body.</text>
+<polyline points="750.0,443 750.0,457" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="550" width="1420" height="73" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="572" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">2. Role and category check</text>
+<text x="750.0" y="590" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The role may see that document category, per permissions.yaml.</text>
+<text x="750.0" y="603" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A missing permission is denied; there is no default allow, including the separate view-original/download action.</text>
+<text x="750.0" y="616" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Privileged roles are re-checked live, others within 60 seconds.</text>
+<polyline points="750.0,534 750.0,548" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="641" width="1420" height="60" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="663" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">3. Version check</text>
+<text x="750.0" y="681" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The cited version is visible: not soft-deleted and usable without a version note.</text>
+<text x="750.0" y="694" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The viewer opens the version the answer cited (old versions kept 365 days); show 'a newer version exists, view it' if needed.</text>
+<polyline points="750.0,625 750.0,639" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="719" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="741" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">C. Fetch and render</text>
+<text x="750.0" y="761" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Original content is read only after all checks pass.</text>
+<polyline points="750.0,703 750.0,717" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="794" width="1420" height="73" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="750.0" y="816" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Fetch cited content</text>
+<text x="750.0" y="834" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">application/source_viewer fetches text, table or page for that citation.</text>
+<text x="750.0" y="847" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Reads the cited page/table from the database first; S3 is signed only for 'view original file'.</text>
+<text x="750.0" y="860" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Tables stay as tables (HTML/JSON), never flattened to text.</text>
+<polyline points="750.0,778 750.0,792" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="885" width="1420" height="73" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="907" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Sign a short-lived link</text>
+<text x="750.0" y="925" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Any signed S3 link is short-lived, single-file, and never written to logs.</text>
+<text x="750.0" y="938" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Download is re-authorised before it is signed.</text>
+<text x="750.0" y="951" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Links cover one file and expire quickly.</text>
+<polyline points="750.0,869 750.0,883" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="976" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="998" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Render in source viewer</text>
+<text x="750.0" y="1016" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Modal, side panel or page: document title, page, table, cited span highlight, and a 'needs review' badge if flagged.</text>
+<text x="750.0" y="1029" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Respects the current user's company and role.</text>
+<text x="750.0" y="1042" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Cross-company access attempts are blocked and tested.</text>
+<polyline points="750.0,960 750.0,974" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1067" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1089" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">D. Audit and protections</text>
+<text x="750.0" y="1109" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Every fetch is attributable. No data leaves without a record.</text>
+<polyline points="750.0,1051 750.0,1065" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1142" width="1420" height="60" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1164" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Audit log</text>
+<text x="750.0" y="1182" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Citation open is recorded with company, user, role and citation id.</text>
+<text x="750.0" y="1195" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Denied attempts are logged too; signed links themselves are never logged.</text>
+<polyline points="750.0,1126 750.0,1140" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1220" width="1420" height="73" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1242" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Protections</text>
+<text x="750.0" y="1260" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Output gate, company filter and RLS all stay on; none are switches.</text>
+<text x="750.0" y="1273" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A guessed citation id returns zero rows, never an existence signal.</text>
+<text x="750.0" y="1286" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No sensitive data in logs; metering records Lambda and storage use.</text>
+<polyline points="750.0,1204 750.0,1218" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1311" width="1420" height="60" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1333" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Performance and acceptance</text>
+<text x="750.0" y="1351" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Source viewer returns renderable content for the Phase 1 acceptance criteria.</text>
+<text x="750.0" y="1364" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Part of the cross-company isolation test across every endpoint.</text>
+<polyline points="750.0,1295 750.0,1309" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+</svg>

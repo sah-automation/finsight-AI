@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1936" width="100%" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1500" height="1936" fill="#ffffff"/>
+<text x="40" y="44" font-size="25" font-weight="bold" fill="#1f2937" text-anchor="start">FinSight AI, Phase 1: user journey - asking a question</text>
+<text x="40" y="70" font-size="13" font-weight="normal" fill="#374151" text-anchor="start">Chat question in, cited answer out. Numbers come from code only. Answers cite the latest final document version or return 'insufficient data'.</text>
+<text x="40" y="88" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">Standard setup shown; pilot uses Gemini (primary, embeddings), Groq (cheap), NVIDIA NIM (fallback and reranker).</text>
+<rect x="40" y="104" width="24" height="20" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="72" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Identity, routing, store</text>
+<rect x="262" y="104" width="24" height="20" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="294" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Compute</text>
+<rect x="484" y="104" width="24" height="20" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="516" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Write / tenant create</text>
+<rect x="706" y="104" width="24" height="20" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="738" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Read / answer</text>
+<rect x="928" y="104" width="24" height="20" rx="4" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="960" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Gate that refuses</text>
+<rect x="1150" y="104" width="24" height="20" rx="4" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="1182" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Config, rules, evidence</text>
+<rect x="40" y="140" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="162" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">A. Entry, identity and input gate</text>
+<text x="750.0" y="182" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Every request carries auth context mapped to RequestContext.</text>
+<rect x="40" y="215" width="1420" height="73" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="237" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Chat screen to question endpoint</text>
+<text x="750.0" y="255" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">User types a question in the chat screen (Next.js).</text>
+<text x="750.0" y="268" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Auth rides every request; the authorizer builds RequestContext (company, user, role, scope, cell, trace id).</text>
+<text x="750.0" y="281" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Role checked against config/permissions.yaml on every call.</text>
+<polyline points="750.0,199 750.0,213" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="306" width="1420" height="73" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="328" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Input gate</text>
+<text x="750.0" y="346" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Prompt-trick and prompt-injection checks; PII checks.</text>
+<text x="750.0" y="359" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Runs before any model or search.</text>
+<text x="750.0" y="372" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Failure exits: blocked question, busy queue, embedding down, all models down, failed output gate, and a cut-off stream each return a clear message.</text>
+<polyline points="750.0,290 750.0,304" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="397" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="419" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">B. Cache and waiting line</text>
+<text x="750.0" y="439" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Fast answers where possible; fair queuing for heavy work.</text>
+<polyline points="750.0,381 750.0,395" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="472" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="494" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Answer cache check</text>
+<text x="750.0" y="512" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Key: company + role + access scope + question hash + document stamp.</text>
+<text x="750.0" y="525" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">BASE is fine for the cache; company and role are re-checked on read.</text>
+<text x="750.0" y="538" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A cache hit streams the stored answer with its citations; a stamped move makes old keys unaddressable. Conflicting numbers show both with citations; draft-only answers are labeled draft; 'needs review' chunks are excluded or flagged.</text>
+<polyline points="750.0,456 750.0,470" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="563" width="1420" height="73" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="750.0" y="585" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Waiting line (heavy work only)</text>
+<text x="750.0" y="603" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Quick questions first, fair share per company.</text>
+<text x="750.0" y="616" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Waits a few seconds, then returns a 'busy' message rather than blocking.</text>
+<text x="750.0" y="629" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Per-company job cap prevents one load from starving others.</text>
+<polyline points="750.0,547 750.0,561" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="654" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="676" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">C. Retrieve and calculate (numbers from code only)</text>
+<text x="750.0" y="696" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Hybrid search inside the company's partition; input gate, understand and embedding start together, and calculate runs beside search.</text>
+<polyline points="750.0,638 750.0,652" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="729" width="1420" height="60" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="751" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Understand the question</text>
+<text x="750.0" y="769" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Finds the company, period and metric; relative periods are resolved by code, and a missing period triggers clarification.</text>
+<text x="750.0" y="782" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Company comes from RequestContext, never from the question text.</text>
+<polyline points="750.0,713 750.0,727" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="807" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="829" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Embed the question</text>
+<text x="750.0" y="847" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Gemini embeddings behind the port, retry logic from config.</text>
+<text x="750.0" y="860" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The embedding model version is stored.</text>
+<text x="750.0" y="873" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">An embedding failure returns a clear message rather than a silent miss.</text>
+<polyline points="750.0,791 750.0,805" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="898" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="920" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Hybrid search (company first)</text>
+<text x="750.0" y="938" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Vector plus keyword search via one search interface; company id first.</text>
+<text x="750.0" y="951" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Runs inside that company's partition and its own vector index (lock 1); role-accessible categories filter search and evidence.</text>
+<text x="750.0" y="964" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Neighbour rows are never candidates.</text>
+<polyline points="750.0,882 750.0,896" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="989" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="1011" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Rerank (cross-encoder)</text>
+<text x="750.0" y="1029" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">NVIDIA NIM reranker scores each (question, chunk) pair in region.</text>
+<text x="750.0" y="1042" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">If the reranker is down: fall back to search order and alert.</text>
+<text x="750.0" y="1055" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Rerank sees only the chunks the company-scoped search returned.</text>
+<polyline points="750.0,973 750.0,987" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1080" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="1102" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Calculate with code</text>
+<text x="750.0" y="1120" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">SQL and pandas do all the maths inside the same tenant context.</text>
+<text x="750.0" y="1133" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The model may repeat a figure from code output or a cited chunk, nothing else.</text>
+<text x="750.0" y="1146" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Calculation uses extracted figures and committed rows from the same company/period; units and currency are checked, and missing inputs become 'insufficient data'.</text>
+<polyline points="750.0,1064 750.0,1078" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1171" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1193" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">D. Evidence gate, model and output gate</text>
+<text x="750.0" y="1213" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">The answer is refused or corrected when evidence is weak.</text>
+<polyline points="750.0,1155 750.0,1169" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1246" width="1420" height="60" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="1268" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Enough evidence?</text>
+<text x="750.0" y="1286" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">If the rerank score is too low, reply 'insufficient data' instead of guessing.</text>
+<text x="750.0" y="1299" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">For number answers, evidence is enough only when it resolves to cited extracted figures or code inputs; otherwise 'insufficient data'.</text>
+<polyline points="750.0,1230 750.0,1244" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1324" width="1420" height="60" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="750.0" y="1346" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Model router</text>
+<text x="750.0" y="1364" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Cheap or strong model based on the question (Groq fast path, Gemini primary).</text>
+<text x="750.0" y="1377" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Routing and fallbacks configured; pilot providers are Gemini, Groq and NVIDIA NIM.</text>
+<polyline points="750.0,1308 750.0,1322" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1402" width="1420" height="60" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="750.0" y="1424" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Model gateway (LiteLLM)</text>
+<text x="750.0" y="1442" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">In-region only; fallback chain ends in a small self-hosted last resort.</text>
+<text x="750.0" y="1455" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">First-token, p95 3s, p99 5s, p99.9 7s targets enforced.</text>
+<polyline points="750.0,1386 750.0,1400" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1480" width="1420" height="73" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="1502" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Output gate and stream</text>
+<text x="750.0" y="1520" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Checks citations, numbers and PII, then streams.</text>
+<text x="750.0" y="1533" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A failed check: one retry before the first sentence, else 'insufficient data'.</text>
+<text x="750.0" y="1546" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The output gate has no off value in config.</text>
+<polyline points="750.0,1464 750.0,1478" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1571" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1593" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">E. Citations and delivery</text>
+<text x="750.0" y="1613" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Every answer carries verifiable citations (document, page, table).</text>
+<polyline points="750.0,1555 750.0,1569" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1646" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="1668" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Answer with citations</text>
+<text x="750.0" y="1686" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The Answer entity cannot exist without citations (first-class).</text>
+<text x="750.0" y="1699" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Citations are clickable (e.g. [1], [Doc - Page X, Table Y]) and open the source viewer.</text>
+<text x="750.0" y="1712" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Answer cites the latest final document version.</text>
+<polyline points="750.0,1630 750.0,1644" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1737" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="1759" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Cache the answer</text>
+<text x="750.0" y="1777" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Stored under the full cache key only after the output gate passes; 'insufficient data' replies are not cached.</text>
+<text x="750.0" y="1790" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Upload, update or delete moves the stamp, so stale answers become unaddressable.</text>
+<text x="750.0" y="1803" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Metering records model, embedding and rerank usage.</text>
+<polyline points="750.0,1721 750.0,1735" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1828" width="1420" height="60" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1850" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Performance and accuracy bar</text>
+<text x="750.0" y="1868" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Typical question under 15 seconds; golden set of 100+ questions at 95% numeric accuracy.</text>
+<text x="750.0" y="1881" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Every release runs the golden set; a score drop blocks release.</text>
+<polyline points="750.0,1812 750.0,1826" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+</svg>

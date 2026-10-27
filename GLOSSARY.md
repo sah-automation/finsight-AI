@@ -12,3 +12,7 @@
 | Switch | Config-driven feature flag with both ON/OFF paths tested. |
 | RAG | Retrieval-Augmented Generation combining vector/keyword search with LLM. |
 | pgvector | PostgreSQL extension for vector similarity search. |
+| Document library | Searchable collection of company documents with metadata and lifecycle actions. |
+| Recycle bin | Temporary holding area for soft-deleted documents during `deleted_retention_days`. |
+| Soft delete | Marking a document and its chunks unavailable to retrieval while retaining them for audit/restore. |
+| Purge | Permanent removal of chunks, vectors, metrics and cache after retention or on demand. |

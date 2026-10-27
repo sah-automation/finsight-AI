@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 2531" width="100%" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1500" height="2531" fill="#ffffff"/>
+<text x="40" y="44" font-size="25" font-weight="bold" fill="#1f2937" text-anchor="start">FinSight AI, Phase 1: user journey - uploading a document</text>
+<text x="40" y="70" font-size="13" font-weight="normal" fill="#374151" text-anchor="start">Strict upload form, tenant and duplicate gates, virus scan, then an idempotent Step Functions ingestion pipeline that commits in one transaction.</text>
+<text x="40" y="88" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">Standard setup shown; pilot uses 1 cell. Grounded in phase1_mvp_plan.md (D3, D4, D5, D6) and the upload flow in finsight_mvp_hld.svg.</text>
+<rect x="40" y="104" width="24" height="20" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="72" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Identity, routing, store</text>
+<rect x="262" y="104" width="24" height="20" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="294" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Compute</text>
+<rect x="484" y="104" width="24" height="20" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="516" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Write / tenant create</text>
+<rect x="706" y="104" width="24" height="20" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="738" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Read / answer</text>
+<rect x="928" y="104" width="24" height="20" rx="4" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="960" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Gate that refuses</text>
+<rect x="1150" y="104" width="24" height="20" rx="4" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="1182" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Config, rules, evidence</text>
+<rect x="40" y="140" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="162" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">A. Upload form and input gate</text>
+<text x="750.0" y="182" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">The upload form is strict. Validation happens before any bytes are stored.</text>
+<rect x="40" y="215" width="1420" height="86" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="237" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Upload form fields</text>
+<text x="750.0" y="255" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">company_id (from token, never from body), document_category (from documents.categories).</text>
+<text x="750.0" y="268" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">period (YYYY-QX or YYYY-MM), status (draft|final), upload_type (new|update).</text>
+<text x="750.0" y="281" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">replaces_document_id (required when update), file picker: PDF, scanned PDF, Excel, CSV, DOCX.</text>
+<text x="750.0" y="294" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Allowed extensions and size limits enforced; metadata validated against config/permissions.yaml.</text>
+<polyline points="750.0,199 750.0,213" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="319" width="1420" height="73" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="341" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Input gate (rejects early)</text>
+<text x="750.0" y="359" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">File type and size check, category exists, role may access that category and action.</text>
+<text x="750.0" y="372" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Unknown category or unknown role stops the request; it never defaults.</text>
+<text x="750.0" y="385" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No question text, chunk text, PII or answer content in logs.</text>
+<polyline points="750.0,303 750.0,317" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="410" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="432" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">B. Onboarding and duplicate gates</text>
+<text x="750.0" y="452" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">The tenancy and version rules are enforced before storage.</text>
+<polyline points="750.0,394 750.0,408" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="485" width="1420" height="60" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="507" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Onboarding gate</text>
+<text x="750.0" y="525" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The company partition must exist, else the upload is refused with a clear 'partition missing' error.</text>
+<text x="750.0" y="538" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No S3 object is saved and no job is queued while the partition is missing.</text>
+<polyline points="750.0,469 750.0,483" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="563" width="1420" height="73" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="585" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Duplicate check</text>
+<text x="750.0" y="603" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Same file hash, or same company/category/period/name, is detected.</text>
+<text x="750.0" y="616" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The API suggests an update instead of silently overwriting.</text>
+<text x="750.0" y="629" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The upload form surfaces the warning and lets the user confirm.</text>
+<polyline points="750.0,547 750.0,561" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="654" width="1420" height="86" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="676" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Versioning and delta tracking (D5)</text>
+<text x="750.0" y="694" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Every update creates a new version; answers cite the latest final version.</text>
+<text x="750.0" y="707" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Pages and chunks are hashed; stable chunk ids; only changed chunks are embedded.</text>
+<text x="750.0" y="720" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Old versions kept for version_retention_days (365); delete is soft for deleted_retention_days (30).</text>
+<text x="750.0" y="733" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Delta tracking has both true and false paths; both are implemented and tested.</text>
+<polyline points="750.0,638 750.0,652" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="758" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="780" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">C. Pre-signed upload, virus scan, then queue</text>
+<text x="750.0" y="800" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Bytes go to S3 first; the job is queued only after the scan passes.</text>
+<polyline points="750.0,742 750.0,756" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="833" width="1420" height="73" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="855" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Pre-signed S3 upload link</text>
+<text x="750.0" y="873" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Returns a short-lived, single-file pre-signed link.</text>
+<text x="750.0" y="886" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Object lands under &lt;company_id&gt;/&lt;document_id&gt;/&lt;version&gt;/, KMS encrypted.</text>
+<text x="750.0" y="899" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">One bucket per environment and region, one folder per company.</text>
+<polyline points="750.0,817 750.0,831" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="924" width="1420" height="73" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="946" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Virus scan at upload</text>
+<text x="750.0" y="964" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Runs after the file lands in S3, before any queue entry.</text>
+<text x="750.0" y="977" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Rejects the upload before the job is queued if the scan fails.</text>
+<text x="750.0" y="990" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No job is ever queued for an infected or rejected file.</text>
+<polyline points="750.0,908 750.0,922" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1015" width="1420" height="73" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="750.0" y="1037" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Enqueue (SQS + Step Functions)</text>
+<text x="750.0" y="1055" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">One queue per cell, with a per-company cap on running jobs (5.21).</text>
+<text x="750.0" y="1068" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Failed jobs go to a retry list and raise an alert; retries are safe to repeat.</text>
+<text x="750.0" y="1081" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The job carries the company id; the worker rebuilds RequestContext.</text>
+<polyline points="750.0,999 750.0,1013" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1106" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1128" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">D. Ingestion pipeline (Step Functions, one worker per step)</text>
+<text x="750.0" y="1148" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Read, delta, chunk, embed, save and cascade are separate handlers. Every step is safe to repeat.</text>
+<polyline points="750.0,1090 750.0,1104" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1181" width="1420" height="73" rx="8" fill="#FFFFFF" stroke="#888780" stroke-width="1"/>
+<text x="750.0" y="1203" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">4a Detect type and route pages</text>
+<text x="750.0" y="1221" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Table and layout heavy pages go to the table reader; text pages to the cheap reader.</text>
+<text x="750.0" y="1234" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Scanned pages route to the scan reader (pilot Tesseract, standard Textract; config-selected).</text>
+<text x="750.0" y="1247" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Both routed and non-routed paths are implemented and tested.</text>
+<polyline points="750.0,1165 750.0,1179" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1272" width="1420" height="73" rx="8" fill="#FFFFFF" stroke="#888780" stroke-width="1"/>
+<text x="750.0" y="1294" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">4b Delta check (updates only)</text>
+<text x="750.0" y="1312" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Hash raw pages and chunk ids first; skip unchanged pages (no full read).</text>
+<text x="750.0" y="1325" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Duplicate files are flagged rather than silently re-ingested.</text>
+<text x="750.0" y="1338" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Embed only new or changed chunks.</text>
+<polyline points="750.0,1256 750.0,1270" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1363" width="1420" height="73" rx="8" fill="#FFFFFF" stroke="#888780" stroke-width="1"/>
+<text x="750.0" y="1385" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">4c Extract text and tables</text>
+<text x="750.0" y="1403" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">pdfplumber for born-digital PDFs; scan reader is Tesseract in pilot, Textract in standard; parsers for Excel, CSV, DOCX.</text>
+<text x="750.0" y="1416" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Each extracted number carries a confidence score; low confidence flags needs_review, never guessed.</text>
+<text x="750.0" y="1429" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Page numbers and tables are preserved for citations.</text>
+<polyline points="750.0,1347 750.0,1361" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1454" width="1420" height="73" rx="8" fill="#FFFFFF" stroke="#888780" stroke-width="1"/>
+<text x="750.0" y="1476" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">4d Tag metadata</text>
+<text x="750.0" y="1494" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Company, period, category, currency, units attached.</text>
+<text x="750.0" y="1507" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Missing metadata flags needs_review rather than being guessed.</text>
+<text x="750.0" y="1520" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Status (draft/final) and upload type are validated at the API.</text>
+<polyline points="750.0,1438 750.0,1452" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1545" width="1420" height="73" rx="8" fill="#FFFFFF" stroke="#888780" stroke-width="1"/>
+<text x="750.0" y="1567" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">4e Chunk by structure</text>
+<text x="750.0" y="1585" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Headings and paragraphs; tables are never split.</text>
+<text x="750.0" y="1598" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Parent-child chunks with stable chunk ids.</text>
+<text x="750.0" y="1611" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Context header plus child chunk (size from config).</text>
+<polyline points="750.0,1529 750.0,1543" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1636" width="1420" height="73" rx="8" fill="#FFFFFF" stroke="#888780" stroke-width="1"/>
+<text x="750.0" y="1658" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">4f Embed chunks</text>
+<text x="750.0" y="1676" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Gemini embeddings behind the port (D9), retry logic from config.</text>
+<text x="750.0" y="1689" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Embeddings run in batches; failures retry, then wait in the retry list.</text>
+<text x="750.0" y="1702" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Embedding model version is stored for reprocessing.</text>
+<polyline points="750.0,1620 750.0,1634" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1727" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1749" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">E. Transactional save, cascade and status</text>
+<text x="750.0" y="1769" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Aurora is the source of truth. Commit, then ready.</text>
+<polyline points="750.0,1711 750.0,1725" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1802" width="1420" height="73" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="750.0" y="1824" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">4g Save in one transaction</text>
+<text x="750.0" y="1842" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Chunks, vectors (pgvector), extracted numbers, version and job status commit together.</text>
+<text x="750.0" y="1855" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Lock 1 places rows in one partition; lock 2 stops any other read returning them.</text>
+<text x="750.0" y="1868" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Job is marked done only after the commit.</text>
+<polyline points="750.0,1786 750.0,1800" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1893" width="1420" height="73" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="750.0" y="1915" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">4h Cascade (updates only)</text>
+<text x="750.0" y="1933" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Recompute metrics, clear cached answers, mark dependents stale, flag related documents.</text>
+<text x="750.0" y="1946" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Other documents in the same company/period are flagged 'may be affected', never edited automatically.</text>
+<text x="750.0" y="1959" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The stamp moves in the same transaction, so old cache keys become unaddressable.</text>
+<polyline points="750.0,1877 750.0,1891" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1984" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="2006" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Cache invalidation</text>
+<text x="750.0" y="2024" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Upload, update or a deletion clears the answers that depend on the old stamp.</text>
+<text x="750.0" y="2037" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Answer cache key includes company, role, scope, question hash and the document stamp.</text>
+<text x="750.0" y="2050" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Cache reads re-check company and role before returning.</text>
+<polyline points="750.0,1968 750.0,1982" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="2075" width="1420" height="60" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="750.0" y="2097" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Status reporting</text>
+<text x="750.0" y="2115" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Status endpoint: Aurora is the truth; progress and queue place come from the DynamoDB rebuildable view.</text>
+<text x="750.0" y="2128" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Returns progress, queue place and errors for a job or document.</text>
+<polyline points="750.0,2059 750.0,2073" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="2153" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="2175" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">F. Delete, reprocess and protections</text>
+<text x="750.0" y="2195" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Every update creates a new version. Delete is soft first, hard later.</text>
+<polyline points="750.0,2137 750.0,2151" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="2228" width="1420" height="73" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="2250" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Delete (soft then purge)</text>
+<text x="750.0" y="2268" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Soft delete for deleted_retention_days (30), then purge chunks, vectors and metrics.</text>
+<text x="750.0" y="2281" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Answer cache cleared on delete; the audit entry stays.</text>
+<text x="750.0" y="2294" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Idempotent: repeated delete requests do no harm.</text>
+<polyline points="750.0,2212 750.0,2226" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="2319" width="1420" height="73" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="2341" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Reprocess (rolling)</text>
+<text x="750.0" y="2359" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Rolling reprocess after a chunking or embedding change, a few companies at a time.</text>
+<text x="750.0" y="2372" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Lower priority than live questions; safe to repeat without duplicate chunks.</text>
+<text x="750.0" y="2385" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No duplicate chunks because chunk ids are stable.</text>
+<polyline points="750.0,2303 750.0,2317" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="2410" width="1420" height="73" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="2432" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Protections that stay on</text>
+<text x="750.0" y="2450" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">company_id on every repository, search, cache, queue and storage call.</text>
+<text x="750.0" y="2463" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Output gate is never disabled; metering and audit log always on.</text>
+<text x="750.0" y="2476" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">All readers are first class; pilot flags toggle, they never delete code paths.</text>
+<polyline points="750.0,2394 750.0,2408" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+</svg>

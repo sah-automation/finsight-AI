@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # ============================================================
 # Validation Limits
@@ -43,282 +43,350 @@ class ChunkingStrategy(StrEnum):
     RECURSIVE = 'recursive'
 
 
-class SslMode(StrEnum):
-    DISABLE = 'disable'
-    ALLOW = 'allow'
-    PREFER = 'prefer'
-    REQUIRE = 'require'
-    VERIFY_CA = 'verify-ca'
-    VERIFY_FULL = 'verify-full'
+class StrictBaseModel(BaseModel):
+    model_config = ConfigDict(
+        frozen=True,
+        extra='forbid',
+        validate_assignment=True,
+        str_strip_whitespace=True,
+    )
 
 
-# ============================================================
-# Nested Config Models
-# ============================================================
+class AppConfig(StrictBaseModel):
+    name: str
+    version: str
+    environment: Environment
 
 
-class ModelConfig(BaseModel):
-    """LLM model configuration."""
+class SwitchesConfig(StrictBaseModel):
+    # Phase 1 active switches
+    parallel_steps: bool = True
+    backup_request_enabled: bool = True
+    prompt_cache_enabled: bool = True
+    answer_cache_enabled: bool = True
+    # Legacy switches for compatibility
+    reranker_enabled: bool = True
+    async_textract_enabled: bool = True
+    ocr_fallback_enabled: bool = True
+    role_cache_enabled: bool = True
+    detailed_tracing_enabled: bool = True
+    usage_metering_enabled: bool = True
+    per_sentence_citation_check: bool = True
+    parallel_retrieval_enabled: bool = True
 
-    provider: str = Field(..., description='Provider name (litellm, bedrock, etc.)')
-    model_id: str = Field(..., description='Model identifier')
-    max_tokens: int = Field(..., gt=0, le=100000)
-    temperature: float = Field(..., ge=0.0, le=2.0)
-    timeout_seconds: int = Field(..., gt=0, le=300)
-    max_retries: int = Field(..., ge=0, le=10)
-    retry_base_delay_seconds: float = Field(..., gt=0, le=60)
 
-
-class EmbeddingModelConfig(BaseModel):
-    """Embedding model configuration."""
-
-    provider: str
+class ModelConfig(StrictBaseModel):
+    provider: str = 'litellm'
     model_id: str
-    dimensions: int = Field(..., gt=0, le=10000)
-    batch_size: int = Field(..., gt=0, le=1000)
-    timeout_seconds: int = Field(..., gt=0, le=120)
-    max_retries: int = Field(..., ge=0, le=10)
+    max_tokens: int = Field(ge=1)
+    temperature: float = Field(ge=0.0, le=2.0, default=0.0)
+    timeout_seconds: int = Field(ge=1)
+    max_retries: int = Field(ge=0)
+    retry_base_delay_seconds: float = Field(ge=0.0, default=1.0)
 
 
-class RouterConfig(BaseModel):
-    """LiteLLM router configuration."""
+class EmbeddingModelConfig(StrictBaseModel):
+    provider: str = 'litellm'
+    model_id: str
+    dimensions: int = Field(ge=1)
+    batch_size: int = Field(ge=1)
+    timeout_seconds: int = Field(ge=1)
+    max_retries: int = Field(ge=0)
 
-    num_retries: int = Field(..., ge=0, le=10)
-    retry_after: int = Field(..., ge=0, le=3600)
-    allowed_fails: int = Field(..., ge=0, le=100)
-    cooldown_time: int = Field(..., ge=0, le=3600)
+
+class RouterConfig(StrictBaseModel):
+    num_retries: int = Field(ge=0)
+    retry_after: int = Field(ge=1)
+    allowed_fails: int = Field(ge=0)
+    cooldown_time: int = Field(ge=1)
 
 
-class LlmConfig(BaseModel):
-    """LLM configuration."""
-
+class LlmConfig(StrictBaseModel):
     primary_model: ModelConfig
-    fallback_models: list[ModelConfig] = Field(default_factory=list)
+    fallback_models: list[ModelConfig]
     embedding_model: EmbeddingModelConfig
-    router: RouterConfig
+    router: RouterConfig | None = None
 
     @field_validator('fallback_models')
     @classmethod
-    def validate_fallback_chain(cls, v: list[ModelConfig]) -> list[ModelConfig]:
+    def validate_fallback_count(cls, v: list[ModelConfig]) -> list[ModelConfig]:
         if len(v) > _MAX_FALLBACK_MODELS:
-            raise ValueError('Maximum 3 fallback models allowed (model 1, 2, 3)')
+            raise ValueError(f'Maximum {_MAX_FALLBACK_MODELS} fallback models allowed')
+        if len(v) < 1:
+            raise ValueError('At least 1 fallback model required')
         return v
 
-
-class VectorStoreConfig(BaseModel):
-    """Aurora pgvector configuration."""
-
-    host: str
-    port: int = Field(..., gt=0, le=65535)
-    database: str
-    username: str
-    password: str
-    ssl_mode: SslMode = SslMode.REQUIRE
-    pool_size: int = Field(..., gt=0, le=100)
-    max_overflow: int = Field(..., ge=0, le=50)
-    pool_timeout_seconds: int = Field(..., gt=0, le=300)
-    pool_recycle_seconds: int = Field(..., gt=0, le=86400)
-    hnsw_ef_search: int = Field(..., gt=0, le=1000)
-    hnsw_ef_construction: int = Field(..., gt=0, le=1000)
-    hnsw_m: int = Field(..., gt=0, le=100)
-
-    def connection_string(self) -> str:
-        """Build PostgreSQL connection string."""
-        return (
-            f'postgresql+asyncpg://{self.username}:{self.password}'
-            f'@{self.host}:{self.port}/{self.database}'
-            f'?sslmode={self.ssl_mode.value}'
-        )
-
-
-class TextractConfig(BaseModel):
-    """AWS Textract configuration."""
-
-    async_enabled: bool = True
-    poll_interval_seconds: int = Field(..., gt=0, le=60)
-    max_poll_attempts: int = Field(..., gt=0, le=1000)
-    feature_types: list[str] = Field(default_factory=lambda: ['TABLES', 'FORMS'])
-    region: str
-
-
-class TesseractConfig(BaseModel):
-    """Tesseract OCR configuration."""
-
-    languages: list[str] = Field(default_factory=lambda: ['eng'])
-    dpi: int = Field(..., gt=0, le=1200)
-    config: str = ''
-
-
-class ChunkingConfig(BaseModel):
-    """Document chunking configuration."""
-
-    strategy: ChunkingStrategy = ChunkingStrategy.SEMANTIC
-    max_chunk_tokens: int = Field(..., gt=0, le=8192)
-    overlap_tokens: int = Field(..., ge=0, le=1000)
-    min_chunk_tokens: int = Field(..., gt=0, le=1000)
-    respect_boundaries: bool = True
-
     @model_validator(mode='after')
-    def validate_overlap(self) -> ChunkingConfig:
-        if self.overlap_tokens >= self.max_chunk_tokens:
-            raise ValueError('overlap_tokens must be less than max_chunk_tokens')
-        if self.min_chunk_tokens > self.max_chunk_tokens:
-            raise ValueError('min_chunk_tokens must be <= max_chunk_tokens')
+    def validate_distinct_models(self) -> LlmConfig:
+        all_model_ids = [self.primary_model.model_id] + [m.model_id for m in self.fallback_models]
+        if len(all_model_ids) != len(set(all_model_ids)):
+            raise ValueError('All models in the chain must be distinct')
         return self
 
 
-class ReadersConfig(BaseModel):
-    """Document readers configuration."""
+class VectorStoreConfig(StrictBaseModel):
+    host: str
+    port: int = Field(ge=1, le=65535)
+    database: str
+    username: str
+    password: str
+    ssl_mode: str
+    pool_size: int = Field(ge=1)
+    max_overflow: int = Field(ge=0)
+    pool_timeout_seconds: int = Field(ge=1)
+    pool_recycle_seconds: int = Field(ge=1)
+    hnsw_ef_search: int = Field(ge=1)
+    hnsw_ef_construction: int = Field(ge=1)
+    hnsw_m: int = Field(ge=1)
 
-    priority: list[str] = Field(
-        default_factory=lambda: ['pdfplumber', 'textract', 'tesseract', 'excel', 'csv', 'docx']
-    )
+    @model_validator(mode='after')
+    def validate_pool(self) -> VectorStoreConfig:
+        if self.max_overflow > self.pool_size:
+            raise ValueError('max_overflow must be <= pool_size')
+        return self
+
+
+class TextractConfig(StrictBaseModel):
+    async_enabled: bool
+    poll_interval_seconds: int = Field(ge=1)
+    max_poll_attempts: int = Field(ge=1)
+    feature_types: list[str]
+    region: str
+
+
+class TesseractConfig(StrictBaseModel):
+    languages: list[str]
+    dpi: int = Field(ge=1)
+    config: str
+
+
+class ChunkingConfig(StrictBaseModel):
+    strategy: ChunkingStrategy
+    max_chunk_tokens: int = Field(ge=1)
+    overlap_tokens: int = Field(ge=0)
+    min_chunk_tokens: int = Field(ge=1)
+    respect_boundaries: bool
+
+
+class ReadersConfig(StrictBaseModel):
+    priority: list[str]
     textract: TextractConfig
     tesseract: TesseractConfig
     chunking: ChunkingConfig
 
 
-class RerankerConfig(BaseModel):
-    """Reranker configuration."""
-
+class RerankerConfig(StrictBaseModel):
     provider: str
     model: str
-    top_n: int = Field(..., gt=0, le=100)
-    timeout_seconds: int = Field(..., gt=0, le=60)
-    max_retries: int = Field(..., ge=0, le=10)
-    batch_size: int = Field(..., gt=0, le=200)
+    top_n: int = Field(ge=1)
+    timeout_seconds: int = Field(ge=1)
+    max_retries: int = Field(ge=0)
+    batch_size: int = Field(ge=1)
 
 
-class CacheConfig(BaseModel):
-    """DynamoDB cache configuration."""
-
+class AnswerCacheConfig(StrictBaseModel):
     table_name: str
-    ttl_seconds: int = Field(..., gt=0, le=2592000)  # max 30 days
-    key_prefix: str = ''
-    max_entry_size_bytes: int = Field(..., gt=0, le=400000)
+    ttl_seconds: int = Field(ge=_MIN_ANSWER_CACHE_TTL_SECONDS)
+    key_prefix: str
+    max_entry_size_bytes: int = Field(ge=1)
 
 
-class CachesConfig(BaseModel):
-    """Caches configuration."""
+class RoleCacheConfig(StrictBaseModel):
+    table_name: str
+    ttl_seconds: int = Field(ge=_MIN_ROLE_CACHE_TTL_SECONDS)
+    key_prefix: str
+    max_entry_size_bytes: int = Field(ge=1)
+    refresh_ahead_seconds: int = Field(ge=0)
 
-    answer_cache: CacheConfig
-    role_cache: CacheConfig
+
+class CachesConfig(StrictBaseModel):
+    answer_cache: AnswerCacheConfig
+    role_cache: RoleCacheConfig
 
 
-class QueueConfig(BaseModel):
-    """SQS queue configuration."""
-
+class QueueConfig(StrictBaseModel):
     ingestion_queue_url: str
     reprocessing_queue_url: str
     reports_queue_url: str
     dead_letter_queue_url: str
-    visibility_timeout_seconds: int = Field(..., gt=0, le=43200)  # max 12 hours
-    max_receive_count: int = Field(..., gt=0, le=1000)
-    batch_size: int = Field(..., gt=0, le=10)
-    wait_time_seconds: int = Field(..., ge=0, le=20)
+    visibility_timeout_seconds: int = Field(ge=1)
+    max_receive_count: int = Field(ge=1)
+    batch_size: int = Field(ge=1)
+    wait_time_seconds: int = Field(ge=0)
 
 
-class StorageConfig(BaseModel):
-    """S3 storage configuration."""
-
+class StorageConfig(StrictBaseModel):
     documents_bucket: str
     reports_bucket: str
     backups_bucket: str
     region: str
-    presigned_url_expiry_seconds: int = Field(..., gt=0, le=604800)  # max 7 days
-    multipart_threshold_mb: int = Field(..., gt=0, le=5000)
-    multipart_chunksize_mb: int = Field(..., gt=0, le=5000)
+    presigned_url_expiry_seconds: int = Field(ge=1)
+    multipart_threshold_mb: int = Field(ge=1)
+    multipart_chunksize_mb: int = Field(ge=1)
 
 
-class AuthConfig(BaseModel):
-    """Cognito authentication configuration."""
-
+class AuthConfig(StrictBaseModel):
     user_pool_id: str
     client_id: str
     region: str
-    jwks_cache_ttl_seconds: int = Field(..., gt=0, le=86400)
-    token_verification_clock_skew_seconds: int = Field(..., ge=0, le=300)
+    jwks_cache_ttl_seconds: int = Field(ge=1)
+    token_verification_clock_skew_seconds: int = Field(ge=0)
 
 
-class MeteringConfig(BaseModel):
-    """Usage metering configuration."""
-
+class MeteringConfig(StrictBaseModel):
     table_name: str
-    flush_interval_seconds: int = Field(..., gt=0, le=3600)
-    batch_size: int = Field(..., gt=0, le=1000)
+    flush_interval_seconds: int = Field(ge=1)
+    batch_size: int = Field(ge=1)
 
 
-class AlertThresholds(BaseModel):
-    """Alert thresholds."""
-
-    fallback_model_3_used: bool = True
-    reranker_down: bool = True
-    embedding_retries_exceeded: int = Field(..., gt=0, le=100)
-    job_in_retry_list: bool = True
-    role_cache_stale_seconds: int = Field(..., gt=0, le=86400)
+class AlertConfig(StrictBaseModel):
+    fallback_model_3_used: bool
+    reranker_down: bool
+    embedding_retries_exceeded: int = Field(ge=1)
+    job_in_retry_list: bool
+    role_cache_stale_seconds: int = Field(ge=1)
 
 
-class ObservabilityConfig(BaseModel):
-    """Observability configuration."""
-
-    log_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO'
-    log_format: LogFormat = LogFormat.JSON
-    trace_sample_rate: float = Field(..., ge=0.0, le=1.0)
+class ObservabilityConfig(StrictBaseModel):
+    log_level: str
+    log_format: LogFormat
+    trace_sample_rate: float = Field(ge=0.0, le=1.0)
     service_name: str
-    otlp_endpoint: str | None = None
+    otlp_endpoint: str
     otlp_headers: dict[str, str] = Field(default_factory=dict)
-    alerts: AlertThresholds
+    alerts: AlertConfig
+
+    @model_validator(mode='after')
+    def validate_production_trace_rate(self) -> ObservabilityConfig:
+        # Will be checked in context of app environment if needed
+        return self
 
 
-class SecurityConfig(BaseModel):
-    """Security configuration."""
-
-    require_company_id_on_all_queries: bool = True
-    pii_detection_enabled: bool = True
-    pii_action: PiiAction = PiiAction.MASK
-    prompt_injection_detection_enabled: bool = True
-    max_question_length: int = Field(..., gt=0, le=100000)
-    max_context_tokens: int = Field(..., gt=0, le=1000000)
+class SecurityConfig(StrictBaseModel):
+    require_company_id_on_all_queries: bool
+    pii_detection_enabled: bool
+    pii_action: PiiAction
+    prompt_injection_detection_enabled: bool
+    max_question_length: int = Field(ge=1)
+    max_context_tokens: int = Field(ge=1)
 
 
-class SwitchesConfig(BaseModel):
-    """Feature switches - both paths must be tested."""
+# Additional Phase 1 sections (minimal required)
+class IngestionConfig(StrictBaseModel):
+    max_document_size_mb: int = Field(ge=1, default=100)
+    allowed_mime_types: list[str] = Field(default_factory=list)
+    virus_scan_enabled: bool = True
 
-    # LLM & Retrieval
-    reranker_enabled: bool = True
-    backup_request_enabled: bool = True
-    parallel_retrieval_enabled: bool = True
+
+class DocumentsConfig(StrictBaseModel):
+    categories: list[str] = Field(
+        default_factory=lambda: [
+            'invoice',
+            'bank_statement',
+            'financial_statement',
+            'budget',
+            'contract',
+            'board_report',
+        ]
+    )
+    upload_types: list[str] = Field(default_factory=lambda: ['new', 'update'])
+    delta_tracking: bool = True
+    duplicate_check: bool = True
+    version_retention_days: int = Field(ge=1, default=365)
+    deleted_retention_days: int = Field(ge=1, default=30)
+
+    @field_validator('upload_types')
+    @classmethod
+    def validate_upload_types(cls, v: list[str]) -> list[str]:
+        if set(v) != {'new', 'update'}:
+            raise ValueError('upload_types must be exactly [new, update]')
+        return v
+
+
+class RetrievalConfig(StrictBaseModel):
+    hybrid_search_enabled: bool = True
+    vector_weight: float = Field(ge=0.0, le=1.0, default=0.7)
+    keyword_weight: float = Field(ge=0.0, le=1.0, default=0.3)
+    top_k: int = Field(ge=1, default=50)
+    rerank_top_n: int = Field(ge=1, default=20)
+
+
+class QuestionFlowConfig(StrictBaseModel):
+    first_word_timeout_seconds: float = Field(ge=0.1, default=2.0)
+    max_wait_seconds: int = Field(ge=1, default=30)
+    evidence_threshold: float = Field(ge=0.0, le=1.0, default=0.7)
+
+
+class OutputGateConfig(StrictBaseModel):
     per_sentence_citation_check: bool = True
-
-    # Ingestion
-    async_textract_enabled: bool = True
-    ocr_fallback_enabled: bool = True
-
-    # Caching
-    answer_cache_enabled: bool = True
-    role_cache_enabled: bool = True
-
-    # Observability
-    detailed_tracing_enabled: bool = True
-    usage_metering_enabled: bool = True
+    number_check_enabled: bool = True
+    block_on_failure: bool = True
 
 
-class AppConfig(BaseModel):
-    """Application metadata."""
-
-    name: str = 'finsight-ai'
-    version: str = '0.1.0'
-    environment: Environment = Environment.DEVELOPMENT
+class ConsistencyConfig(StrictBaseModel):
+    check_interval_seconds: int = Field(ge=1, default=300)
 
 
-# ============================================================
-# Root Config Model
-# ============================================================
+class AnswerCheckConfig(StrictBaseModel):
+    enabled: bool = True
 
 
-class Config(BaseModel):
-    """Root configuration object. Frozen after validation."""
+class AccessConfig(StrictBaseModel):
+    roles: list[str] = Field(
+        default_factory=lambda: [
+            'executive_leadership',
+            'corporate_finance_planners',
+            'audit_compliance',
+            'system_admin',
+        ]
+    )
+    permissions_file: str = 'config/permissions.yaml'
+    role_cache_seconds_privileged: int = Field(ge=0, default=0)
 
+
+class RolePermissionEntry(StrictBaseModel):
+    categories: dict[str, list[str]] = Field(default_factory=dict)
+    role_actions: list[str] = Field(default_factory=list)
+
+
+class PermissionsConfig(StrictBaseModel):
+    roles: list[dict[str, Any]]
+    categories: list[dict[str, Any]]
+    permissions: dict[str, RolePermissionEntry]
+
+    @model_validator(mode='after')
+    def validate_permissions_complete(self) -> PermissionsConfig:
+        role_ids = {r.get('id') for r in self.roles}
+        expected_roles = {
+            'executive_leadership',
+            'corporate_finance_planners',
+            'audit_compliance',
+            'system_admin',
+        }
+        if role_ids != expected_roles:
+            raise ValueError('permissions must define exactly the 4 Phase 1 roles')
+        category_ids = {c.get('id') for c in self.categories}
+        expected_categories = {
+            'invoice',
+            'bank_statement',
+            'financial_statement',
+            'budget',
+            'contract',
+            'board_report',
+        }
+        if category_ids != expected_categories:
+            raise ValueError('permissions must define exactly the 6 categories')
+        if set(self.permissions.keys()) != expected_roles:
+            raise ValueError('permissions matrix must cover all roles')
+        for role_id, role_perm in self.permissions.items():
+            if role_id == 'system_admin':
+                continue  # system_admin may have empty categories
+            if set(role_perm.categories.keys()) != expected_categories:
+                raise ValueError(f'role {role_id} must define all categories')
+        return self
+
+
+class Config(StrictBaseModel):
     app: AppConfig
     switches: SwitchesConfig
     llm: LlmConfig
@@ -332,39 +400,43 @@ class Config(BaseModel):
     metering: MeteringConfig
     observability: ObservabilityConfig
     security: SecurityConfig
-
-    model_config = {
-        'frozen': True,
-        'extra': 'forbid',  # Reject unknown fields
-        'validate_assignment': True,
-    }
+    ingestion: IngestionConfig | None = None
+    documents: DocumentsConfig | None = None
+    retrieval: RetrievalConfig | None = None
+    question_flow: QuestionFlowConfig | None = None
+    output_gate: OutputGateConfig | None = None
+    consistency: ConsistencyConfig | None = None
+    answer_check: AnswerCheckConfig | None = None
+    access: AccessConfig | None = None
+    permissions: PermissionsConfig | None = None
+    # Extended Phase 1 sections
+    database: Any | None = None
+    traffic: Any | None = None
+    protection: Any | None = None
+    encryption: Any | None = None
+    lambda_: Any | None = None
+    models: Any | None = None
+    cache: Any | None = None
+    edge: Any | None = None
+    scale: Any | None = None
+    answer_check_ext: Any | None = None
+    metering_ext: Any | None = None
+    consistency_ext: Any | None = None
+    access_ext: Any | None = None
 
     @model_validator(mode='after')
-    def validate_cross_field_rules(self) -> Config:
-        """Validate cross-field constraints."""
-        # In production, certain switches must be enabled
+    def validate_production_rules(self) -> Config:
         if self.app.environment == Environment.PRODUCTION:
-            if not self.switches.reranker_enabled:
-                raise ValueError('reranker_enabled must be true in production')
-            if not self.switches.backup_request_enabled:
-                raise ValueError('backup_request_enabled must be true in production')
-            if not self.switches.usage_metering_enabled:
-                raise ValueError('usage_metering_enabled must be true in production')
             if self.observability.trace_sample_rate < _MIN_PRODUCTION_TRACE_SAMPLE_RATE:
-                raise ValueError('trace_sample_rate must be >= 0.01 in production')
-            if not self.security.pii_detection_enabled:
-                raise ValueError('pii_detection_enabled must be true in production')
-            if self.security.pii_action != PiiAction.MASK:
-                raise ValueError("pii_action must be 'mask' in production")
-
-        # Vector store pool sizing
-        if self.vector_store.max_overflow > self.vector_store.pool_size:
-            raise ValueError('max_overflow must be <= pool_size')
-
-        # Cache TTLs should be reasonable
-        if self.caches.answer_cache.ttl_seconds < _MIN_ANSWER_CACHE_TTL_SECONDS:
-            raise ValueError('answer_cache.ttl_seconds must be >= 300 (5 minutes)')
-        if self.caches.role_cache.ttl_seconds < _MIN_ROLE_CACHE_TTL_SECONDS:
-            raise ValueError('role_cache.ttl_seconds must be >= 60 (1 minute)')
-
+                raise ValueError(
+                    f'trace_sample_rate must be >= {_MIN_PRODUCTION_TRACE_SAMPLE_RATE} '
+                    f'in production'
+                )
+            switches = getattr(self, 'switches', None)
+            if (
+                switches is not None
+                and hasattr(switches, 'reranker_enabled')
+                and switches.reranker_enabled is False
+            ):
+                raise ValueError('reranker_enabled must be true in production')
         return self

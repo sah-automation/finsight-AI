@@ -18,13 +18,15 @@ from finsight.core.config.models import SwitchesConfig
 # Each config switch must have a dedicated test file. The file is expected to
 # contain a test for the ON path and a test for the OFF path.
 SWITCH_TO_TEST_FILE = {
-    'reranker_enabled': 'test_reranker_switch.py',
+    'parallel_steps': 'test_parallel_steps_switch.py',
     'backup_request_enabled': 'test_backup_request_switch.py',
+    'prompt_cache_enabled': 'test_prompt_cache_switch.py',
+    'answer_cache_enabled': 'test_answer_cache_switch.py',
+    'reranker_enabled': 'test_reranker_switch.py',
     'parallel_retrieval_enabled': 'test_parallel_retrieval_switch.py',
     'per_sentence_citation_check': 'test_citation_check_switch.py',
     'async_textract_enabled': 'test_textract_switch.py',
     'ocr_fallback_enabled': 'test_ocr_fallback_switch.py',
-    'answer_cache_enabled': 'test_answer_cache_switch.py',
     'role_cache_enabled': 'test_role_cache_switch.py',
     'detailed_tracing_enabled': 'test_tracing_switch.py',
     'usage_metering_enabled': 'test_metering_switch.py',

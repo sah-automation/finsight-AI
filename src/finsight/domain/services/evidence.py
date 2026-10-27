@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from finsight.core.types import Citation
+    from finsight.domain.value_objects import Citation
 
 
 def is_citation_valid(citation: Citation) -> bool:

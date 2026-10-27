@@ -1,11 +1,8 @@
 # Permissions Configuration
-# STATUS: planned. No runtime code reads this file yet; tracked in issue #11.
-# It is exercised by tests/security/test_permissions.py.
-# Role/Action/Category matrix. Intended single source of truth for authorization.
-# It will be loaded by core/config and enforced by a domain policy service.
+# Role/Action/Category matrix. Single source of truth for authorization.
+# Loaded by core/config and enforced by domain/services/permission_policy.py
 #
-# The four role IDs match the config switch guide (5.29), the known-risks
-# review (risk 24), the `users.role` migration check, and ADR-0003.
+# Four roles, exactly one per user. Six categories. No wildcards, no defaults.
 
 # Roles defined in the system
 roles:
@@ -14,113 +11,70 @@ roles:
     description: "CEO, CFO, VP of Finance: read access and decision approval"
   - id: "corporate_finance_planners"
     name: "Corporate Finance & Planners"
-    description: "Ask questions, upload documents, create forecasts and metrics"
+    description: "Ask questions, upload/update documents"
   - id: "audit_compliance"
     name: "Audit & Compliance"
-    description: "Read-only access to every category, including the audit trail"
+    description: "Read-only access to all categories, including audit trail"
   - id: "system_admin"
     name: "System Admin"
     description: "Manage users and settings; no access to financial content"
 
 # Categories of data/actions
 categories:
-  - id: "financials"
-    name: "Financial Statements"
+  - id: "invoice"
+    name: "Invoice"
+    description: "Invoices"
+    sensitivity: "high"
+  - id: "bank_statement"
+    name: "Bank Statement"
+    description: "Bank statements"
+    sensitivity: "high"
+  - id: "financial_statement"
+    name: "Financial Statement"
     description: "Income statement, balance sheet, cash flow"
     sensitivity: "high"
-  - id: "metrics"
-    name: "Financial Metrics"
-    description: "Ratios, KPIs, calculated metrics"
-    sensitivity: "medium"
-  - id: "forecasts"
-    name: "Forecasts & Projections"
-    description: "Future-looking estimates"
+  - id: "budget"
+    name: "Budget"
+    description: "Budgets and forecasts"
     sensitivity: "high"
-  - id: "risks"
-    name: "Risk Alerts"
-    description: "Anomaly detection, threshold breaches"
+  - id: "contract"
+    name: "Contract"
+    description: "Contracts"
     sensitivity: "high"
-  - id: "decisions"
-    name: "Decisions & Recommendations"
-    description: "AI-generated recommendations, approval workflows"
+  - id: "board_report"
+    name: "Board Report"
+    description: "Board reports"
     sensitivity: "high"
-  - id: "documents"
-    name: "Source Documents"
-    description: "Uploaded PDFs, spreadsheets, raw data"
-    sensitivity: "high"
-  - id: "audit"
-    name: "Audit Trail"
-    description: "Question history, data lineage, changes"
-    sensitivity: "medium"
 
-# Actions that can be performed
-actions:
-  - id: "read"
-    name: "Read"
-    description: "View data and answers"
-  - id: "write"
-    name: "Write"
-    description: "Create/update data"
-  - id: "delete"
-    name: "Delete"
-    description: "Remove data"
-  - id: "approve"
-    name: "Approve"
-    description: "Approve recommendations/decisions"
-  - id: "upload"
-    name: "Upload"
-    description: "Upload new documents"
-  - id: "configure"
-    name: "Configure"
-    description: "Change system settings"
-
-# Permission matrix: role -> category -> allowed actions.
-# Every category is listed for every role so that a denied category is explicit.
-# `delete` is intentionally not granted to any pilot role; it stays ungranted
-# until a retention policy exists.
-# System Admin uses `configure` on content categories because there is no
-# separate settings category. It never gets `read` on financial content.
+# Permission matrix: role -> {category: [actions], role_actions: [actions]}
 permissions:
   executive_leadership:
-    financials: ["read"]
-    metrics: ["read"]
-    forecasts: ["read"]
-    risks: ["read"]
-    decisions: ["read", "approve"]
-    documents: ["read"]
-    audit: []
-
+    categories:
+      invoice: ["read"]
+      bank_statement: ["read"]
+      financial_statement: ["read"]
+      budget: ["read"]
+      contract: ["read"]
+      board_report: ["read"]
+    role_actions: ["approve"]
   corporate_finance_planners:
-    financials: ["read"]
-    metrics: ["read", "write"]
-    forecasts: ["read", "write"]
-    risks: ["read", "write"]
-    decisions: ["read", "write"]
-    documents: ["read", "upload"]
-    audit: []
-
+    categories:
+      invoice: ["read", "upload", "update", "delete"]
+      bank_statement: ["read", "upload", "update", "delete"]
+      financial_statement: ["read", "upload", "update", "delete"]
+      budget: ["read", "upload", "update", "delete"]
+      contract: ["read", "upload", "update", "delete"]
+      board_report: ["read", "upload", "update", "delete"]
+    role_actions: []
   audit_compliance:
-    financials: ["read"]
-    metrics: ["read"]
-    forecasts: ["read"]
-    risks: ["read"]
-    decisions: ["read"]
-    documents: ["read"]
-    audit: ["read"]
-
+    categories:
+      invoice: ["read"]
+      bank_statement: ["read"]
+      financial_statement: ["read"]
+      budget: ["read"]
+      contract: ["read"]
+      board_report: ["read"]
+    role_actions: ["view_audit_log"]
   system_admin:
-    financials: ["configure"]
-    metrics: ["configure"]
-    forecasts: ["configure"]
-    risks: ["configure"]
-    decisions: ["configure"]
-    documents: ["configure"]
-    audit: ["read"]
-
-# Company-level overrides (optional, for specific tenant customization)
-# company_overrides:
-#   "company-uuid-here":
-#     corporate_finance_planners:
-#       forecasts: ["read"]  # restrict forecast writes for this company
-
-# There is no default fallback. A role with no entry is denied.
+    categories: {}
+    role_actions: ["manage_users", "manage_settings", "view_audit_log"]
