@@ -240,6 +240,7 @@ modules = [
     "finsight.adapters.rerank",
     "finsight.adapters.readers",
     "finsight.adapters.repositories",
+    "finsight.adapters.partitions",
     "finsight.adapters.storage",
     "finsight.adapters.queue",
     "finsight.adapters.cache",

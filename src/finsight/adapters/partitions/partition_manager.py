@@ -28,7 +28,7 @@ def _partition_name(company_id: CompanyId, table_name: str) -> str:
     return f'{table_name}_company_{clean_id}'
 
 
-class PostgresPartitionManager(PartitionGateway):
+class PartitionManager(PartitionGateway):
     """Concrete partition manager using SQLAlchemy connections."""
 
     def __init__(
@@ -50,13 +50,13 @@ class PostgresPartitionManager(PartitionGateway):
             # Try to commit if it's a session
             if hasattr(session, 'commit'):
                 try:
-                    await session.commit()  # type: ignore[misc]
+                    await session.commit()
                 except Exception:
                     pass
             return
         # Try getting a connection
         if hasattr(session, 'begin'):
-            async with session.begin() as conn:  # type: ignore[attr-defined]
+            async with session.begin() as conn:
                 await conn.execute(text(sql), params or {})
             return
         raise TypeError('Unsupported session/engine type')
@@ -68,12 +68,12 @@ class PostgresPartitionManager(PartitionGateway):
             row = result.fetchone()
             if hasattr(session, 'commit'):
                 try:
-                    await session.commit()  # type: ignore[misc]
+                    await session.commit()
                 except Exception:
                     pass
             return row
         if hasattr(session, 'begin'):
-            async with session.begin() as conn:  # type: ignore[attr-defined]
+            async with session.begin() as conn:
                 result = await conn.execute(text(sql), params or {})
                 return result.fetchone()
         raise TypeError('Unsupported session/engine type')
@@ -259,7 +259,7 @@ class PostgresPartitionManager(PartitionGateway):
             rows = result.fetchall()
             if hasattr(self._session_or_engine, 'commit'):
                 try:
-                    await self._session_or_engine.commit()  # type: ignore[misc]
+                    await self._session_or_engine.commit()
                 except Exception:
                     pass
             return [row[0] for row in rows]
@@ -302,4 +302,4 @@ class PostgresPartitionManager(PartitionGateway):
 
 
 # Alias for compatibility
-PartitionManager = PostgresPartitionManager
+PostgresPartitionManager = PartitionManager
