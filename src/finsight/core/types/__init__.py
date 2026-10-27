@@ -111,6 +111,6 @@ __all__ = [
     'UploadType',
     'UserId',
 ]
-from .partition import PartitionStatus
+from .partition_status import PartitionStatus
 
 __all__.append('PartitionStatus')

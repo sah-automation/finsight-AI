@@ -39,12 +39,8 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        'CREATE INDEX ix_partition_metadata_company_id ON partition_metadata (company_id)'
-    )
-    op.execute(
-        'CREATE INDEX ix_partition_metadata_status ON partition_metadata (status)'
-    )
+    op.execute('CREATE INDEX ix_partition_metadata_company_id ON partition_metadata (company_id)')
+    op.execute('CREATE INDEX ix_partition_metadata_status ON partition_metadata (status)')
 
 
 def downgrade() -> None:

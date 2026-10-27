@@ -45,6 +45,16 @@ class PartitionGateway(ABC):
         """List all partitions for a company."""
         raise NotImplementedError
 
+    @abstractmethod
+    async def record_partition_metadata(
+        self,
+        company_id: CompanyId,
+        partition_name: str,
+        table_name: str,
+    ) -> None:
+        """Record partition metadata."""
+        raise NotImplementedError
+
 
 # Backwards compatibility alias
 PartitionManager = PartitionGateway
