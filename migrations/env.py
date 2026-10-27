@@ -39,7 +39,7 @@ def _database_url() -> str:
     return (
         f'postgresql+psycopg://{username}:{password}'
         f'@{vector_store.host}:{vector_store.port}/{vector_store.database}'
-        f'?sslmode={vector_store.ssl_mode.value}'
+        f'?sslmode={vector_store.ssl_mode}'
     )
 
 
