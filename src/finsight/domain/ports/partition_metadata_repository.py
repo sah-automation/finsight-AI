@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from finsight.core.types import CompanyId
+from finsight.core.types import CompanyId, PartitionStatus
 from finsight.domain.entities.partition_metadata import PartitionMetadata
 
 
@@ -17,10 +17,9 @@ class PartitionMetadataRepository(ABC):
         company_id: CompanyId,
         partition_name: str,
         table_name: str,
-        status: str = 'creating',
+        status: PartitionStatus = PartitionStatus.CREATING,
     ) -> PartitionMetadata:
         """Record a partition creation attempt."""
-        _ = (company_id, partition_name, table_name, status)
         raise NotImplementedError
 
     @abstractmethod
@@ -30,7 +29,6 @@ class PartitionMetadataRepository(ABC):
         table_name: str,
     ) -> PartitionMetadata | None:
         """Get partition metadata for a company and table."""
-        _ = (company_id, table_name)
         raise NotImplementedError
 
     @abstractmethod
@@ -39,7 +37,6 @@ class PartitionMetadataRepository(ABC):
         company_id: CompanyId,
     ) -> list[PartitionMetadata]:
         """List all partitions for a company."""
-        _ = company_id
         raise NotImplementedError
 
     @abstractmethod
@@ -47,8 +44,7 @@ class PartitionMetadataRepository(ABC):
         self,
         company_id: CompanyId,
         table_name: str,
-        status: str,
+        status: PartitionStatus,
     ) -> PartitionMetadata | None:
         """Update partition status."""
-        _ = (company_id, table_name, status)
         raise NotImplementedError
