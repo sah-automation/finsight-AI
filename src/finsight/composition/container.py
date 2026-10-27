@@ -312,7 +312,7 @@ def build_onboarding_use_case(*args: Any, **kwargs: Any) -> Any:
             'partition_metadata_repository'
         ] or getattr(container, 'partition_metadata_repository', None)
 
-    _extra2 = {k: v for k, v in kwargs.items() if k not in _SESSION_KEYS}
+    _extra2 = {k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS}
     if canonical['company_repository'] is None:
         canonical['company_repository'] = build_company_repository(
             session=session, config=config, **_extra2
@@ -427,7 +427,7 @@ def build_upload_use_case(*args: Any, **kwargs: Any) -> Any:
         partition_manager = build_partition_manager(
             session=session,
             config=config,
-            **{k: v for k, v in kwargs.items() if k not in _SESSION_KEYS},
+            **{k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS},
         )
 
     use_case = provided if provided is not None else kwargs.get('use_case')
@@ -510,7 +510,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
             if value is not None:
                 provided_deps[attr] = value
 
-    _extra = {k: v for k, v in kwargs.items() if k not in _SESSION_KEYS}
+    _extra = {k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS}
     company_repository = provided_deps.get('company_repository') or build_company_repository(
         session=session, config=config, **_extra
     )

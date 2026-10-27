@@ -48,10 +48,20 @@ class BaseRepository:
         session = self._session
         if session is None:
             raise RuntimeError('No database session configured')
-        result = session.execute(text(sql), params or {})
-        if inspect.isawaitable(result):
-            result = await result
-        return result
+        try:
+            result = session.execute(text(sql), params or {})
+            if inspect.isawaitable(result):
+                result = await result
+            return result
+        except Exception:
+            if hasattr(session, 'rollback'):
+                try:
+                    rollback_result = session.rollback()
+                    if inspect.isawaitable(rollback_result):
+                        await rollback_result
+                except Exception:
+                    pass
+            raise
 
     async def _run(self, sql: str, params: dict[str, Any] | None = None) -> Any:
         return await self._execute(sql, params)

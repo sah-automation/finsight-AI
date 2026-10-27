@@ -45,4 +45,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop partition metadata table."""
-    op.drop_table('partition_metadata')
+    op.execute('DROP TABLE IF EXISTS partition_metadata CASCADE')

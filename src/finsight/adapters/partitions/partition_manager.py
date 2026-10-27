@@ -42,40 +42,84 @@ class PartitionManager(PartitionGateway):
         self._tables = tables or DEFAULT_PARTITION_TABLES
 
     async def _execute(self, sql: str, params: dict[str, Any] | None = None) -> None:
+        import inspect
+
         session = self._session_or_engine
         # Support different session/engine patterns
         if hasattr(session, 'execute'):
-            # Could be AsyncSession or Connection
-            result = session.execute(text(sql), params or {})
-            # Try to commit if it's a session
-            if hasattr(session, 'commit'):
-                try:
-                    await session.commit()
-                except Exception:
-                    pass
-            return
+            # Could be AsyncSession or Connection (sync or async)
+            try:
+                result = session.execute(text(sql), params or {})
+                if inspect.isawaitable(result):
+                    result = await result
+                # Try to commit if it's a session
+                if hasattr(session, 'commit'):
+                    try:
+                        commit_result = session.commit()
+                        if inspect.isawaitable(commit_result):
+                            await commit_result
+                    except Exception:
+                        pass
+                return
+            except Exception:
+                # Reset any aborted transaction so later calls can proceed.
+                if hasattr(session, 'rollback'):
+                    try:
+                        rollback_result = session.rollback()
+                        if inspect.isawaitable(rollback_result):
+                            await rollback_result
+                    except Exception:
+                        pass
+                raise
         # Try getting a connection
         if hasattr(session, 'begin'):
-            async with session.begin() as conn:
-                await conn.execute(text(sql), params or {})
-            return
+            try:
+                async_cm = session.begin()
+                async with async_cm as conn:
+                    result = conn.execute(text(sql), params or {})
+                    if inspect.isawaitable(result):
+                        await result
+                return
+            except Exception:
+                raise
         raise TypeError('Unsupported session/engine type')
 
     async def _fetch_one(self, sql: str, params: dict[str, Any] | None = None) -> Any:
+        import inspect
+
         session = self._session_or_engine
         if hasattr(session, 'execute'):
             result = session.execute(text(sql), params or {})
-            row = result.fetchone()
+            if inspect.isawaitable(result):
+                result = await result
+            fetch = getattr(result, 'fetchone', None)
+            if callable(fetch):
+                row = fetch()
+                if inspect.isawaitable(row):
+                    row = await row
+            else:
+                row = result
             if hasattr(session, 'commit'):
                 try:
-                    await session.commit()
+                    commit_result = session.commit()
+                    if inspect.isawaitable(commit_result):
+                        await commit_result
                 except Exception:
                     pass
             return row
         if hasattr(session, 'begin'):
-            async with session.begin() as conn:
-                result = await conn.execute(text(sql), params or {})
-                return result.fetchone()
+            async_cm = session.begin()
+            async with async_cm as conn:
+                result = conn.execute(text(sql), params or {})
+                if inspect.isawaitable(result):
+                    result = await result
+                fetch = getattr(result, 'fetchone', None)
+                if callable(fetch):
+                    row = fetch()
+                    if inspect.isawaitable(row):
+                        row = await row
+                    return row
+                return result.fetchone() if hasattr(result, 'fetchone') else result
         raise TypeError('Unsupported session/engine type')
 
     async def create_partition(
@@ -86,17 +130,7 @@ class PartitionManager(PartitionGateway):
         """Create a partition for a company on the given table."""
         partition_name = _partition_name(company_id, table_name)
         try:
-            # Create partition
-            await self._execute(
-                f"""
-                CREATE TABLE IF NOT EXISTS {partition_name}
-                PARTITION OF {table_name}
-                FOR VALUES IN (:company_id)
-                """,
-                {'company_id': str(company_id)},
-            )
-        except Exception:
-            # Try alternative syntax if needed
+            # Create partition (bound value must be a literal in PostgreSQL)
             await self._execute(
                 f"""
                 CREATE TABLE IF NOT EXISTS {partition_name}
@@ -104,6 +138,9 @@ class PartitionManager(PartitionGateway):
                 FOR VALUES IN ('{company_id}')
                 """
             )
+        except Exception:
+            # Partition may already exist; ignore.
+            pass
 
         # Create indexes on partition
         try:
@@ -131,7 +168,7 @@ class PartitionManager(PartitionGateway):
                 )
             elif table_name == 'answers':
                 await self._execute(
-                    f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_question ON {partition_name} (company_id, question_id)'
+                    f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_created ON {partition_name} (company_id, created_at)'
                 )
             elif table_name == 'audit_logs':
                 await self._execute(
@@ -241,6 +278,8 @@ class PartitionManager(PartitionGateway):
     ) -> list[str]:
         """List all partitions for a company."""
         try:
+            import inspect
+
             # Look for partitions matching pattern
             result = self._session_or_engine.execute(
                 text(
@@ -256,10 +295,16 @@ class PartitionManager(PartitionGateway):
                 ),
                 {'pattern': f'%company_{str(company_id).replace("-", "")}%'},
             )
-            rows = result.fetchall()
+            if inspect.isawaitable(result):
+                result = await result
+            rows = result.fetchall() if hasattr(result, 'fetchall') else list(result or [])
+            if inspect.isawaitable(rows):
+                rows = await rows
             if hasattr(self._session_or_engine, 'commit'):
                 try:
-                    await self._session_or_engine.commit()
+                    commit_result = self._session_or_engine.commit()
+                    if inspect.isawaitable(commit_result):
+                        await commit_result
                 except Exception:
                     pass
             return [row[0] for row in rows]

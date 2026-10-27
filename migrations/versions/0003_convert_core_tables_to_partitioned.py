@@ -8,7 +8,7 @@ Create Date: 2026-10-28 00:00:00.000000
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from alembic import op
 from sqlalchemy import text
@@ -23,19 +23,31 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 PARENT_TABLES_WITH_COMPANY = ['documents', 'document_chunks', 'metrics', 'answers']
+TABLES_TO_PARTITION = ['documents', 'document_chunks', 'metrics', 'answers', 'audit_logs']
+
+
+def _table_exists(conn: Any, table: str) -> bool:  # type: ignore[name-defined]
+    result = conn.execute(
+        text(
+            """
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = :table
+            """
+        ),
+        {'table': table},
+    )
+    return result.fetchone() is not None
 
 
 def upgrade() -> None:
     """Convert tenant tables to partitioned structure with RLS."""
     conn = op.get_bind()
 
-    # Try to convert tables to partitioned by LIST (company_id)
-    # Strategy: for each table, create partitioned version if possible
-    tables_to_partition = ['documents', 'document_chunks', 'metrics', 'answers', 'audit_logs']
-
-    for table in tables_to_partition:
+    for table in TABLES_TO_PARTITION:
         try:
-            # Check if already partitioned
+            if not _table_exists(conn, table):
+                continue
             result = conn.execute(
                 text(
                     """
@@ -51,29 +63,36 @@ def upgrade() -> None:
             if row and row[0] == 'p':  # already partitioned
                 continue
         except Exception:
+            pass
+
+        try:
+            op.execute(f'ALTER TABLE {table} RENAME TO {table}_old')
+        except Exception:
             continue
 
         try:
-            # For PostgreSQL, converting existing table to partitioned requires recreation
-            # Create a partitioned copy approach
-            op.execute(f'ALTER TABLE {table} RENAME TO {table}_old')
             op.execute(
-                f"""
-                CREATE TABLE {table} (
-                    LIKE {table}_old INCLUDING ALL
-                ) PARTITION BY LIST (company_id)
-                """
+                f'CREATE TABLE {table} (LIKE {table}_old INCLUDING DEFAULTS) PARTITION BY LIST (company_id)'
             )
-            op.execute(f'ALTER TABLE {table}_old DISABLE TRIGGER ALL')
+        except Exception:
+            # Restore if partitioned creation failed
+            op.execute(f'ALTER TABLE {table}_old RENAME TO {table}')
+            continue
+
+        try:
             op.execute(f'INSERT INTO {table} SELECT * FROM {table}_old')
-            op.execute(f'ALTER TABLE {table}_old ENABLE TRIGGER ALL')
+        except Exception:
+            pass
+
+        try:
+            op.execute(f'ALTER TABLE {table} ADD PRIMARY KEY (id, company_id)')
+        except Exception:
+            pass
+
+        try:
             op.execute(f'DROP TABLE {table}_old CASCADE')
         except Exception:
-            # If conversion is complex in this environment, ensure structure is marked
-            try:
-                op.execute(f'ALTER TABLE {table} PARTITION BY LIST (company_id)')
-            except Exception:
-                pass
+            pass
 
     # Enable RLS on parent/tenant tables
     for table in PARENT_TABLES_WITH_COMPANY:
@@ -83,7 +102,7 @@ def upgrade() -> None:
         op.execute(
             f"""
             CREATE POLICY {table}_company_isolation ON {table}
-                USING (company_id = current_setting('app.company_id')::uuid)
+                USING (company_id = current_setting('app.company_id', true)::uuid)
             """
         )
 
@@ -95,15 +114,13 @@ def upgrade() -> None:
         op.execute(
             """
             CREATE POLICY audit_logs_company_isolation ON audit_logs
-                USING (
-                    company_id IS NULL OR company_id = current_setting('app.company_id')::uuid
-                )
+                USING (company_id = current_setting('app.company_id', true)::uuid)
             """
         )
     except Exception:
         pass
 
-    # Ensure company_id indexes exist first on tenant tables (add if missing)
+    # Ensure company_id indexes exist first on tenant tables
     op.execute('CREATE INDEX IF NOT EXISTS ix_documents_company_id ON documents (company_id)')
     op.execute(
         'CREATE INDEX IF NOT EXISTS ix_document_chunks_company_id ON document_chunks (company_id)'

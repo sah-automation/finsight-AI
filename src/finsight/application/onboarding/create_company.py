@@ -221,7 +221,9 @@ class CreateCompany:
             company = None
             if self._company_repository is not None:
                 company = await _await(
-                    self._company_repository.create_company(company_id, name, _slugify(name))
+                    self._company_repository.create_company(
+                        company_id, name, _slugify(name) + '-' + str(company_id)[:8]
+                    )
                 )
 
             partition_names: list[str] = []
@@ -252,7 +254,9 @@ class CreateCompany:
                 status=OnboardingStatus.READY,
                 company=company
                 if company is not None
-                else Company(id=company_id, name=name, slug=_slugify(name)),
+                else Company(
+                    id=company_id, name=name, slug=_slugify(name) + '-' + str(company_id)[:8]
+                ),
                 user=user,
                 partition_names=partition_names,
                 region=region,

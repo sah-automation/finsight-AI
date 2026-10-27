@@ -346,13 +346,6 @@ async def _partition_exists(
             result = await _call_method(method, company_id, None)
             if result is not None:
                 return _truthy(result)
-        method = getattr(manager, 'ensure_partition_exists', None)
-        if callable(method):
-            result = await _call_method(method, company_id, 'documents')
-            if result is False:
-                return False
-            if result is True:
-                return True
 
     if metadata is not None:
         for attr in ('partition_exists', 'has_partition', 'exists', 'check_partition'):
