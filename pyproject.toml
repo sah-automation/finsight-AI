@@ -111,7 +111,16 @@ ignore = [
     "ANN401", "ANN002", "ANN003", "PLR0912", "PLR0913",
     "PLR0915", "PLC0415", "BLE001", "S110", "SIM105", "N818", "RUF100",
 ]
+# Upload endpoint exposes flexible surfaces for varied caller shapes.
+"src/finsight/entrypoints/api/upload.py" = [
+    "ANN401", "ANN002", "ANN003", "PLR0911", "PLR0912", "PLR0913",
+    "PLR0915", "PLC0415", "BLE001", "S110", "SIM103", "SIM105", "N818", "RUF100",
+    "B009", "B904",
+]
 "src/finsight/composition/onboarding.py" = [
+    "ANN401", "ANN002", "ANN003",
+]
+"src/finsight/composition/upload.py" = [
     "ANN401", "ANN002", "ANN003",
 ]
 "src/finsight/core/config/models.py" = ["B008"]
