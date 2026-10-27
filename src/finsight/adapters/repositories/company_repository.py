@@ -40,7 +40,6 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
 
     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
         super().__init__(session, **kwargs)
-        self._metadata: dict[str, Any] = kwargs
 
     async def create_company(
         self,
@@ -58,7 +57,7 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
             """,
             {'id': str(company_id), 'name': name, 'slug': slug},
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         company = _row_to_company(row)
         if company is None:
             return Company(id=company_id, name=name, slug=slug)
@@ -73,7 +72,7 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} WHERE id = :id',
             {'id': str(company_id)},
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         return _row_to_company(row)
 
     async def get_company_by_slug(
@@ -83,10 +82,10 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
     ) -> Company | None:
         await self._set_rls_context(company_id)
         result = await self._execute(
-            f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} WHERE slug = :slug LIMIT 1',
-            {'slug': slug},
+            f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} WHERE slug = :slug AND id = :id LIMIT 1',
+            {'slug': slug, 'id': str(company_id)},
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         return _row_to_company(row)
 
     async def update_company(
@@ -107,7 +106,7 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
             """,
             {'id': str(company_id), 'name': name, 'slug': slug},
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         return _row_to_company(row)
 
     async def delete_company(
@@ -133,7 +132,13 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} ORDER BY created_at DESC',
             {},
         )
-        rows = result.fetchall() if hasattr(result, 'fetchall') else list(result) if result is not None else []
+        rows = (
+            result.fetchall()
+            if hasattr(result, 'fetchall')
+            else list(result)
+            if result is not None
+            else []
+        )
         companies: list[Company] = []
         for row in rows:
             company = _row_to_company(row)
@@ -150,10 +155,10 @@ RLSCompanyRepository = CompanyRepository
 CompanyRepo = PostgresCompanyRepository
 
 __all__ = [
-    'PostgresCompanyRepository',
+    'CompanyRepo',
     'CompanyRepository',
     'CompanyRepositoryAdapter',
     'PostgresCompanyRepo',
+    'PostgresCompanyRepository',
     'RLSCompanyRepository',
-    'CompanyRepo',
 ]

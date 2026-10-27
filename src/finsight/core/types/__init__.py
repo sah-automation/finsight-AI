@@ -38,6 +38,7 @@ class Role(StrEnum):
     AUDIT_COMPLIANCE = 'audit_compliance'
     SYSTEM_ADMIN = 'system_admin'
 
+
 class Category(StrEnum):
     """Data categories for permissions."""
 
@@ -109,6 +110,7 @@ class UploadType(StrEnum):
 __all__ = [
     'Action',
     'AnswerId',
+    'Category',
     'ChunkId',
     'CompanyId',
     'DocumentCategory',
@@ -120,6 +122,7 @@ __all__ = [
     'RecommendationId',
     'ReportId',
     'Role',
+    'RequestContext',
     'SessionId',
     'TraceId',
     'UploadType',

@@ -11,7 +11,6 @@ from finsight.domain.ports.user_repository import UserRepository as UserReposito
 
 from .base_repository import BaseRepository
 
-
 _TABLE = 'users'
 
 
@@ -67,7 +66,7 @@ class UserRepository(UserRepositoryPort, BaseRepository):
                 'role': str(role),
             },
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         user = _row_to_user(row)
         if user is None:
             return User(id=user_id, company_id=company_id, email=email, role=role)
@@ -87,7 +86,7 @@ class UserRepository(UserRepositoryPort, BaseRepository):
             """,
             {'company_id': str(company_id), 'id': str(user_id)},
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         return _row_to_user(row)
 
     async def get_user_by_email(
@@ -104,7 +103,7 @@ class UserRepository(UserRepositoryPort, BaseRepository):
             """,
             {'company_id': str(company_id), 'email': email},
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         return _row_to_user(row)
 
     async def list_users(
@@ -121,7 +120,13 @@ class UserRepository(UserRepositoryPort, BaseRepository):
             """,
             {'company_id': str(company_id)},
         )
-        rows = result.fetchall() if hasattr(result, 'fetchall') else list(result) if result is not None else []
+        rows = (
+            result.fetchall()
+            if hasattr(result, 'fetchall')
+            else list(result)
+            if result is not None
+            else []
+        )
         users: list[User] = []
         for row in rows:
             user = _row_to_user(row)
@@ -137,10 +142,8 @@ class UserRepository(UserRepositoryPort, BaseRepository):
         role: Role | None = None,
     ) -> User | None:
         await self._set_rls_context(company_id)
-        row = None
-        try:
-            result = await self._execute(
-                f"""
+        result = await self._execute(
+            f"""
                 UPDATE {_TABLE}
                 SET email = COALESCE(:email, email),
                     role = COALESCE(:role, role),
@@ -148,16 +151,14 @@ class UserRepository(UserRepositoryPort, BaseRepository):
                 WHERE company_id = :company_id AND id = :id
                 RETURNING id, company_id, email, role, created_at, updated_at
                 """,
-                {
-                    'company_id': str(company_id),
-                    'id': str(user_id),
-                    'email': email,
-                    'role': (str(role) if role is not None else None),
-                },
-            )
-            row = result.fetchone() if hasattr(result, 'fetchone') else None
-        except Exception:
-            return None
+            {
+                'company_id': str(company_id),
+                'id': str(user_id),
+                'email': email,
+                'role': (str(role) if role is not None else None),
+            },
+        )
+        row = await self._fetchone(result)
         return _row_to_user(row)
 
     async def delete_user(
@@ -183,10 +184,10 @@ RLSUserRepository = UserRepository
 UserRepo = PostgresUserRepository
 
 __all__ = [
-    'PostgresUserRepository',
-    'UserRepository',
-    'UserRepositoryAdapter',
     'PostgresUserRepo',
+    'PostgresUserRepository',
     'RLSUserRepository',
     'UserRepo',
+    'UserRepository',
+    'UserRepositoryAdapter',
 ]

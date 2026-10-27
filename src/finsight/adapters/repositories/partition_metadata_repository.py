@@ -70,7 +70,7 @@ class PartitionMetadataRepository(PartitionMetadataRepositoryPort, BaseRepositor
                 'status': str(status),
             },
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         metadata = _row_to_metadata(row)
         if metadata is None:
             return PartitionMetadata(
@@ -95,7 +95,7 @@ class PartitionMetadataRepository(PartitionMetadataRepositoryPort, BaseRepositor
             """,
             {'company_id': str(company_id), 'table_name': table_name},
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         return _row_to_metadata(row)
 
     async def list_partitions_for_company(
@@ -111,7 +111,13 @@ class PartitionMetadataRepository(PartitionMetadataRepositoryPort, BaseRepositor
             """,
             {'company_id': str(company_id)},
         )
-        rows = result.fetchall() if hasattr(result, 'fetchall') else list(result) if result is not None else []
+        rows = (
+            result.fetchall()
+            if hasattr(result, 'fetchall')
+            else list(result)
+            if result is not None
+            else []
+        )
         metadata: list[PartitionMetadata] = []
         for row in rows:
             entry = _row_to_metadata(row)
@@ -135,7 +141,7 @@ class PartitionMetadataRepository(PartitionMetadataRepositoryPort, BaseRepositor
             """,
             {'company_id': str(company_id), 'table_name': table_name, 'status': str(status)},
         )
-        row = result.fetchone() if hasattr(result, 'fetchone') else None
+        row = await self._fetchone(result)
         return _row_to_metadata(row)
 
 
@@ -146,10 +152,10 @@ RLSPartitionMetadataRepository = PartitionMetadataRepository
 PartitionMetadataRepo = PostgresPartitionMetadataRepository
 
 __all__ = [
-    'PostgresPartitionMetadataRepository',
+    'PartitionMetadataRepo',
     'PartitionMetadataRepository',
     'PartitionMetadataRepositoryAdapter',
     'PostgresPartitionMetadataRepo',
+    'PostgresPartitionMetadataRepository',
     'RLSPartitionMetadataRepository',
-    'PartitionMetadataRepo',
 ]

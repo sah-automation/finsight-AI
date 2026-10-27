@@ -56,9 +56,39 @@ class BaseRepository:
     async def _run(self, sql: str, params: dict[str, Any] | None = None) -> Any:
         return await self._execute(sql, params)
 
+    async def _fetchone(self, result: Any) -> Any:
+        """Fetch one row, awaiting the result method when it is awaitable."""
+        if result is None:
+            return None
+        fetch = getattr(result, 'fetchone', None)
+        if fetch is None:
+            return result
+        value = fetch()
+        if inspect.isawaitable(value):
+            value = await value
+        return value
+
+    async def _fetchall(self, result: Any) -> Any:
+        """Fetch all rows, awaiting the result method when it is awaitable."""
+        if result is None:
+            return []
+        fetch = getattr(result, 'fetchall', None)
+        if fetch is None:
+            try:
+                return list(result)
+            except TypeError:
+                return []
+        value = fetch()
+        if inspect.isawaitable(value):
+            value = await value
+        if value is None:
+            return []
+        return value
+
     async def _set_rls_context(self, company_id: Any) -> None:
         """Set ``app.company_id`` for the current transaction (RLS lock)."""
-        await self._execute('SET LOCAL app.company_id = :company_id', {'company_id': str(company_id)})
+        value = str(company_id).replace("'", "''")
+        await self._execute(f"SET LOCAL app.company_id = '{value}'")
 
     async def set_rls_context(self, company_id: Any) -> None:
         """Public alias for :meth:`_set_rls_context`."""
@@ -67,10 +97,8 @@ class BaseRepository:
     @staticmethod
     async def set_tenant_context(session_or_engine: Any, company_id: Any) -> None:
         """Module-level helper to set RLS context on a given session/engine."""
-        result = session_or_engine.execute(
-            text('SET LOCAL app.company_id = :company_id'),
-            {'company_id': str(company_id)},
-        )
+        safe = str(company_id).replace("'", "''")
+        result = session_or_engine.execute(text(f"SET LOCAL app.company_id = '{safe}'"))
         if inspect.isawaitable(result):
             await result
 
@@ -106,4 +134,6 @@ async def set_app_company_id(session_or_engine: Any, company_id: Any) -> None:
 
 
 def build_set_rls_sql(company_id: Any) -> str:
-    return f"SET LOCAL app.company_id = '{company_id}'"
+    # Escape single quotes to avoid SQL injection when emitting a literal.
+    value = str(company_id).replace(chr(39), chr(39) + chr(39))
+    return f"SET LOCAL app.company_id = '{value}'"
