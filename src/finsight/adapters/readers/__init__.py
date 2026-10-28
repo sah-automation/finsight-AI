@@ -18,6 +18,12 @@ from .csv_reader import (
     TSVReader,
     TsvReader,
 )
+from .docx_reader import (
+    DOCX,
+    Docx,
+    DocxDocumentReader,
+    DocxReader,
+)
 from .excel_reader import Excel, ExcelReader
 from .page_router import PageRouter
 from .pdf_plumber_reader import PdfPlumberReader
@@ -26,6 +32,7 @@ from .textract_reader import Textract, TextractReader
 
 __all__ = [
     'CSV',
+    'DOCX',
     'BaseReader',
     'CSVDocumentReader',
     'CSVReader',
@@ -34,6 +41,9 @@ __all__ = [
     'CsvReader',
     'DelimitedDocumentReader',
     'DelimitedReader',
+    'Docx',
+    'DocxDocumentReader',
+    'DocxReader',
     'Excel',
     'ExcelReader',
     'PageRouter',
