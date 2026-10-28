@@ -128,6 +128,17 @@ class DocumentTooLargeError(UserFacingError):
 
 
 # Ingestion
+class InvalidStateTransitionError(FinSightError, ValueError):
+    """Raised when an entity refuses an illegal state transition."""
+
+
+# Common aliases for invalid state transition errors.
+IllegalStateTransitionError = InvalidStateTransitionError
+InvalidTransitionError = InvalidStateTransitionError
+InvalidDocumentVersionTransitionError = InvalidStateTransitionError
+DocumentVersionTransitionError = InvalidStateTransitionError
+
+
 class IngestionError(FinSightError):
     """Ingestion pipeline error."""
 
