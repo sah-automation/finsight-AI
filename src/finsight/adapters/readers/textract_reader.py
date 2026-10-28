@@ -993,7 +993,9 @@ class TextractReader(BaseReader):
         return await self.read(company_id, content, **kwargs)
 
     # Aliases used by the base/shared scaffolding.
-    _empty_result = BaseReader._empty_result
+    @staticmethod
+    def _empty_result(*, confidence: Any = None) -> ReaderResult:
+        return BaseReader._empty_result(confidence=confidence)
 
     def _as_bytes(self, source: Any) -> bytes | None:
         return super()._as_bytes(source)

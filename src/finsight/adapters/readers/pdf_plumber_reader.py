@@ -47,6 +47,13 @@ class PdfPlumberReader(BaseReader):
         source = self._resolve_source(
             content, file_path=file_path, filename=filename, file_name=file_name, **kwargs
         )
+        # Empty-input safety: never raise on empty buffers/strings.
+        if self._is_empty_content(source):
+            return self._empty_result()
+        data = self._as_bytes(source)
+        if data is not None and len(data) == 0:
+            return self._empty_result()
+        self._require_company_id(company_id)
         text_parts: list[str] = []
         tables: list[object] = []
         page_numbers: list[int] = []

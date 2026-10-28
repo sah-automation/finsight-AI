@@ -1673,29 +1673,25 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> ReaderRegistry:
     documents_cfg = getattr(config, 'documents', None)
     if documents_cfg is None and isinstance(config, dict):
         documents_cfg = config.get('documents')
-    main_name = getattr(documents_cfg, 'reader', None)
+    main_name = kwargs.get('reader', kwargs.get('reader_name'))
+    if main_name is None:
+        main_name = getattr(documents_cfg, 'reader', None)
     if main_name is None and isinstance(documents_cfg, dict):
         main_name = documents_cfg.get('reader')
-    if main_name is None:
-        main_name = kwargs.get('reader', kwargs.get('reader_name'))
-    scan_name = None
-    if documents_cfg is not None:
+    scan_name = kwargs.get('scan_reader', kwargs.get('scan_reader_name'))
+    if scan_name is None and documents_cfg is not None:
         scan_name = (
             getattr(documents_cfg, 'scan_reader', None)
             if not isinstance(documents_cfg, dict)
             else documents_cfg.get('scan_reader')
         )
-    if scan_name is None:
-        scan_name = kwargs.get('scan_reader', kwargs.get('scan_reader_name'))
-    table_name = None
-    if documents_cfg is not None:
+    table_name = kwargs.get('table_reader', kwargs.get('table_reader_name'))
+    if table_name is None and documents_cfg is not None:
         table_name = (
             getattr(documents_cfg, 'table_reader', None)
             if not isinstance(documents_cfg, dict)
             else documents_cfg.get('table_reader')
         )
-    if table_name is None:
-        table_name = kwargs.get('table_reader', kwargs.get('table_reader_name'))
 
     # Validate scalar and per-company reader switches against the registry.
     for candidate_name, allow_none in (
@@ -2248,6 +2244,15 @@ def build_page_router(*args: Any, **kwargs: Any) -> Any:
             and hasattr(ingestion, 'page_router_enabled')
         ):
             router_enabled = getattr(ingestion, 'page_router_enabled', None)
+    override_keys = ('page_router_enabled', 'enabled', 'routed')
+    if any(k in kwargs and kwargs.get(k) is not None for k in override_keys):
+        router_enabled = None
+        for k in override_keys:
+            if kwargs.get(k) is not None:
+                router_enabled = kwargs.get(k)
+                break
+        if isinstance(router_enabled, str):
+            router_enabled = router_enabled.strip().lower() in {'on', 'true', '1', 'yes'}
     if router_enabled is None:
         router_enabled = kwargs.get('page_router_enabled', kwargs.get('enabled', True))
 

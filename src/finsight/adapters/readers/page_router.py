@@ -151,6 +151,7 @@ class PageRouter(BaseReader):
         content_type: Any = None,
         **kwargs: Any,
     ) -> ReaderResult:
+        self._require_company_id(company_id)
         source = self._resolve_source(
             content, file_path=file_path, filename=filename, file_name=file_name, **kwargs
         )
