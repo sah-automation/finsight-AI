@@ -14,10 +14,12 @@ from finsight.domain.ports.partition_metadata_repository import (
 
 DEFAULT_PARTITION_TABLES = [
     'documents',
+    'document_versions',
     'document_chunks',
     'metrics',
     'answers',
     'audit_logs',
+    'jobs',
 ]
 
 
@@ -167,6 +169,20 @@ class PartitionManager(PartitionGateway):
                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_name_period ON {partition_name} (company_id, name, period_end)'
                 )
             elif table_name == 'answers':
+                await self._execute(
+                    f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_created ON {partition_name} (company_id, created_at)'
+                )
+            elif table_name == 'document_versions':
+                await self._execute(
+                    f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_document ON {partition_name} (company_id, document_id)'
+                )
+                await self._execute(
+                    f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_state ON {partition_name} (company_id, state)'
+                )
+            elif table_name == 'jobs':
+                await self._execute(
+                    f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_status ON {partition_name} (company_id, status)'
+                )
                 await self._execute(
                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_created ON {partition_name} (company_id, created_at)'
                 )
