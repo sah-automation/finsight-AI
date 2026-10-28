@@ -1,0 +1,6 @@
+
+# ruff command result
+Command: uv run ruff check --fix src tests
+Safe fixes applied: 0
+Unsafe fixes available (not applied): 53
+Errors before: 365; after: 365

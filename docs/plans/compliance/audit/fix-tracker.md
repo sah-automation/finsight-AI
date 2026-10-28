@@ -12,8 +12,7 @@ Tracks progress toward closing all lint/type/import/arch/test/security gates. Se
 ## Phases
 
 - [x] Phase 0 — Baseline audit and tracking (#56). Artifacts in `docs/plans/compliance/audit/`.
-- [ ] Phase 1 — Safe ruff auto-fixes (#57). Run `ruff check --fix src tests`, review diff, run gates.
-- [ ] Phase 2 — Unsafe ruff fixes applied selectively (#58).
+- [x] Phase 1 — Safe ruff auto-fixes (#57). Ran `uv run ruff check --fix src tests` (safe only): 0 safe fixes available, 365 errors remain; 53 unsafe fixes deferred to Phase 2. Diff summary: `audit/diff-phase1-safe.txt`.- [ ] Phase 2 — Unsafe ruff fixes applied selectively (#58).
 - [ ] Phase 3 — Manual fixes: type ignores (PGH003), TYPE_CHECKING imports (TC003/TC001), exception chaining (B904) (#59).
 - [ ] Phase 4 — Manual fixes for remaining lint errors (S608, BLE001, SIM105, etc.) (#60).
 - [ ] Phase 5 — Structural compliance verify (#61): one class per file, names, no utils/helpers, every package README.
@@ -69,6 +68,7 @@ Tracks progress toward closing all lint/type/import/arch/test/security gates. Se
 ## Commit log (audit-related)
 
 - Phase 0 (#56): audit artifacts (this commit).
+- Phase 1 (#57): safe ruff auto-fixes (no-op; 0 safe fixes); audit diff summary.
 
 ## Notes
 - Only implementer of Phase 0 scoped work; subsequent phases tracked here.
