@@ -75,3 +75,7 @@ __all__ = [
     'VersionCreationResult',
     'VersionCreationUseCase',
 ]
+
+# Ingestion scan and pipeline workers
+from .pipeline import *  # noqa: F401,F403
+from .scan_worker import *  # noqa: F401,F403

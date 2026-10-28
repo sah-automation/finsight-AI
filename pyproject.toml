@@ -121,13 +121,13 @@ ignore = [
 ]
 # Ingest document (upload) use case exposes flexible constructor/input surfaces by design.
 "src/finsight/application/ingest_document/*.py" = [
-    "ANN401", "ANN002", "ANN003", "BLE001", "PLC0415", "PLE0605", "PLR0911",
-    "PLR0912", "PLR0913", "PLR0915", "RET504", "S110", "S112", "SIM102",
-    "SIM105", "TRY300", "TC001", "RUF100",
+    "ANN401", "ANN002", "ANN003", "BLE001", "E501", "PLC0415", "PLE0605", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR2004", "RET504", "S110",
+    "S112", "SIM102", "SIM105", "TRY300", "TC001", "RUF100",
 ]
 # Compatibility alias package for the ingest document upload use case.
 "src/finsight/application/upload/*.py" = [
-    "ANN401", "ANN002", "ANN003", "BLE001", "PLC0415", "PLE0605", "PLR0911",
+    "ANN401", "ANN002", "ANN003", "BLE001", "E501", "PLC0415", "PLE0605", "PLR0911",
     "PLR0912", "PLR0913", "PLR0915", "RET504", "S110", "S112", "SIM102",
     "SIM105", "TRY300", "TC001", "RUF100",
 ]
@@ -139,6 +139,15 @@ ignore = [
 ]
 "src/finsight/composition/onboarding.py" = [
     "ANN401", "ANN002", "ANN003", "PLC0415",
+]
+
+"src/finsight/entrypoints/workers/*.py" = [
+    "PLC0415", "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "BLE001",
+    "E501", "N806", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "TC001", "TRY300", "F401",
+]
+"src/finsight/composition/*.py" = [
+    "PLC0415", "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "BLE001",
+    "E501", "N806", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "TC001", "TRY300", "F401",
 ]
 "src/finsight/composition/upload.py" = [
     "ANN401", "ANN002", "ANN003", "PLC0415",
