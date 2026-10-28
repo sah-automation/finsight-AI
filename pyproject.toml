@@ -141,6 +141,11 @@ ignore = [
     "PLC0415", "PLR0913", "PLW0603",
 ]
 "src/finsight/core/config/models.py" = ["B008"]
+"src/finsight/adapters/security/*.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "BLE001",
+    "E501", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",
+    "S110", "SIM102", "SIM105", "SIM108", "TC001",
+]
 "src/finsight/adapters/readers/*.py" = [
     "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "BLE001",
     "E501", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",
@@ -290,6 +295,7 @@ modules = [
     "finsight.adapters.cache",
     "finsight.adapters.auth",
     "finsight.adapters.metering",
+    "finsight.adapters.security",
 ]
 
 [[tool.importlinter.contracts]]
