@@ -25,6 +25,13 @@ from .docx_reader import (
     DocxReader,
 )
 from .excel_reader import Excel, ExcelReader
+from .format_reader_selector import (
+    FormatReader,
+    FormatReaderSelector,
+    FormatSelector,
+    ReaderFactorySelector,
+    ReaderSelector,
+)
 from .page_router import PageRouter
 from .pdf_plumber_reader import PdfPlumberReader
 from .self_hosted_layout import (
@@ -55,6 +62,11 @@ __all__ = [
     'DocxReader',
     'Excel',
     'ExcelReader',
+    'FormatReaderSelector',
+    'FormatReader',
+    'FormatSelector',
+    'ReaderFactorySelector',
+    'ReaderSelector',
     'Layout',
     'LayoutReader',
     'LayoutTableReader',
