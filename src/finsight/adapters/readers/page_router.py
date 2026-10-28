@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
 from typing import Any, cast
 
-from finsight.domain.ports.document_reader import DocumentReader
 from finsight.domain.value_objects.reader_result import ReaderResult
+
+from .base_reader import BaseReader
 
 _CONTROL_KEYS = {
     'page_router_enabled',
@@ -31,7 +31,7 @@ _CONTROL_KEYS = {
 }
 
 
-class PageRouter(DocumentReader):
+class PageRouter(BaseReader):
     """Route pages between primary, table and scan readers.
 
     Both routed (on) and non-routed (off) paths are implemented. When routing is
@@ -375,28 +375,6 @@ class PageRouter(DocumentReader):
             return self.reader
         return None
 
-    def _resolve_source(
-        self,
-        content: Any,
-        *,
-        file_path: Any = None,
-        filename: Any = None,
-        file_name: Any = None,
-        **kwargs: Any,
-    ) -> Any:
-        if content is not None:
-            return content
-        if file_path is not None:
-            return file_path
-        if filename is not None:
-            return filename
-        if file_name is not None:
-            return file_name
-        for key in ('path', 'source', 'file', 'stream', 'data', 'bytes'):
-            if key in kwargs and kwargs[key] is not None:
-                return kwargs[key]
-        return None
-
     async def _call_reader(
         self, reader: Any, company_id: Any, source: Any, kwargs: dict[str, Any]
     ) -> ReaderResult:
@@ -460,46 +438,6 @@ class PageRouter(DocumentReader):
                 return infos
         except Exception:
             return None
-
-    def _as_bytes(self, source: Any) -> bytes | None:
-        if source is None:
-            return None
-        if isinstance(source, (bytes, bytearray)):
-            return bytes(source)
-        if hasattr(source, 'read'):
-            try:
-                raw = source.read()
-                if hasattr(source, 'seek'):
-                    try:
-                        source.seek(0)
-                    except Exception:
-                        pass
-                if isinstance(raw, (bytes, bytearray)):
-                    return bytes(raw)
-                if isinstance(raw, str):
-                    return raw.encode('utf-8')
-            except Exception:
-                return None
-        if isinstance(source, (str, Path)):
-            try:
-                path = Path(source)
-                if path.exists() and path.is_file():
-                    return path.read_bytes()
-            except Exception:
-                return None
-        if isinstance(source, dict):
-            for key in ('content', 'data', 'bytes', 'body', 'file'):
-                if source.get(key) is not None:
-                    found = self._as_bytes(source.get(key))
-                    if found is not None:
-                        return found
-        for attr in ('content', 'data', 'body', 'file'):
-            value = getattr(source, attr, None)
-            if value is not None and value is not source:
-                found = self._as_bytes(value)
-                if found is not None:
-                    return found
-        return None
 
     def _normalize_page_info(self, page: Any) -> dict[str, Any]:
         if isinstance(page, dict):

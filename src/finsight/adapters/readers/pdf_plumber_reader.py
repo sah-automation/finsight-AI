@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
 from typing import Any
 
-from finsight.domain.ports.document_reader import DocumentReader
 from finsight.domain.value_objects.reader_result import ReaderResult
 
+from .base_reader import BaseReader
 
-class PdfPlumberReader(DocumentReader):
+
+class PdfPlumberReader(BaseReader):
     """Read born-digital PDFs with pdfplumber.
 
     Preserves page numbers and table boundaries. A page with no extractable
@@ -90,28 +90,6 @@ class PdfPlumberReader(DocumentReader):
     ) -> ReaderResult:
         return await self.read(company_id, content, **kwargs)
 
-    def _resolve_source(
-        self,
-        content: Any,
-        *,
-        file_path: Any = None,
-        filename: Any = None,
-        file_name: Any = None,
-        **kwargs: Any,
-    ) -> Any:
-        if content is not None:
-            return content
-        if file_path is not None:
-            return file_path
-        if filename is not None:
-            return filename
-        if file_name is not None:
-            return file_name
-        for key in ('path', 'source', 'file', 'stream', 'data', 'bytes', 'content'):
-            if key in kwargs and kwargs[key] is not None:
-                return kwargs[key]
-        return None
-
     def _open_pdf(self, source: Any) -> Any:
         import pdfplumber
 
@@ -119,46 +97,6 @@ class PdfPlumberReader(DocumentReader):
         if data is not None:
             return pdfplumber.open(io.BytesIO(data))
         return pdfplumber.open(source)
-
-    def _as_bytes(self, source: Any) -> bytes | None:
-        if source is None:
-            return None
-        if isinstance(source, (bytes, bytearray)):
-            return bytes(source)
-        if hasattr(source, 'read'):
-            try:
-                raw = source.read()
-                if hasattr(source, 'seek'):
-                    try:
-                        source.seek(0)
-                    except Exception:
-                        pass
-                if isinstance(raw, (bytes, bytearray)):
-                    return bytes(raw)
-                if isinstance(raw, str):
-                    return raw.encode('utf-8')
-            except Exception:
-                return None
-        if isinstance(source, (str, Path)):
-            try:
-                path = Path(source)
-                if path.exists() and path.is_file():
-                    return path.read_bytes()
-            except Exception:
-                return None
-        if isinstance(source, dict):
-            for key in ('content', 'data', 'bytes', 'body', 'file'):
-                if source.get(key) is not None:
-                    found = self._as_bytes(source.get(key))
-                    if found is not None:
-                        return found
-        for attr in ('content', 'data', 'body', 'file'):
-            value = getattr(source, attr, None)
-            if value is not None and value is not source:
-                found = self._as_bytes(value)
-                if found is not None:
-                    return found
-        return None
 
     def _extract_tables(self, page: Any, page_number: int) -> list[dict[str, Any]]:
         found_tables: list[Any] = []
