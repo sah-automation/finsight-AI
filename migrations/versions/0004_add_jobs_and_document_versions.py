@@ -140,7 +140,6 @@ def upgrade() -> None:
     )
 
 
-
 def downgrade() -> None:
     """Drop jobs and document_versions tables and revert RLS policies."""
     op.execute('DROP POLICY IF EXISTS jobs_company_isolation ON jobs')

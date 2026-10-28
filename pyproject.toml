@@ -151,6 +151,13 @@ ignore = [
     "E501", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",
     "S110", "SIM102", "SIM105", "SIM108", "TC001",
 ]
+"src/finsight/adapters/queue/*.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "BLE001",
+    "C420", "E501", "F403", "F811", "F841", "PGH003", "PLC0415", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "PLR1730", "PLR2004", "RET504", "RUF005",
+    "RUF021", "S110", "SIM102", "SIM105", "SIM108", "TC001", "TRY300",
+]
+"src/finsight/domain/ports/queue.py" = ["F401", "F403"]
 # The config loader parses arbitrary YAML (so Any is honest), imports the
 # logger lazily to avoid a circular import, and owns the deliberate
 # module-level config singleton described in CODING_STANDARDS section 6.

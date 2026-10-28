@@ -10,6 +10,7 @@ from .job_repository import JobRepository
 from .object_storage import ObjectStorage
 from .partition_gateway import PartitionGateway, PartitionManager
 from .partition_metadata_repository import PartitionMetadataRepository
+from .queue import Queue, QueuePort
 from .unit_of_work import UnitOfWork
 from .user_repository import UserRepository
 from .virus_scanner import VirusScanner
@@ -24,6 +25,8 @@ __all__ = [
     'PartitionGateway',
     'PartitionManager',
     'PartitionMetadataRepository',
+    'Queue',
+    'QueuePort',
     'UnitOfWork',
     'UserRepository',
     'VirusScanner',

@@ -81,7 +81,9 @@ def _as_bytes(value: Any) -> bytes | None:
 
 def _resolve_config(*args: Any, **kwargs: Any) -> Any:
     for arg in args:
-        if arg is not None and (hasattr(arg, 'ingestion') or hasattr(arg, 'switches') or hasattr(arg, 'storage')):
+        if arg is not None and (
+            hasattr(arg, 'ingestion') or hasattr(arg, 'switches') or hasattr(arg, 'storage')
+        ):
             return arg
     for key in ('config', 'settings', 'configuration', 'app_config', 'ctx'):
         value = kwargs.get(key)
@@ -196,7 +198,9 @@ def _coerce_result(value: Any, *, default_detail: str | None = None) -> VirusSca
         # Status/result tokens.
         for key in ('status', 'result', 'verdict', 'scan_result', 'outcome', 'state'):
             if key in value and value.get(key) is not None:
-                token = _coerce_str(value.get(key)).strip().lower().replace(' ', '_').replace('-', '_')
+                token = (
+                    _coerce_str(value.get(key)).strip().lower().replace(' ', '_').replace('-', '_')
+                )
                 if token in _CLEAN_TOKENS:
                     detail = None
                     for dkey in ('detail', 'message', 'reason'):
@@ -210,7 +214,9 @@ def _coerce_result(value: Any, *, default_detail: str | None = None) -> VirusSca
                         if dkey in value and value.get(dkey) is not None:
                             detail = _coerce_str(value.get(dkey))
                             break
-                    return VirusScanResult(clean=False, detail=detail or _coerce_str(value.get(key)))
+                    return VirusScanResult(
+                        clean=False, detail=detail or _coerce_str(value.get(key))
+                    )
         # Error fields.
         for key in ('error', 'exception', 'failure'):
             if key in value and value.get(key) is not None:
@@ -223,13 +229,19 @@ def _coerce_result(value: Any, *, default_detail: str | None = None) -> VirusSca
     for attr in ('clean', 'is_clean'):
         if hasattr(value, attr):
             try:
-                return VirusScanResult(clean=bool(getattr(value, attr)), detail=getattr(value, 'detail', None) or getattr(value, 'message', None))
+                return VirusScanResult(
+                    clean=bool(getattr(value, attr)),
+                    detail=getattr(value, 'detail', None) or getattr(value, 'message', None),
+                )
             except Exception:
                 pass
     for attr in ('infected', 'is_infected'):
         if hasattr(value, attr):
             try:
-                return VirusScanResult(clean=not bool(getattr(value, attr)), detail=getattr(value, 'detail', None) or getattr(value, 'message', None))
+                return VirusScanResult(
+                    clean=not bool(getattr(value, attr)),
+                    detail=getattr(value, 'detail', None) or getattr(value, 'message', None),
+                )
             except Exception:
                 pass
     # Try common callables.
@@ -325,7 +337,12 @@ class VirusScanner(VirusScannerPort):
                     break
         # Also accept a bare callable passed positionally.
         for arg in args:
-            if arg is None or arg is self.client or arg is self.object_storage or isinstance(arg, (str, bytes, dict)):
+            if (
+                arg is None
+                or arg is self.client
+                or arg is self.object_storage
+                or isinstance(arg, (str, bytes, dict))
+            ):
                 continue
             if callable(arg) and not hasattr(arg, 'get_object'):
                 scan_func = arg
@@ -361,7 +378,9 @@ class VirusScanner(VirusScannerPort):
         # Failure behaviour.
         self.raise_on_failure = _first(kwargs, 'raise_on_failure', 'fail_fast', default=False)
         try:
-            self.raise_on_failure = bool(self.raise_on_failure) if self.raise_on_failure is not None else False
+            self.raise_on_failure = (
+                bool(self.raise_on_failure) if self.raise_on_failure is not None else False
+            )
         except Exception:
             self.raise_on_failure = False
 
@@ -537,7 +556,9 @@ class VirusScanner(VirusScannerPort):
                     raise ExternalServiceError(f'Virus scan fetch failed: {exc}') from exc
             # head_object (no body) -> cannot scan bytes; signal failure below.
 
-        raise ExternalServiceError('Unable to fetch scanned object; no object storage or get_object available')
+        raise ExternalServiceError(
+            'Unable to fetch scanned object; no object storage or get_object available'
+        )
 
     async def _run_client_scan(
         self, company_id: Any, key: str, bucket: Any, data: bytes | None, **kwargs: Any
@@ -566,7 +587,9 @@ class VirusScanner(VirusScannerPort):
             # Try a few call shapes.
             attempts = [
                 lambda m=method: m(company_id, key, bucket=bucket, content=data, **kwargs),
-                lambda m=method: m(company_id=company_id, key=key, bucket=bucket, content=data, **kwargs),
+                lambda m=method: m(
+                    company_id=company_id, key=key, bucket=bucket, content=data, **kwargs
+                ),
                 lambda m=method: m(company_id, key, **kwargs),
                 lambda m=method: m(key=key, company_id=company_id, **kwargs),
                 lambda m=method: m(Bucket=bucket, Key=key, **kwargs),
@@ -574,7 +597,7 @@ class VirusScanner(VirusScannerPort):
             ]
             for attempt in attempts:
                 try:
-                    res = attempt()
+                    res = attempt()  # type: ignore[no-untyped-call]
                     data_result = await _await_if_needed(res)
                     return _coerce_result(data_result)
                 except TypeError:
@@ -602,7 +625,7 @@ class VirusScanner(VirusScannerPort):
         ]
         for attempt in attempts:
             try:
-                res = attempt()
+                res = attempt()  # type: ignore[no-untyped-call]
                 data_result = await _await_if_needed(res)
                 return _coerce_result(data_result)
             except TypeError:
@@ -625,7 +648,9 @@ class VirusScanner(VirusScannerPort):
             if signature.lower() in haystack:
                 return VirusScanResult(clean=False, detail='EICAR test virus detected')
         # Keep additional known bad markers optional via attribute.
-        extra = getattr(self, 'malicious_signatures', None) or getattr(self, 'virus_signatures', None)
+        extra = getattr(self, 'malicious_signatures', None) or getattr(
+            self, 'virus_signatures', None
+        )
         if isinstance(extra, (list, tuple, set)):
             for signature in extra:
                 needle = signature.encode() if isinstance(signature, str) else bytes(signature)
@@ -639,11 +664,17 @@ class VirusScanner(VirusScannerPort):
         **kwargs: Any,
     ) -> VirusScanResult:
         company_id, key, content = self._resolve_scan_inputs(args, kwargs)
-        bucket = _first(kwargs, 'bucket', 'bucket_name', 'storage_bucket', 'scan_bucket', default=None)
+        bucket = _first(
+            kwargs, 'bucket', 'bucket_name', 'storage_bucket', 'scan_bucket', default=None
+        )
         if bucket is None:
             bucket = self.bucket
 
-        normalized_key = self._normalise_key(company_id, key) if (key is not None or content is not None) else f'{_coerce_str(company_id)}/scan'
+        normalized_key = (
+            self._normalise_key(company_id, key)
+            if (key is not None or content is not None)
+            else f'{_coerce_str(company_id)}/scan'
+        )
 
         if not bool(self.enabled):
             return VirusScanResult(clean=True, detail='virus scan disabled')
@@ -652,26 +683,37 @@ class VirusScanner(VirusScannerPort):
 
         # Scan function first (most explicit).
         if callable(self.scan_func):
-            result = await self._run_scan_func(company_id, normalized_key, bucket, data, **{
-                k: v for k, v in kwargs.items() if k not in {'bucket', 'bucket_name'}
-            })
+            result = await self._run_scan_func(
+                company_id,
+                normalized_key,
+                bucket,
+                data,
+                **{k: v for k, v in kwargs.items() if k not in {'bucket', 'bucket_name'}},
+            )
             if result is not None:
                 return result
 
         # Client with scan methods.
         if self.client is not None:
-            result = await self._run_client_scan(company_id, normalized_key, bucket, data, **{
-                k: v for k, v in kwargs.items() if k not in {'bucket', 'bucket_name'}
-            })
+            result = await self._run_client_scan(
+                company_id,
+                normalized_key,
+                bucket,
+                data,
+                **{k: v for k, v in kwargs.items() if k not in {'bucket', 'bucket_name'}},
+            )
             if result is not None:
                 return result
 
         # Fetch bytes then default scan.
         if data is None:
             try:
-                data = await self._fetch_object(company_id, normalized_key, bucket, **{
-                    k: v for k, v in kwargs.items() if k not in {'bucket', 'bucket_name'}
-                })
+                data = await self._fetch_object(
+                    company_id,
+                    normalized_key,
+                    bucket,
+                    **{k: v for k, v in kwargs.items() if k not in {'bucket', 'bucket_name'}},
+                )
             except Exception as exc:
                 if self.raise_on_failure:
                     raise
