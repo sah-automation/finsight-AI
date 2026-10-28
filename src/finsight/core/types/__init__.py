@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import StrEnum
 from typing import NewType
 
 from pydantic import BaseModel
+
+from .partition_status import PartitionStatus
 
 # ============================================================
 # Strongly-typed IDs (NewType for static checking, runtime is str)
@@ -119,6 +120,7 @@ __all__ = [
     'JobId',
     'JobStatus',
     'MetricId',
+    'PartitionStatus',
     'RecommendationId',
     'ReportId',
     'RequestContext',
@@ -128,11 +130,6 @@ __all__ = [
     'UploadType',
     'UserId',
 ]
-from .partition_status import PartitionStatus
-
-__all__.append('PartitionStatus')
-
-
 # ============================================================
 # Request Context (passed through application layer)
 # ============================================================

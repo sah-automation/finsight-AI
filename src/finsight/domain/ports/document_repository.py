@@ -79,12 +79,12 @@ class DocumentRepository(ABC):
 
     # Aliases for version methods.
     async def create_version(self, company_id: CompanyId, **kwargs: object) -> DocumentVersion:
-        return await self.create_document_version(company_id, **kwargs)  # type: ignore
+        return await self.create_document_version(company_id, **kwargs)  # type: ignore[arg-type]
 
     async def create_document_version_record(
         self, company_id: CompanyId, **kwargs: object
     ) -> DocumentVersion:
-        return await self.create_document_version(company_id, **kwargs)  # type: ignore
+        return await self.create_document_version(company_id, **kwargs)  # type: ignore[arg-type]
 
     async def get_version(
         self, company_id: CompanyId, version_id: object, **kwargs: object

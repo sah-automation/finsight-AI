@@ -29,10 +29,10 @@ class VirusScanner(ABC):
     async def scan_object(
         self, company_id: CompanyId, key: str, **kwargs: object
     ) -> VirusScanResult:
-        return await self.scan(company_id, key, **kwargs)  # type: ignore
+        return await self.scan(company_id, key, **kwargs)  # type: ignore[arg-type]
 
     async def scan_key(self, company_id: CompanyId, key: str, **kwargs: object) -> VirusScanResult:
-        return await self.scan(company_id, key, **kwargs)  # type: ignore
+        return await self.scan(company_id, key, **kwargs)  # type: ignore[arg-type]
 
 
 __all__ = ['VirusScanner']

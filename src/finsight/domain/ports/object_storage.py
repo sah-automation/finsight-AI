@@ -51,27 +51,27 @@ class ObjectStorage(ABC):
     async def create_presigned_upload_url(
         self, company_id: CompanyId, key: str, **kwargs: object
     ) -> PresignedUpload:
-        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore[arg-type]
 
     async def presigned_upload_url(
         self, company_id: CompanyId, key: str, **kwargs: object
     ) -> PresignedUpload:
-        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore[arg-type]
 
     async def get_presigned_upload_url(
         self, company_id: CompanyId, key: str, **kwargs: object
     ) -> PresignedUpload:
-        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore[arg-type]
 
     async def generate_upload_url(
         self, company_id: CompanyId, key: str, **kwargs: object
     ) -> PresignedUpload:
-        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore[arg-type]
 
     async def presigned_url(
         self, company_id: CompanyId, key: str, **kwargs: object
     ) -> PresignedUpload:
-        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+        return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore[arg-type]
 
     async def get(self, company_id: CompanyId, key: str, **kwargs: object) -> bytes:
         return await self.get_object(company_id, key, **kwargs)

@@ -13,7 +13,7 @@ class AnswerCache(ABC):
     """Interface for storing/clearing cached answers scoped by company."""
 
     @abstractmethod
-    async def get(
+    async def get(  # noqa: PLR0913
         self,
         company_id: CompanyId,
         *,
@@ -28,7 +28,7 @@ class AnswerCache(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def set(
+    async def set(  # noqa: PLR0913
         self,
         company_id: CompanyId,
         value: object,
@@ -56,23 +56,23 @@ class AnswerCache(ABC):
 
     # Aliases for get.
     async def get_answer(self, company_id: CompanyId, **kwargs: object) -> object:
-        return await self.get(company_id, **kwargs)  # type: ignore
+        return await self.get(company_id, **kwargs)  # type: ignore[arg-type]
 
     async def fetch(self, company_id: CompanyId, **kwargs: object) -> object:
-        return await self.get(company_id, **kwargs)  # type: ignore
+        return await self.get(company_id, **kwargs)  # type: ignore[arg-type]
 
     async def get_cached(self, company_id: CompanyId, **kwargs: object) -> object:
-        return await self.get(company_id, **kwargs)  # type: ignore
+        return await self.get(company_id, **kwargs)  # type: ignore[arg-type]
 
     # Aliases for set.
     async def set_answer(self, company_id: CompanyId, value: object, **kwargs: object) -> None:
-        return await self.set(company_id, value, **kwargs)  # type: ignore
+        return await self.set(company_id, value, **kwargs)  # type: ignore[arg-type]
 
     async def put(self, company_id: CompanyId, value: object, **kwargs: object) -> None:
-        return await self.set(company_id, value, **kwargs)  # type: ignore
+        return await self.set(company_id, value, **kwargs)  # type: ignore[arg-type]
 
     async def store(self, company_id: CompanyId, value: object, **kwargs: object) -> None:
-        return await self.set(company_id, value, **kwargs)  # type: ignore
+        return await self.set(company_id, value, **kwargs)  # type: ignore[arg-type]
 
     # Aliases for clear (company-scoped invalidation).
     async def clear_company(self, company_id: CompanyId, **kwargs: object) -> None:
@@ -100,7 +100,7 @@ class AnswerCache(ABC):
         return True
 
     async def exists(self, company_id: CompanyId, **kwargs: object) -> bool:
-        return (await self.get(company_id, **kwargs)) is not None  # type: ignore
+        return (await self.get(company_id, **kwargs)) is not None  # type: ignore[arg-type]
 
 
 __all__ = ['AnswerCache']

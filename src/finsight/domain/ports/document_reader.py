@@ -14,7 +14,7 @@ class DocumentReader(ABC):
     """Interface for extracting text, tables and page numbers from a document."""
 
     @abstractmethod
-    async def read(
+    async def read(  # noqa: PLR0913
         self,
         company_id: CompanyId,
         content: object = None,
@@ -33,22 +33,22 @@ class DocumentReader(ABC):
     async def read_document(
         self, company_id: CompanyId, content: object = None, **kwargs: object
     ) -> ReaderResult:
-        return await self.read(company_id, content, **kwargs)  # type: ignore
+        return await self.read(company_id, content, **kwargs)  # type: ignore[arg-type]
 
     async def extract(
         self, company_id: CompanyId, content: object = None, **kwargs: object
     ) -> ReaderResult:
-        return await self.read(company_id, content, **kwargs)  # type: ignore
+        return await self.read(company_id, content, **kwargs)  # type: ignore[arg-type]
 
     async def parse(
         self, company_id: CompanyId, content: object = None, **kwargs: object
     ) -> ReaderResult:
-        return await self.read(company_id, content, **kwargs)  # type: ignore
+        return await self.read(company_id, content, **kwargs)  # type: ignore[arg-type]
 
     async def extract_text(
         self, company_id: CompanyId, content: object = None, **kwargs: object
     ) -> ReaderResult:
-        return await self.read(company_id, content, **kwargs)  # type: ignore
+        return await self.read(company_id, content, **kwargs)  # type: ignore[arg-type]
 
 
 __all__ = ['DocumentReader']

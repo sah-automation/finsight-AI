@@ -67,19 +67,19 @@ class JobRepository(ABC):
 
     # Aliases.
     async def create(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
-        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def insert(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
-        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def add_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
-        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def upsert_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
-        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def upsert(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
-        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.create_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def get(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
         return await self.get_job(company_id, job_id, **kwargs)
@@ -102,21 +102,21 @@ class JobRepository(ABC):
     async def update_job_status(
         self, company_id: CompanyId, job_id: object, **kwargs: object
     ) -> object:
-        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def update_status(
         self, company_id: CompanyId, job_id: object, **kwargs: object
     ) -> object:
-        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def set_status(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
-        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def mark_status(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
-        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def mark_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
-        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+        return await self.update_job(company_id, job_id, **kwargs)  # type: ignore[arg-type]
 
     async def delete(self, company_id: CompanyId, job_id: object, **kwargs: object) -> bool:
         return await self.delete_job(company_id, job_id, **kwargs)
