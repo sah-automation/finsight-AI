@@ -664,3 +664,94 @@ def get_upload_use_case(*args: Any, **kwargs: Any) -> Any:
 
 def build_onboarding_use_case_container_alias(*args: Any, **kwargs: Any) -> Any:
     return build_onboarding_use_case(*args, **kwargs)
+
+
+def build_object_storage(*args: Any, **kwargs: Any) -> Any:
+    """Build an :class:`ObjectStorage` adapter (S3)."""
+    provided = _existing(
+        kwargs,
+        'object_storage',
+        'storage',
+        'storage_adapter',
+        'object_storage_adapter',
+        's3_storage',
+        's3',
+    )
+    if provided is not None:
+        return provided
+
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    client = _existing(
+        kwargs,
+        'client',
+        's3_client',
+        'storage_client',
+        'boto3_client',
+        'aws_client',
+    )
+
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'object_storage',
+            'storage',
+            'storage_adapter',
+            'object_storage_adapter',
+            's3_storage',
+            's3',
+            'client',
+            's3_client',
+            'storage_client',
+            'boto3_client',
+            'aws_client',
+        }
+    }
+    try:
+        module = importlib.import_module('finsight.adapters.storage.s3_storage')
+        S3Storage = getattr(module, 'S3Storage')
+        return S3Storage(client=client, config=config, session=session, **_extra)
+    except Exception:
+        try:
+            module = importlib.import_module('finsight.adapters.storage')
+            S3Storage = getattr(module, 'S3Storage')
+            return S3Storage(client=client, config=config, session=session, **_extra)
+        except Exception:
+            return None
+
+
+# Aliases for varying caller naming.
+build_storage = build_object_storage
+build_s3_storage = build_object_storage
+build_s3_object_storage = build_object_storage
+build_storage_adapter = build_object_storage
+
+# Default storage handle (parity with onboarding/upload roots).
+_DEFAULT_STORAGE: Any = None
+
+
+def set_default_object_storage(value: Any) -> None:
+    global _DEFAULT_STORAGE
+    _DEFAULT_STORAGE = value
+
+
+def get_default_object_storage() -> Any:
+    return _DEFAULT_STORAGE
+
+
+def get_object_storage(*args: Any, **kwargs: Any) -> Any:
+    if args or kwargs:
+        instance = build_object_storage(*args, **kwargs)
+        set_default_object_storage(instance)
+        return instance
+    default = get_default_object_storage()
+    if default is not None:
+        return default
+    try:
+        return build_object_storage()
+    except Exception:
+        return None
