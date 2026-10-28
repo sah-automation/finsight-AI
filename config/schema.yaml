@@ -212,8 +212,19 @@ ingestion:
   max_document_size_mb: 100
   allowed_mime_types: ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "image/png", "image/jpeg", "image/tiff"]
   virus_scan_enabled: true
+  page_router_enabled: true
+  chunk_strategy: structure_recursive
+  child_chunk_tokens: 500
+  parent_mode: section
+  max_parent_tokens: 1500
+  llm_context_categories: []
+  required_metadata: [company, period, category, currency, units, page, table_id]
 
 documents:
+  reader: pdfplumber
+  scan_reader: tesseract
+  table_reader: pdfplumber
+  per_company_override: {}
   categories: ["invoice", "bank_statement", "financial_statement", "budget", "contract", "board_report"]
   upload_types: ["new", "update"]
   delta_tracking: true
@@ -240,6 +251,7 @@ output_gate:
 
 consistency:
   check_interval_seconds: 300
+  fresh_read_window_seconds: 10
 
 answer_check:
   enabled: true

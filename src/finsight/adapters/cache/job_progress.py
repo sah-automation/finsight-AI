@@ -107,7 +107,7 @@ def _norm(value: Any) -> str:
     return str(value)
 
 
-class _ProgressRecord(dict):
+class _ProgressRecord(dict[str, Any]):
     def __getattr__(self, name: str) -> Any:
         try:
             return self.get(name)
@@ -293,7 +293,7 @@ class JobProgress(JobProgressPort):
                 val = payload.get(src)
                 if src in ('progress', 'receive_count'):
                     try:
-                        val = int(val)
+                        val = int(str(val))
                     except (TypeError, ValueError):
                         pass
                 item[dst] = val
@@ -398,7 +398,11 @@ class JobProgress(JobProgressPort):
                     jid = a
                     break
         if _norm(jid) == '':
-            jid = payload.get('job_id', payload.get('id'), payload.get('jobId'))
+            jid = payload.get('job_id')
+            if jid is None:
+                jid = payload.get('id')
+            if jid is None:
+                jid = payload.get('jobId')
         if _norm(cid) == '':
             raise ValueError('company_id required')
         if _norm(jid) == '':

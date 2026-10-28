@@ -97,8 +97,10 @@ class BaseRepository:
 
     async def _set_rls_context(self, company_id: Any) -> None:
         """Set ``app.company_id`` for the current transaction (RLS lock)."""
-        value = str(company_id).replace("'", "''")
-        await self._execute(f"SET LOCAL app.company_id = '{value}'")
+        await self._execute(
+            "SELECT set_config('app.company_id', :company_id, true)",
+            {'company_id': str(company_id)},
+        )
 
     async def set_rls_context(self, company_id: Any) -> None:
         """Public alias for :meth:`_set_rls_context`."""
@@ -107,8 +109,10 @@ class BaseRepository:
     @staticmethod
     async def set_tenant_context(session_or_engine: Any, company_id: Any) -> None:
         """Module-level helper to set RLS context on a given session/engine."""
-        safe = str(company_id).replace("'", "''")
-        result = session_or_engine.execute(text(f"SET LOCAL app.company_id = '{safe}'"))
+        result = session_or_engine.execute(
+            text("SELECT set_config('app.company_id', :company_id, true)"),
+            {'company_id': str(company_id)},
+        )
         if inspect.isawaitable(result):
             await result
 

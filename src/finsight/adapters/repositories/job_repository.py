@@ -29,7 +29,7 @@ def _as_str_or_none(value: Any) -> str | None:
     return text if text else None
 
 
-class _JobRecord(dict):
+class _JobRecord(dict[str, Any]):
     """Flexible row wrapper supporting attribute access."""
 
     def __getattr__(self, name: str) -> Any:
@@ -99,11 +99,11 @@ class JobRepository(JobRepositoryPort, BaseRepository):
     ) -> object:
         await self._set_rls_context(company_id)
 
-        status = status if status is not None else kwargs.pop('status', None)  # type: ignore[union-attr]
+        status = status if status is not None else kwargs.pop('status', None)  # type: ignore[assignment]
         status_value = _normalise_status(status) or 'queued'
         progress = kwargs.pop('progress', 0)
         try:
-            progress = int(progress) if progress is not None else 0
+            progress = int(str(progress)) if progress is not None else 0
         except (TypeError, ValueError):
             progress = 0
 
@@ -115,7 +115,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
 
         receive_count = kwargs.pop('receive_count', None)
         try:
-            receive_count = 0 if receive_count is None else int(receive_count)
+            receive_count = 0 if receive_count is None else int(str(receive_count))
         except (TypeError, ValueError):
             receive_count = 0
 
@@ -250,7 +250,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
 
         provided_status = status
         if provided_status is None and 'status' in kwargs:
-            provided_status = kwargs.pop('status')
+            provided_status = kwargs.pop('status')  # type: ignore[assignment]
         kwargs.pop('status', None)
 
         values: dict[str, Any] = {}
@@ -271,7 +271,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
             val = kwargs.pop('progress')
             if val is not None:
                 try:
-                    val = int(val)
+                    val = int(str(val))
                 except (TypeError, ValueError):
                     pass
                 values['progress_val'] = val
@@ -299,7 +299,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
             val = kwargs.pop('receive_count')
             if val is not None:
                 try:
-                    val = int(val)
+                    val = int(str(val))
                 except (TypeError, ValueError):
                     pass
             values['receive_count_val'] = val if val is not None else None
@@ -418,7 +418,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
             limit = kwargs.pop('page_size', None)
         if limit is not None:
             try:
-                params['limit'] = int(limit)
+                params['limit'] = int(str(limit))
                 sql += ' LIMIT :limit'
             except (TypeError, ValueError):
                 pass
@@ -428,7 +428,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
             offset = kwargs.pop('skip', None)
         if offset is not None:
             try:
-                params['offset'] = int(offset)
+                params['offset'] = int(str(offset))
                 sql += ' OFFSET :offset'
             except (TypeError, ValueError):
                 pass

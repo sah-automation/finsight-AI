@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -210,9 +210,16 @@ class QueueConfig(StrictBaseModel):
     reports_queue_url: str
     dead_letter_queue_url: str
     visibility_timeout_seconds: int = Field(ge=1)
-    max_receive_count: int = Field(ge=1)
+    max_receive_count: int = Field(ge=1, le=10, default=5)
+    job_max_receive_count: int | None = Field(ge=1, le=10, default=None)
     batch_size: int = Field(ge=1)
     wait_time_seconds: int = Field(ge=0)
+
+    @model_validator(mode='after')
+    def _sync_receive_counts(self) -> QueueConfig:
+        target = self.max_receive_count
+        object.__setattr__(self, 'job_max_receive_count', target)
+        return self
 
 
 class StorageConfig(StrictBaseModel):
@@ -277,9 +284,35 @@ class IngestionConfig(StrictBaseModel):
     allowed_mime_types: list[str] = Field(default_factory=list)
     virus_scan_enabled: bool = True
     page_router_enabled: bool = True
+    chunk_strategy: Literal['structure_recursive', 'plain_recursive'] = 'structure_recursive'
+    child_chunk_tokens: int = Field(ge=200, le=800, default=500)
+    parent_mode: Literal['section', 'page'] = 'section'
+    max_parent_tokens: int = Field(ge=1, default=1500)
+    llm_context_categories: list[str] = Field(default_factory=list)
+    required_metadata: list[str] = Field(
+        default_factory=lambda: [
+            'company',
+            'period',
+            'category',
+            'currency',
+            'units',
+            'page',
+            'table_id',
+        ]
+    )
+
+    @model_validator(mode='after')
+    def _validate_parent_tokens(self) -> IngestionConfig:
+        if self.max_parent_tokens < self.child_chunk_tokens:
+            raise ValueError('max_parent_tokens must be at least child_chunk_tokens')
+        return self
 
 
 class DocumentsConfig(StrictBaseModel):
+    reader: Literal['pdfplumber', 'textract'] = 'pdfplumber'
+    scan_reader: Literal['tesseract', 'textract', 'none'] = 'tesseract'
+    table_reader: Literal['pdfplumber', 'textract', 'self_hosted_layout'] = 'pdfplumber'
+    per_company_override: dict[str, dict[str, Any]] = Field(default_factory=dict)
     categories: list[str] = Field(
         default_factory=lambda: [
             'invoice',
@@ -326,6 +359,7 @@ class OutputGateConfig(StrictBaseModel):
 
 class ConsistencyConfig(StrictBaseModel):
     check_interval_seconds: int = Field(ge=1, default=300)
+    fresh_read_window_seconds: int = Field(ge=0, le=60, default=10)
 
 
 class AnswerCheckConfig(StrictBaseModel):
