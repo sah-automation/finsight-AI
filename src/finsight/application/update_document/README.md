@@ -1,14 +1,16 @@
 # Update Document Use Case
 
-Document update/reprocessing flow steps.
+Application use case for validating and processing document updates.
 
 **Belongs here:**
-- Change detection
-- Incremental reprocessing
-- Cache invalidation
-- Metric recomputation trigger
-- Forecast staleness marking
+- Upload form validation for updates
+- Duplicate detection
+- New DocumentVersion creation
+- Queueing ingestion with delta tracking
+- Stamp update and cache invalidation
+- Cascade/flagging of related documents
+- Metrics recompute triggering (log/flag)
 
 **Does not belong here:**
-- Full re-ingestion logic (reuse ingestion steps)
-- Business rules for what changed (domain/services)
+- Reader/vendor logic
+- Storage or persistence internals beyond ports
