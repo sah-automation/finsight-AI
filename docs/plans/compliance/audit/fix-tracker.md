@@ -17,7 +17,7 @@ Tracks progress toward closing all lint/type/import/arch/test/security gates. Se
 - [ ] Phase 3 — Manual fixes: type ignores (PGH003), TYPE_CHECKING imports (TC003/TC001), exception chaining (B904) (#59).
 - [ ] Phase 4 — Manual fixes for remaining lint errors (S608, BLE001, SIM105, etc.) (#60).
 - [x] Phase 5 — Structural compliance verify (#61): one class per file, names, no utils/helpers, every package README. Verified: `make arch-test` (45 passed), no multi-class files beyond allowed exceptions, no utils/helpers, all `src/finsight` packages have README.
-- [ ] Phase 6 — File/function size limits if needed (#62).
+- [x] Phase 6 — File/function size limits if needed (#62): checked `make arch-test` size warnings (warn-only); oversized files/functions identified and documented; no refactor required to keep gates green (warnings do not fail build); behavior unchanged.
 - [ ] Phase 7 — Manual fixes remaining (this issue sequence consolidated).
 - [ ] Phase 8 — Full gate validation and cleanup (#63): `make check` / `make ci` green, pre-commit green.
 
