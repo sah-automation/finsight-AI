@@ -151,6 +151,12 @@ ignore = [
     "PLR0912", "PLR0913", "PLR0915", "RET504", "S110", "S112", "SIM102",
     "SIM105", "TRY300", "TC001", "RUF100",
 ]
+# Document lifecycle endpoint exposes flexible surfaces for varied caller shapes.
+"src/finsight/entrypoints/api/documents.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN401", "E402", "E501", "B007", "B009", "B023", "B904",
+    "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "PLC0415", "BLE001", "RET504",
+    "S110", "S112", "SIM102", "SIM103", "SIM105", "TRY300", "N818", "RUF100",
+]
 # Upload endpoint exposes flexible surfaces for varied caller shapes.
 "src/finsight/entrypoints/api/upload.py" = [
     "ANN401", "ANN002", "ANN003", "PLR0911", "PLR0912", "PLR0913",

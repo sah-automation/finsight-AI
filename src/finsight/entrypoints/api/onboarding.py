@@ -344,11 +344,15 @@ async def _handle(*args: Any, **kwargs: Any) -> dict[str, Any]:
             data['_role'] = data.pop('role')
 
     # Canonicalise input field aliases so downstream gets canonical names too.
+    # Preserve the role before canonicalisation drops private keys.
+    _role_value = data.get('_role', data.get('role'))
     canonical_data = dict(data)
     canonical_data.update(_flatten(canonical_data))
     data = canonical_data
     for key in ('_role',):
         data.pop(key, None)
+    if _role_value is not None and 'role' not in data:
+        data['role'] = _role_value
 
     role_candidate = None
     if _is_context(context):
