@@ -258,8 +258,10 @@ class ScanWorker:
         )
         self.unit_of_work = _first(kwargs, 'unit_of_work', 'uow', 'transaction', 'tx', default=None)
         self.answer_cache = _first(kwargs, 'answer_cache', 'cache', default=None)
-        self.enabled = True
-        self.virus_scan_enabled = True
+        self._ctor_kwargs = dict(kwargs)
+        # disabled until resolved; keeps constructor kwargs authoritative
+        self.enabled = None
+        self.virus_scan_enabled = None
 
         positional = [
             'document_repository',
@@ -323,17 +325,22 @@ class ScanWorker:
 
         # idempotency memory
         self._processed: set[str] = getattr(self, '_processed', set())
+        self._processed_versions: dict[str, Any] = getattr(self, '_processed_versions', {})
 
     def _resolve_enabled(self) -> bool:
         cfg = self.config
         explicit = None
         for key in ('virus_scan_enabled', 'scan_enabled', 'virus_scanning_enabled', 'enabled'):
-            if hasattr(self, key):
-                v = getattr(self, key, None)
-                if isinstance(v, bool):
-                    explicit = v
-                    break
-        # constructor kwargs might set enabled flags
+            ctor_val = self._ctor_kwargs.get(key, None)
+            if isinstance(ctor_val, bool):
+                return ctor_val
+            if ctor_val is not None:
+                # Fail closed-ish: only accept real booleans; unknown values stay for config.
+                pass
+        for key in ('virus_scan_enabled', 'scan_enabled', 'virus_scanning_enabled', 'enabled'):
+            v = getattr(self, key, None)
+            if isinstance(v, bool):
+                return v
         # config resolution
         candidates = []
         if cfg is not None:
@@ -652,7 +659,11 @@ class ScanWorker:
         vid_text = str(vid)
         idempotency_key = f'{cid_text}:{vid_text}:{_normalize_key(key)}'
         if idempotency_key in self._processed:
+            cached = self._processed_versions.get(idempotency_key)
+            if cached is not None:
+                return cached
             version = await self._get_version(cid, vid, did)
+            self._processed_versions[idempotency_key] = version
             return version
         version = await self._get_version(cid, vid, did)
         state = self._version_state(version)
@@ -663,23 +674,64 @@ class ScanWorker:
         ):
             # Idempotent no-op for repeated scan events.
             self._processed.add(idempotency_key)
+            self._processed_versions[idempotency_key] = version
             return version
 
         scan_result = await self._coerce_scan(cid, _normalize_key(key), bucket)
 
         if not bool(getattr(scan_result, 'clean', False)):
             await self._update_state(version, cid, vid, 'rejected')
+            import contextlib
+
+            from finsight.core.errors import InvalidStateTransitionError
+
+            with contextlib.suppress(
+                InvalidStateTransitionError, AttributeError, TypeError, ValueError
+            ):
+                if hasattr(version, 'transition_to'):
+                    version.transition_to('rejected')
+                else:
+                    version.state = 'rejected'
             self._processed.add(idempotency_key)
+            self._processed_versions[idempotency_key] = version
             return version
 
         # clean
         if state not in {'stored', 'processing', 'committed'}:
             await self._update_state(version, cid, vid, 'stored')
-        version = await self._get_version(cid, vid, did)
+            import contextlib
+
+            from finsight.core.errors import InvalidStateTransitionError
+
+            with contextlib.suppress(
+                InvalidStateTransitionError, AttributeError, TypeError, ValueError
+            ):
+                if hasattr(version, 'transition_to'):
+                    version.transition_to('stored')
+                else:
+                    version.state = 'stored'
+        refreshed = await self._get_version(cid, vid, did)
+        if self._version_state(refreshed) in {'stored', 'processing', 'committed', 'rejected'}:
+            version = refreshed
+            try:
+                if self._version_state(version) != 'stored' and state not in {
+                    'stored',
+                    'processing',
+                    'committed',
+                }:
+                    from finsight.core.errors import InvalidStateTransitionError
+
+                    if hasattr(version, 'transition_to'):
+                        version.transition_to('stored')
+                    else:
+                        version.state = 'stored'
+            except (InvalidStateTransitionError, AttributeError, TypeError, ValueError):
+                pass
         # enqueue only first time
         if idempotency_key not in self._processed:
             await self._enqueue(cid, version, _normalize_key(key), bucket)
         self._processed.add(idempotency_key)
+        self._processed_versions[idempotency_key] = version
         return version
 
     # Public entry points
