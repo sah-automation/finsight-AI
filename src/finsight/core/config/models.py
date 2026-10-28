@@ -276,6 +276,7 @@ class IngestionConfig(StrictBaseModel):
     max_document_size_mb: int = Field(ge=1, default=100)
     allowed_mime_types: list[str] = Field(default_factory=list)
     virus_scan_enabled: bool = True
+    page_router_enabled: bool = True
 
 
 class DocumentsConfig(StrictBaseModel):

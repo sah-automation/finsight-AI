@@ -6,6 +6,7 @@ from .answer_cache import AnswerCache
 from .company_repository import CompanyRepository
 from .document_reader import DocumentReader
 from .document_repository import DocumentRepository
+from .job_progress_port import JobProgressPort
 from .job_repository import JobRepository
 from .object_storage import ObjectStorage
 from .partition_gateway import PartitionGateway, PartitionManager
@@ -20,6 +21,7 @@ __all__ = [
     'CompanyRepository',
     'DocumentReader',
     'DocumentRepository',
+    'JobProgressPort',
     'JobRepository',
     'ObjectStorage',
     'PartitionGateway',
