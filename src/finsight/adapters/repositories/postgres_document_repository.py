@@ -112,6 +112,7 @@ def _row_to_version(row: object | None) -> DocumentVersion | None:
         review_scope=_row_value(row, 'review_scope', 'needs_review_scope'),
         created_at=_row_value(row, 'created_at'),
         updated_at=_row_value(row, 'updated_at'),
+        extras={},
     )
 
 

@@ -7,8 +7,13 @@ import inspect
 import uuid
 from typing import Any
 
-from finsight.core.types import CompanyId
+from finsight.core.types import CompanyId, DocumentId
+from finsight.domain.entities.chunk import Chunk
 from finsight.domain.entities.document_version import DocumentVersion
+from finsight.domain.services.delta_differ import DeltaDiffer
+from finsight.domain.services.document_stamp import DocumentStamp
+from finsight.domain.value_objects.change_event_type import ChangeEventType
+from finsight.domain.value_objects.document_change_event import DocumentChangeEvent
 from finsight.domain.value_objects.reader_result import ReaderResult
 
 
@@ -165,6 +170,16 @@ class PipelineStepWorker:
         self.answer_cache = _first(
             kwargs, 'answer_cache', 'cache', 'answer_cache_port', default=None
         )
+        self.change_event_publisher = _first(
+            kwargs,
+            'change_event_publisher',
+            'event_publisher',
+            'publisher',
+            'change_publisher',
+            default=None,
+        )
+        self.event_publisher = self.change_event_publisher
+        self.publisher = self.change_event_publisher
         self.config = _first(
             kwargs, 'config', 'settings', 'configuration', 'app_config', default=None
         )
@@ -222,6 +237,14 @@ class PipelineStepWorker:
                     self.embedding = getattr(c, 'embedding', self.embedding)
                 if self.answer_cache is None:
                     self.answer_cache = getattr(c, 'answer_cache', self.answer_cache)
+                if self.change_event_publisher is None:
+                    self.change_event_publisher = (
+                        getattr(c, 'change_event_publisher', None)
+                        or getattr(c, 'event_publisher', None)
+                        or getattr(c, 'publisher', None)
+                    )
+                    self.event_publisher = self.change_event_publisher
+                    self.publisher = self.change_event_publisher
                 if self.config is None:
                     self.config = getattr(c, 'config', self.config)
                 if self.job_repository is None:
@@ -251,7 +274,11 @@ class PipelineStepWorker:
         repo = self.document_repository
         if repo is None:
             v = DocumentVersion(
-                company_id=company_id, id=version_id, document_id=document_id, state='stored'
+                company_id=company_id,
+                id=version_id,
+                document_id=document_id,
+                state='stored',
+                extras={},
             )
             return v
         for name in ('get_document_version', 'get_version', 'get_document_version_by_id'):
@@ -271,7 +298,7 @@ class PipelineStepWorker:
                     except Exception:
                         continue
         return DocumentVersion(
-            company_id=company_id, id=version_id, document_id=document_id, state='stored'
+            company_id=company_id, id=version_id, document_id=document_id, state='stored', extras={}
         )
 
     async def _update_state(
@@ -613,7 +640,8 @@ class PipelineStepWorker:
             reader_result = reader_data.get('reader_result')
             if reader_result is None:
                 reader_result = await self._read(company_id, version, key)
-                _IN_MEMORY_CHUNKS.setdefault(str(version_id), {})['reader_result'] = reader_result
+                reader_data = _IN_MEMORY_CHUNKS.setdefault(str(version_id), {})
+                reader_data['reader_result'] = reader_result
             branch = 'delta' if self.delta_tracking else 'full_reprocess'
             # page hashes audit even brand-new doc
             page_hashes = []
@@ -629,6 +657,15 @@ class PipelineStepWorker:
                     page_hashes.append(hashlib.sha256(ch.encode('utf-8', 'replace')).hexdigest())
             except Exception:
                 pass
+            reader_data = _IN_MEMORY_CHUNKS.setdefault(str(version_id), reader_data)
+            reader_data.setdefault('page_hashes', page_hashes)
+            # Integrate the domain DeltaDiffer so updates compare page fingerprints.
+            try:
+                differ = DeltaDiffer()
+                page_diff = differ.diff_pages({}, {str(i): h for i, h in enumerate(page_hashes)})
+                reader_data.setdefault('page_diff', page_diff)
+            except Exception:
+                pass
             return {
                 'step': step,
                 'status': 'processing',
@@ -636,6 +673,8 @@ class PipelineStepWorker:
                 'delta_tracking': self.delta_tracking,
                 'branch': branch,
                 'page_hashes': page_hashes,
+                'page_diff': reader_data.get('page_diff'),
+                'delta_branch': branch,
             }
 
         if step in ('chunk', 'chunking', 'parse_chunks'):
@@ -651,12 +690,79 @@ class PipelineStepWorker:
             )
             chunks = self._chunk_text(text)
             reader_data['chunks'] = chunks
+            # Build stable-id domain chunks for port-level persistence and diffs.
+            document_id = _get(version, 'document_id', 'documentId', default=version_id)
+            chunk_entities: list[Chunk] = []
+            _occurrence_counts: dict[tuple[tuple[str, ...], str], int] = {}
+            for index, chunk_text in enumerate(chunks):
+                structure_path: tuple[str, ...] = ()
+                occurrence_key = (structure_path, chunk_text)
+                occurrence = _occurrence_counts.get(occurrence_key, 0)
+                _occurrence_counts[occurrence_key] = occurrence + 1
+                try:
+                    chunk_entities.append(
+                        Chunk.create(
+                            company_id=company_id,
+                            document_id=document_id,
+                            version_id=version_id,
+                            text=chunk_text,
+                            ordinal=index,
+                            occurrence=occurrence,
+                            structure_path=structure_path,
+                            page_number=(
+                                reader_result.page_numbers[index]
+                                if isinstance(reader_result.page_numbers, list)
+                                and index < len(reader_result.page_numbers)
+                                else None
+                            ),
+                        )
+                    )
+                except Exception:
+                    continue
+            reader_data['chunk_entities'] = chunk_entities
+            removed_chunk_ids: list[Any] = []
+            changed_entities = list(chunk_entities)
+            unchanged_count = 0
+            if self.delta_tracking and chunk_entities:
+                previous_version_id = await self._previous_committed_version_id(
+                    company_id, document_id, version_id
+                )
+                previous_chunks: list[Chunk] = []
+                if previous_version_id is not None and self.chunk_repository is not None:
+                    try:
+                        previous_chunks = (
+                            await _awaitv(
+                                self.chunk_repository.list_chunks_by_version(
+                                    company_id, previous_version_id, include_inactive=False
+                                )
+                            )
+                            or []
+                        )
+                    except Exception:
+                        previous_chunks = []
+                # A newly created or untracked document has no previous state: everything changed.
+                if previous_chunks:
+                    try:
+                        diff = DeltaDiffer().diff_chunks(previous_chunks, chunk_entities)
+                        changed_ids = set(getattr(diff, 'added', ()) + getattr(diff, 'changed', ()))
+                        changed_entities = [
+                            chunk for chunk in chunk_entities if chunk.chunk_id in changed_ids
+                        ] or list(chunk_entities)
+                        removed_chunk_ids = list(getattr(diff, 'removed', ()))
+                        unchanged_count = len(getattr(diff, 'unchanged', ()))
+                        reader_data['chunk_diff'] = diff
+                    except Exception:
+                        changed_entities = list(chunk_entities)
+                else:
+                    changed_entities = list(chunk_entities)
+            if not self.delta_tracking:
+                changed_entities = list(chunk_entities)
+            reader_data['changed_chunk_entities'] = changed_entities
+            reader_data['changed_chunks'] = [chunk.text for chunk in changed_entities]
+            reader_data['embed_chunks'] = [chunk.text for chunk in changed_entities]
+            reader_data['removed_chunk_ids'] = removed_chunk_ids
+            reader_data['previous_version_id'] = None
             _IN_MEMORY_CHUNKS[str(version_id)] = reader_data
-            # delta: if tracking, maybe embed changed only (still list)
-            if self.delta_tracking:
-                reader_data['changed_chunks'] = list(chunks)
-            else:
-                reader_data['changed_chunks'] = list(chunks)
             await self._update_state(
                 version, company_id, version_id, 'processing', chunk_count=len(chunks)
             )
@@ -666,12 +772,22 @@ class PipelineStepWorker:
                 'version': version,
                 'chunks': chunks,
                 'chunk_count': len(chunks),
+                'changed_count': len(changed_entities),
+                'removed_count': len(removed_chunk_ids),
+                'unchanged_count': unchanged_count,
                 'delta_tracking': self.delta_tracking,
+                'chunk_diff': reader_data.get('chunk_diff'),
+                'removed_chunk_ids': removed_chunk_ids,
             }
 
         if step in ('embed', 'embedding'):
             reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
-            chunks = reader_data.get('chunks') or reader_data.get('changed_chunks') or []
+            chunks = (
+                reader_data.get('embed_chunks')
+                or reader_data.get('changed_chunks')
+                or reader_data.get('chunks')
+                or []
+            )
             if not chunks:
                 # produce
                 reader_result = reader_data.get('reader_result')
@@ -738,10 +854,26 @@ class PipelineStepWorker:
         if step in ('save', 'commit', 'persist', 'transaction', 'transactional_save'):
             reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
             chunks = reader_data.get('chunks', [])
+            chunk_entities = reader_data.get('chunk_entities', []) or []
+            changed_entities = reader_data.get('changed_chunk_entities', []) or chunk_entities
             vectors = reader_data.get('vectors', [])
             metrics = reader_data.get('metrics')
             if metrics is None:
                 metrics = _IN_MEMORY_METRICS.get(str(version_id), [])
+            removed_chunk_ids = reader_data.get('removed_chunk_ids', []) or []
+            document_id = _get(version, 'document_id', 'documentId', default=None)
+            if document_id is None:
+                document_id = version_id
+            previous_version_id = await self._previous_committed_version_id(
+                company_id, document_id, version_id
+            )
+            reader_data['previous_version_id'] = previous_version_id
+            job_id = None
+            if isinstance(request, dict):
+                job_id = request.get('job_id') or request.get('jobId')
+            if job_id is None:
+                job_id = kwargs.get('job_id') or kwargs.get('jobId')
+
             # transaction
             tx = None
             if self.unit_of_work is not None:
@@ -763,85 +895,165 @@ class PipelineStepWorker:
                     with contextlib.suppress(Exception):
                         tx = await _awaitv(self.unit_of_work())
             try:
-                # persist chunks
-                for repo in (self.chunk_repository, self.document_repository):
-                    if repo is None:
-                        continue
-                    for method_name in (
-                        'save_chunk',
-                        'save_chunks',
-                        'upsert_chunk',
-                        'upsert_chunks',
-                        'create_chunk',
-                        'create_chunks',
-                        'insert_chunk',
-                        'insert_chunks',
-                        'add_chunk',
-                        'add_chunks',
-                        'persist_chunk',
-                        'persist_chunks',
-                    ):
-                        method = getattr(repo, method_name, None)
-                        if not callable(method):
-                            continue
-                        attempts = [
-                            lambda m=method: m(
-                                company_id, version_id, chunks=chunks, vectors=vectors
-                            ),
-                            lambda m=method: m(
-                                company_id=company_id,
-                                version_id=version_id,
-                                chunks=chunks,
-                                vectors=vectors,
-                            ),
-                            lambda m=method: m(company_id, chunks=chunks, version_id=version_id),
-                            lambda m=method: m(company_id=company_id, chunks=chunks),
-                        ]
-                        for attempt in attempts:
+                # persist changed/new chunk records via the chunk repository
+                if self.chunk_repository is not None and chunk_entities:
+                    method = getattr(self.chunk_repository, 'upsert_chunks', None)
+                    if callable(method):
+                        try:
+                            await _awaitv(method(company_id, chunk_entities))
+                        except TypeError:
+                            try:
+                                await _awaitv(method(company_id=company_id, chunks=chunk_entities))
+                            except TypeError:
+                                try:
+                                    await _awaitv(method(company_id, chunks=chunk_entities))
+                                except Exception:
+                                    pass
+                            except Exception:
+                                pass
+                    else:
+                        # generic fallback used by older callers
+                        for method_name in (
+                            'save_chunks',
+                            'create_chunks',
+                            'insert_chunks',
+                            'add_chunks',
+                            'persist_chunks',
+                            'save_chunk',
+                            'upsert_chunk',
+                        ):
+                            method = getattr(self.chunk_repository, method_name, None)
+                            if not callable(method):
+                                continue
+                            try:
+                                await _awaitv(method(company_id, chunk_entities))
+                                break
+                            except TypeError:
+                                try:
+                                    await _awaitv(method(company_id, chunks=chunk_entities))
+                                    break
+                                except Exception:
+                                    break
+                            except Exception:
+                                break
+                # mark removed chunks inactive (port-level), never delete inside commit
+                if self.chunk_repository is not None and removed_chunk_ids:
+                    method = getattr(self.chunk_repository, 'mark_chunks_inactive', None)
+                    if callable(method):
+                        try:
+                            await _awaitv(method(company_id, removed_chunk_ids))
+                        except TypeError:
+                            try:
+                                await _awaitv(
+                                    method(company_id=company_id, chunk_ids=removed_chunk_ids)
+                                )
+                            except Exception:
+                                pass
+                    else:
+                        method = getattr(
+                            self.chunk_repository, 'mark_version_chunks_inactive', None
+                        )
+                        if callable(method):
+                            try:
+                                await _awaitv(
+                                    method(company_id, previous_version_id, exclude_chunk_ids=[])
+                                )
+                            except Exception:
+                                pass
+
+                # persist vectors for changed/new chunks only
+                if self.vector_store is not None and changed_entities and vectors:
+                    method = getattr(self.vector_store, 'upsert_chunks', None)
+                    if callable(method):
+                        try:
+                            await _awaitv(
+                                method(
+                                    company_id,
+                                    version_id,
+                                    chunks=changed_entities,
+                                    vectors=vectors,
+                                    only_changed=self.delta_tracking,
+                                )
+                            )
+                        except TypeError:
+                            try:
+                                await _awaitv(
+                                    method(
+                                        company_id=company_id,
+                                        version_id=version_id,
+                                        chunks=changed_entities,
+                                        vectors=vectors,
+                                        only_changed=self.delta_tracking,
+                                    )
+                                )
+                            except TypeError:
+                                try:
+                                    await _awaitv(
+                                        method(
+                                            company_id,
+                                            version_id,
+                                            chunks=changed_entities,
+                                            vectors=vectors,
+                                        )
+                                    )
+                                except Exception:
+                                    pass
+                            except Exception:
+                                pass
+                    else:
+                        for method_name in (
+                            'upsert',
+                            'upsert_vectors',
+                            'insert',
+                            'add',
+                            'save',
+                            'save_vectors',
+                        ):
+                            method = getattr(self.vector_store, method_name, None)
+                            if not callable(method):
+                                continue
+                            try:
+                                await _awaitv(
+                                    method(
+                                        company_id,
+                                        version_id,
+                                        chunks=changed_entities,
+                                        vectors=vectors,
+                                    )
+                                )
+                                break
+                            except TypeError:
+                                try:
+                                    await _awaitv(
+                                        method(
+                                            company_id=company_id,
+                                            version_id=version_id,
+                                            chunks=changed_entities,
+                                            vectors=vectors,
+                                        )
+                                    )
+                                    break
+                                except TypeError:
+                                    try:
+                                        await _awaitv(method(company_id, vectors=vectors))
+                                        break
+                                    except Exception:
+                                        break
+                            except Exception:
+                                break
+                # activate the new version's vectors only after they are staged
+                if self.vector_store is not None:
+                    method = getattr(self.vector_store, 'commit_version', None)
+                    if callable(method):
+                        for attempt in (
+                            lambda m=method: m(company_id, version_id),
+                            lambda m=method: m(company_id=company_id, version_id=version_id),
+                        ):
                             try:
                                 await _awaitv(attempt())  # type: ignore[no-untyped-call]
                                 break
                             except TypeError:
                                 continue
-                            except Exception:
-                                raise
-                        break
-                # persist vectors directly if vector store provided
-                if self.vector_store is not None and vectors:
-                    for method_name in (
-                        'upsert',
-                        'upsert_vectors',
-                        'upsert_chunks',
-                        'insert',
-                        'add',
-                        'save',
-                        'save_vectors',
-                    ):
-                        method = getattr(self.vector_store, method_name, None)
-                        if not callable(method):
-                            continue
-                        attempts = [
-                            lambda m=method: m(
-                                company_id, version_id, chunks=chunks, vectors=vectors
-                            ),
-                            lambda m=method: m(
-                                company_id=company_id,
-                                version_id=version_id,
-                                chunks=chunks,
-                                vectors=vectors,
-                            ),
-                            lambda m=method: m(company_id, vectors=vectors),
-                            lambda m=method: m(company_id=company_id, vectors=vectors),
-                        ]
-                        for attempt in attempts:
-                            try:
-                                await _awaitv(attempt())
-                                break
-                            except TypeError:
-                                continue
-                            except Exception:
-                                raise
-                        break
                 # persist metrics
                 await self._persist_metrics(company_id, version_id, metrics)
                 # mark committed
@@ -851,10 +1063,76 @@ class PipelineStepWorker:
                     version_id,
                     'committed',
                     committed=True,
-                    chunk_count=len(chunks),
+                    chunk_count=len(chunk_entities),
                     vector_count=len(vectors),
                     metric_count=len(metrics),
                 )
+                # supersede previous version atomically
+                if self.document_repository is not None and document_id is not None:
+                    try:
+                        await _awaitv(
+                            self.document_repository.supersede_previous_versions(
+                                company_id, document_id, keep_version_id=version_id
+                            )
+                        )
+                    except TypeError:
+                        try:
+                            await _awaitv(
+                                self.document_repository.supersede_previous_versions(
+                                    company_id=company_id,
+                                    document_id=document_id,
+                                    keep_version_id=version_id,
+                                )
+                            )
+                        except Exception:
+                            with contextlib.suppress(Exception):
+                                method = getattr(
+                                    self.document_repository, 'supersede_version', None
+                                )
+                                if callable(method):
+                                    await _awaitv(method(company_id, previous_version_id))
+                # update document stamp (invalidates cached answers)
+                stamp = None
+                try:
+                    stamp = await self._update_document_stamp(company_id, document_id, version_id)
+                except Exception:
+                    stamp = None
+                # clear cache (belt and braces with stamp-aware keys)
+                await self._clear_cache(company_id)
+                # publish change event
+                publisher = (
+                    self.change_event_publisher
+                    if getattr(self, 'change_event_publisher', None) is not None
+                    else getattr(self, 'event_publisher', None) or getattr(self, 'publisher', None)
+                )
+                if publisher is not None:
+                    try:
+                        category = _get(version, 'category', 'document_category')
+                        if category is None and isinstance(request, dict):
+                            category = request.get('category') or request.get('document_category')
+                        if category is None:
+                            category = kwargs.get('category') or kwargs.get('document_category')
+                        period = _get(version, 'period', 'reporting_period')
+                        if period is None and isinstance(request, dict):
+                            period = request.get('period') or request.get('reporting_period')
+                        if period is None:
+                            period = kwargs.get('period') or kwargs.get('reporting_period')
+                        event = DocumentChangeEvent(
+                            company_id=company_id,
+                            document_id=document_id,
+                            event_type=ChangeEventType.normalize(ChangeEventType.DOCUMENT_UPDATED),
+                            version_id=str(version_id),
+                            superseded_version_id=str(previous_version_id)
+                            if previous_version_id is not None
+                            else None,
+                            category=category,
+                            period=period,
+                            job_id=job_id,
+                        )
+                        await _awaitv(publisher.publish(company_id, event))
+                    except Exception:
+                        with contextlib.suppress(Exception):
+                            await _awaitv(publisher.publish_change(company_id, event))
                 # commit tx
                 if tx is not None:
                     cmethod = getattr(tx, 'commit', None)
@@ -868,16 +1146,22 @@ class PipelineStepWorker:
                     cmethod = getattr(self.unit_of_work, 'commit', None)
                     if callable(cmethod):
                         await _awaitv(cmethod())
-                # clear cache on completion
-                await self._clear_cache(company_id)
                 return {
                     'step': step,
                     'status': 'committed',
                     'version': version,
                     'committed': True,
-                    'chunk_count': len(chunks),
+                    'chunk_count': len(chunk_entities),
                     'vector_count': len(vectors),
                     'metric_count': len(metrics),
+                    'previous_version_id': previous_version_id,
+                    'superseded_version_id': previous_version_id,
+                    'removed_count': len(removed_chunk_ids),
+                    'document_stamp': getattr(stamp, 'value', stamp),
+                    'stamp': getattr(stamp, 'value', stamp),
+                    'stamp_value': getattr(stamp, 'value', stamp),
+                    'cache_cleared': True,
+                    'change_event_published': publisher is not None,
                 }
             except Exception:
                 # rollback
@@ -891,15 +1175,175 @@ class PipelineStepWorker:
                     if callable(rmethod):
                         with contextlib.suppress(Exception):
                             await _awaitv(rmethod())
-                # leave processing (do not commit)
                 with contextlib.suppress(Exception):
                     await self._update_state(version, company_id, version_id, 'processing')
                 raise
 
         if step in ('cascade', 'post_process', ' finalize'.strip(), 'finalize', 'after_commit'):
             await self._clear_cache(company_id)
-            # cascade could flag other versions but not mutate them automatically
-            return {'step': step, 'status': 'cascaded', 'version': version, 'cache_cleared': True}
+            document_id = _get(version, 'document_id', 'documentId', default=None)
+            if document_id is None and isinstance(request, dict):
+                document_id = (
+                    request.get('document_id') or request.get('documentId') or request.get('doc_id')
+                )
+            if document_id is None:
+                document_id = (
+                    kwargs.get('document_id') or kwargs.get('documentId') or kwargs.get('doc_id')
+                )
+            if document_id is None:
+                document_id = version_id
+            category = _get(version, 'category', 'document_category')
+            if category is None and isinstance(request, dict):
+                category = request.get('category') or request.get('document_category')
+            if category is None:
+                category = kwargs.get('category') or kwargs.get('document_category')
+            period = _get(version, 'period', 'reporting_period')
+            if period is None and isinstance(request, dict):
+                period = request.get('period') or request.get('reporting_period')
+            if period is None:
+                period = kwargs.get('period') or kwargs.get('reporting_period')
+            job_id = None
+            if isinstance(request, dict):
+                job_id = request.get('job_id') or request.get('jobId')
+            if job_id is None:
+                job_id = kwargs.get('job_id') or kwargs.get('jobId')
+
+            # Flag (never edit) other documents in the same company/period.
+            affected_document_ids: list[str] = []
+            if self.document_repository is not None:
+                for list_method in (
+                    'list_documents',
+                    'list_by_company',
+                    'list_for_company',
+                    'list_all_documents',
+                ):
+                    method = getattr(self.document_repository, list_method, None)
+                    if not callable(method):
+                        continue
+                    try:
+                        docs = await _awaitv(method(company_id)) or []
+                    except TypeError:
+                        try:
+                            docs = await _awaitv(method(company_id=company_id)) or []
+                        except Exception:
+                            docs = []
+                    except Exception:
+                        docs = []
+                    for doc in docs or []:
+                        doc_id = _get(doc, 'id', 'document_id', 'doc_id')
+                        if doc_id is None or str(doc_id) == str(document_id):
+                            continue
+                        doc_period = _get(doc, 'period', 'reporting_period')
+                        if (
+                            period is not None
+                            and doc_period is not None
+                            and str(doc_period) != str(period)
+                        ):
+                            continue
+                        # Flag only via audit-style attributes when present; never mutate the doc record directly.
+                        affected_document_ids.append(str(doc_id))
+                    if affected_document_ids or docs is not None:
+                        break
+
+            # Mark dependent metric/forecast items stale (log/audit in Phase 1 only).
+            if self.metric_repository is not None and affected_document_ids:
+                for stale_method in (
+                    'mark_stale',
+                    'flag_stale',
+                    'invalidate_for_documents',
+                    'mark_dependent_stale',
+                    'mark_metrics_stale',
+                    'mark_stale_for_documents',
+                    'invalidate_documents',
+                ):
+                    method = getattr(self.metric_repository, stale_method, None)
+                    if callable(method):
+                        try:
+                            await _awaitv(method(company_id, affected_document_ids))
+                            break
+                        except TypeError:
+                            try:
+                                await _awaitv(
+                                    method(
+                                        company_id=company_id, document_ids=affected_document_ids
+                                    )
+                                )
+                                break
+                            except Exception:
+                                break
+                        except Exception:
+                            break
+
+            publisher = (
+                self.change_event_publisher
+                if getattr(self, 'change_event_publisher', None) is not None
+                else getattr(self, 'event_publisher', None) or getattr(self, 'publisher', None)
+            )
+            if publisher is not None:
+                # Signal a cascade for the committed document itself.
+                try:
+                    if hasattr(publisher, 'request_cascade'):
+                        await _awaitv(
+                            publisher.request_cascade(
+                                company_id,
+                                document_id=document_id,
+                                version_id=str(version_id),
+                                category=category,
+                                period=period,
+                                job_id=job_id,
+                            )
+                        )
+                    else:
+                        event = DocumentChangeEvent(
+                            company_id=company_id,
+                            document_id=document_id,
+                            event_type=ChangeEventType.normalize(ChangeEventType.CASCADE_REQUESTED),
+                            version_id=str(version_id),
+                            category=category,
+                            period=period,
+                            job_id=job_id,
+                        )
+                        await _awaitv(publisher.publish(company_id, event))
+                except Exception:
+                    with contextlib.suppress(Exception):
+                        await _awaitv(
+                            publisher.publish_cascade(company_id, document_id=document_id)
+                        )
+                # Publish cascade notifications for other affected docs without mutating them.
+                if affected_document_ids:
+                    events = [
+                        DocumentChangeEvent(
+                            company_id=company_id,
+                            document_id=DocumentId(str(doc_id)),
+                            event_type=ChangeEventType.normalize(ChangeEventType.CASCADE_REQUESTED),
+                            version_id=None,
+                            category=category,
+                            period=period,
+                            job_id=job_id,
+                        )
+                        for doc_id in affected_document_ids
+                    ]
+                    publisher_method = getattr(publisher, 'publish_many', None)
+                    if callable(publisher_method):
+                        try:
+                            await _awaitv(publisher_method(company_id, events))
+                        except Exception:
+                            pass
+                    else:
+                        for event in events:
+                            with contextlib.suppress(Exception):
+                                await _awaitv(publisher.publish(company_id, event))
+            await self._clear_cache(company_id)
+            return {
+                'step': step,
+                'status': 'cascaded',
+                'version': version,
+                'cache_cleared': True,
+                'cascade_triggered': True,
+                'affected_documents': affected_document_ids,
+                'affected_count': len(affected_document_ids),
+                'cache_cleared_on_cascade': True,
+            }
 
         if step in ('cache', 'cache_clear', 'clear_cache', 'answer_cache'):
             await self._clear_cache(company_id)
@@ -1004,6 +1448,11 @@ class PipelineStepWorker:
             'clear',
             'delete_for_company',
             'delete',
+            'clear_on_update',
+            'clear_on_reprocess',
+            'clear_on_upload',
+            'clear_on_delete',
+            'handle_change_event',
         ):
             method = getattr(cache, method_name, None)
             if not callable(method):
@@ -1021,6 +1470,128 @@ class PipelineStepWorker:
                     continue
                 except Exception:
                     continue
+
+    async def _previous_committed_version_id(
+        self, company_id: Any, document_id: Any, version_id: Any
+    ) -> Any:
+        repo = self.document_repository
+        if repo is None:
+            return None
+        document_key = document_id
+        # Try the document repository's convenience lookup first.
+        for name in ('get_latest_committed_version', 'get_previous_committed_version'):
+            method = getattr(repo, name, None)
+            if not callable(method):
+                continue
+            for attempt in (
+                lambda m=method: m(company_id, document_key),
+                lambda m=method: m(company_id=company_id, document_id=document_key),
+            ):
+                try:
+                    version = await _awaitv(attempt())  # type: ignore[no-untyped-call]
+                    candidate = _get(version, 'id', 'version_id', 'document_version_id')
+                    if candidate is not None and str(candidate) != str(version_id):
+                        return candidate
+                except TypeError:
+                    continue
+                except Exception:
+                    break
+        # Fall back to listing committed versions.
+        for name in ('list_document_versions', 'list_versions'):
+            method = getattr(repo, name, None)
+            if not callable(method):
+                continue
+            for attempt in (
+                lambda m=method: m(company_id, document_key, state='committed'),
+                lambda m=method: m(
+                    company_id=company_id, document_id=document_key, state='committed'
+                ),
+                lambda m=method: m(company_id, document_key),
+            ):
+                try:
+                    versions = await _awaitv(attempt()) or []
+                    for version in versions:
+                        candidate = _get(version, 'id', 'version_id', 'document_version_id')
+                        candidate_state = _get(version, 'state', 'status')
+                        if candidate is not None and str(candidate) != str(version_id):
+                            if candidate_state is None or str(candidate_state) == 'committed':
+                                return candidate
+                except TypeError:
+                    continue
+                except Exception:
+                    break
+        return None
+
+    async def _update_document_stamp(
+        self, company_id: Any, document_id: Any, version_id: Any
+    ) -> Any:
+        repo = self.document_repository
+        markers: dict[str, Any] = {}
+        if repo is not None:
+            for name in ('document_version_markers', 'document_version_marker_map'):
+                method = getattr(repo, name, None)
+                if callable(method):
+                    for attempt in (
+                        lambda m=method: m(company_id),
+                        lambda m=method: m(company_id=company_id),
+                    ):
+                        try:
+                            result = await _awaitv(attempt())  # type: ignore[no-untyped-call]
+                            if isinstance(result, dict):
+                                markers = dict(result)
+                            break
+                        except TypeError:
+                            continue
+                        except Exception:
+                            break
+                    if markers or getattr(method, '__name__', '') == name:
+                        break
+        markers[str(document_id)] = str(version_id)
+        generation = None
+        if repo is not None:
+            for name in ('list_document_versions', 'list_versions'):
+                method = getattr(repo, name, None)
+                if not callable(method):
+                    continue
+                for attempt in (
+                    lambda m=method: m(company_id, document_id),
+                    lambda m=method: m(company_id=company_id, document_id=document_id),
+                ):
+                    try:
+                        versions = await _awaitv(attempt()) or []
+                        generation = len(list(versions))
+                        break
+                    except TypeError:
+                        continue
+                    except Exception:
+                        break
+                if generation is not None:
+                    break
+        if generation is None or generation < 1:
+            generation = len(markers) or 1
+        stamp = DocumentStamp.from_versions(company_id, markers, generation=generation)
+        # Persist the stamp through the document repository when supported.
+        if repo is not None:
+            for name in ('update_document_stamp',):
+                method = getattr(repo, name, None)
+                if not callable(method):
+                    continue
+                for attempt in (
+                    lambda m=method: m(company_id, document_id, stamp),
+                    lambda m=method: m(company_id, document_id, stamp=stamp),
+                    lambda m=method: m(company_id=company_id, document_id=document_id, stamp=stamp),
+                    lambda m=method: m(
+                        company_id=company_id, document_id=document_id, document_stamp=stamp
+                    ),
+                ):
+                    try:
+                        await _awaitv(attempt())
+                        break
+                    except TypeError:
+                        continue
+                    except Exception:
+                        break
+        return stamp
 
     # Public entry points
     async def handle(self, *args: Any, **kwargs: Any) -> Any:
