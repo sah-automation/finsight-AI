@@ -2,6 +2,9 @@
 
 from .composition_container import CompositionContainer
 from .container import (
+    ReaderFactory,
+    ReaderFactoryInstance,
+    ReaderRegistry,
     build_app_container,
     build_composition_container,
     build_composition_root,
@@ -17,7 +20,11 @@ from .container import (
     build_pilot,
     build_pilot_container,
     build_pilot_set,
+    build_reader,
+    build_reader_factory,
+    build_reader_map,
     build_reader_registry,
+    build_readers,
     build_root,
     build_scan_worker,
     build_standard,
@@ -29,8 +36,12 @@ from .container import (
     build_virus_scanner,
     build_wiring,
     create_container,
+    create_reader,
+    create_reader_registry,
     get_container,
     get_onboarding_use_case,
+    get_reader,
+    get_reader_registry,
     get_upload_use_case,
 )
 from .onboarding import (
@@ -42,6 +53,9 @@ from .upload import (
 
 __all__ = [
     'CompositionContainer',
+    'ReaderFactory',
+    'ReaderFactoryInstance',
+    'ReaderRegistry',
     'build_app_container',
     'build_composition_container',
     'build_composition_root',
@@ -57,7 +71,11 @@ __all__ = [
     'build_pilot',
     'build_pilot_container',
     'build_pilot_set',
+    'build_reader',
+    'build_reader_factory',
+    'build_reader_map',
     'build_reader_registry',
+    'build_readers',
     'build_root',
     'build_scan_worker',
     'build_standard',
@@ -70,8 +88,12 @@ __all__ = [
     'build_wiring',
     'create_container',
     'create_onboarding_use_case',
+    'create_reader',
+    'create_reader_registry',
     'create_upload_use_case',
     'get_container',
     'get_onboarding_use_case',
+    'get_reader',
+    'get_reader_registry',
     'get_upload_use_case',
 ]
