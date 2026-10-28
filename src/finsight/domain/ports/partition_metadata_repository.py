@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from finsight.core.types import CompanyId, PartitionStatus
-from finsight.domain.entities.partition_metadata import PartitionMetadata
+
+if TYPE_CHECKING:
+    from finsight.domain.entities.partition_metadata import PartitionMetadata
 
 
 class PartitionMetadataRepository(ABC):

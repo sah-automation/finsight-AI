@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from finsight.core.types import CompanyId
-from finsight.domain.value_objects.virus_scan_result import VirusScanResult
+if TYPE_CHECKING:
+    from finsight.core.types import CompanyId
+    from finsight.domain.value_objects.virus_scan_result import VirusScanResult
 
 
 class VirusScanner(ABC):

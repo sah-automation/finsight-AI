@@ -291,7 +291,6 @@ class Reprocess:
             enqueued, qjob_id = await self._enqueue(payload)
             if qjob_id is not None:
                 job_id = qjob_id
-            cache_cleared = False
             return ReprocessResult(
                 company_id=company_ids[0],
                 company_ids=company_ids,
@@ -436,7 +435,7 @@ class Reprocess:
             document_id = _get_attr(doc, 'id', 'document_id', 'doc_id')
             if document_id is None:
                 continue
-            version_id = _get_attr(doc, 'version_id', 'latest_version_id', 'committed_version_id')
+            _get_attr(doc, 'version_id', 'latest_version_id', 'committed_version_id')
             # atomic commit stays current version; no mutation of committed version
             # publish change events marking reprocessed candidate maybe via repo update stamp
             if not dry_run:

@@ -1032,7 +1032,7 @@ class UpdateDocument:
         except Exception:
             stamp = None
         if repo is not None:
-            for method_name, payload in (('update_document_stamp', None),):
+            for method_name, _payload in (('update_document_stamp', None),):
                 method = getattr(repo, method_name, None)
                 if callable(method):
                     try:

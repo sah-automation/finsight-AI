@@ -308,7 +308,7 @@ class DeleteDocument:
                     except Exception:
                         pass
                     try:
-                        count = await _await(repo.purge_document(company_id, doc_id))
+                        await _await(repo.purge_document(company_id, doc_id))
                         purged_count += 1
                     except Exception:
                         continue
@@ -651,7 +651,6 @@ class DeleteDocument:
     def _resolve_retention_days(self) -> int:
         value = self._retention_days
         if value is None:
-            doc_cfg = None
             if isinstance(self._config, dict):
                 candidate = self._config.get('documents', self._config.get('document'))
             else:
@@ -791,7 +790,6 @@ class DeleteDocument:
                 for method_name in ('delete_version', 'delete_chunks'):
                     method = getattr(vw, method_name, None)
                     if callable(method):
-                        vid_or_chunks = vid if method_name == 'delete_version' else []
                         with contextlib.suppress(Exception):
                             if method_name == 'delete_version':
                                 await _await(method(company_id, vid))

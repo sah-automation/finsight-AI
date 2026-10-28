@@ -83,3 +83,10 @@ Adapter sub-buckets: repositories 95, cache 77, partitions 62.
 - The errors above are what remains after current ignores.
 - Pattern for TC001/TC003: move imports into `TYPE_CHECKING` blocks (safe if runtime-resolvable).
 - No rule disabling without PR justification.
+
+## Phase 2 progress (#58)
+
+Applied selective unsafe ruff fixes (53 available; applied 49 via tool + 1 manual):
+B007 -1, F841 -5, PERF102 -1, RET504 -1, SIM105 -10, SIM108 -2, TC001 -28, TC003 -5, plus contextlib.suppress conversions reducing BLE001 -7, S110 -7, S608 unchanged, PLR0912 -1.
+
+Remaining lint error count: **296** (was 365).

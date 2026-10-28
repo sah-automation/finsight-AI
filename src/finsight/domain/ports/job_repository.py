@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from finsight.core.types import CompanyId, JobStatus
+if TYPE_CHECKING:
+    from finsight.core.types import CompanyId, JobStatus
 
 
 class JobRepository(ABC):

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from finsight.core.types import CompanyId, DocumentId
-from finsight.domain.entities.document_version import DocumentVersion
+if TYPE_CHECKING:
+    from finsight.core.types import CompanyId, DocumentId
+    from finsight.domain.entities.document_version import DocumentVersion
 
 
 class DocumentRepository(ABC):

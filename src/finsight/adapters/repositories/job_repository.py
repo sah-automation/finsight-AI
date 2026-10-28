@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from finsight.core.types import CompanyId, JobStatus
 from finsight.domain.ports.job_repository import JobRepository as JobRepositoryPort
 
 from .base_repository import BaseRepository
+
+if TYPE_CHECKING:
+    from finsight.core.types import CompanyId, JobStatus
 
 _TABLE = 'jobs'
 
@@ -53,10 +56,8 @@ def _row_to_record(row: Any) -> _JobRecord | None:
             try:
                 data[str(key)] = mapping[key]
             except Exception:
-                try:
+                with contextlib.suppress(Exception):
                     data[str(key)] = mapping.get(key)
-                except Exception:
-                    pass
     if not data:
         try:
             data = {'value': row}
@@ -270,10 +271,8 @@ class JobRepository(JobRepositoryPort, BaseRepository):
         if 'progress' in kwargs:
             val = kwargs.pop('progress')
             if val is not None:
-                try:
+                with contextlib.suppress(TypeError, ValueError):
                     val = int(str(val))
-                except (TypeError, ValueError):
-                    pass
                 values['progress_val'] = val
                 assignments.append('progress = :progress_val')
 
@@ -298,10 +297,8 @@ class JobRepository(JobRepositoryPort, BaseRepository):
         if 'receive_count' in kwargs:
             val = kwargs.pop('receive_count')
             if val is not None:
-                try:
+                with contextlib.suppress(TypeError, ValueError):
                     val = int(str(val))
-                except (TypeError, ValueError):
-                    pass
             values['receive_count_val'] = val if val is not None else None
             assignments.append('receive_count = COALESCE(:receive_count_val, receive_count)')
 
@@ -341,7 +338,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
             assignments.append('completed_at = COALESCE(:completed_at_val, completed_at)')
 
         # passthrough unknown kwargs
-        for key, val in list(kwargs.items()):
+        for key, _val in list(kwargs.items()):
             if key in {'company_id', 'job_id'}:
                 continue
             kwargs.pop(key, None)

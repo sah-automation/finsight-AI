@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+import contextlib
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
 
 from finsight.core.types import CompanyId, PartitionStatus
 from finsight.domain.ports.partition_gateway import PartitionGateway
-from finsight.domain.ports.partition_metadata_repository import (
-    PartitionMetadataRepository,
-)
+
+if TYPE_CHECKING:
+    from finsight.domain.ports.partition_metadata_repository import (
+        PartitionMetadataRepository,
+    )
 
 DEFAULT_PARTITION_TABLES = [
     'documents',
@@ -158,12 +161,10 @@ class PartitionManager(PartitionGateway):
                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_document ON {partition_name} (company_id, document_id)'
                 )
                 # Create HNSW vector index on partition if embedding exists
-                try:
+                with contextlib.suppress(Exception):
                     await self._execute(
                         f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_embedding_hnsw ON {partition_name} USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 200)'
                     )
-                except Exception:
-                    pass
             elif table_name == 'metrics':
                 await self._execute(
                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_name_period ON {partition_name} (company_id, name, period_end)'
@@ -206,12 +207,10 @@ class PartitionManager(PartitionGateway):
                     table_name=table_name,
                     status=PartitionStatus.CREATING,
                 )
-                try:
+                with contextlib.suppress(Exception):
                     await self._metadata_repo.update_status(
                         company_id, table_name, PartitionStatus.READY
                     )
-                except Exception:
-                    pass
             except Exception:
                 pass
         else:
@@ -229,7 +228,7 @@ class PartitionManager(PartitionGateway):
                         'table_name': table_name,
                     },
                 )
-                try:
+                with contextlib.suppress(Exception):
                     await self._execute(
                         """
                         UPDATE partition_metadata
@@ -238,8 +237,6 @@ class PartitionManager(PartitionGateway):
                         """,
                         {'company_id': str(company_id), 'table_name': table_name},
                     )
-                except Exception:
-                    pass
             except Exception:
                 pass
 
@@ -345,7 +342,7 @@ class PartitionManager(PartitionGateway):
                 return
             except Exception:
                 pass
-        try:
+        with contextlib.suppress(Exception):
             await self._execute(
                 """
                 INSERT INTO partition_metadata (company_id, partition_name, table_name, status)
@@ -358,8 +355,6 @@ class PartitionManager(PartitionGateway):
                     'table_name': table_name,
                 },
             )
-        except Exception:
-            pass
 
 
 # Alias for compatibility

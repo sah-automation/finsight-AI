@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from finsight.core.types import CompanyId
-from finsight.domain.entities.company import Company
+if TYPE_CHECKING:
+    from finsight.core.types import CompanyId
+    from finsight.domain.entities.company import Company
 
 
 class CompanyRepository(ABC):

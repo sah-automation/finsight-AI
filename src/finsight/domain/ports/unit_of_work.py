@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
-from finsight.core.types import CompanyId
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from finsight.core.types import CompanyId
 
 
 class UnitOfWork(ABC):

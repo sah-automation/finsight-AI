@@ -25,8 +25,7 @@ class DocumentVersionState(str):
         canonical = str(value).strip().lower() if value is not None else ''
         if canonical in {'done'}:
             canonical = 'committed'
-        obj = str.__new__(cls, canonical)
-        return obj
+        return str.__new__(cls, canonical)
 
     @classmethod
     def normalize(cls, value: object) -> DocumentVersionState:

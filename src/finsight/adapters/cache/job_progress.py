@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import inspect
 from datetime import UTC, datetime
 from typing import Any
@@ -73,10 +74,7 @@ def _config_value(config: Any, *names: str, default: Any = None) -> Any:
             for attr in ('caches', 'cache', 'job_progress', 'progress'):
                 sec = getattr(config, attr, None)
                 if sec is not None:
-                    if isinstance(sec, dict):
-                        v = sec.get(name)
-                    else:
-                        v = getattr(sec, name, None)
+                    v = sec.get(name) if isinstance(sec, dict) else getattr(sec, name, None)
                     if v is not None:
                         return v
     return default
@@ -92,10 +90,7 @@ def _is_table(obj: Any) -> bool:
 
 
 async def _maybe_await(value: Any, *a: Any, **k: Any) -> Any:
-    if callable(value):
-        result = value(*a, **k)
-    else:
-        result = value
+    result = value(*a, **k) if callable(value) else value
     if inspect.isawaitable(result):
         return await result
     return result
@@ -292,10 +287,8 @@ class JobProgress(JobProgressPort):
             if src in payload and payload.get(src) is not None:
                 val = payload.get(src)
                 if src in ('progress', 'receive_count'):
-                    try:
+                    with contextlib.suppress(TypeError, ValueError):
                         val = int(str(val))
-                    except (TypeError, ValueError):
-                        pass
                 item[dst] = val
         for key, val in payload.items():
             if key not in item:
@@ -310,10 +303,8 @@ class JobProgress(JobProgressPort):
             try:
                 await _maybe_await(self.table.put_item, Item=item)
             except Exception:
-                try:
+                with contextlib.suppress(Exception):
                     await _maybe_await(self.table.put_item, item=item)
-                except Exception:
-                    pass
 
     async def _fetch(self, company_id: Any, job_id: Any) -> dict[str, Any] | None:
         cid = _norm(company_id)
@@ -424,7 +415,7 @@ class JobProgress(JobProgressPort):
         for c_key, jobs in self._memory.items():
             if cid is not None and _norm(c_key) != _norm(cid):
                 continue
-            for _jid, item in jobs.items():
+            for item in jobs.values():
                 if not isinstance(item, dict):
                     continue
                 if (
@@ -446,10 +437,8 @@ class JobProgress(JobProgressPort):
         store = self._memory.get(_norm(cid), {})
         deleted = store.pop(_norm(jid), None) is not None
         if self.table is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await _maybe_await(self.table.delete_item, Key={'pk': self._key(cid, jid)})
-            except Exception:
-                pass
         return deleted
 
     async def rebuild(self, *args: Any, **kwargs: Any) -> Any:
