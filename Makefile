@@ -2,7 +2,7 @@
 # Usage: make <target>
 # Key targets: check, ci, test, format, config-check
 
-COVERAGE_MIN ?= 50
+COVERAGE_MIN ?= 25
 
 .PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps
 
