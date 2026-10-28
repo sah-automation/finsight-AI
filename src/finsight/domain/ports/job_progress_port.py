@@ -3,51 +3,58 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from finsight.core.types import CompanyId
 
 
 class JobProgressPort(ABC):
     """Interface for writing/reading rebuildable job progress."""
 
     @abstractmethod
-    async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def write_progress(
+        self, company_id: CompanyId, *args: object, **kwargs: object
+    ) -> object:
         raise NotImplementedError
 
     @abstractmethod
-    async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def read_progress(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         raise NotImplementedError
 
     @abstractmethod
-    async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def list_progress(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         raise NotImplementedError
 
     @abstractmethod
-    async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def delete_progress(
+        self, company_id: CompanyId, *args: object, **kwargs: object
+    ) -> object:
         raise NotImplementedError
 
     # aliases
-    async def write(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def write(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         return await self.write_progress(company_id, *args, **kwargs)
 
-    async def put(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def put(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         return await self.write_progress(company_id, *args, **kwargs)
 
-    async def upsert(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def upsert(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         return await self.write_progress(company_id, *args, **kwargs)
 
-    async def save(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def save(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         return await self.write_progress(company_id, *args, **kwargs)
 
-    async def get(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def get(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         return await self.read_progress(company_id, *args, **kwargs)
 
-    async def fetch(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def fetch(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         return await self.read_progress(company_id, *args, **kwargs)
 
-    async def read(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def read(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         return await self.read_progress(company_id, *args, **kwargs)
 
-    async def list(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def list(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
         return await self.list_progress(company_id, *args, **kwargs)
 
 

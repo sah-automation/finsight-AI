@@ -87,7 +87,7 @@ class DocumentVersion:
     metadata: dict[str, object] | None = None
     extras: dict[str, object] = field(default_factory=dict)
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:  # noqa: PLR0912, PLR0915
         positional_order = [
             'id',
             'company_id',

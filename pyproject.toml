@@ -212,6 +212,33 @@ ignore = [
 "src/finsight/adapters/vector_store/*.py" = [
     "ANN401", "BLE001", "S608",
 ]
+
+# Flexible job-progress adapter and port-facing surface.
+"src/finsight/adapters/cache/job_progress.py" = [
+    "ANN401", "BLE001", "PLC0415", "PLR0912", "S112",
+]
+# Partition management exchanges flexible config/session surfaces.
+"src/finsight/adapters/partitions/partition_manager.py" = [
+    "ANN401", "BLE001", "E501", "PLC0415", "PLR0912", "S110", "SIM105",
+    "TRY203", "TRY300",
+]
+# Base repository coordinates flexible SQLAlchemy session shapes.
+"src/finsight/adapters/repositories/base_repository.py" = [
+    "ANN401", "BLE001", "S110", "TRY300",
+]
+# Repository adapters use module-level table constants for SQL templates.
+"src/finsight/adapters/repositories/company_repository.py" = [
+    "ANN401", "E501", "S608",
+]
+"src/finsight/adapters/repositories/job_repository.py" = [
+    "ANN401", "BLE001", "E501", "PLR0912", "PLR0915", "S110", "S608", "TRY300",
+]
+"src/finsight/adapters/repositories/partition_metadata_repository.py" = [
+    "ANN401", "S608",
+]
+"src/finsight/adapters/repositories/user_repository.py" = [
+    "ANN401", "S608",
+]
 "src/finsight/domain/ports/queue.py" = ["F401", "F403"]
 # The config loader parses arbitrary YAML (so Any is honest), imports the
 # logger lazily to avoid a circular import, and owns the deliberate

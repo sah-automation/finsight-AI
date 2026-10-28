@@ -774,8 +774,6 @@ class UpdateDocument:
         return None
 
     def _resolve_delta_tracking(self) -> bool:
-        if 'delta_tracking' in {}:
-            pass
         value = self._delta_tracking
         if value is None:
             docs_cfg = None
@@ -839,8 +837,8 @@ class UpdateDocument:
             create_kwargs.setdefault('document_id', kwargs.get('document_id'))
             create_kwargs.setdefault('id', kwargs.get('version_id'))
             for call in (
-                lambda: method(company_id, **create_kwargs),
-                lambda: method(company_id=company_id, **create_kwargs),
+                (lambda m=method, kw=create_kwargs: m(company_id, **kw)),
+                (lambda m=method, kw=create_kwargs: m(company_id=company_id, **kw)),
             ):
                 try:
                     return await _await(call())  # type: ignore[no-untyped-call]

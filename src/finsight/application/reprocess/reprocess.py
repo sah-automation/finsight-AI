@@ -332,7 +332,6 @@ class Reprocess:
                 # update stamp banner (attempt)
                 await self._touch_stamp(cid)
                 # Publish not tied to change events in Phase 1; audit only.
-                published_any = published_any
                 # flag affected documents (reuse document repo listing) - keep audit only
                 affected = await self._flag_affected(cid)
                 affected_all.extend(affected)
@@ -423,8 +422,6 @@ class Reprocess:
             except TypeError:
                 try:
                     docs = await _await(method(company_id=company_id))
-                except Exception:
-                    docs = None
                 except Exception:
                     docs = None
             if docs is not None:
