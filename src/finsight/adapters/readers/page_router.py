@@ -135,6 +135,18 @@ class PageRouter(BaseReader):
             except (TypeError, ValueError):
                 pass
 
+        # Capture late-bound config/session pointers when supplied.
+        if not hasattr(self, '_config'):
+            for ckey in ('config', 'settings', 'configuration', 'app_config', 'ctx'):
+                if ckey in kwargs:
+                    self._config = kwargs.get(ckey)
+                    break
+            else:
+                self._config = None
+        if not hasattr(self, '_session'):
+            self._session = kwargs.get('session', kwargs.get('db_session'))
+        super().__init__(config=self._config, session=self._session)
+
         # Keep any leftover attributes for compatibility.
         for key, value in kwargs.items():
             if key not in self.__dict__:

@@ -437,9 +437,7 @@ _READER_META_NAMES = frozenset(
     }
 )
 _KNOWN_READER_NAMES_NORMALIZED = frozenset(
-    name.lower().replace('_', '')
-    for name in _KNOWN_READER_NAMES_LOWER
-    if name.lower() not in _READER_META_NAMES
+    name.lower().replace('_', '') for name in _KNOWN_READER_NAMES_LOWER
 )
 KNOWN_READER_NAMES = _KNOWN_READER_NAMES_LOWER
 VALID_READER_NAMES = _KNOWN_READER_NAMES_LOWER

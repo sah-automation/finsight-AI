@@ -1887,6 +1887,91 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> ReaderRegistry:
 class _ReaderFactory:
     """Factory for creating reader instances or a full reader registry."""
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        has_name = any(
+            k in kwargs for k in ('name', 'reader', 'reader_name', 'reader_type')
+        ) or any(isinstance(a, str) for a in args)
+        if has_name:
+            self.config = kwargs.get('config', kwargs.get('settings'))
+            try:
+                self.config = (
+                    self.config if self.config is not None else resolve_config(*args, **kwargs)
+                )
+            except Exception:
+                self.config = resolve_config(*args, **kwargs) if args or kwargs else None
+            self.session = kwargs.get('session', kwargs.get('db_session'))
+            if self.session is None:
+                try:
+                    self.session = resolve_session(*args, **kwargs)
+                except Exception:
+                    self.session = None
+            self.registry = None
+            self.readers = None
+            self.reader_registry = None
+            return
+        try:
+            self.config = resolve_config(*args, **kwargs) if args or kwargs else None
+        except Exception:
+            self.config = None
+        try:
+            self.session = resolve_session(*args, **kwargs) if args or kwargs else None
+        except Exception:
+            self.session = None
+        filtered = {
+            k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS
+        }
+        try:
+            self.registry = build_reader_registry(
+                config=self.config, session=self.session, **filtered
+            )
+        except Exception:
+            try:
+                self.registry = build_reader_registry(*args, **kwargs)
+            except Exception:
+                self.registry = None
+        self.readers = self.registry
+        self.reader_registry = self.registry
+
+        def _create(*a: Any, **k: Any) -> Any:
+            kk = dict(k)
+            kk.setdefault('config', self.config)
+            kk.setdefault('session', self.session)
+            return ReaderFactory.create(*a, **kk)
+
+        self.create = _create  # type: ignore[method-assign]
+        self.build = _create  # type: ignore[method-assign]
+        self.get_reader = _create  # type: ignore[method-assign]
+
+    def get(self, name: Any, default: Any = None) -> Any:
+        registry: Any = getattr(self, 'registry', None)
+        if registry is None:
+            try:
+                registry = build_reader_registry()
+            except Exception:
+                registry = None
+        if isinstance(registry, dict):
+            try:
+                return registry.get(name, default)
+            except Exception:
+                return default
+        return default
+
+    def __getitem__(self, key: Any) -> Any:
+        registry: Any = getattr(self, 'registry', None)
+        if registry is None:
+            registry = build_reader_registry()
+        if isinstance(registry, dict):
+            return registry[key]
+        raise KeyError(key)
+
+    def __contains__(self, item: Any) -> bool:
+        registry: Any = getattr(self, 'registry', None)
+        if registry is None:
+            return False
+        if isinstance(registry, dict):
+            return item in registry
+        return False
+
     @staticmethod
     def available_names() -> list[str]:
         return [

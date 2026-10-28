@@ -24,7 +24,9 @@ class PdfPlumberReader(BaseReader):
         if threshold is None:
             threshold = kwargs.pop('threshold', None)
         self._confidence_threshold = threshold
+        self._session = kwargs.pop('session', kwargs.pop('db_session', None))
         self._config = kwargs.pop('config', kwargs.pop('settings', None))
+        super().__init__(config=self._config, session=self._session)
         for key, value in kwargs.items():
             if key not in self.__dict__:
                 setattr(self, key, value)

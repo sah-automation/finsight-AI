@@ -372,7 +372,11 @@ class TextractReader(BaseReader):
                 return False
             if self._is_pdf_source(source, filename, file_name, file_path, content_type):
                 counted = self._count_pages(source)
-                count = counted if counted is not None else 1
+                if counted is None:
+                    # Page count unknown: defer to config/async switch instead of
+                    # silently forcing a single page (sync).
+                    return self._async_enabled()
+                count = counted
             else:
                 return False
         try:
