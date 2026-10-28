@@ -1143,12 +1143,28 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         pdf_reader = None
 
+    try:
+        TessCls = _import_adapter(
+            'finsight.adapters.readers.tesseract', 'Tesseract', 'TesseractReader'
+        )
+        if TessCls is None:
+            TessCls = _import_adapter(
+                'finsight.adapters.readers.tesseract_reader', 'Tesseract', 'TesseractReader'
+            )
+        tesseract_reader = (
+            TessCls(config=config, session=session, **_extra) if TessCls is not None else None
+        )
+    except Exception:
+        tesseract_reader = None
+
     names = _resolve_reader_names(config)
     registry: dict[str, Any] = {}
     for name in names:
         low = str(name).lower()
         if low in {'pdfplumber', 'pdf_plumber', 'pdfplumber_reader', 'pdf'} or 'plumber' in low:
             registry[str(name)] = pdf_reader
+        elif 'tesseract' in low or low in {'ocr', 'ocr_reader', 'scan', 'scan_reader'}:
+            registry[str(name)] = tesseract_reader
         else:
             # Structural entry for future readers; wired lazily/None in pilot.
             registry[str(name)] = None
@@ -1156,6 +1172,10 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> Any:
     registry.setdefault('pdfplumber', pdf_reader)
     registry.setdefault('pdf_plumber', pdf_reader)
     registry.setdefault('pdf', pdf_reader)
+    registry.setdefault('tesseract', tesseract_reader)
+    registry.setdefault('tesseract_reader', tesseract_reader)
+    registry.setdefault('ocr', tesseract_reader)
+    registry.setdefault('ocr_reader', tesseract_reader)
     # Provide the pdf reader under common keys.
     if pdf_reader is not None:
         registry['primary'] = pdf_reader
