@@ -7,6 +7,8 @@ Immutable objects compared by value, not identity.
 - `Period` - fiscal period with start/end
 - `Citation` - source reference (doc, page, table, chars)
 - `Confidence` - score with reasoning
+- `DocumentChangeEvent` - lifecycle change signal for cache/cascade consumers
+- `ChangeEventType` - allowed change event values
 
 **Rules:**
 - Frozen Pydantic models or `@dataclass(frozen=True)`

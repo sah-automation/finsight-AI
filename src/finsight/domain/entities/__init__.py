@@ -1,3 +1,4 @@
+from .chunk import Chunk
 from .company import Company
 from .document_version import (
     DocumentState,
@@ -11,6 +12,7 @@ from .partition_metadata import PartitionMetadata
 from .user import User
 
 __all__ = [
+    'Chunk',
     'Company',
     'DocumentState',
     'DocumentVersion',

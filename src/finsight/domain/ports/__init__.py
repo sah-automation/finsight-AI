@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from .answer_cache import AnswerCache
+from .change_event_publisher import ChangeEventPublisher
+from .chunk_repository import ChunkRepository
 from .company_repository import CompanyRepository
 from .document_reader import DocumentReader
 from .document_repository import DocumentRepository
@@ -18,6 +20,8 @@ from .virus_scanner import VirusScanner
 
 __all__ = [
     'AnswerCache',
+    'ChangeEventPublisher',
+    'ChunkRepository',
     'CompanyRepository',
     'DocumentReader',
     'DocumentRepository',

@@ -10,6 +10,7 @@ Interfaces (abstract classes or Protocols) that the outside world must fulfil.
 - `DocumentRepository` - CRUD for documents
 - `ChunkRepository` - CRUD for chunks
 - `MetricRepository` - CRUD for metrics
+- `ChangeEventPublisher` - publish lifecycle changes and cascade signals
 - `CachePort` - get/set with TTL
 - `QueuePort` - enqueue jobs
 - `AuthPort` - verify token, get role
