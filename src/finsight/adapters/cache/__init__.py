@@ -1,5 +1,14 @@
-"""Cache adapter (DynamoDB + job progress view)."""
+"""Cache adapters (DynamoDB answer cache and job progress view)."""
 
+from .answer_cache import (
+    AnswerCache,
+    AnswerCacheAdapter,
+    CacheAdapter,
+    DynamoAnswerCache,
+    DynamoAnswerCacheAdapter,
+    DynamoCache,
+    DynamoDBAnswerCache,
+)
 from .job_progress import (
     DynamoDBJobProgress,
     DynamoDBProgressView,
@@ -12,6 +21,13 @@ from .job_progress import (
 )
 
 __all__ = [
+    'AnswerCache',
+    'AnswerCacheAdapter',
+    'CacheAdapter',
+    'DynamoAnswerCache',
+    'DynamoAnswerCacheAdapter',
+    'DynamoCache',
+    'DynamoDBAnswerCache',
     'DynamoDBJobProgress',
     'DynamoDBProgressView',
     'DynamoJobProgress',
@@ -21,5 +37,3 @@ __all__ = [
     'JobProgress',
     'JobProgressView',
 ]
-
-# Re-export the preferred DynamoDB names; job_progress already defines the aliases above.

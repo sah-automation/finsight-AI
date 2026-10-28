@@ -16,6 +16,7 @@ from .partition_metadata_repository import PartitionMetadataRepository
 from .queue import Queue, QueuePort
 from .unit_of_work import UnitOfWork
 from .user_repository import UserRepository
+from .vector_write import VectorWrite
 from .virus_scanner import VirusScanner
 
 __all__ = [
@@ -35,5 +36,6 @@ __all__ = [
     'QueuePort',
     'UnitOfWork',
     'UserRepository',
+    'VectorWrite',
     'VirusScanner',
 ]

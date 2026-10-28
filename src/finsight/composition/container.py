@@ -567,6 +567,17 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
             'partition_metadata_repository',
             'onboarding_use_case',
             'upload_use_case',
+            'object_storage',
+            'virus_scanner',
+            'job_repository',
+            'reader_registry',
+            'scan_worker',
+            'job_progress',
+            'document_repository',
+            'chunk_repository',
+            'vector_write',
+            'answer_cache',
+            'change_event_publisher',
         ):
             value = getattr(container_arg, attr, None)
             if value is not None:
@@ -616,22 +627,61 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
     job_repository = provided_deps.get('job_repository') or build_job_repository(
         session=session, config=config, **_extra
     )
+    document_repository = provided_deps.get('document_repository') or build_document_repository(
+        session=session, config=config, **_extra
+    )
+    chunk_repository = provided_deps.get('chunk_repository') or build_chunk_repository(
+        session=session, config=config, **_extra
+    )
+    vector_write = provided_deps.get('vector_write') or build_vector_write(
+        session=session, config=config, **_extra
+    )
+    answer_cache = provided_deps.get('answer_cache') or build_answer_cache(
+        session=session, config=config, **_extra
+    )
+    change_event_publisher = provided_deps.get(
+        'change_event_publisher'
+    ) or build_change_event_publisher(config=config, **_extra)
     reader_registry = provided_deps.get('reader_registry') or build_reader_registry(
         config=config, session=session, **_extra
     )
     page_router = build_page_router(
         config=config, session=session, reader_registry=reader_registry, **_extra
     )
+    _worker_extra = {
+        k: v
+        for k, v in _extra.items()
+        if k
+        not in {
+            'document_repository',
+            'chunk_repository',
+            'vector_write',
+            'vector_store',
+            'vector_store_write',
+            'vector_writer',
+            'answer_cache',
+            'change_event_publisher',
+            'event_publisher',
+            'publisher',
+            'reader_registry',
+            'page_router',
+            'scan_worker',
+            'job_progress',
+            'object_storage',
+            'virus_scanner',
+            'job_repository',
+        }
+    }
     scan_worker = provided_deps.get('scan_worker') or build_scan_worker(
         config=config,
         session=session,
-        document_repository=None,
+        document_repository=document_repository,
         virus_scanner=virus_scanner,
         object_storage=object_storage,
         job_repository=job_repository,
-        answer_cache=None,
+        answer_cache=answer_cache,
         reader_registry=reader_registry,
-        **_extra,
+        **_worker_extra,
     )
     job_progress = provided_deps.get('job_progress') or build_job_progress(
         config=config, session=session, **_extra
@@ -641,11 +691,17 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         session=session,
         reader_registry=reader_registry,
         page_router=page_router,
+        document_repository=document_repository,
+        chunk_repository=chunk_repository,
+        vector_store=vector_write,
+        vector_write=vector_write,
+        answer_cache=answer_cache,
+        change_event_publisher=change_event_publisher,
         job_repository=job_repository,
         virus_scanner=virus_scanner,
         object_storage=object_storage,
         scan_worker=scan_worker,
-        **_extra,
+        **_worker_extra,
     )
 
     _pip = worker_set.get('pipeline') if hasattr(worker_set, 'get') else None
@@ -674,6 +730,12 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         status_surface=job_progress,
         virus_scanner=virus_scanner,
         object_storage=object_storage,
+        document_repository=document_repository,
+        chunk_repository=chunk_repository,
+        vector_store=vector_write,
+        vector_write=vector_write,
+        answer_cache=answer_cache,
+        change_event_publisher=change_event_publisher,
         pipeline_worker=_pip,
         pipeline_workers=worker_set,
         ingestion_worker=_pip,
@@ -1002,6 +1064,160 @@ def build_job_repository(*args: Any, **kwargs: Any) -> Any:
         if Cls is None:
             return None
         return Cls(session=session, config=config, **_extra)
+    except Exception:
+        return None
+
+
+def build_document_repository(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(
+        kwargs,
+        'document_repository',
+        'document_repo',
+        'documents',
+        'document_repository_adapter',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'document_repository',
+            'document_repo',
+            'documents',
+            'document_repository_adapter',
+        }
+    }
+    for module_path, names in (
+        (
+            'finsight.adapters.repositories.postgres_document_repository',
+            ('PostgresDocumentRepository', 'AuroraDocumentRepository'),
+        ),
+        (
+            'finsight.adapters.repositories.aurora_document_repository',
+            ('AuroraDocumentRepository', 'PostgresDocumentRepository'),
+        ),
+    ):
+        try:
+            Cls = _import_adapter(module_path, *names)
+            if Cls is not None:
+                return Cls(session=session, config=config, **_extra)
+        except Exception:  # noqa: S112
+            continue
+    return None
+
+
+def build_chunk_repository(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(
+        kwargs,
+        'chunk_repository',
+        'chunks',
+        'chunk_store',
+        'chunk_repository_adapter',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k not in {'chunk_repository', 'chunks', 'chunk_store', 'chunk_repository_adapter'}
+    }
+    for module_path, names in (
+        (
+            'finsight.adapters.repositories.postgres_chunk_repository',
+            ('PostgresChunkRepository', 'AuroraChunkRepository'),
+        ),
+        (
+            'finsight.adapters.repositories.aurora_chunk_repository',
+            ('AuroraChunkRepository', 'PostgresChunkRepository'),
+        ),
+    ):
+        try:
+            Cls = _import_adapter(module_path, *names)
+            if Cls is not None:
+                return Cls(session=session, config=config, **_extra)
+        except Exception:  # noqa: S112
+            continue
+    return None
+
+
+def build_vector_write(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(kwargs, 'vector_write', 'vector_store_write', 'vector_writer')
+    if provided is None:
+        candidate = kwargs.get('vector_store')
+        if candidate is not None and hasattr(candidate, 'upsert_chunks'):
+            provided = candidate
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k not in {'vector_write', 'vector_store_write', 'vector_writer', 'vector_store'}
+    }
+    for module_path, names in (
+        (
+            'finsight.adapters.vector_store.aurora_pg_vector_write',
+            ('AuroraPgVectorWrite', 'PostgresVectorWrite'),
+        ),
+        (
+            'finsight.adapters.vector_store.aurora_pgvector',
+            ('AuroraPgVectorWrite', 'PostgresVectorWrite'),
+        ),
+    ):
+        try:
+            Cls = _import_adapter(module_path, *names)
+            if Cls is not None:
+                return Cls(session=session, config=config, **_extra)
+        except Exception:  # noqa: S112
+            continue
+    return None
+
+
+def build_change_event_publisher(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(
+        kwargs,
+        'change_event_publisher',
+        'event_publisher',
+        'publisher',
+        'change_publisher',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'change_event_publisher',
+            'event_publisher',
+            'publisher',
+            'change_publisher',
+        }
+    }
+    try:
+        Cls = _import_adapter(
+            'finsight.adapters.messaging.change_event_publisher',
+            'ChangeEventPublisher',
+        )
+        if Cls is None:
+            return None
+        return Cls(config=config, **_extra)
     except Exception:
         return None
 
@@ -2479,12 +2695,18 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
             'document_repository',
             'chunk_repository',
             'vector_store',
+            'vector_write',
+            'vector_store_write',
+            'vector_writer',
             'metric_repository',
             'job_repository',
             'queue',
             'virus_scanner',
             'object_storage',
             'answer_cache',
+            'change_event_publisher',
+            'event_publisher',
+            'publisher',
             'page_router_enabled',
             'delta_tracking',
             'virus_scan_enabled',
@@ -2518,8 +2740,19 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
         )
 
     document_repository = _existing(kwargs, 'document_repository', 'document_repo', 'documents')
+    if document_repository is None:
+        document_repository = build_document_repository(config=config, session=session, **_extra0)
     chunk_repository = _existing(kwargs, 'chunk_repository', 'chunks', 'chunk_store')
+    if chunk_repository is None:
+        chunk_repository = build_chunk_repository(config=config, session=session, **_extra0)
     vector_store = _existing(kwargs, 'vector_store', 'vectors', 'vector_repository', 'search')
+    vector_write = _existing(kwargs, 'vector_write', 'vector_store_write', 'vector_writer')
+    if vector_write is None:
+        vector_write = build_vector_write(
+            config=config, session=session, vector_store=vector_store, **_extra0
+        )
+    if vector_store is None:
+        vector_store = vector_write
     metric_repository = _existing(kwargs, 'metric_repository', 'metrics', 'metrics_repository')
     queue = _existing(kwargs, 'queue', 'queue_port', 'sqs')
     job_repository = _existing(kwargs, 'job_repository', 'job_repo', 'jobs')
@@ -2534,6 +2767,11 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
     answer_cache = _existing(kwargs, 'answer_cache', 'cache')
     if answer_cache is None:
         answer_cache = build_answer_cache(config=config, session=session, **_extra0)
+    change_event_publisher = _existing(
+        kwargs, 'change_event_publisher', 'event_publisher', 'publisher'
+    )
+    if change_event_publisher is None:
+        change_event_publisher = build_change_event_publisher(config=config, **_extra0)
 
     embedding = (
         None  # No embedding adapter module resolved here; adapters may be passed via kwargs.
@@ -2546,6 +2784,10 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
         object_storage = object_storage or getattr(container, 'object_storage', None)
         answer_cache = answer_cache or getattr(container, 'answer_cache', None)
         vector_store = vector_store or getattr(container, 'vector_store', None)
+        vector_write = vector_write or getattr(container, 'vector_write', None)
+        change_event_publisher = change_event_publisher or getattr(
+            container, 'change_event_publisher', None
+        )
         metric_repository = metric_repository or getattr(container, 'metric_repository', None)
         queue = queue or getattr(container, 'queue', None)
 
@@ -2569,11 +2811,13 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
         document_repository=document_repository,
         chunk_repository=chunk_repository,
         vector_store=vector_store,
+        vector_write=vector_write,
         metric_repository=metric_repository,
         reader=reader,
         page_router=page_router,
         embedding=embedding,
         answer_cache=answer_cache,
+        change_event_publisher=change_event_publisher,
         config=config,
         unit_of_work=None,
         queue=queue,

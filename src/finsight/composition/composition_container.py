@@ -42,6 +42,10 @@ class CompositionContainer:
         virus_scanner: Any = None,
         document_repository: Any = None,
         chunk_repository: Any = None,
+        vector_store: Any = None,
+        vector_write: Any = None,
+        change_event_publisher: Any = None,
+        event_publisher: Any = None,
         object_storage: Any = None,
         answer_cache: Any = None,
         queue: Any = None,
@@ -158,6 +162,21 @@ class CompositionContainer:
             if chunk_repository is not None
             else deps.get('chunk_repository') or deps.get('chunks')
         )
+        vector_write = (
+            vector_write
+            if vector_write is not None
+            else deps.get('vector_write') or deps.get('vector_store_write')
+        )
+        vector_store = (
+            vector_store if vector_store is not None else deps.get('vector_store') or vector_write
+        )
+        change_event_publisher = (
+            change_event_publisher
+            if change_event_publisher is not None
+            else event_publisher
+            if event_publisher is not None
+            else deps.get('change_event_publisher') or deps.get('event_publisher')
+        )
 
         self.reader_registry = reader_registry
         self.readers = self.reader_registry
@@ -183,6 +202,12 @@ class CompositionContainer:
         self.virus_scanner = virus_scanner
         self.document_repository = document_repository
         self.chunk_repository = chunk_repository
+        self.vector_store = vector_store
+        self.vector_write = vector_write
+        self.vector_store_write = vector_write
+        self.change_event_publisher = change_event_publisher
+        self.event_publisher = change_event_publisher
+        self.publisher = change_event_publisher
 
         # Additional aliases.
         self.readers_registry = self.reader_registry
@@ -214,6 +239,15 @@ class CompositionContainer:
             'object_storage': deps.get('object_storage') or upload_use_case,
             'reader_registry': self.reader_registry,
             'scan_worker': self.scan_worker,
+            'document_repository': self.document_repository,
+            'chunk_repository': self.chunk_repository,
+            'vector_store': self.vector_store,
+            'vector_write': self.vector_write,
+            'change_event_publisher': self.change_event_publisher,
+            'event_publisher': self.event_publisher,
+            'publisher': self.publisher,
+            'answer_cache': self.answer_cache,
+            'queue': self.queue,
         }
         self.repositories = {
             'company': company_repository,
@@ -221,6 +255,10 @@ class CompositionContainer:
             'partition_metadata': partition_metadata_repository,
             'job': self.job_repository,
             'jobs': self.job_repository,
+            'document': self.document_repository,
+            'chunk': self.chunk_repository,
+            'vector_store': self.vector_store,
+            'vector_write': self.vector_write,
         }
 
     def __getitem__(self, key: str) -> Any:
@@ -259,6 +297,11 @@ class CompositionContainer:
             'virus_scanner': self.virus_scanner,
             'document_repository': self.document_repository,
             'chunk_repository': self.chunk_repository,
+            'vector_store': self.vector_store,
+            'vector_write': self.vector_write,
+            'change_event_publisher': self.change_event_publisher,
+            'event_publisher': self.event_publisher,
+            'publisher': self.publisher,
             'object_storage': self.object_storage,
             'answer_cache': self.answer_cache,
             'queue': self.queue,

@@ -180,6 +180,20 @@ ignore = [
     "PLR0912", "PLR0913", "PLR0915", "PLR1730", "PLR2004", "RET504", "RUF005",
     "RUF021", "S110", "SIM102", "SIM105", "SIM108", "TC001", "TRY300",
 ]
+# The slice-4 lifecycle adapters take flexible caller shapes and intentionally
+# swallow remote-store failures so a cache/vector outage cannot block a commit.
+# SQL is assembled from module-level table/column constants, never caller input.
+"src/finsight/adapters/cache/answer_cache.py" = [
+    "ANN401", "BLE001", "PLR0912", "PLR0913",
+]
+"src/finsight/adapters/messaging/*.py" = [
+    "ANN401", "BLE001", "PLR0913",
+]
+"src/finsight/adapters/repositories/postgres_chunk_repository.py" = ["ANN401", "S608"]
+"src/finsight/adapters/repositories/postgres_document_repository.py" = ["ANN401", "S608"]
+"src/finsight/adapters/vector_store/*.py" = [
+    "ANN401", "BLE001", "S608",
+]
 "src/finsight/domain/ports/queue.py" = ["F401", "F403"]
 # The config loader parses arbitrary YAML (so Any is honest), imports the
 # logger lazily to avoid a circular import, and owns the deliberate
@@ -323,6 +337,7 @@ modules = [
     "finsight.adapters.storage",
     "finsight.adapters.queue",
     "finsight.adapters.cache",
+    "finsight.adapters.messaging",
     "finsight.adapters.auth",
     "finsight.adapters.metering",
     "finsight.adapters.security",
