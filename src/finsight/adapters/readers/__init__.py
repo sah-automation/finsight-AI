@@ -27,6 +27,15 @@ from .docx_reader import (
 from .excel_reader import Excel, ExcelReader
 from .page_router import PageRouter
 from .pdf_plumber_reader import PdfPlumberReader
+from .self_hosted_layout import (
+    Layout,
+    LayoutReader,
+    SelfHosted,
+    SelfHostedLayout,
+)
+from .self_hosted_layout_reader import SelfHostedLayoutReader
+from .table import LayoutTableReader, Table, TableDocumentReader, TableLayoutReader
+from .table_reader import TableReader
 from .tesseract_reader import Tesseract, TesseractReader
 from .textract_reader import Textract, TextractReader
 
@@ -46,10 +55,20 @@ __all__ = [
     'DocxReader',
     'Excel',
     'ExcelReader',
+    'Layout',
+    'LayoutReader',
+    'LayoutTableReader',
     'PageRouter',
     'PdfPlumberReader',
+    'SelfHosted',
+    'SelfHostedLayout',
+    'SelfHostedLayoutReader',
     'TSVDocumentReader',
     'TSVReader',
+    'Table',
+    'TableDocumentReader',
+    'TableLayoutReader',
+    'TableReader',
     'TabularReader',
     'Tesseract',
     'TesseractReader',

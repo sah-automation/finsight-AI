@@ -1157,14 +1157,80 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         tesseract_reader = None
 
+    try:
+        TexCls = _import_adapter('finsight.adapters.readers.textract', 'Textract', 'TextractReader')
+        if TexCls is None:
+            TexCls = _import_adapter(
+                'finsight.adapters.readers.textract_reader', 'Textract', 'TextractReader'
+            )
+        textract_reader = (
+            TexCls(config=config, session=session, **_extra) if TexCls is not None else None
+        )
+    except Exception:
+        textract_reader = None
+
+    try:
+        SHLCls = _import_adapter(
+            'finsight.adapters.readers.self_hosted_layout',
+            'SelfHostedLayout',
+            'SelfHostedLayoutReader',
+            'LayoutReader',
+            'Layout',
+        )
+        if SHLCls is None:
+            SHLCls = _import_adapter(
+                'finsight.adapters.readers.self_hosted_layout_reader',
+                'SelfHostedLayout',
+                'SelfHostedLayoutReader',
+                'LayoutReader',
+                'Layout',
+            )
+        self_hosted_layout_reader = (
+            SHLCls(config=config, session=session, **_extra) if SHLCls is not None else None
+        )
+    except Exception:
+        self_hosted_layout_reader = None
+
+    try:
+        TableCls = _import_adapter('finsight.adapters.readers.table', 'Table', 'TableReader')
+        if TableCls is None:
+            TableCls = _import_adapter(
+                'finsight.adapters.readers.table_reader', 'Table', 'TableReader'
+            )
+        table_reader_obj = (
+            TableCls(config=config, session=session, **_extra) if TableCls is not None else None
+        )
+    except Exception:
+        table_reader_obj = None
+
     names = _resolve_reader_names(config)
     registry: dict[str, Any] = {}
     for name in names:
         low = str(name).lower()
         if low in {'pdfplumber', 'pdf_plumber', 'pdfplumber_reader', 'pdf'} or 'plumber' in low:
             registry[str(name)] = pdf_reader
+        elif 'textract' in low:
+            registry[str(name)] = textract_reader
         elif 'tesseract' in low or low in {'ocr', 'ocr_reader', 'scan', 'scan_reader'}:
             registry[str(name)] = tesseract_reader
+        elif 'self_hosted' in low or 'self-hosted' in low or 'layout' in low:
+            registry[str(name)] = self_hosted_layout_reader
+        elif low in {'table', 'table_reader', 'table_layout'}:
+            registry[str(name)] = table_reader_obj
+        elif (
+            'excel' in low
+            or 'xlsx' in low
+            or 'xls' in low
+            or 'spreadsheet' in low
+            or 'csv' in low
+            or 'tsv' in low
+            or 'delimited' in low
+            or 'tabular' in low
+            or 'docx' in low
+            or 'doc' in low
+            or 'word' in low
+        ):
+            registry[str(name)] = None
         else:
             # Structural entry for future readers; wired lazily/None in pilot.
             registry[str(name)] = None
@@ -1182,6 +1248,14 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> Any:
         registry['reader'] = pdf_reader
         registry['primary_reader'] = pdf_reader
         registry['text_reader'] = pdf_reader
+    registry.setdefault('textract', textract_reader)
+    registry.setdefault('textract_reader', textract_reader)
+    registry.setdefault('self_hosted_layout', self_hosted_layout_reader)
+    registry.setdefault('self_hosted', self_hosted_layout_reader)
+    registry.setdefault('layout', self_hosted_layout_reader)
+    registry.setdefault('layout_reader', self_hosted_layout_reader)
+    registry.setdefault('table', table_reader_obj)
+    registry.setdefault('table_reader', table_reader_obj)
     return registry
 
 
