@@ -119,6 +119,18 @@ ignore = [
     "ANN401", "ANN002", "ANN003", "PLR0912", "PLR0913",
     "PLR0915", "PLC0415", "BLE001", "S110", "SIM105", "N818", "RUF100",
 ]
+# Ingest document (upload) use case exposes flexible constructor/input surfaces by design.
+"src/finsight/application/ingest_document/*.py" = [
+    "ANN401", "ANN002", "ANN003", "BLE001", "PLC0415", "PLE0605", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "RET504", "S110", "S112", "SIM102",
+    "SIM105", "TRY300", "TC001", "RUF100",
+]
+# Compatibility alias package for the ingest document upload use case.
+"src/finsight/application/upload/*.py" = [
+    "ANN401", "ANN002", "ANN003", "BLE001", "PLC0415", "PLE0605", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "RET504", "S110", "S112", "SIM102",
+    "SIM105", "TRY300", "TC001", "RUF100",
+]
 # Upload endpoint exposes flexible surfaces for varied caller shapes.
 "src/finsight/entrypoints/api/upload.py" = [
     "ANN401", "ANN002", "ANN003", "PLR0911", "PLR0912", "PLR0913",

@@ -430,12 +430,71 @@ def build_upload_use_case(*args: Any, **kwargs: Any) -> Any:
             **{k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS},
         )
 
+    object_storage = _existing(
+        kwargs,
+        'object_storage',
+        'storage',
+        'storage_adapter',
+        'object_storage_adapter',
+        's3_storage',
+        's3',
+    )
+    if object_storage is None and container is not None:
+        object_storage = getattr(container, 'object_storage', None)
+    if object_storage is None:
+        object_storage = build_object_storage(
+            session=session,
+            config=config,
+            **{k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS},
+        )
+
     use_case = provided if provided is not None else kwargs.get('use_case')
     context = _existing(kwargs, 'context', 'request_context', 'ctx')
 
-    if partition_manager is None and use_case is None and context is None and session is None:
+    if use_case is None:
+        try:
+            from finsight.application.ingest_document import UploadDocument
+
+            try:
+                use_case = UploadDocument(
+                    object_storage=object_storage,
+                    partition_manager=partition_manager,
+                    config=config,
+                    **{
+                        k: v
+                        for k, v in kwargs.items()
+                        if k not in _SESSION_KEYS
+                        and k not in _CONFIG_KEYS
+                        and k
+                        not in {
+                            'use_case',
+                            'context',
+                            'partition_manager',
+                            'partition_gateway',
+                            'pm',
+                            'object_storage',
+                            'storage',
+                            's3',
+                        }
+                    },
+                )
+            except Exception:
+                use_case = UploadDocument()
+        except Exception:
+            use_case = None
+
+    if (
+        partition_manager is None
+        and use_case is None
+        and context is None
+        and session is None
+        and object_storage is None
+    ):
         return None
 
+    # Wrap the application use case in the entrypoint's Upload handler so the
+    # partition gate and HTTP-friendly behaviour remain available, while the
+    # application use case owns version creation and presigned link issuance.
     try:
         module = importlib.import_module('finsight.entrypoints.api.upload')
         _upload_cls: Any = getattr(module, 'Upload')
@@ -472,6 +531,9 @@ def build_upload_use_case(*args: Any, **kwargs: Any) -> Any:
         set_default_upload_use_case(instance)
         return instance
     except Exception:
+        if use_case is not None:
+            set_default_upload_use_case(use_case)
+            return use_case
         return None
 
 
