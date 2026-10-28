@@ -16,7 +16,7 @@ Tracks progress toward closing all lint/type/import/arch/test/security gates. Se
 - [x] Phase 2 — Unsafe ruff fixes applied selectively (#58). Applied clearly behavior-preserving subset: `B007`, `F841`, `PERF102`, `RET504`, `SIM105` (most), `SIM108`, `TC001`, `TC003` via `--unsafe-fixes`; plus one manual `B007` rename and import sort safe fixes. Remaining unsafe (`SIM105` x1, `B007` x1, etc.) deferred. Lint 365 -> 296.
 - [ ] Phase 3 — Manual fixes: type ignores (PGH003), TYPE_CHECKING imports (TC003/TC001), exception chaining (B904) (#59).
 - [ ] Phase 4 — Manual fixes for remaining lint errors (S608, BLE001, SIM105, etc.) (#60).
-- [ ] Phase 5 — Structural compliance verify (#61): one class per file, names, no utils/helpers, every package README.
+- [x] Phase 5 — Structural compliance verify (#61): one class per file, names, no utils/helpers, every package README. Verified: `make arch-test` (45 passed), no multi-class files beyond allowed exceptions, no utils/helpers, all `src/finsight` packages have README.
 - [ ] Phase 6 — File/function size limits if needed (#62).
 - [ ] Phase 7 — Manual fixes remaining (this issue sequence consolidated).
 - [ ] Phase 8 — Full gate validation and cleanup (#63): `make check` / `make ci` green, pre-commit green.
