@@ -1241,6 +1241,42 @@ def _select_reader_instance(
     return fallback
 
 
+def _normalize_reader_switch_name(name: Any) -> str:
+    return str(name).strip().lower().replace('_', '')
+
+
+def _reader_switch_known_to_registry(registry: Any, name: Any, allow_none: bool = False) -> bool:
+    if name is None:
+        return allow_none
+    if not isinstance(name, str):
+        return False
+    normalized = _normalize_reader_switch_name(name)
+    none_values = {'none', 'null', 'off', 'false', 'disabled'}
+    if normalized in none_values:
+        return allow_none
+    for key in getattr(registry, 'keys', list)():
+        if isinstance(key, str) and key.strip().lower().replace('_', '') == normalized:
+            return True
+    return False
+
+
+def _validate_reader_switch_name(registry: Any, name: Any, allow_none: bool = False) -> None:
+    if name is None:
+        if allow_none:
+            return
+        raise ValueError('Unknown reader name: None')
+    if not isinstance(name, str):
+        raise TypeError(f'Unknown reader name: {name!r}')
+    normalized = _normalize_reader_switch_name(name)
+    none_values = {'none', 'null', 'off', 'false', 'disabled'}
+    if normalized in none_values:
+        if allow_none:
+            return
+        raise ValueError(f'Unknown reader name: {name!r}')
+    if not _reader_switch_known_to_registry(registry, name, allow_none=False):
+        raise ValueError(f'Unknown reader name: {name.strip()!r}')
+
+
 def build_reader_registry(*args: Any, **kwargs: Any) -> ReaderRegistry:
     config = resolve_config(*args, **kwargs)
     session = resolve_session(*args, **kwargs)
@@ -1661,17 +1697,77 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> ReaderRegistry:
     if table_name is None:
         table_name = kwargs.get('table_reader', kwargs.get('table_reader_name'))
 
+    # Validate scalar and per-company reader switches against the registry.
+    for candidate_name, allow_none in (
+        (main_name, False),
+        (scan_name, True),
+        (table_name, False),
+    ):
+        if candidate_name is not None:
+            _validate_reader_switch_name(registry, candidate_name, allow_none=allow_none)
+
+    per_company_overrides = None
+    if documents_cfg is not None:
+        per_company_overrides = (
+            getattr(documents_cfg, 'per_company_override', None)
+            if not isinstance(documents_cfg, dict)
+            else documents_cfg.get('per_company_override')
+        )
+    if per_company_overrides is None:
+        per_company_overrides = kwargs.get('per_company_override')
+    if isinstance(per_company_overrides, dict):
+        for company, override in per_company_overrides.items():
+            if not isinstance(override, dict):
+                raise TypeError(f'per-company override for {company!r} must be a mapping')
+            targets = [override]
+            nested = override.get('documents')
+            if isinstance(nested, dict):
+                targets.append(nested)
+            for target in targets:
+                if 'reader' in target and target.get('reader') is not None:
+                    _validate_reader_switch_name(registry, target.get('reader'), allow_none=False)
+                if 'scan_reader' in target and target.get('scan_reader') is not None:
+                    _validate_reader_switch_name(
+                        registry, target.get('scan_reader'), allow_none=True
+                    )
+                if 'table_reader' in target and target.get('table_reader') is not None:
+                    _validate_reader_switch_name(
+                        registry, target.get('table_reader'), allow_none=False
+                    )
+
     main_selected = _select_reader_instance(registry, main_name, pdf_reader, allow_none=False)
-    scan_selected = _select_reader_instance(registry, scan_name, tesseract_reader, allow_none=True)
+    if main_selected is None:
+        main_selected = pdf_reader
+    if scan_name is not None and str(scan_name).strip().lower() in {
+        'none',
+        'null',
+        'off',
+        'false',
+        'disabled',
+    }:
+        scan_selected = None
+    else:
+        scan_selected = _select_reader_instance(
+            registry, scan_name, tesseract_reader, allow_none=True
+        )
     if (
         scan_selected is None
         and scan_name is not None
-        and str(scan_name).strip().lower() in {'none', 'null', 'off', 'false', 'disabled'}
+        and str(scan_name).strip().lower()
+        in {
+            'none',
+            'null',
+            'off',
+            'false',
+            'disabled',
+        }
     ):
         scan_selected = None
     table_selected = _select_reader_instance(
         registry, table_name, table_reader_obj, allow_none=False
     )
+    if table_selected is None:
+        table_selected = table_reader_obj
 
     _register(
         [
@@ -1686,11 +1782,16 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> ReaderRegistry:
         ],
         main_selected,
     )
-    # Scan selection: keep instance attribute but allow None for configured "none".
+    # Scan selection: honor explicit "none" from config.
     registry['scan_reader'] = scan_selected
-    registry['scan'] = scan_selected if scan_selected is not None else tesseract_reader
-    registry['ocr'] = tesseract_reader
-    registry['ocr_reader'] = tesseract_reader
+    if scan_selected is not None:
+        registry['scan'] = scan_selected
+        registry['ocr'] = scan_selected
+        registry['ocr_reader'] = scan_selected
+    else:
+        registry['scan'] = None
+        registry['ocr'] = tesseract_reader
+        registry['ocr_reader'] = tesseract_reader
     # Table selection: config-driven active underlying plus Table wrapper.
     registry['selected_table_reader'] = table_selected
     registry['active_table_reader'] = table_selected
@@ -1698,9 +1799,36 @@ def build_reader_registry(*args: Any, **kwargs: Any) -> ReaderRegistry:
     registry['table_selected'] = table_selected
 
     for key, value in list(registry.items()):
-        if value is None and key not in {'scan_reader'}:
-            # Attempt a no-arg safety net for known adapters; otherwise drop None keys.
-            pass
+        if value is None and key not in {'scan_reader', 'scan'}:
+            # Ensure no structural None for known readers/adapters.
+            lowk = str(key).lower().strip()
+            replacement = None
+            if lowk in {
+                'pdfplumber',
+                'pdf_plumber',
+                'pdfplumber_reader',
+                'pdf_plumber_reader',
+                'pdf',
+            }:
+                replacement = pdf_reader
+            elif 'textract' in lowk and lowk not in {'scan', 'ocr'}:
+                replacement = textract_reader
+            elif ('tesseract' in lowk or 'ocr' in lowk) and lowk not in {'scan_reader'}:
+                replacement = tesseract_reader
+            elif 'self_hosted' in lowk or 'layout' in lowk:
+                replacement = self_hosted_layout_reader
+            elif lowk in {'table', 'table_reader'} or 'table' in lowk:
+                replacement = table_reader_obj
+            elif 'excel' in lowk or 'xlsx' in lowk or 'xls' in lowk or 'spreadsheet' in lowk:
+                replacement = excel_reader
+            elif 'csv' in lowk or 'tsv' in lowk or 'delimited' in lowk or 'tabular' in lowk:
+                replacement = csv_reader
+            elif 'docx' in lowk or 'doc' in lowk or 'word' in lowk:
+                replacement = docx_reader
+            if replacement is not None and value is None:
+                registry[key] = replacement
+                if isinstance(key, str) and key.isidentifier():
+                    setattr(registry, key, replacement)
 
     # Readers priority from config.
     try:

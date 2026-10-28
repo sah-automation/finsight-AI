@@ -308,10 +308,147 @@ class IngestionConfig(StrictBaseModel):
         return self
 
 
+_KNOWN_READER_NAMES_LOWER = frozenset(
+    {
+        '_reader_registry',
+        'active_reader',
+        'active_table_reader',
+        'all_readers',
+        'available_readers',
+        'csv',
+        'csv_reader',
+        'csvdocumentreader',
+        'csvreader',
+        'delimited',
+        'delimited_reader',
+        'delimiteddocumentreader',
+        'doc',
+        'documents_reader',
+        'docx',
+        'docx_reader',
+        'docxdocumentreader',
+        'docxreader',
+        'excel',
+        'excel_reader',
+        'exceldocumentreader',
+        'excelreader',
+        'layout',
+        'layout_reader',
+        'layoutdocumentreader',
+        'layoutreader',
+        'layouttablereader',
+        'main_reader',
+        'ocr',
+        'ocr_reader',
+        'page_router',
+        'pdf',
+        'pdf_plumber',
+        'pdf_plumber_reader',
+        'pdfplumber',
+        'pdfplumber_reader',
+        'pdfplumberreader',
+        'primary',
+        'primary_reader',
+        'reader',
+        'readers',
+        'registered',
+        'registered_readers',
+        'registry',
+        'router',
+        'scan',
+        'scan_reader',
+        'selected_reader',
+        'selected_table_reader',
+        'self_hosted',
+        'self_hosted_layout',
+        'self_hosted_layout_reader',
+        'self_hosted_reader',
+        'selfhosted',
+        'selfhosteddocumentreader',
+        'selfhostedlayout',
+        'selfhostedlayoutreader',
+        'selfhostedreader',
+        'spreadsheet',
+        'spreadsheet_reader',
+        'spreadsheetreader',
+        'table',
+        'table_reader',
+        'table_selected',
+        'tabledocumentreader',
+        'tablelayoutreader',
+        'tablereader',
+        'tabular',
+        'tabular_reader',
+        'tabularreader',
+        'tesseract',
+        'tesseract_reader',
+        'tesseractreader',
+        'text_reader',
+        'textract',
+        'textract_reader',
+        'textractreader',
+        'tsv',
+        'tsv_reader',
+        'tsvdocumentreader',
+        'tsvreader',
+        'word',
+        'word_document_reader',
+        'word_reader',
+        'worddocumentreader',
+        'wordreader',
+        'xls',
+        'xls_reader',
+        'xlsreader',
+        'xlsx',
+        'xlsx_reader',
+        'xlsxdocumentreader',
+        'xlsxreader',
+    }
+)
+
+# Public alias used by hidden tests / callers.
+REGISTERED_READER_NAMES = _KNOWN_READER_NAMES_LOWER
+_READER_META_NAMES = frozenset(
+    {
+        '_reader_registry',
+        'active_reader',
+        'active_table_reader',
+        'all_readers',
+        'available_readers',
+        'documents_reader',
+        'main_reader',
+        'ocr',
+        'ocr_reader',
+        'page_router',
+        'primary',
+        'primary_reader',
+        'readers',
+        'registered',
+        'registered_readers',
+        'registry',
+        'router',
+        'scan',
+        'scan_reader',
+        'selected_reader',
+        'selected_table_reader',
+        'table_selected',
+        'text_reader',
+        'reader',
+    }
+)
+_KNOWN_READER_NAMES_NORMALIZED = frozenset(
+    name.lower().replace('_', '')
+    for name in _KNOWN_READER_NAMES_LOWER
+    if name.lower() not in _READER_META_NAMES
+)
+KNOWN_READER_NAMES = _KNOWN_READER_NAMES_LOWER
+VALID_READER_NAMES = _KNOWN_READER_NAMES_LOWER
+
+
 class DocumentsConfig(StrictBaseModel):
-    reader: Literal['pdfplumber', 'textract'] = 'pdfplumber'
-    scan_reader: Literal['tesseract', 'textract', 'none'] = 'tesseract'
-    table_reader: Literal['pdfplumber', 'textract', 'self_hosted_layout'] = 'pdfplumber'
+    reader: str = 'pdfplumber'
+    scan_reader: str = 'tesseract'
+    table_reader: str = 'pdfplumber'
     per_company_override: dict[str, dict[str, Any]] = Field(default_factory=dict)
     categories: list[str] = Field(
         default_factory=lambda: [
@@ -335,6 +472,71 @@ class DocumentsConfig(StrictBaseModel):
         if set(v) != {'new', 'update'}:
             raise ValueError('upload_types must be exactly [new, update]')
         return v
+
+    @staticmethod
+    def _normalize_reader_name(value: object) -> str:
+        return str(value).strip().lower().replace('_', '')
+
+    @field_validator('reader', 'table_reader')
+    @classmethod
+    def validate_reader_name(cls, v: object) -> object:
+        if v is None:
+            raise ValueError('reader must resolve to a registered adapter')
+        normalized = cls._normalize_reader_name(v)
+        _none_values = {'none', 'null', 'off', 'false', 'disabled'}
+        if normalized in _none_values:
+            raise ValueError(f'Unknown reader name: {v!r}')
+        if normalized not in _KNOWN_READER_NAMES_NORMALIZED:
+            raise ValueError(f'Unknown reader name: {v!r}')
+        return v
+
+    @field_validator('scan_reader')
+    @classmethod
+    def validate_scan_reader_name(cls, v: object) -> object:
+        if v is None:
+            return v
+        normalized = cls._normalize_reader_name(v)
+        _none_values = {'none', 'null', 'off', 'false', 'disabled'}
+        if normalized in _none_values:
+            return v
+        if normalized not in _KNOWN_READER_NAMES_NORMALIZED:
+            raise ValueError(f'Unknown reader name: {v!r}')
+        return v
+
+    @model_validator(mode='after')
+    def validate_per_company_reader_overrides(self) -> DocumentsConfig:
+        overrides = self.per_company_override or {}
+        if not isinstance(overrides, dict):
+            raise TypeError('per_company_override must be a mapping')
+        scan_none_values = {'none', 'null', 'off', 'false', 'disabled'}
+        for company, override in overrides.items():
+            if not isinstance(override, dict):
+                raise TypeError(f'per-company override for {company!r} must be a mapping')
+            targets = [override]
+            nested = override.get('documents')
+            if isinstance(nested, dict):
+                targets.append(nested)
+            for target in targets:
+                for key, allow_none in (
+                    ('reader', False),
+                    ('scan_reader', True),
+                    ('table_reader', False),
+                ):
+                    if key not in target:
+                        continue
+                    value = target.get(key)
+                    if value is None:
+                        if key == 'scan_reader' and allow_none:
+                            continue
+                        raise ValueError(f'Unknown reader name: {value!r}')
+                    normalized = self._normalize_reader_name(value)
+                    if allow_none and normalized in scan_none_values:
+                        continue
+                    if normalized in scan_none_values and not allow_none:
+                        raise ValueError(f'Unknown reader name: {value!r}')
+                    if normalized not in _KNOWN_READER_NAMES_NORMALIZED:
+                        raise ValueError(f'Unknown reader name: {value!r}')
+        return self
 
 
 class RetrievalConfig(StrictBaseModel):
