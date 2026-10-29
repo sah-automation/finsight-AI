@@ -219,6 +219,7 @@ class AskQuestion:
         except Exception:
             self._document_stamp_cls = None
 
+        self.parallel_steps: bool = _switch(self._config, 'parallel_steps', True)
         self._company_id: Any = None
         self._question: str = ''
         self._role: Any = None
@@ -342,6 +343,7 @@ class AskQuestion:
         self._access_scope = access_scope
 
         parallel = _switch(self._config, 'parallel_steps', True)
+        self.parallel_steps = parallel
 
         # ---- Input gate (must pass before any heavy work) ----
         input_gate = self._input_gate

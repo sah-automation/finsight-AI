@@ -154,7 +154,7 @@ def _decode_value(payload: object, encoding: object) -> object:
 class AnswerCache(AnswerCachePort):
     """Tenant-scoped answer cache keyed by company and a stamp-aware digest."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: PLR0915
         self.config = _resolve_config(*args, **kwargs)
         config = self.config
 
@@ -194,6 +194,32 @@ class AnswerCache(AnswerCachePort):
             self.max_entry_size_bytes = int(str(max_size))
         except (TypeError, ValueError):
             self.max_entry_size_bytes = 1024 * 1024
+
+        # Switch: answer cache can be disabled. When off, reads miss and writes
+        # are skipped, so callers behave as if caching were absent.
+        raw_enabled = _first(
+            kwargs,
+            'answer_cache_enabled',
+            'cache_enabled',
+            'enabled',
+            default=None,
+        )
+        if raw_enabled is None:
+            switches = None
+            if config is not None:
+                switches = (
+                    getattr(config, 'switches', None)
+                    if not isinstance(config, dict)
+                    else config.get('switches')
+                )
+            if isinstance(switches, dict):
+                raw_enabled = switches.get('answer_cache_enabled')
+            elif switches is not None:
+                raw_enabled = getattr(switches, 'answer_cache_enabled', None)
+        if raw_enabled is None and config is not None and not isinstance(config, dict):
+            raw_enabled = getattr(config, 'answer_cache_enabled', None)
+        self.enabled = True if raw_enabled is None else bool(raw_enabled)
+        self.answer_cache_enabled = self.enabled
 
         self.table = None
         self.resource = None
@@ -295,6 +321,8 @@ class AnswerCache(AnswerCachePort):
         document_stamp: object = None,
         **kwargs: object,
     ) -> object:
+        if not self.enabled:
+            return None
         cache_key = self._build_key(
             company_id,
             key=key,
@@ -322,6 +350,8 @@ class AnswerCache(AnswerCachePort):
         document_stamp: object = None,
         **kwargs: object,
     ) -> None:
+        if not self.enabled:
+            return
         cache_key = self._build_key(
             company_id,
             key=key,
