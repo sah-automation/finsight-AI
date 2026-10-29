@@ -10,6 +10,9 @@ from finsight.adapters.repositories.postgres_chunk_repository import (
 from finsight.adapters.repositories.postgres_document_repository import (
     PostgresDocumentRepository,
 )
+from finsight.adapters.repositories.postgres_document_table_repository import (
+    PostgresDocumentTableRepository,
+)
 from finsight.adapters.vector_store.aurora_pg_vector_write import AuroraPgVectorWrite
 from finsight.composition import (
     build_answer_cache,
@@ -17,6 +20,7 @@ from finsight.composition import (
     build_chunk_repository,
     build_container,
     build_document_repository,
+    build_document_table_repository,
     build_vector_write,
 )
 
@@ -24,6 +28,7 @@ from finsight.composition import (
 def test_individual_builders_select_the_adapters() -> None:
     assert isinstance(build_chunk_repository(), PostgresChunkRepository)
     assert isinstance(build_document_repository(), PostgresDocumentRepository)
+    assert isinstance(build_document_table_repository(), PostgresDocumentTableRepository)
     assert isinstance(build_vector_write(), AuroraPgVectorWrite)
     assert isinstance(build_answer_cache(), AnswerCache)
     assert isinstance(build_change_event_publisher(), ChangeEventPublisher)
@@ -34,14 +39,20 @@ def test_container_exposes_the_same_adapter_instances() -> None:
 
     assert isinstance(container.chunk_repository, PostgresChunkRepository)
     assert isinstance(container.document_repository, PostgresDocumentRepository)
+    assert isinstance(container.document_table_repository, PostgresDocumentTableRepository)
     assert isinstance(container.vector_write, AuroraPgVectorWrite)
     assert container.vector_store is container.vector_write
     assert isinstance(container.answer_cache, AnswerCache)
     assert isinstance(container.change_event_publisher, ChangeEventPublisher)
     assert container['chunk_repository'] is container.chunk_repository
+    assert container['document_table_repository'] is container.document_table_repository
     assert container['vector_write'] is container.vector_write
     assert container.repositories['chunk'] is container.chunk_repository
+    assert container.repositories['document_table'] is container.document_table_repository
     assert container.adapters['change_event_publisher'] is container.change_event_publisher
+    save_worker = container.step_functions_worker_set.get('save')
+    assert save_worker is not None
+    assert save_worker.document_table_repository is container.document_table_repository
 
 
 def test_provided_dependencies_are_not_replaced() -> None:

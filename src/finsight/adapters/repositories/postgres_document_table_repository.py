@@ -577,13 +577,13 @@ class PostgresDocumentTableRepository(DocumentTableRepositoryPort, BaseRepositor
                     table_ids = value
                 values.remove(value)
                 continue
-            if isinstance(value, str):
-                if version_id is None:
-                    version_id = value
-                elif table_ids is None:
-                    table_ids = [value]
+            if version_id is None:
+                version_id = value
                 values.remove(value)
                 continue
+            if table_ids is None:
+                table_ids = [value]
+                values.remove(value)
         if table_ids is None and target_ids is not None:
             table_ids = target_ids
         exclude_ids = set(

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime
 
 from finsight.core.types import CompanyId, DocumentId
@@ -199,10 +201,11 @@ class DocumentTable:
         self.positional_index = self.index
         self.position = self.index
         self.table_id = None if table_id is None else str(table_id)
+        if isinstance(payload, str):
+            payload = json.loads(payload)
         self.payload = payload
         self.payload_json = payload
         self.data = payload
-        self.rows = payload
         self.html = html
         self.html_text = html
         self.table_html = html
@@ -211,6 +214,22 @@ class DocumentTable:
         self.is_active = bool(is_active)
         self.created_at = created_at
         self.updated_at = updated_at
+
+        values: Mapping[str, object] = payload if isinstance(payload, Mapping) else {}
+        headers = values.get('headers', values.get('header'))
+        rows = values.get(
+            'rows',
+            values.get('data', values.get('cells', values.get('table'))),
+        )
+        self.headers = list(headers) if isinstance(headers, (list, tuple)) else []
+        self.rows = (
+            [list(row) if isinstance(row, (list, tuple)) else row for row in rows]
+            if isinstance(rows, (list, tuple))
+            else []
+        )
+        self.row_count = values.get('row_count', len(self.rows))
+        self.column_count = values.get('column_count')
+        self.metadata = values.get('metadata')
 
     @property
     def company(self) -> object:

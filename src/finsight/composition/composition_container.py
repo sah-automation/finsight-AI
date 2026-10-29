@@ -41,6 +41,7 @@ class CompositionContainer:
         status_surface: Any = None,
         virus_scanner: Any = None,
         document_repository: Any = None,
+        document_table_repository: Any = None,
         chunk_repository: Any = None,
         vector_store: Any = None,
         vector_write: Any = None,
@@ -157,6 +158,11 @@ class CompositionContainer:
             if document_repository is not None
             else deps.get('document_repository') or deps.get('document_repo')
         )
+        document_table_repository = (
+            document_table_repository
+            if document_table_repository is not None
+            else deps.get('document_table_repository') or deps.get('table_repository')
+        )
         chunk_repository = (
             chunk_repository
             if chunk_repository is not None
@@ -201,6 +207,9 @@ class CompositionContainer:
         self.status_surface = status_surface
         self.virus_scanner = virus_scanner
         self.document_repository = document_repository
+        self.document_table_repository = document_table_repository
+        self.document_tables_repository = document_table_repository
+        self.table_repository = document_table_repository
         self.chunk_repository = chunk_repository
         self.vector_store = vector_store
         self.vector_write = vector_write
@@ -240,6 +249,7 @@ class CompositionContainer:
             'reader_registry': self.reader_registry,
             'scan_worker': self.scan_worker,
             'document_repository': self.document_repository,
+            'document_table_repository': self.document_table_repository,
             'chunk_repository': self.chunk_repository,
             'vector_store': self.vector_store,
             'vector_write': self.vector_write,
@@ -256,6 +266,8 @@ class CompositionContainer:
             'job': self.job_repository,
             'jobs': self.job_repository,
             'document': self.document_repository,
+            'document_table': self.document_table_repository,
+            'document_tables': self.document_table_repository,
             'chunk': self.chunk_repository,
             'vector_store': self.vector_store,
             'vector_write': self.vector_write,
@@ -296,6 +308,7 @@ class CompositionContainer:
             'status_surface': self.status_surface,
             'virus_scanner': self.virus_scanner,
             'document_repository': self.document_repository,
+            'document_table_repository': self.document_table_repository,
             'chunk_repository': self.chunk_repository,
             'vector_store': self.vector_store,
             'vector_write': self.vector_write,

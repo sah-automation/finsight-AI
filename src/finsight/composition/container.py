@@ -574,6 +574,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
             'scan_worker',
             'job_progress',
             'document_repository',
+            'document_table_repository',
             'chunk_repository',
             'vector_write',
             'answer_cache',
@@ -630,6 +631,9 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
     document_repository = provided_deps.get('document_repository') or build_document_repository(
         session=session, config=config, **_extra
     )
+    document_table_repository = provided_deps.get(
+        'document_table_repository'
+    ) or build_document_table_repository(session=session, config=config, **_extra)
     chunk_repository = provided_deps.get('chunk_repository') or build_chunk_repository(
         session=session, config=config, **_extra
     )
@@ -655,6 +659,12 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         not in {
             'document_repository',
             'chunk_repository',
+            'document_table_repository',
+            'document_tables_repository',
+            'document_table_repo',
+            'table_repository',
+            'tables_repository',
+            'table_store',
             'vector_write',
             'vector_store',
             'vector_store_write',
@@ -692,6 +702,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         reader_registry=reader_registry,
         page_router=page_router,
         document_repository=document_repository,
+        document_table_repository=document_table_repository,
         chunk_repository=chunk_repository,
         vector_store=vector_write,
         vector_write=vector_write,
@@ -731,6 +742,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         virus_scanner=virus_scanner,
         object_storage=object_storage,
         document_repository=document_repository,
+        document_table_repository=document_table_repository,
         chunk_repository=chunk_repository,
         vector_store=vector_write,
         vector_write=vector_write,
@@ -1101,6 +1113,56 @@ def build_document_repository(*args: Any, **kwargs: Any) -> Any:
         (
             'finsight.adapters.repositories.aurora_document_repository',
             ('AuroraDocumentRepository', 'PostgresDocumentRepository'),
+        ),
+    ):
+        try:
+            Cls = _import_adapter(module_path, *names)
+            if Cls is not None:
+                return Cls(session=session, config=config, **_extra)
+        except Exception:  # noqa: S112
+            continue
+    return None
+
+
+def build_document_table_repository(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(
+        kwargs,
+        'document_table_repository',
+        'document_tables_repository',
+        'document_table_repo',
+        'table_repository',
+        'tables_repository',
+        'table_store',
+        'document_table_repository_adapter',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'document_table_repository',
+            'document_tables_repository',
+            'document_table_repo',
+            'table_repository',
+            'tables_repository',
+            'table_store',
+            'document_table_repository_adapter',
+        }
+    }
+    for module_path, names in (
+        (
+            'finsight.adapters.repositories.postgres_document_table_repository',
+            ('PostgresDocumentTableRepository', 'AuroraDocumentTableRepository'),
+        ),
+        (
+            'finsight.adapters.repositories.aurora_document_table_repository',
+            ('AuroraDocumentTableRepository', 'PostgresDocumentTableRepository'),
         ),
     ):
         try:
@@ -2694,6 +2756,12 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
             'page_router',
             'document_repository',
             'chunk_repository',
+            'document_table_repository',
+            'document_tables_repository',
+            'document_table_repo',
+            'table_repository',
+            'tables_repository',
+            'table_store',
             'vector_store',
             'vector_write',
             'vector_store_write',
@@ -2742,6 +2810,19 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
     document_repository = _existing(kwargs, 'document_repository', 'document_repo', 'documents')
     if document_repository is None:
         document_repository = build_document_repository(config=config, session=session, **_extra0)
+    document_table_repository = _existing(
+        kwargs,
+        'document_table_repository',
+        'document_tables_repository',
+        'document_table_repo',
+        'table_repository',
+        'tables_repository',
+        'table_store',
+    )
+    if document_table_repository is None:
+        document_table_repository = build_document_table_repository(
+            config=config, session=session, **_extra0
+        )
     chunk_repository = _existing(kwargs, 'chunk_repository', 'chunks', 'chunk_store')
     if chunk_repository is None:
         chunk_repository = build_chunk_repository(config=config, session=session, **_extra0)
@@ -2778,6 +2859,9 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
     )
     if container is not None:
         document_repository = document_repository or getattr(container, 'document_repository', None)
+        document_table_repository = document_table_repository or getattr(
+            container, 'document_table_repository', None
+        )
         chunk_repository = chunk_repository or getattr(container, 'chunk_repository', None)
         job_repository = job_repository or getattr(container, 'job_repository', None)
         virus_scanner = virus_scanner or getattr(container, 'virus_scanner', None)
@@ -2809,6 +2893,7 @@ def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
 
     common = dict(
         document_repository=document_repository,
+        document_table_repository=document_table_repository,
         chunk_repository=chunk_repository,
         vector_store=vector_store,
         vector_write=vector_write,

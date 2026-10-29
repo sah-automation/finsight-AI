@@ -5,13 +5,16 @@ from __future__ import annotations
 import contextlib
 import inspect
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
+from finsight.core.errors import DatabaseError
 from finsight.core.types import CompanyId, DocumentId
 from finsight.domain.entities.chunk import Chunk
 from finsight.domain.entities.document_version import DocumentVersion
 from finsight.domain.services.delta_differ import DeltaDiffer
 from finsight.domain.services.document_stamp import DocumentStamp
+from finsight.domain.services.document_table_normalizer import normalize_reader_tables
 from finsight.domain.value_objects.change_event_type import ChangeEventType
 from finsight.domain.value_objects.document_change_event import DocumentChangeEvent
 from finsight.domain.value_objects.reader_result import ReaderResult
@@ -162,6 +165,16 @@ class PipelineStepWorker:
             'extracted_metrics',
             default=None,
         )
+        self.document_table_repository = _first(
+            kwargs,
+            'document_table_repository',
+            'document_tables_repository',
+            'document_table_repo',
+            'table_repository',
+            'tables_repository',
+            'table_store',
+            default=None,
+        )
         self.reader = _first(kwargs, 'reader', 'document_reader', 'primary_reader', default=None)
         self.page_router = _first(kwargs, 'page_router', 'router', default=None)
         self.embedding = _first(
@@ -229,6 +242,10 @@ class PipelineStepWorker:
                     self.vector_store = getattr(c, 'vector_store', self.vector_store)
                 if self.metric_repository is None:
                     self.metric_repository = getattr(c, 'metric_repository', self.metric_repository)
+                if self.document_table_repository is None:
+                    self.document_table_repository = getattr(
+                        c, 'document_table_repository', None
+                    ) or getattr(c, 'table_repository', None)
                 if self.reader is None:
                     self.reader = getattr(c, 'reader', self.reader)
                 if self.page_router is None:
@@ -898,6 +915,7 @@ class PipelineStepWorker:
                     'chunk_count': len(chunk_entities) or len(chunks),
                     'vector_count': len(vectors),
                     'metric_count': len(metrics) if isinstance(metrics, list) else 0,
+                    'table_count': len(reader_data.get('document_tables') or []),
                     'cache_cleared': False,
                     'change_event_published': False,
                     'no_duplicate_side_effects': True,
@@ -912,8 +930,16 @@ class PipelineStepWorker:
                 metrics = _IN_MEMORY_METRICS.get(str(version_id), [])
             removed_chunk_ids = reader_data.get('removed_chunk_ids', []) or []
             document_id = _get(version, 'document_id', 'documentId', default=None)
+            if document_id is None and isinstance(request, dict):
+                document_id = request.get('document_id') or request.get('documentId')
             if document_id is None:
                 document_id = version_id
+            reader_result = reader_data.get('reader_result')
+            if reader_result is None:
+                reader_result = reader_data.get('tables')
+            if reader_result is None and isinstance(request, dict):
+                reader_result = request.get('reader_result') or request.get('tables')
+            persisted_tables: list[Any] = []
             previous_version_id = await self._previous_committed_version_id(
                 company_id, document_id, version_id
             )
@@ -945,6 +971,14 @@ class PipelineStepWorker:
                     with contextlib.suppress(Exception):
                         tx = await _awaitv(self.unit_of_work())
             try:
+                # persist normalised reader tables before chunks/vectors commit
+                persisted_tables = await self._persist_document_tables(
+                    company_id,
+                    document_id,
+                    version_id,
+                    reader_result if reader_result is not None else reader_data,
+                )
+                reader_data['document_tables'] = persisted_tables
                 # persist changed/new chunk records via the chunk repository
                 if self.chunk_repository is not None and chunk_entities:
                     method = getattr(self.chunk_repository, 'upsert_chunks', None)
@@ -1141,6 +1175,11 @@ class PipelineStepWorker:
                                 )
                                 if callable(method):
                                     await _awaitv(method(company_id, previous_version_id))
+                # mark the prior version's document-table rows inactive on supersession
+                if previous_version_id is not None and str(previous_version_id) != str(version_id):
+                    await self._mark_previous_document_tables_inactive(
+                        company_id, previous_version_id
+                    )
                 # update document stamp (invalidates cached answers)
                 stamp = None
                 try:
@@ -1204,6 +1243,7 @@ class PipelineStepWorker:
                     'chunk_count': len(chunk_entities),
                     'vector_count': len(vectors),
                     'metric_count': len(metrics),
+                    'table_count': len(persisted_tables),
                     'previous_version_id': previous_version_id,
                     'superseded_version_id': previous_version_id,
                     'removed_count': len(removed_chunk_ids),
@@ -1429,6 +1469,65 @@ class PipelineStepWorker:
         # default: mark processing progress
         await self._update_state(version, company_id, version_id, 'processing')
         return {'step': step, 'status': 'processing', 'version': version}
+
+    async def _persist_document_tables(
+        self,
+        company_id: Any,
+        document_id: Any,
+        version_id: Any,
+        reader_result: Any = None,
+    ) -> list[Any]:
+        repo = self.document_table_repository
+        raw_tables = self._reader_tables(reader_result)
+        if not raw_tables:
+            return []
+        if repo is None:
+            raise DatabaseError(
+                f'Cannot persist {len(raw_tables)} document tables: '
+                'no document_table_repository is configured'
+            )
+        normalised = normalize_reader_tables(
+            {
+                'tables': raw_tables,
+                'page_numbers': _get(reader_result, 'page_numbers', 'pages', default=None),
+            },
+            company_id=company_id,
+            document_id=document_id,
+            version_id=version_id,
+        )
+        if not normalised:
+            return []
+        saved = await _awaitv(repo.upsert_document_tables(company_id, normalised))
+        return list(saved or [])
+
+    def _reader_tables(self, reader_result: Any) -> list[Any]:
+        if reader_result is None:
+            return []
+        if isinstance(reader_result, Mapping):
+            if 'reader_result' in reader_result:
+                return self._reader_tables(reader_result.get('reader_result'))
+            if 'tables' in reader_result:
+                return list(reader_result.get('tables') or [])
+            if any(key in reader_result for key in ('rows', 'data', 'cells', 'table', 'values')):
+                return [reader_result]
+            return []
+        tables = _get(reader_result, 'tables', default=None)
+        if tables is not None:
+            return list(tables or [])
+        if isinstance(reader_result, (list, tuple)):
+            return list(reader_result)
+        return []
+
+    async def _mark_previous_document_tables_inactive(
+        self, company_id: Any, previous_version_id: Any
+    ) -> int:
+        repo = self.document_table_repository
+        if repo is None or previous_version_id is None:
+            return 0
+        changed = await _awaitv(
+            repo.mark_version_document_tables_inactive(company_id, previous_version_id)
+        )
+        return int(changed or 0)
 
     async def _persist_metrics(
         self, company_id: Any, version_id: Any, metrics: list[dict[str, Any]]
