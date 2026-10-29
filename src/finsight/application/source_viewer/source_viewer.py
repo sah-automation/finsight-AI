@@ -662,17 +662,13 @@ class SourceViewer:
             # detect newer committed version
             versions_list = None
             if doc_repo is not None and v_document_id is not None:
-                try:
-                    versions_list = await _call_document_list_versions(
-                        doc_repo, company_id, v_document_id
-                    )
-                except Exception:
-                    versions_list = None
+                versions_list = await _call_document_list_versions(
+                    doc_repo, company_id, v_document_id
+                )
+            else:
+                versions_list = None
             if versions_list is None and doc_repo is not None:
-                try:
-                    versions_list = await _call_document_list_versions(doc_repo, company_id, None)
-                except Exception:
-                    versions_list = None
+                versions_list = await _call_document_list_versions(doc_repo, company_id, None)
 
             if versions_list is not None:
                 for v in _as_list(versions_list):
@@ -691,12 +687,9 @@ class SourceViewer:
                         break
             # fallback get_latest_committed_version
             if not newer_available and doc_repo is not None:
-                try:
-                    latest = await _call_document_latest_version(
-                        doc_repo, company_id, v_document_id or document_id_input
-                    )
-                except Exception:
-                    latest = None
+                latest = await _call_document_latest_version(
+                    doc_repo, company_id, v_document_id or document_id_input
+                )
                 if latest is not None:
                     latest_id = _normalize_version_key(latest)
                     if latest_id is not None and latest_id != cited_id:
@@ -760,16 +753,13 @@ class SourceViewer:
             async def _list_tables() -> list[Any]:
                 if table_repo is None:
                     return []
-                try:
-                    rows = await _call_table_list(
-                        table_repo,
-                        company_id,
-                        version_id_input,
-                        v_document_id or document_id_input,
-                        page_input,
-                    )
-                except Exception:
-                    rows = []
+                rows = await _call_table_list(
+                    table_repo,
+                    company_id,
+                    version_id_input,
+                    v_document_id or document_id_input,
+                    page_input,
+                )
                 return _as_list(rows)
 
             chunk_repo_ok = chunk_repo is not None
@@ -853,16 +843,13 @@ class SourceViewer:
             else:
                 # page/version aggregate
                 if chunk_repo_ok:
-                    try:
-                        chunks = await _call_chunk_list(
-                            chunk_repo,
-                            company_id,
-                            str(version_id_input),
-                            v_document_id or document_id_input,
-                            page_input,
-                        )
-                    except Exception:
-                        chunks = []
+                    chunks = await _call_chunk_list(
+                        chunk_repo,
+                        company_id,
+                        str(version_id_input),
+                        v_document_id or document_id_input,
+                        page_input,
+                    )
                 else:
                     chunks = []
                 chunks = _as_list(chunks)
@@ -1170,6 +1157,9 @@ class SourceViewer:
                 direct = permissions.get(cat_text)
             elif str(category) in permissions:
                 direct = permissions.get(str(category))
+            if cat_text not in permissions and str(category) not in permissions:
+                if role_text not in permissions:
+                    return False
             if direct is not None:
                 if isinstance(direct, (list, tuple, set)):
                     return (
@@ -1180,21 +1170,23 @@ class SourceViewer:
                 if isinstance(direct, dict):
                     return direct.get('read', False) is True
                 return True
+            if role_text not in permissions:
+                return False
 
-            # fallback to loaded permission matrix by role
-        matrix = self._permission_matrix  # type: ignore[assignment]
-        if matrix is None:
-            matrix = _load_permission_matrix(self._config)
-        if isinstance(matrix, dict):
-            try:
-                from finsight.domain.services.permission_policy import is_permission_allowed
+            # fallback to loaded permission matrix by role only if no context permissions supplied
+        if permissions is None:
+            matrix = self._permission_matrix  # type: ignore[assignment]
+            if matrix is None:
+                matrix = _load_permission_matrix(self._config)
+            if isinstance(matrix, dict):
+                try:
+                    from finsight.domain.services.permission_policy import is_permission_allowed
 
-                if is_permission_allowed(matrix, role_raw, category, 'read'):
-                    return True
-            except Exception:
-                pass
-        # default allow for tests with no permission infra
-        if permissions is None and matrix is None:
+                    if is_permission_allowed(matrix, role_raw, category, 'read'):
+                        return True
+                except Exception:
+                    pass
+        if permissions is None and not isinstance(self._permission_matrix, dict):
             return True
         return False
 
@@ -1512,8 +1504,10 @@ async def _call_document_get_version(repo: Any, company_id: Any, version_id: Any
             except TypeError:
                 try:
                     return await _await(meth(company_id=company_id, version_id=version_id))
-                except Exception:
+                except TypeError:
                     continue
+                except Exception:
+                    raise
     return None
 
 
@@ -1533,8 +1527,10 @@ async def _call_document_list_versions(repo: Any, company_id: Any, document_id: 
             except TypeError:
                 try:
                     return await _await(meth(company_id=company_id, document_id=document_id))
-                except Exception:
+                except TypeError:
                     continue
+                except Exception:
+                    raise
     return None
 
 
@@ -1549,8 +1545,10 @@ async def _call_document_latest_version(repo: Any, company_id: Any, document_id:
             except TypeError:
                 try:
                     return await _await(meth(company_id=company_id, document_id=document_id))
-                except Exception:
+                except TypeError:
                     continue
+                except Exception:
+                    raise
     return None
 
 
@@ -1563,8 +1561,10 @@ async def _call_document_get(repo: Any, company_id: Any, document_id: Any) -> An
             except TypeError:
                 try:
                     return await _await(meth(company_id=company_id, document_id=document_id))
-                except Exception:
+                except TypeError:
                     continue
+                except Exception:
+                    raise
     return None
 
 
@@ -1577,8 +1577,10 @@ async def _call_chunk_get(repo: Any, company_id: Any, chunk_id: Any) -> Any:
             except TypeError:
                 try:
                     return await _await(meth(company_id=company_id, chunk_id=chunk_id))
-                except Exception:
+                except TypeError:
                     continue
+                except Exception:
+                    raise
     return None
 
 
@@ -1598,8 +1600,10 @@ async def _call_chunk_list(
                         meth(company_id=company_id, version_id=version_id, include_inactive=False)
                     )
                     return res
-                except Exception:
+                except TypeError:
                     continue
+                except Exception:
+                    raise
     for name in ('list_chunks_by_document',):
         meth = getattr(repo, name, None)
         if callable(meth):
@@ -1638,7 +1642,7 @@ async def _call_table_list(
                 except TypeError:
                     continue
                 except Exception:
-                    continue
+                    raise
     return []
 
 
@@ -1664,7 +1668,7 @@ async def _call_table_get(
                 except TypeError:
                     continue
                 except Exception:
-                    continue
+                    raise
     return None
 
 
