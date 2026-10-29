@@ -1057,42 +1057,39 @@ class AskQuestion:
         except Exception:  # pragma: no cover - defensive
             mint_citation_locator = None
 
-        def _mint_locator(cit: Any) -> str | None:
+        def _mint_locator(cit: Any) -> Any:
             if secret is None or mint_citation_locator is None:
                 return None
-            try:
-                chunk_id = getattr(cit, 'chunk_id', None)
-                table_id = getattr(cit, 'table_id', None)
-                if table_id is not None and chunk_id is None:
-                    ref_id = table_id
-                    ref_type = 'table'
-                else:
-                    ref_id = chunk_id
-                    ref_type = 'table' if table_id is not None and chunk_id is None else 'chunk'
-                token = mint_citation_locator(
-                    secret,
-                    document_id=getattr(cit, 'document_id', None),
-                    document_version=getattr(cit, 'document_version', None),
-                    chunk_id=ref_id,
-                    type=ref_type,
-                    page_number=getattr(cit, 'page_number', None),
-                    char_start=getattr(cit, 'start_char', None),
-                    char_end=getattr(cit, 'end_char', None),
-                )
-                return token if token is not None else None
-            except Exception:
+            chunk_id = getattr(cit, 'chunk_id', None)
+            table_id = getattr(cit, 'table_id', None)
+            if table_id is not None:
+                ref_id = table_id
+                ref_type = 'table'
+            else:
+                ref_id = chunk_id
+                ref_type = 'chunk'
+            if getattr(cit, 'document_version', None) is None:
                 return None
+            token = mint_citation_locator(
+                secret,
+                document_id=getattr(cit, 'document_id', None),
+                document_version=getattr(cit, 'document_version', None),
+                chunk_id=ref_id,
+                type=ref_type,
+                page_number=getattr(cit, 'page_number', None),
+                char_start=getattr(cit, 'start_char', None),
+                char_end=getattr(cit, 'end_char', None),
+            )
+            return token if token is not None else None
 
         result = []
         for item in (candidates or [])[:5]:
             if isinstance(item, _CitationVO):
-                if getattr(item, 'citation_locator', None) is None:
-                    locator = _mint_locator(item)
-                    if locator is not None:
-                        try:
-                            item = replace(item, citation_locator=locator)  # noqa: PLW2901
-                        except Exception:
-                            pass
+                if getattr(item, 'document_version', None) is None:
+                    continue
+                locator = _mint_locator(item)
+                if locator is not None:
+                    item = replace(item, citation_locator=locator)  # noqa: PLW2901
                 result.append(item)
                 continue
             doc = _first(
@@ -1129,13 +1126,11 @@ class AskQuestion:
                 )
             except Exception:
                 cit = _CitationVO(document_id=str(doc), document_version=version)
-            if getattr(cit, 'citation_locator', None) is None:
-                locator = _mint_locator(cit)
-                if locator is not None:
-                    try:
-                        cit = replace(cit, citation_locator=locator)
-                    except Exception:
-                        pass
+            if cit.document_version is None:
+                continue
+            locator = _mint_locator(cit)
+            if locator is not None:
+                cit = replace(cit, citation_locator=locator)
             if self._citation_checker is not None:
                 try:
                     validity = self._citation_checker.is_valid(cit)
