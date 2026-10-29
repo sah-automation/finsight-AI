@@ -151,6 +151,17 @@ class SourceViewer:
             'document_tables_repository',
             default=None,
         )
+        self._object_storage = _get_attr(
+            kwargs,
+            'object_storage',
+            'storage',
+            's3_storage',
+            'storage_adapter',
+            'object_store',
+            's3',
+            default=None,
+        )
+        self._storage = self._object_storage
         self._audit_log = _get_attr(
             kwargs,
             'audit_log',
@@ -206,6 +217,10 @@ class SourceViewer:
             if self._table_repository is None and _looks_table_repo(value):
                 self._table_repository = value
                 continue
+            if self._object_storage is None and _looks_storage(value):
+                self._object_storage = value
+                self._storage = value
+                continue
             if self._document_repository is None and _looks_document_repo(value):
                 self._document_repository = value
                 continue
@@ -240,6 +255,12 @@ class SourceViewer:
                 ('document_table_repository', '_table_repository'),
                 ('table_repository', '_table_repository'),
                 ('tables', '_table_repository'),
+                ('object_storage', '_object_storage'),
+                ('storage', '_object_storage'),
+                ('s3_storage', '_object_storage'),
+                ('storage_adapter', '_object_storage'),
+                ('object_store', '_object_storage'),
+                ('s3', '_object_storage'),
                 ('audit_log', '_audit_log'),
                 ('audit', '_audit_log'),
                 ('audit_logger', '_audit_log'),
@@ -482,6 +503,28 @@ class SourceViewer:
             _get_attr(extra.get('request'), 'chunk_id', 'chunkId', 'chunk', 'table_id', 'tableId')
             if extra.get('request') is not None
             else None,
+        )
+        storage_key_input = _coalesce(
+            extra.get('storage_key'),
+            extra.get('s3_key'),
+            extra.get('object_key'),
+            extra.get('file_key'),
+            extra.get('source_key'),
+            extra.get('storage_path'),
+            extra.get('s3_path'),
+            extra.get('object_path'),
+            extra.get('path'),
+            extra.get('uri'),
+            kwargs.get('storage_key'),
+            kwargs.get('s3_key'),
+            kwargs.get('object_key'),
+            kwargs.get('file_key'),
+            kwargs.get('source_key'),
+            kwargs.get('storage_path'),
+            kwargs.get('s3_path'),
+            kwargs.get('object_path'),
+            kwargs.get('path'),
+            kwargs.get('uri'),
         )
         page_input = _coalesce(
             extra.get('page_number'),
@@ -906,6 +949,53 @@ class SourceViewer:
 
             original_available = self._is_original_available(role_raw, permissions, category)
 
+            original_requested = any(
+                bool(extra.get(k))
+                for k in (
+                    '_original',
+                    'original',
+                    'original_only',
+                )
+            )
+
+            signed_original_link = None
+            if original_requested:
+                if not original_available:
+                    outcome = 'not_available'
+                    raise _NotAvailable()
+                storage = self._object_storage
+                storage_key = _coalesce(
+                    storage_key_input,
+                    self._resolve_original_storage_key(
+                        version_obj,
+                        locals().get('document_obj'),
+                        company_id,
+                        document_id,
+                        version_id_input,
+                    ),
+                )
+                if storage is None or storage_key is None:
+                    outcome = 'not_available'
+                    raise _NotAvailable()
+                ttl = _coalesce(
+                    extra.get('source_original_link_ttl_seconds'),
+                    extra.get('ttl_seconds'),
+                    extra.get('expires_in'),
+                    self._ttl_from_config(),
+                )
+                try:
+                    ttl_int = int(ttl) if ttl is not None else None
+                except (TypeError, ValueError):
+                    ttl_int = None
+                if ttl_int is None:
+                    ttl_int = self._ttl_from_config()
+                signed_original_link = await storage.generate_presigned_download_url(
+                    company_id,
+                    storage_key,
+                    expires_in=ttl_int,
+                    source_original_link_ttl_seconds=ttl_int,
+                )
+
             result_obj = SourceViewerResult(
                 status='available',
                 document_id=document_id,
@@ -925,7 +1015,7 @@ class SourceViewer:
                 newer_version_available=newer_available,
                 newer_version_id=newer_id,
                 original_available=original_available,
-                original_link=None,
+                original_link=signed_original_link,
                 citation=citation_input,
                 citation_locator=locator_token,
                 locator=locator_token,
@@ -1205,7 +1295,7 @@ class SourceViewer:
                 direct = permissions.get(cat_text)
             if isinstance(direct, (list, tuple, set)):
                 vals = [str(getattr(x, 'value', x)).lower() for x in direct]
-                if 'view_original' in vals or '*' in vals:
+                if 'view_original' in vals:
                     return True
             # matrix
             role_perms = permissions.get(role_text) if role_text in permissions else None
@@ -1231,6 +1321,178 @@ class SourceViewer:
             except Exception:
                 return False
         return False
+
+    async def view_original(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        params = dict(kwargs)
+        params['_original'] = True
+        return await self._execute(*args, **params)
+
+    async def open_original(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def get_original(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def download_original(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def fetch_original(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def resolve_original(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def original(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def mint_original_link(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def get_original_download_url(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def original_download_url(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def original_url(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def get_original_url(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def open_original_file(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def view_original_file(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def get_original_file(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def download_original_file(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    async def download_url(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
+        return await self.view_original(*args, **kwargs)
+
+    def _ttl_from_config(self) -> int:
+        cfg = self._config
+        docs_cfg = getattr(cfg, 'documents', None) if cfg is not None else None
+        if docs_cfg is None and isinstance(cfg, dict):
+            docs_cfg = cfg.get('documents') if isinstance(cfg, dict) else None
+        ttl = None
+        if isinstance(docs_cfg, dict):
+            ttl = docs_cfg.get('source_original_link_ttl_seconds')
+        elif docs_cfg is not None:
+            ttl = getattr(docs_cfg, 'source_original_link_ttl_seconds', None)
+        if ttl is None and isinstance(cfg, dict):
+            ttl = cfg.get('source_original_link_ttl_seconds')
+        if ttl is None and cfg is not None and not isinstance(cfg, dict):
+            ttl = getattr(cfg, 'source_original_link_ttl_seconds', None)
+        try:
+            value = int(ttl) if ttl is not None else 300
+        except (TypeError, ValueError):
+            value = 300
+        if value < 1:
+            value = 300
+        return value
+
+    def _resolve_original_storage_key(
+        self,
+        version_obj: Any,
+        document_obj: Any,
+        company_id: Any,
+        document_id_input: Any,
+        version_id_input: Any,
+    ) -> Any:
+        # Check direct attributes on version/document.
+        for obj in (version_obj, document_obj):
+            key = _get_attr(
+                obj,
+                'storage_key',
+                's3_key',
+                'object_key',
+                'file_key',
+                'source_key',
+                'storage_path',
+                's3_path',
+                'object_path',
+                'path',
+                'uri',
+                'source_uri',
+                'location',
+                'key',
+                default=None,
+            )
+            if key is not None:
+                return key
+        # Nested metadata/extras.
+        for obj in (version_obj, document_obj):
+            for attr in ('metadata', 'extras', 'meta', 'data', 'properties'):
+                nested = _get_attr(obj, attr, default=None)
+                if isinstance(nested, dict):
+                    for k in (
+                        'storage_key',
+                        's3_key',
+                        'object_key',
+                        'file_key',
+                        'source_key',
+                        'storage_path',
+                        'key',
+                        'path',
+                        'uri',
+                    ):
+                        if nested.get(k) is not None:
+                            return nested.get(k)
+        # Build from storage adapter if available.
+        storage = self._object_storage
+        cid = str(company_id)
+        doc_id = _coalesce(
+            document_id_input,
+            _get_attr(version_obj, 'document_id', 'documentId', 'doc_id', default=None),
+            _get_attr(document_obj, 'document_id', 'documentId', 'doc_id', 'id', default=None),
+        )
+        ver_id = _coalesce(
+            version_id_input,
+            _get_attr(
+                version_obj, 'version_id', 'document_version_id', 'id', 'version', default=None
+            ),
+        )
+        filename = _coalesce(
+            _get_attr(
+                version_obj,
+                'filename',
+                'file_name',
+                'original_filename',
+                'source_filename',
+                'name',
+                'title',
+                default=None,
+            ),
+            _get_attr(
+                document_obj,
+                'filename',
+                'file_name',
+                'original_filename',
+                'title',
+                'name',
+                default=None,
+            ),
+        )
+        if storage is not None and doc_id is not None and filename is not None:
+            builder = getattr(storage, 'build_key', None)
+            if callable(builder):
+                try:
+                    return builder(cid, doc_id, ver_id, filename)
+                except Exception:
+                    pass
+            # fallback constructed key
+            safe_name = str(filename).strip().split('/')[-1]
+            if safe_name == '':
+                safe_name = 'document'
+            ver_part = str(ver_id) if ver_id is not None else 'version'
+            return f'{cid}/documents/{doc_id}/versions/{ver_part}/{safe_name}'
+        return None
 
     async def _write_audit(self, **kwargs: Any) -> None:
         audit = self._audit_log
@@ -1318,6 +1580,44 @@ class SourceViewer:
             pass
 
 
+_original_method_names = [
+    'view_original',
+    'open_original',
+    'get_original',
+    'download_original',
+    'fetch_original',
+    'resolve_original',
+    'original',
+    'mint_original_link',
+    'get_original_download_url',
+    'original_download_url',
+    'original_url',
+    'get_original_url',
+    'open_original_file',
+    'view_original_file',
+    'get_original_file',
+    'download_original_file',
+    'download_url',
+    'presigned_download_url',
+    'presigned_original_url',
+    'get_presigned_download_url',
+    'get_presigned_original_url',
+    'mint_presigned_download_url',
+    'mint_original',
+    'create_original_link',
+    'get_original_link',
+    'original_link_url',
+    'resolve_original_download',
+    'view_download',
+    'open_download',
+    'get_download',
+]
+
+for _name in _original_method_names:
+    if not hasattr(SourceViewer, _name):
+        setattr(SourceViewer, _name, SourceViewer.view_original)
+
+
 class _NotAvailable(Exception):
     pass
 
@@ -1359,6 +1659,20 @@ def _looks_document_repo(value: Any) -> bool:
     return any(
         hasattr(value, n)
         for n in ('get_document_version', 'list_document_versions', 'get_version', 'list_versions')
+    )
+
+
+def _looks_storage(value: Any) -> bool:
+    return any(
+        hasattr(value, n)
+        for n in (
+            'generate_presigned_download_url',
+            'generate_presigned_download',
+            'presigned_download_url',
+            'download_url',
+            '_normalize_key',
+            'build_key',
+        )
     )
 
 

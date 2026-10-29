@@ -234,6 +234,42 @@ class S3Storage(ObjectStorage):
         # Endpoint.
         self.endpoint_url = _first(kwargs, 'endpoint_url', 'endpoint', default=None)
 
+        # Document TTL (source_original_link_ttl_seconds) is read from config only.
+        download_ttl = _first(
+            kwargs,
+            'source_original_link_ttl_seconds',
+            'original_link_ttl_seconds',
+            'download_ttl_seconds',
+            'documents_source_original_link_ttl_seconds',
+            default=None,
+        )
+        if download_ttl is None and self.config is not None:
+            docs_cfg = getattr(self.config, 'documents', None)
+            if docs_cfg is None and isinstance(self.config, dict):
+                docs_cfg = self.config.get('documents')
+            if isinstance(docs_cfg, dict):
+                download_ttl = docs_cfg.get('source_original_link_ttl_seconds')
+            else:
+                download_ttl = getattr(docs_cfg, 'source_original_link_ttl_seconds', None)
+        if download_ttl is None and self.storage_config is not None:
+            for attr in ('source_original_link_ttl_seconds', 'original_link_ttl_seconds'):
+                val = (
+                    getattr(self.storage_config, attr, None)
+                    if not isinstance(self.storage_config, dict)
+                    else self.storage_config.get(attr)
+                )
+                if val is not None:
+                    download_ttl = val
+                    break
+        try:
+            self.default_download_expires_in = (
+                int(download_ttl) if download_ttl is not None else 300
+            )
+        except (TypeError, ValueError):
+            self.default_download_expires_in = 300
+        if self.default_download_expires_in < 1:
+            self.default_download_expires_in = 300
+
         # Expiry default.
         expiry = _first(
             kwargs,
@@ -651,9 +687,14 @@ class S3Storage(ObjectStorage):
             expires_in = kwargs.pop('expiry', None)
         if expires_in is None:
             expires_in = kwargs.get('expires')
-        default_expiry = 300
+        default_expiry = getattr(self, 'default_download_expires_in', 300)
         # respect TTL config if passed via kwargs
-        for ttl_key in ('source_original_link_ttl_seconds', 'ttl_seconds'):
+        for ttl_key in (
+            'source_original_link_ttl_seconds',
+            'ttl_seconds',
+            'original_link_ttl_seconds',
+            'download_ttl_seconds',
+        ):
             if ttl_key in kwargs and kwargs.get(ttl_key) is not None:
                 default_expiry = kwargs.pop(ttl_key)
         return await self._generate_presigned_url(
