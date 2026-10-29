@@ -463,6 +463,24 @@ class DocumentsConfig(StrictBaseModel):
     duplicate_check: bool = True
     version_retention_days: int = Field(ge=1, default=365)
     deleted_retention_days: int = Field(ge=1, default=30)
+    source_original_link_ttl_seconds: int = Field(default=300, ge=60, le=900)
+    source_viewer_signing_key: str = 'dev-source-viewer-signing-key-change-me'
+
+    @property
+    def source_viewer_secret(self) -> str:
+        return self.source_viewer_signing_key
+
+    @property
+    def signing_key(self) -> str:
+        return self.source_viewer_signing_key
+
+    @property
+    def citation_signing_key(self) -> str:
+        return self.source_viewer_signing_key
+
+    @property
+    def source_viewer_key(self) -> str:
+        return self.source_viewer_signing_key
 
     @field_validator('upload_types')
     @classmethod
@@ -685,3 +703,22 @@ class Config(StrictBaseModel):
             ):
                 raise ValueError('reranker_enabled must be true in production')
         return self
+
+    @property
+    def source_viewer_signing_key(self) -> str:
+        docs = getattr(self, 'documents', None)
+        if docs is not None and getattr(docs, 'source_viewer_signing_key', None):
+            return docs.source_viewer_signing_key  # type: ignore[no-any-return]
+        return 'dev-source-viewer-signing-key-change-me'
+
+    @property
+    def source_viewer_secret(self) -> str:
+        return self.source_viewer_signing_key
+
+    @property
+    def signing_key(self) -> str:
+        return self.source_viewer_signing_key
+
+    @property
+    def citation_signing_key(self) -> str:
+        return self.source_viewer_signing_key

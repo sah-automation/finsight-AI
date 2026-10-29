@@ -20,40 +20,40 @@ _ROLE_CHECK_PATTERN = re.compile(r'CHECK\s*\(\s*role\s+IN\s*\(([^)]*)\)', re.IGN
 
 EXPECTED_PERMISSIONS: dict[Role, dict[DocumentCategory, frozenset[Action]]] = {
     Role.EXECUTIVE_LEADERSHIP: {
-        DocumentCategory.INVOICE: frozenset({Action.READ}),
-        DocumentCategory.BANK_STATEMENT: frozenset({Action.READ}),
-        DocumentCategory.FINANCIAL_STATEMENT: frozenset({Action.READ}),
-        DocumentCategory.BUDGET: frozenset({Action.READ}),
-        DocumentCategory.CONTRACT: frozenset({Action.READ}),
-        DocumentCategory.BOARD_REPORT: frozenset({Action.READ}),
+        DocumentCategory.INVOICE: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.BANK_STATEMENT: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.FINANCIAL_STATEMENT: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.BUDGET: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.CONTRACT: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.BOARD_REPORT: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
     },
     Role.CORPORATE_FINANCE_PLANNERS: {
         DocumentCategory.INVOICE: frozenset(
-            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE}
+            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE, Action.VIEW_ORIGINAL}
         ),
         DocumentCategory.BANK_STATEMENT: frozenset(
-            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE}
+            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE, Action.VIEW_ORIGINAL}
         ),
         DocumentCategory.FINANCIAL_STATEMENT: frozenset(
-            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE}
+            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE, Action.VIEW_ORIGINAL}
         ),
         DocumentCategory.BUDGET: frozenset(
-            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE}
+            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE, Action.VIEW_ORIGINAL}
         ),
         DocumentCategory.CONTRACT: frozenset(
-            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE}
+            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE, Action.VIEW_ORIGINAL}
         ),
         DocumentCategory.BOARD_REPORT: frozenset(
-            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE}
+            {Action.READ, Action.UPLOAD, Action.UPDATE, Action.DELETE, Action.VIEW_ORIGINAL}
         ),
     },
     Role.AUDIT_COMPLIANCE: {
-        DocumentCategory.INVOICE: frozenset({Action.READ}),
-        DocumentCategory.BANK_STATEMENT: frozenset({Action.READ}),
-        DocumentCategory.FINANCIAL_STATEMENT: frozenset({Action.READ}),
-        DocumentCategory.BUDGET: frozenset({Action.READ}),
-        DocumentCategory.CONTRACT: frozenset({Action.READ}),
-        DocumentCategory.BOARD_REPORT: frozenset({Action.READ}),
+        DocumentCategory.INVOICE: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.BANK_STATEMENT: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.FINANCIAL_STATEMENT: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.BUDGET: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.CONTRACT: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
+        DocumentCategory.BOARD_REPORT: frozenset({Action.READ, Action.VIEW_ORIGINAL}),
     },
     Role.SYSTEM_ADMIN: {},
 }

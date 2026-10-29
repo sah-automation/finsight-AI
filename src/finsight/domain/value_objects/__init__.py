@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from .change_event_type import ChangeEventType
 from .citation import Citation
+from .citation_locator import (
+    CitationLocator,
+    mint_citation_locator,
+    verify_citation_locator,
+)
 from .confidence import Confidence
 from .currency import Currency
 from .document_change_event import DocumentChangeEvent
@@ -17,6 +22,7 @@ from .virus_scan_result import VirusScanResult
 __all__ = [
     'ChangeEventType',
     'Citation',
+    'CitationLocator',
     'Confidence',
     'Currency',
     'DocumentChangeEvent',
@@ -26,4 +32,6 @@ __all__ = [
     'PresignedUpload',
     'ReaderResult',
     'VirusScanResult',
+    'mint_citation_locator',
+    'verify_citation_locator',
 ]

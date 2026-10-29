@@ -98,6 +98,7 @@ class Action(StrEnum):
     MANAGE_USERS = 'manage_users'
     MANAGE_SETTINGS = 'manage_settings'
     VIEW_AUDIT_LOG = 'view_audit_log'
+    VIEW_ORIGINAL = 'view_original'
     ADMIN = 'admin'
 
 
@@ -142,7 +143,7 @@ class RequestContext(BaseModel):
     user_id: UserId
     role: Role
     trace_id: TraceId
-    permissions: dict[Category, list[Action]]  # What this role can do
-    access_scope: list[Category]  # Categories this request can access
+    permissions: dict[DocumentCategory, list[Action]]  # What this role can do
+    access_scope: list[DocumentCategory]  # Document categories this request can access
 
     model_config = {'frozen': True}

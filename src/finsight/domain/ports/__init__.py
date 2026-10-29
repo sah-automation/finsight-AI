@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .answer_cache import AnswerCache
+from .audit_log import AuditLog
 from .change_event_publisher import ChangeEventPublisher
 from .chunk_repository import ChunkRepository
 from .company_repository import CompanyRepository
@@ -28,6 +29,7 @@ from .waiting_line import QueueLine, WaitingLine, WaitingLinePort
 __all__ = [
     'LLM',
     'AnswerCache',
+    'AuditLog',
     'ChangeEventPublisher',
     'ChunkRepository',
     'CompanyRepository',

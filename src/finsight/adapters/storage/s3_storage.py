@@ -1,3 +1,5 @@
+# ruff: noqa: TRY301
+
 """S3 adapter implementing the :class:`ObjectStorage` port."""
 
 from __future__ import annotations
@@ -405,11 +407,14 @@ class S3Storage(ObjectStorage):
             return False
 
     # ------------------------------------------------------------------ presign
-    async def generate_presigned_upload_url(
+    async def _generate_presigned_url(
         self,
         company_id: Any,
         key: Any = None,
         *,
+        client_method: str = 'put_object',
+        default_expiry: Any = None,
+        require_download_ttl: bool = False,
         expires_in: Any = None,
         content_type: Any = None,
         bucket: Any = None,
@@ -447,6 +452,18 @@ class S3Storage(ObjectStorage):
 
         scoped_key = self._normalize_key(company_id, key)
 
+        if require_download_ttl and expires_in is None:
+            expires_in = default_expiry if default_expiry is not None else 300
+        # Validate download TTL range when requested.
+        if require_download_ttl and expires_in is not None:
+            try:
+                if int(expires_in) < 60 or int(expires_in) > 900:
+                    raise ValueError('expires_in must be between 60 and 900 seconds')
+            except (TypeError, ValueError) as exc:
+                if isinstance(exc, ValueError) and 'between' in str(exc):
+                    raise  # noqa: TRY301
+                raise ValueError('expires_in must be between 60 and 900 seconds') from exc  # noqa: TRY301
+
         # Expiry resolution.
         expiry_value = expires_in
         if expiry_value is None:
@@ -465,16 +482,25 @@ class S3Storage(ObjectStorage):
                 'url_expiry_seconds',
                 default=None,
             )
-        if expiry_value is None and self.default_expires_in is not None:
-            expiry_value = self.default_expires_in
+        if expiry_value is None:
+            if default_expiry is not None:
+                expiry_value = default_expiry
+            elif self.default_expires_in is not None:
+                expiry_value = self.default_expires_in
         try:
-            expiry_int = (
-                int(expiry_value) if expiry_value is not None else int(self.default_expires_in)
-            )
+            if expiry_value is None:
+                base_default = (
+                    default_expiry if default_expiry is not None else self.default_expires_in
+                )
+                expiry_int = int(base_default)
+            else:
+                expiry_int = int(expiry_value)
         except (TypeError, ValueError):
-            expiry_int = int(self.default_expires_in)
+            base_default = default_expiry if default_expiry is not None else self.default_expires_in
+            expiry_int = int(base_default)
         if expiry_int < 1:
-            expiry_int = int(self.default_expires_in)
+            base_default = default_expiry if default_expiry is not None else self.default_expires_in
+            expiry_int = int(base_default)
 
         resolved_bucket = bucket
         if resolved_bucket is None:
@@ -500,15 +526,16 @@ class S3Storage(ObjectStorage):
         client = self._get_client()
 
         params: dict[str, Any] = {'Bucket': resolved_bucket, 'Key': scoped_key}
-        if content_type_value is not None:
-            params['ContentType'] = content_type_value
-        # Encryption metadata (for presigned PUT).
-        params['ServerSideEncryption'] = 'aws:kms'
-        if self.kms_key_id:
-            params['SSEKMSKeyId'] = self.kms_key_id
+        if client_method == 'put_object':
+            if content_type_value is not None:
+                params['ContentType'] = content_type_value
+            # Encryption metadata (for presigned PUT).
+            params['ServerSideEncryption'] = 'aws:kms'
+            if self.kms_key_id:
+                params['SSEKMSKeyId'] = self.kms_key_id
 
         call_kwargs = {
-            'ClientMethod': 'put_object',
+            'ClientMethod': client_method,
             'Params': params,
             'ExpiresIn': expiry_int,
         }
@@ -527,7 +554,7 @@ class S3Storage(ObjectStorage):
             if callable(method):
                 result = None
                 try:
-                    result = method('put_object', Params=params, ExpiresIn=expiry_int)
+                    result = method(client_method, Params=params, ExpiresIn=expiry_int)
                 except TypeError:
                     try:
                         result = method(**call_kwargs)
@@ -610,6 +637,34 @@ class S3Storage(ObjectStorage):
         except Exception:
             pass
         return presigned
+
+    async def generate_presigned_upload_url(
+        self, company_id: Any, key: Any = None, **kwargs: Any
+    ) -> PresignedUpload:
+        return await self._generate_presigned_url(company_id, key, **kwargs)
+
+    async def generate_presigned_download_url(
+        self, company_id: Any, key: Any = None, **kwargs: Any
+    ) -> PresignedUpload:
+        expires_in = kwargs.pop('expires_in', None)
+        if expires_in is None:
+            expires_in = kwargs.pop('expiry', None)
+        if expires_in is None:
+            expires_in = kwargs.get('expires')
+        default_expiry = 300
+        # respect TTL config if passed via kwargs
+        for ttl_key in ('source_original_link_ttl_seconds', 'ttl_seconds'):
+            if ttl_key in kwargs and kwargs.get(ttl_key) is not None:
+                default_expiry = kwargs.pop(ttl_key)
+        return await self._generate_presigned_url(
+            company_id,
+            key,
+            client_method='get_object',
+            default_expiry=default_expiry,
+            require_download_ttl=True,
+            expires_in=expires_in,
+            **kwargs,
+        )
 
     # ------------------------------------------------------------------ fetch
     async def get_object(
@@ -826,6 +881,26 @@ class S3Storage(ObjectStorage):
 
     async def read_object(self, company_id: Any, key: Any, **kwargs: Any) -> bytes:
         return await self.get_object(company_id, key, **kwargs)
+
+    async def create_presigned_download_url(
+        self, company_id: Any, key: Any = None, **kwargs: Any
+    ) -> PresignedUpload:
+        return await self.generate_presigned_download_url(company_id, key, **kwargs)
+
+    async def presigned_download_url(
+        self, company_id: Any, key: Any = None, **kwargs: Any
+    ) -> PresignedUpload:
+        return await self.generate_presigned_download_url(company_id, key, **kwargs)
+
+    async def get_presigned_download_url(
+        self, company_id: Any, key: Any = None, **kwargs: Any
+    ) -> PresignedUpload:
+        return await self.generate_presigned_download_url(company_id, key, **kwargs)
+
+    async def download_url(
+        self, company_id: Any, key: Any = None, **kwargs: Any
+    ) -> PresignedUpload:
+        return await self.generate_presigned_download_url(company_id, key, **kwargs)
 
     async def head(self, company_id: Any, key: Any, **kwargs: Any) -> dict[str, object]:
         return await self.head_object(company_id, key, **kwargs)

@@ -50,30 +50,30 @@ categories:
 permissions:
   executive_leadership:
     categories:
-      invoice: ["read"]
-      bank_statement: ["read"]
-      financial_statement: ["read"]
-      budget: ["read"]
-      contract: ["read"]
-      board_report: ["read"]
+      invoice: ["read", "view_original"]
+      bank_statement: ["read", "view_original"]
+      financial_statement: ["read", "view_original"]
+      budget: ["read", "view_original"]
+      contract: ["read", "view_original"]
+      board_report: ["read", "view_original"]
     role_actions: ["approve"]
   corporate_finance_planners:
     categories:
-      invoice: ["read", "upload", "update", "delete"]
-      bank_statement: ["read", "upload", "update", "delete"]
-      financial_statement: ["read", "upload", "update", "delete"]
-      budget: ["read", "upload", "update", "delete"]
-      contract: ["read", "upload", "update", "delete"]
-      board_report: ["read", "upload", "update", "delete"]
+      invoice: ["read", "upload", "update", "delete", "view_original"]
+      bank_statement: ["read", "upload", "update", "delete", "view_original"]
+      financial_statement: ["read", "upload", "update", "delete", "view_original"]
+      budget: ["read", "upload", "update", "delete", "view_original"]
+      contract: ["read", "upload", "update", "delete", "view_original"]
+      board_report: ["read", "upload", "update", "delete", "view_original"]
     role_actions: []
   audit_compliance:
     categories:
-      invoice: ["read"]
-      bank_statement: ["read"]
-      financial_statement: ["read"]
-      budget: ["read"]
-      contract: ["read"]
-      board_report: ["read"]
+      invoice: ["read", "view_original"]
+      bank_statement: ["read", "view_original"]
+      financial_statement: ["read", "view_original"]
+      budget: ["read", "view_original"]
+      contract: ["read", "view_original"]
+      board_report: ["read", "view_original"]
     role_actions: ["view_audit_log"]
   system_admin:
     categories: {}
