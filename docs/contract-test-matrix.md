@@ -31,6 +31,10 @@ tests/contract/
 | `JobProgressPort` | `finsight.adapters.cache.job_progress.JobProgress` | `tests/contract/test_job_progress_port_contract.py` |
 | `VirusScanner` | `finsight.adapters.security.virus_scanner.VirusScanner` | `tests/contract/test_virus_scanner_contract.py` |
 | `DocumentReader` | `finsight.adapters.readers.pdf_plumber_reader.PdfPlumberReader` | `tests/contract/test_document_reader_contract.py` |
+| `HybridSearch` | `finsight.adapters.vector_store.aurora_pg_vector_search.AuroraPgVectorSearch` | `tests/contract/test_hybrid_search_contract.py` |
+| `Reranker` | `finsight.adapters.rerank.cohere_reranker.CohereReranker` | `tests/contract/test_reranker_contract.py` |
+| `MetricRepository` | `finsight.adapters.repositories.postgres_metric_repository.PostgresMetricRepository` | `tests/contract/test_metric_repository_contract.py` |
+| `WaitingLine` | `finsight.adapters.waiting_line.waiting_line_adapter.WaitingLineAdapter` | `tests/contract/test_waiting_line_contract.py` |
 
 **Integration-only contract coverage:** ports whose adapters require a database,
 AWS, or another external service do not have an in-memory unit path. Their
@@ -38,8 +42,7 @@ shared suites run against real services in integration CI:
 `CompanyRepository`, `JobRepository`, `PartitionMetadataRepository`,
 `UserRepository`, `PartitionGateway`, `ObjectStorage`, `QueuePort`.
 
-**Not yet implemented:** `LLMGateway`, `EmbeddingProvider`, `HybridSearch`,
-`Reranker`, `WaitingLine`, `MetricRepository`, `UnitOfWork` have no adapter yet;
+**Not yet implemented:** `LLMGateway`, `EmbeddingProvider`, `UnitOfWork` have no adapter yet;
 each gains a shared contract suite when its adapter lands.
 
 **Rules:**

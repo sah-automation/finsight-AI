@@ -233,6 +233,10 @@ ignore = [
 "src/finsight/adapters/rerank/*.py" = [
     "ANN401", "BLE001",
 ]
+# The waiting line accepts flexible work/ordering surfaces and config shapes.
+"src/finsight/adapters/waiting_line/*.py" = [
+    "ANN401", "BLE001", "PLR0913",
+]
 
 # Flexible job-progress adapter and port-facing surface.
 "src/finsight/adapters/cache/job_progress.py" = [
@@ -437,6 +441,7 @@ modules = [
     "finsight.adapters.auth",
     "finsight.adapters.metering",
     "finsight.adapters.security",
+    "finsight.adapters.waiting_line",
 ]
 
 [[tool.importlinter.contracts]]

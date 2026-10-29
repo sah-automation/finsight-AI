@@ -22,6 +22,10 @@ PORT_CONTRACT_FILES = {
     'JobProgressPort': 'test_job_progress_port_contract.py',
     'VirusScanner': 'test_virus_scanner_contract.py',
     'DocumentReader': 'test_document_reader_contract.py',
+    'HybridSearch': 'test_hybrid_search_contract.py',
+    'Reranker': 'test_reranker_contract.py',
+    'MetricRepository': 'test_metric_repository_contract.py',
+    'WaitingLine': 'test_waiting_line_contract.py',
 }
 
 # Primary adapter exercised by each shared suite.
@@ -34,6 +38,10 @@ PORT_ADAPTER_CLASSES = {
     'JobProgressPort': 'JobProgress',
     'VirusScanner': 'VirusScanner',
     'DocumentReader': 'PdfPlumberReader',
+    'HybridSearch': 'AuroraPgVectorSearch',
+    'Reranker': 'CohereReranker',
+    'MetricRepository': 'PostgresMetricRepository',
+    'WaitingLine': 'WaitingLineAdapter',
 }
 
 
