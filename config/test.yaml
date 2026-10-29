@@ -192,6 +192,10 @@ retrieval:
   keyword_weight: 0.3
   top_k: 50
   rerank_top_n: 20
+  rerank_parallel_batches: 2
+  evidence_min_score: 0.30
+  evidence_min_search_score: 0.50
+  evidence_min_chunks: 1
 
 question_flow:
   first_word_timeout_seconds: 2.0
