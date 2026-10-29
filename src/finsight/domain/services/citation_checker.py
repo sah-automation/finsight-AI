@@ -32,7 +32,6 @@ def _collect_citations(*args: object, **kwargs: object) -> list[object]:
     return [c for c in result if c is not None]
 
 
-
 class CitationChecker:
     """Validate citation presence and well-formed source locators."""
 

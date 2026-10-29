@@ -70,7 +70,6 @@ def _scope_value(metric: object, *names: str) -> object:
     return _attr(metric, *names)
 
 
-
 class Calculator:
     """Pure calculation service supporting only safe operations."""
 

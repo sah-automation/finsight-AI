@@ -90,7 +90,6 @@ def _normalize_text(value: object) -> str:
     return str(value)
 
 
-
 class OutputGate:
     """Pure output verification service."""
 

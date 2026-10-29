@@ -83,7 +83,6 @@ def answer_has_evidence(citations: object) -> bool:
     return all(c is not None and is_citation_valid(c) for c in seq)
 
 
-
 class EvidenceChecker:
     """Decide whether retrieval produced enough evidence."""
 

@@ -65,7 +65,6 @@ def detect_prompt_injection(text: str) -> bool:
     return bool(_INJECTION_RE.search(text))
 
 
-
 class InputGate:
     """Pure domain service that gates questions before any model call."""
 
