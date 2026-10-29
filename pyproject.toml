@@ -303,12 +303,12 @@ markers = [
     "security: Security tests (isolation, permissions, cache keys, evidence, PII)",
 ]
 [tool.coverage.run]
-source = ["src"]
+source = ["src/finsight"]
 branch = true
 omit = [
-    "tests/*",
     "*/migrations/*",
     "*/conftest.py",
+    "*/generated/*",
 ]
 [tool.coverage.report]
 precision = 2
