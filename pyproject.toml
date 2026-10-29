@@ -228,6 +228,10 @@ ignore = [
 "src/finsight/adapters/vector_store/*.py" = [
     "ANN401", "BLE001", "S608",
 ]
+# The reranker accepts provider-shaped clients and candidate mappings.
+"src/finsight/adapters/rerank/*.py" = [
+    "ANN401", "BLE001",
+]
 
 # Flexible job-progress adapter and port-facing surface.
 "src/finsight/adapters/cache/job_progress.py" = [
