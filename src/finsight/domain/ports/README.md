@@ -4,6 +4,10 @@ Interfaces (abstract classes or Protocols) that the outside world must fulfil.
 
 **Belongs here:**
 - `LLMGateway` - generate, stream, embed
+- `EmbeddingProvider` - embed
+- `HybridSearch` - search
+- `Reranker` - rerank
+- `WaitingLine` - run
 - `VectorSearch` - semantic search
 - `VectorWrite` - upsert vectors
 - `DocumentReader` - extract text/tables from files
