@@ -176,27 +176,18 @@ def _normalize_claims(
     if resolved['i'] is None:
         resolved['i'] = uuid.uuid4().hex
 
-    # Extra fields supplied through kwargs are preserved in a sidecar only if
-    # they match payload keys; unknown keys go to kwargs remainder.
-    extra: dict[str, Any] = {}
-    for key, value in list(kwargs.items()):
+    # Only the canonical eight keys are retained; other keywords are ignored.
+    for key in list(kwargs):
         if key in _PAYLOAD_KEYS:
-            resolved[key] = _coalesce(resolved.get(key), value)
-            kwargs.pop(key, None)
+            resolved[key] = _coalesce(resolved.get(key), kwargs.pop(key))
         else:
-            extra[key] = value
+            kwargs.pop(key, None)
 
     payload = {key: resolved[key] for key in _PAYLOAD_KEYS}
-    sidecar = dict(extra.items())
-    if sidecar:
-        payload['_extra'] = sidecar
-    # Last-chance direct assignment for explicitly-provided i/d etc above already done.
 
-    # Keep order of canonical keys at the front.
+    # Keep order of canonical keys.
     ordered = {key: payload[key] for key in _PAYLOAD_KEYS}
-    if '_extra' in payload:
-        ordered['_extra'] = payload['_extra']
-    return ordered, sidecar
+    return ordered, {}
 
 
 def mint_citation_locator(

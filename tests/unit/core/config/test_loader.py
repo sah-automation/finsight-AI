@@ -49,6 +49,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test-client'
         os.environ['METERING_TABLE'] = 'test-metering'
         os.environ['OTLP_ENDPOINT'] = 'http://local:4317'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             config = load_config(Environment.DEVELOPMENT)
@@ -78,6 +79,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -134,6 +136,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -161,6 +164,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -209,6 +213,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -235,6 +240,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -286,6 +292,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'prod-client'
         os.environ['METERING_TABLE'] = 'prod-metering'
         os.environ['OTLP_ENDPOINT'] = 'https://otel.example.com'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -312,6 +319,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -335,6 +343,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             config1 = load_config(Environment.DEVELOPMENT)
@@ -361,6 +370,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -424,6 +434,7 @@ class TestConfigValidation:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -450,6 +461,7 @@ class TestConfigValidation:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -502,6 +514,7 @@ class TestConfigValidation:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -528,5 +541,6 @@ class TestConfigValidation:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]

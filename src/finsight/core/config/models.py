@@ -464,7 +464,14 @@ class DocumentsConfig(StrictBaseModel):
     version_retention_days: int = Field(ge=1, default=365)
     deleted_retention_days: int = Field(ge=1, default=30)
     source_original_link_ttl_seconds: int = Field(default=300, ge=60, le=900)
-    source_viewer_signing_key: str = 'dev-source-viewer-signing-key-change-me'
+    source_viewer_signing_key: str = ''
+
+    @field_validator('source_viewer_signing_key')
+    @classmethod
+    def validate_source_viewer_signing_key(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError('SOURCE_VIEWER_SIGNING_KEY must be configured')
+        return value
 
     @property
     def source_viewer_secret(self) -> str:
@@ -709,7 +716,7 @@ class Config(StrictBaseModel):
         docs = getattr(self, 'documents', None)
         if docs is not None and getattr(docs, 'source_viewer_signing_key', None):
             return docs.source_viewer_signing_key  # type: ignore[no-any-return]
-        return 'dev-source-viewer-signing-key-change-me'
+        raise ValueError('SOURCE_VIEWER_SIGNING_KEY must be configured')
 
     @property
     def source_viewer_secret(self) -> str:

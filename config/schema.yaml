@@ -232,7 +232,7 @@ documents:
   version_retention_days: 365
   deleted_retention_days: 30
   source_original_link_ttl_seconds: 300
-  source_viewer_signing_key: "${SOURCE_VIEWER_SIGNING_KEY:-dev-source-viewer-signing-key-change-me}"
+  source_viewer_signing_key: "${SOURCE_VIEWER_SIGNING_KEY}"
 retrieval:
   hybrid_search_enabled: true
   vector_weight: 0.7
