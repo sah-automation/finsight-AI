@@ -881,9 +881,6 @@ class SourceViewer:
                             tables_list.append(tp)
                     if tables_list:
                         table_payload = tables_list[0]
-                    needs_review = needs_review or any(
-                        bool(_get_attr(tp, 'needs_review')) for tp in tables_list
-                    )
                     # content type table if table present and no text? keep text
 
             else:
@@ -943,10 +940,6 @@ class SourceViewer:
                     )
                 else:
                     content_type = 'text'
-
-                needs_review = needs_review or any(
-                    bool(_get_attr(tp, 'needs_review')) for tp in tables_list
-                )
 
             if table_payload is None and tables_list:
                 table_payload = tables_list[0]
@@ -1061,7 +1054,7 @@ class SourceViewer:
                 result='not_available',
             )
         except Exception:
-            outcome = 'not_available'
+            outcome = 'error'
             result_obj = SourceViewerResult(
                 status='not_available',
                 document_id=document_id_input,
@@ -1083,7 +1076,7 @@ class SourceViewer:
                 user_id=user_id,
                 role=role_raw,
                 trace_id=trace_id,
-                outcome='not_available',
+                outcome='error',
                 result='not_available',
             )
 
@@ -1104,9 +1097,9 @@ class SourceViewer:
         )
 
         if outcome in {'not_available', 'error'}:
-            # collapse status to not_available
+            # collapse status to not_available for error too
             result_obj.status = 'not_available'
-            result_obj.outcome = 'not_available'
+            result_obj.outcome = outcome if outcome == 'error' else 'not_available'
             result_obj.result = 'not_available'
 
         return result_obj
@@ -1573,12 +1566,12 @@ class SourceViewer:
             },
         }
         # collapse None values? keep
-        payload_without_company = {k: v for k, v in event_kwargs.items() if k != 'company_id'}
         try:
-            await _await(method(company_id, **payload_without_company))
+            await _await(method(**event_kwargs))
         except TypeError:
+            payload_without_company = {k: v for k, v in event_kwargs.items() if k != 'company_id'}
             try:
-                await _await(method(company_id=company_id, **payload_without_company))
+                await _await(method(company_id, **payload_without_company))
             except Exception:
                 try:
                     await _await(method(**{'company_id': company_id, **payload_without_company}))
