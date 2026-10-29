@@ -30,6 +30,18 @@ class Citation:
     char_end: int | None = None
     location: str | None = None
 
+    # Signed citation locator token aliases (all canonicalise together).
+    citation_locator: str | None = None
+    locator: str | None = None
+    citation_id: str | None = None
+    citation_token: str | None = None
+    citation_locator_token: str | None = None
+    signed_locator: str | None = None
+    signed_citation_locator: str | None = None
+    token: str | None = None
+    locator_token: str | None = None
+    citation_locator_id: str | None = None
+
     def __post_init__(self) -> None:
         version = (
             self.document_version or self.document_version_id or self.version or self.version_id
@@ -57,6 +69,32 @@ class Citation:
         object.__setattr__(self, 'end_char', end)
         object.__setattr__(self, 'char_start', start)
         object.__setattr__(self, 'char_end', end)
+
+        locator = (
+            self.citation_locator
+            or self.locator
+            or self.citation_id
+            or self.citation_token
+            or self.citation_locator_token
+            or self.signed_locator
+            or self.signed_citation_locator
+            or self.token
+            or self.locator_token
+            or self.citation_locator_id
+        )
+        for name in (
+            'citation_locator',
+            'locator',
+            'citation_id',
+            'citation_token',
+            'citation_locator_token',
+            'signed_locator',
+            'signed_citation_locator',
+            'token',
+            'locator_token',
+            'citation_locator_id',
+        ):
+            object.__setattr__(self, name, locator)
 
     def __str__(self) -> str:
         return f'Citation(document_id={self.document_id!r}, version={self.document_version!r})'

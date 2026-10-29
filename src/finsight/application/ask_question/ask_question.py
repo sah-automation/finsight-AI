@@ -122,6 +122,37 @@ def _switch(config: Any, name: str, default: bool = True) -> bool:
     return bool(val)
 
 
+def _resolve_signing_key(config: Any) -> Any:
+    """Resolve the source-viewer signing secret from config without reading env."""
+    if config is None:
+        return None
+    for attr in (
+        'source_viewer_signing_key',
+        'source_viewer_secret',
+        'signing_key',
+        'citation_signing_key',
+        'source_viewer_key',
+    ):
+        value = config.get(attr) if isinstance(config, dict) else getattr(config, attr, None)
+        if value not in (None, ''):
+            return value
+    docs = (
+        config.get('documents') if isinstance(config, dict) else getattr(config, 'documents', None)
+    )
+    if docs is not None:
+        for attr in (
+            'source_viewer_signing_key',
+            'source_viewer_secret',
+            'signing_key',
+            'citation_signing_key',
+            'source_viewer_key',
+        ):
+            value = docs.get(attr) if isinstance(docs, dict) else getattr(docs, attr, None)
+            if value not in (None, ''):
+                return value
+    return None
+
+
 class AskQuestion:
     """Orchestrate the ask-question flow through fakeable ports."""
 
@@ -163,6 +194,16 @@ class AskQuestion:
             kwargs, 'waiting_line', 'waiting', 'waiting_line_port', 'queue_line', default=None
         )
         self._request_context_factory = _get_attr(kwargs, 'request_context', default=None)
+        self._signing_key = _get_attr(
+            kwargs,
+            'signing_key',
+            'secret',
+            'secret_key',
+            'source_viewer_signing_key',
+            'source_viewer_secret',
+            'citation_signing_key',
+            default=None,
+        )
 
         # Domain services (lazy-created if missing).
         self._input_gate = _get_attr(kwargs, 'input_gate', 'input_gater', 'gate', default=None)
@@ -998,9 +1039,60 @@ class AskQuestion:
         return messages
 
     def _build_citations(self, candidates: list[Any]) -> list[Any]:
+        from dataclasses import replace
+
+        secret = self._signing_key
+        if secret is None:
+            secret = _resolve_signing_key(self._config)
+        if secret is not None:
+            self._signing_key = secret
+
+        mint_citation_locator: Any = None
+        try:
+            from finsight.core.security.citation_locator import (  # noqa: PLC0415
+                mint_citation_locator as _mint_citation_locator,
+            )
+
+            mint_citation_locator = _mint_citation_locator
+        except Exception:  # pragma: no cover - defensive
+            mint_citation_locator = None
+
+        def _mint_locator(cit: Any) -> str | None:
+            if secret is None or mint_citation_locator is None:
+                return None
+            try:
+                chunk_id = getattr(cit, 'chunk_id', None)
+                table_id = getattr(cit, 'table_id', None)
+                if table_id is not None and chunk_id is None:
+                    ref_id = table_id
+                    ref_type = 'table'
+                else:
+                    ref_id = chunk_id
+                    ref_type = 'table' if table_id is not None and chunk_id is None else 'chunk'
+                token = mint_citation_locator(
+                    secret,
+                    document_id=getattr(cit, 'document_id', None),
+                    document_version=getattr(cit, 'document_version', None),
+                    chunk_id=ref_id,
+                    type=ref_type,
+                    page_number=getattr(cit, 'page_number', None),
+                    char_start=getattr(cit, 'start_char', None),
+                    char_end=getattr(cit, 'end_char', None),
+                )
+                return token if token is not None else None
+            except Exception:
+                return None
+
         result = []
         for item in (candidates or [])[:5]:
             if isinstance(item, _CitationVO):
+                if getattr(item, 'citation_locator', None) is None:
+                    locator = _mint_locator(item)
+                    if locator is not None:
+                        try:
+                            item = replace(item, citation_locator=locator)  # noqa: PLW2901
+                        except Exception:
+                            pass
                 result.append(item)
                 continue
             doc = _first(
@@ -1037,6 +1129,13 @@ class AskQuestion:
                 )
             except Exception:
                 cit = _CitationVO(document_id=str(doc), document_version=version)
+            if getattr(cit, 'citation_locator', None) is None:
+                locator = _mint_locator(cit)
+                if locator is not None:
+                    try:
+                        cit = replace(cit, citation_locator=locator)
+                    except Exception:
+                        pass
             if self._citation_checker is not None:
                 try:
                     validity = self._citation_checker.is_valid(cit)
