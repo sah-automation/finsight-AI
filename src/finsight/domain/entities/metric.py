@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from datetime import UTC, datetime
 
 from finsight.core.types import CompanyId, MetricId
@@ -101,8 +100,7 @@ class Metric:
             updated_at = created_at
 
         if currency is not None and not isinstance(currency, Currency):
-            with contextlib.suppress(ValueError):
-                currency = Currency(str(currency))
+            currency = Currency(str(currency))
 
         if source_location is None:
             location_data: dict[str, object] = {}

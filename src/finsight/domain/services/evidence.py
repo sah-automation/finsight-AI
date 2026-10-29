@@ -11,10 +11,13 @@ if TYPE_CHECKING:
 
 
 def is_citation_valid(citation: Citation) -> bool:
-    """Return True when a citation points at a real source location."""
-    if not citation.document_id.strip():
+    """Return True when a citation points at a real, answer-time source."""
+    if not getattr(citation, 'document_id', '').strip():
         return False
-    return citation.page_number is None or citation.page_number >= 1
+    version = getattr(citation, 'document_version', None)
+    if version is None or not str(version).strip():
+        return False
+    return not (citation.page_number is not None and citation.page_number < 1)
 
 
 def answer_has_evidence(citations: Sequence[Citation]) -> bool:
