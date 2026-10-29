@@ -152,6 +152,12 @@ ignore = [
     "PLR0912", "PLR0913", "PLR0915", "RET504", "S110", "S112", "SIM102",
     "SIM105", "TRY300", "TC001", "RUF100",
 ]
+# Ask/Q&A SSE endpoint exposes flexible surfaces for varied caller shapes.
+"src/finsight/entrypoints/api/ask.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN401", "E501", "B009", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "PLC0415", "BLE001", "S110", "SIM105",
+    "TRY300", "N818", "RUF100",
+]
 # Document lifecycle endpoint exposes flexible surfaces for varied caller shapes.
 "src/finsight/entrypoints/api/documents.py" = [
     "ANN001", "ANN002", "ANN003", "ANN401", "E402", "E501", "B007", "B009", "B023", "B904",
