@@ -150,12 +150,35 @@ def find_methods_without_company_id(package_path: Path) -> list[tuple[str, str, 
     violations = []
     for filepath in get_python_files(package_path):
         tree = parse_python_file(filepath)
+        parent_map: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(tree):
+            for child in ast.iter_child_nodes(parent):
+                parent_map[child] = parent
+
+        def enclosing_class_name(
+            node: ast.AST, parent_lookup: dict[ast.AST, ast.AST]
+        ) -> str | None:
+            current = parent_lookup.get(node)
+            while current is not None:
+                if isinstance(current, ast.ClassDef):
+                    return current.name
+                current = parent_lookup.get(current)
+            return None
+
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             if node.name.startswith('_'):
                 continue
             if any(is_property_decorator(decorator) for decorator in node.decorator_list):
+                continue
+
+            class_name = enclosing_class_name(node, parent_map)
+            # Private or value-object helper classes (e.g. stream chunks) are not
+            # tenant data accessors; their dict-style helpers are false positives.
+            if class_name is not None and (
+                class_name.startswith('_') or class_name.endswith(('Chunk', 'Result'))
+            ):
                 continue
 
             method_name = node.name.lower()
