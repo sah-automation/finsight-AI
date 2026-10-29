@@ -1,12 +1,13 @@
 # Placeholder for the golden set suite.
-# The 100+ question set will live here, run against pilot and standard config.
-# Remove this file when the first golden question exists.
+# Tracked placeholder (issue #77): remove this file when the first golden
+# question lands.
 
 from __future__ import annotations
 
 import pytest
 
 
-@pytest.mark.skip(reason='No golden question set yet')
+@pytest.mark.placeholder
+@pytest.mark.skip(reason='Placeholder pending golden scoring harness (#77)')
 def test_golden_suite_pending() -> None:
     """Keeps the golden suite selectable while the codebase is empty."""

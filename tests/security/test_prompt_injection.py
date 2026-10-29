@@ -9,10 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = pytest.mark.security
+pytestmark = [pytest.mark.security, pytest.mark.placeholder]
 
 
 def test_prompt_injection_detection_is_pending() -> None:
-    pytest.skip(
-        'Prompt-injection detection is not implemented yet; add tests when the input gate lands.'
-    )
+    pytest.skip('Placeholder pending input gate (#74/#80): add tests when it lands.')

@@ -19,6 +19,10 @@ tests/contract/
 - Concrete test classes inherit and provide adapter fixture
 - Tests: happy path, error cases, edge cases, idempotency
 
+**Placeholder status:** `test_contract_pending.py` is a tracked placeholder
+until the port contract matrix lands (issue #75). It is skipped, not silent:
+a suite with zero non-skipped tests fails (issue #74).
+
 **Rules:**
 - Every new adapter must pass all contract tests for its port
 - Contract tests live here, not in adapter folders

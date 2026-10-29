@@ -301,6 +301,7 @@ markers = [
     "architecture: Architecture invariant tests",
     "switch: Switch path tests",
     "security: Security tests (isolation, permissions, cache keys, evidence, PII)",
+    "placeholder: Intentionally pending test tracked until its feature lands (issue #74)",
 ]
 [tool.coverage.run]
 source = ["src/finsight"]

@@ -7,6 +7,10 @@ The 100+ canonical question set for regression testing.
 - `run_golden.py` - runner for pilot and standard config
 - `compare_results.py` - diff and score calculation
 
+**Placeholder status:** this suite is currently placeholder-only
+(all tests skipped). Tracked until the golden scoring harness lands
+(issue #77). It fails rather than passes while it has no non-skipped tests.
+
 **Rules:**
 - Runs on both pilot and standard config
 - Same answers expected on both (or documented differences)

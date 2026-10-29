@@ -27,3 +27,19 @@ Changed lines in `src/finsight/domain` and `src/finsight/application` must be at
 least 85% covered. Enforced via `diff-cover` (`make coverage-diff`,
 `DIFF_COVERAGE_BASE ?= origin/main`). CI runs this on pull requests against
 the PR base branch. Failures name uncovered changed lines.
+
+## Placeholder guard (issue #74)
+
+A CI-declared test suite fails when it contains no non-skipped tests. The
+shared `tests/conftest.py` counts executed (non-skipped) tests and sets
+exit status 1 when that count is zero. This prevents placeholder-only suites
+from going green.
+
+Placeholder-only suites are tracked explicitly until replaced:
+- `tests/integration/` - placeholder-only (issue #74).
+- `tests/golden/` - placeholder-only (issue #77).
+- `tests/contract/test_contract_pending.py` - tracked placeholder (issue #75).
+- `tests/security/test_prompt_injection.py` - tracked placeholder
+  (issues #74/#80).
+- `tests/unit/switches/*` skip placeholders are guarded by the switch
+  meta-test (`test_switch_coverage.py`).
