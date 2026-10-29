@@ -112,6 +112,7 @@ class Answer:
         self.content = self.answer
         self.response = self.answer
         self.citations = citations_list
+        self.citation = citations_list
         self.user_id = None if user_id is None else UserId(str(user_id))
         self.model_id = None if model_id is None else str(model_id)
         self.model = self.model_id

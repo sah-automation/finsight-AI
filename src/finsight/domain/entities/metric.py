@@ -34,7 +34,6 @@ class Metric:
             'currency',
             'period',
             'document_id',
-            'document',
             'source_location',
         ]
         data: dict[str, object] = dict.fromkeys(positional)
