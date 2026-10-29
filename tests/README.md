@@ -25,7 +25,7 @@ Test organization mirroring src structure.
 
 **Placeholder-only suites (tracked until replaced):**
 - `tests/integration/` - placeholder-only; blocked by first adapter integration test.
-- `tests/golden/` - placeholder-only; blocked by golden scoring harness (issue #77).
+- `tests/golden/` - scoring harness landed; runs on pilot and standard configs (issue #77).
 - `tests/security/test_prompt_injection.py` - tracked placeholder; blocked by input
   gate (issues #74/#80).
 

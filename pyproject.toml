@@ -100,6 +100,7 @@ ignore = [
 # question group is one block, so the statement and argument counts follow the
 # content rather than a class design.
 "scripts/fixture_builder/**/*" = ["E501", "PLR0913", "PLR0915", "PLR0917"]
+"tests/golden/*" = ["BLE001", "PLC0415", "PLR0912", "PLR0915", "PLR2004", "E402", "SIM103", "SIM105", "S110", "RUF046"]
 # CDK constructors are framework-shaped: they forward **kwargs to Stack and take
 # one argument per dependency. Do not contort them to application lint limits.
 "infra/cdk/**/*.py" = ["ANN003", "PLR0913", "PLR0917", "TC002"]

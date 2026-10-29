@@ -7,9 +7,9 @@ The 100+ canonical question set for regression testing.
 - `run_golden.py` - runner for pilot and standard config
 - `compare_results.py` - diff and score calculation
 
-**Placeholder status:** this suite is currently placeholder-only
-(all tests skipped). Tracked until the golden scoring harness lands
-(issue #77). It fails rather than passes while it has no non-skipped tests.
+**Scoring harness:** `run_golden.py` runs the shared question set on pilot
+and standard configurations; `compare_results.py` computes citation and
+numeric accuracy. Issue #77.
 
 **Rules:**
 - Runs on both pilot and standard config

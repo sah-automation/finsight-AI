@@ -1,0 +1,16 @@
+{
+  "profile": "pilot",
+  "environment": "development",
+  "numeric_accuracy": 1.0,
+  "citation_accuracy": 1.0,
+  "answer_coverage": 1.0,
+  "pass_rate": 1.0,
+  "passed": 163,
+  "total": 163,
+  "question_count": 163,
+  "numeric_total": 128,
+  "numeric_passed": 128,
+  "citation_total": 157,
+  "citation_passed": 157,
+  "tolerance": 0.0
+}
