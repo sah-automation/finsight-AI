@@ -346,6 +346,24 @@ class CompositionContainer:
             import finsight.entrypoints.api.upload as upload_entrypoint
 
             upload_entrypoint.get_upload_use_case = lambda *_a, **_k: self.upload_use_case
+        with contextlib.suppress(Exception):
+            import finsight.entrypoints.api.source_viewer as source_viewer_entrypoint
+
+            source_viewer_entrypoint.get_source_viewer_use_case = lambda *_a, **_k: (
+                getattr(self, 'source_viewer_use_case', None)
+                or __import__(
+                    'finsight.composition.source_viewer', fromlist=['build_source_viewer_use_case']
+                ).build_source_viewer_use_case(
+                    config=self.config,
+                    document_repository=self.document_repository,
+                    chunk_repository=self.chunk_repository,
+                    document_table_repository=self.document_table_repository,
+                    table_repository=self.document_table_repository,
+                    object_storage=self.object_storage,
+                    audit_log=None,
+                    request_context=None,
+                )
+            )
 
 
 CompositionContainer = CompositionContainer  # noqa: PLW0127
