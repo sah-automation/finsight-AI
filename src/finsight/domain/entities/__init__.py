@@ -1,6 +1,7 @@
 from .answer import Answer
 from .chunk import Chunk
 from .company import Company
+from .document_table import DocumentTable
 from .document_version import (
     DocumentState,
     DocumentVersion,
@@ -19,6 +20,7 @@ __all__ = [
     'Chunk',
     'Company',
     'DocumentState',
+    'DocumentTable',
     'DocumentVersion',
     'DocumentVersionLifecycleState',
     'DocumentVersionState',

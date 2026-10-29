@@ -60,6 +60,7 @@ def test_config_loads_for_both_profiles(monkeypatch: pytest.MonkeyPatch) -> None
         'BACKUPS_BUCKET',
         'METERING_TABLE',
         'OTLP_ENDPOINT',
+        'SOURCE_VIEWER_SIGNING_KEY',
     ):
         monkeypatch.setenv(key, 'test-value')
     for profile in ('pilot', 'standard'):

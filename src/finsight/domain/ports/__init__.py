@@ -9,6 +9,7 @@ from .chunk_repository import ChunkRepository
 from .company_repository import CompanyRepository
 from .document_reader import DocumentReader
 from .document_repository import DocumentRepository
+from .document_table_repository import DocumentTableRepository
 from .embedding_provider import EmbeddingGateway, EmbeddingProvider, Embeddings
 from .hybrid_search import HybridSearch, HybridSearchPort, VectorSearch
 from .job_progress_port import JobProgressPort
@@ -26,6 +27,12 @@ from .vector_write import VectorWrite
 from .virus_scanner import VirusScanner
 from .waiting_line import QueueLine, WaitingLine, WaitingLinePort
 
+# Compatibility aliases.
+DocumentTablesRepository = DocumentTableRepository
+DocumentTablesRepositoryPort = DocumentTableRepository
+TableRepository = DocumentTableRepository
+TablesRepository = DocumentTableRepository
+
 __all__ = [
     'LLM',
     'AnswerCache',
@@ -35,6 +42,9 @@ __all__ = [
     'CompanyRepository',
     'DocumentReader',
     'DocumentRepository',
+    'DocumentTableRepository',
+    'DocumentTablesRepository',
+    'DocumentTablesRepositoryPort',
     'EmbeddingGateway',
     'EmbeddingProvider',
     'Embeddings',
@@ -54,6 +64,8 @@ __all__ = [
     'QueuePort',
     'Reranker',
     'RerankerPort',
+    'TableRepository',
+    'TablesRepository',
     'UnitOfWork',
     'UserRepository',
     'VectorSearch',

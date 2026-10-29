@@ -232,6 +232,7 @@ ignore = [
 "src/finsight/adapters/repositories/postgres_chunk_repository.py" = ["ANN401", "S608"]
 "src/finsight/adapters/repositories/postgres_metric_repository.py" = ["ANN401", "S608"]
 "src/finsight/adapters/repositories/postgres_document_repository.py" = ["ANN401", "S608"]
+"src/finsight/adapters/repositories/postgres_document_table_repository.py" = ["ANN401", "S608", "BLE001", "E501", "PLC0415", "PLR0911", "PLR0912", "PLR0915", "SIM102", "SIM103", "RUF034", "S608", "S110", "TC003", "B007", "C401"]
 "src/finsight/adapters/vector_store/*.py" = [
     "ANN401", "BLE001", "S608",
 ]

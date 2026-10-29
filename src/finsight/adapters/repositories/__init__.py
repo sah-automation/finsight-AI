@@ -17,6 +17,15 @@ from .postgres_document_repository import (
     PostgresDocumentRepository,
     RLSDocumentRepository,
 )
+from .postgres_document_table_repository import (
+    AuroraDocumentTableRepository,
+    DocumentTableRepositoryAdapter,
+    PostgresDocumentTableRepo,
+    PostgresDocumentTableRepository,
+    PostgresDocumentTablesRepo,
+    PostgresDocumentTablesRepository,
+    RLSDocumentTableRepository,
+)
 from .postgres_metric_repository import (
     AuroraMetricRepository,
     MetricRepositoryAdapter,
@@ -28,20 +37,27 @@ from .postgres_metric_repository import (
 __all__ = [
     'AuroraChunkRepository',
     'AuroraDocumentRepository',
+    'AuroraDocumentTableRepository',
     'AuroraMetricRepository',
     'BaseRepository',
     'ChunkRepo',
     'ChunkRepositoryAdapter',
     'DocumentRepo',
     'DocumentRepositoryAdapter',
+    'DocumentTableRepositoryAdapter',
     'MetricRepositoryAdapter',
     'PostgresChunkRepo',
     'PostgresChunkRepository',
     'PostgresDocumentRepo',
     'PostgresDocumentRepository',
+    'PostgresDocumentTableRepo',
+    'PostgresDocumentTableRepository',
+    'PostgresDocumentTablesRepo',
+    'PostgresDocumentTablesRepository',
     'PostgresMetricRepo',
     'PostgresMetricRepository',
     'RLSChunkRepository',
     'RLSDocumentRepository',
+    'RLSDocumentTableRepository',
     'RLSMetricRepository',
 ]
