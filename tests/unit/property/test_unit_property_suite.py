@@ -137,7 +137,11 @@ class TestConfigHandlingProperty:
                 name='app', version='1', environment=Environment.DEVELOPMENT, unknown_field='value'
             )
 
-    @given(st.text(min_size=1, max_size=40))
+    @given(
+        st.text(min_size=1, max_size=40).filter(
+            lambda value: value not in {item.value for item in Environment}
+        )
+    )
     def test_config_rejects_invalid_environment(self, environment: str) -> None:
         with pytest.raises(ValidationError):
             AppConfig(name='app', version='1', environment=environment)  # type: ignore[arg-type]
