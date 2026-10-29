@@ -881,6 +881,9 @@ class SourceViewer:
                             tables_list.append(tp)
                     if tables_list:
                         table_payload = tables_list[0]
+                    needs_review = needs_review or any(
+                        bool(_get_attr(tp, 'needs_review')) for tp in tables_list
+                    )
                     # content type table if table present and no text? keep text
 
             else:
@@ -940,6 +943,10 @@ class SourceViewer:
                     )
                 else:
                     content_type = 'text'
+
+                needs_review = needs_review or any(
+                    bool(_get_attr(tp, 'needs_review')) for tp in tables_list
+                )
 
             if table_payload is None and tables_list:
                 table_payload = tables_list[0]
@@ -1566,14 +1573,15 @@ class SourceViewer:
             },
         }
         # collapse None values? keep
+        payload_without_company = {k: v for k, v in event_kwargs.items() if k != 'company_id'}
         try:
-            await _await(method(company_id, **event_kwargs))
+            await _await(method(company_id, **payload_without_company))
         except TypeError:
             try:
-                await _await(method(company_id=company_id, **event_kwargs))
+                await _await(method(company_id=company_id, **payload_without_company))
             except Exception:
                 try:
-                    await _await(method(**{'company_id': company_id, **event_kwargs}))
+                    await _await(method(**{'company_id': company_id, **payload_without_company}))
                 except Exception:
                     pass
         except Exception:
