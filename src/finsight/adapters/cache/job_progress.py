@@ -428,7 +428,17 @@ class JobProgress(JobProgressPort):
         return results
 
     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
-        cid, jid, _payload = self._extract(args, kwargs)
+        kwargs_copy = dict(kwargs)
+        if (
+            company_id is not None
+            and 'company_id' not in kwargs_copy
+            and 'companyId' not in kwargs_copy
+            and 'company' not in kwargs_copy
+        ):
+            kwargs_copy['company_id'] = company_id
+        cid, jid, _payload = self._extract(args, kwargs_copy)
+        if _norm(cid) == '' and isinstance(company_id, str):
+            cid = company_id
         if _norm(cid) == '':
             raise ValueError('company_id required')
         if _norm(jid) == '':

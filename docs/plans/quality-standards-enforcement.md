@@ -38,7 +38,6 @@ from going green.
 Placeholder-only suites are tracked explicitly until replaced:
 - `tests/integration/` - placeholder-only (issue #74).
 - `tests/golden/` - placeholder-only (issue #77).
-- `tests/contract/test_contract_pending.py` - tracked placeholder (issue #75).
 - `tests/security/test_prompt_injection.py` - tracked placeholder
   (issues #74/#80).
 - `tests/unit/switches/*` skip placeholders are guarded by the switch
