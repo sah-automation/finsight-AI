@@ -7,6 +7,8 @@ from decimal import Decimal, InvalidOperation
 
 from finsight.domain.services.input_gate import detect_pii
 
+from .output_verification_result import OutputVerificationResult
+
 _NUMBER_RE = re.compile(r'(?<![\w.])(-?\d[\d,]*(?:\.\d+)?)(?!\d)')
 
 
@@ -88,14 +90,18 @@ def _normalize_text(value: object) -> str:
     return str(value)
 
 
-from .output_verification_result import OutputVerificationResult
-
 
 class OutputGate:
     """Pure output verification service."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
-        self.mode = kwargs.get('mode') or kwargs.get('output_check_mode') or kwargs.get('timing') or kwargs.get('timing_mode') or 'per_sentence'
+        self.mode = (
+            kwargs.get('mode')
+            or kwargs.get('output_check_mode')
+            or kwargs.get('timing')
+            or kwargs.get('timing_mode')
+            or 'per_sentence'
+        )
         self.mode = 'per_sentence' if str(self.mode).lower().startswith('per') else 'full_answer'
         self.pii_action = str(kwargs.get('pii_action', 'block')).lower()
         self.pii_detection_enabled = bool(kwargs.get('pii_detection_enabled', True))
@@ -107,7 +113,9 @@ class OutputGate:
             self.mode = getattr(cfg, 'mode', self.mode)
             if isinstance(self.mode, str):
                 self.mode = 'per_sentence' if self.mode.lower().startswith('per') else 'full_answer'
-            self.number_check_enabled = getattr(cfg, 'number_check_enabled', self.number_check_enabled)
+            self.number_check_enabled = getattr(
+                cfg, 'number_check_enabled', self.number_check_enabled
+            )
             self.block_on_failure = getattr(cfg, 'block_on_failure', self.block_on_failure)
 
     def _allowed_numbers(
@@ -230,7 +238,9 @@ class OutputGate:
             if cited_chunk_numbers is None:
                 cited_chunk_numbers = kwargs.get('chunk_values')
             extra_numbers = kwargs.get('allowed_numbers')
-            allowed_numbers = self._allowed_numbers(calculated_results, cited_chunk_numbers, extra_numbers)
+            allowed_numbers = self._allowed_numbers(
+                calculated_results, cited_chunk_numbers, extra_numbers
+            )
             found_numbers = _extract_numbers(text)
             for num in found_numbers:
                 if num not in allowed_numbers:
@@ -299,7 +309,18 @@ class OutputGate:
 def verify_output(*args: object, **kwargs: object) -> OutputVerificationResult:
     checker_kwargs: dict[str, object] = {}
     data = dict(kwargs)
-    for key in ('mode', 'pii_action', 'pii_detection_enabled', 'number_check_enabled', 'config', 'settings', 'output_gate_config', 'output_check_mode', 'timing', 'timing_mode'):
+    for key in (
+        'mode',
+        'pii_action',
+        'pii_detection_enabled',
+        'number_check_enabled',
+        'config',
+        'settings',
+        'output_gate_config',
+        'output_check_mode',
+        'timing',
+        'timing_mode',
+    ):
         if key in data:
             checker_kwargs[key] = data.pop(key)
     return OutputGate(**checker_kwargs).check(*args, **data)

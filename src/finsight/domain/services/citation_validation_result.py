@@ -28,6 +28,8 @@ class CitationValidationResult:
     def __bool__(self) -> bool:
         return bool(self.valid)
 
+    __hash__ = object.__hash__
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, bool):
             return bool(self.valid) == other
@@ -35,4 +37,3 @@ class CitationValidationResult:
 
     def __getitem__(self, key: str) -> object:
         return getattr(self, key, None)
-

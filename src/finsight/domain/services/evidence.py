@@ -12,12 +12,12 @@ from .evidence_checker import (
 )
 
 __all__ = [
-    "EvidenceCheck",
-    "EvidenceChecker",
-    "EvidenceGate",
-    "EvidenceResult",
-    "EvidenceService",
-    "answer_has_evidence",
-    "has_sufficient_evidence",
-    "is_citation_valid",
+    'EvidenceCheck',
+    'EvidenceChecker',
+    'EvidenceGate',
+    'EvidenceResult',
+    'EvidenceService',
+    'answer_has_evidence',
+    'has_sufficient_evidence',
+    'is_citation_valid',
 ]

@@ -7,6 +7,8 @@ import unicodedata
 
 from finsight.core.errors import PolicyBlocked
 
+from .input_gate_result import InputGateResult
+
 # ---------------------------------------------------------------------------
 # PII detection helpers
 # ---------------------------------------------------------------------------
@@ -63,8 +65,6 @@ def detect_prompt_injection(text: str) -> bool:
     return bool(_INJECTION_RE.search(text))
 
 
-from .input_gate_result import InputGateResult
-
 
 class InputGate:
     """Pure domain service that gates questions before any model call."""
@@ -91,7 +91,9 @@ class InputGate:
             max_length = getattr(cfg, 'max_question_length', max_length)
             pii_action = getattr(cfg, 'pii_action', pii_action)
             pii_detection_enabled = getattr(cfg, 'pii_detection_enabled', pii_detection_enabled)
-            injection_enabled = getattr(cfg, 'prompt_injection_detection_enabled', injection_enabled)
+            injection_enabled = getattr(
+                cfg, 'prompt_injection_detection_enabled', injection_enabled
+            )
 
         for arg in args:
             if isinstance(arg, int) and not isinstance(arg, bool):
@@ -106,7 +108,9 @@ class InputGate:
                 max_length = getattr(cfg, 'max_question_length', max_length)
                 pii_action = getattr(cfg, 'pii_action', pii_action)
                 pii_detection_enabled = getattr(cfg, 'pii_detection_enabled', pii_detection_enabled)
-                injection_enabled = getattr(cfg, 'prompt_injection_detection_enabled', injection_enabled)
+                injection_enabled = getattr(
+                    cfg, 'prompt_injection_detection_enabled', injection_enabled
+                )
 
         self.max_question_length = int(max_length) if isinstance(max_length, int) else 4000
         self.pii_action = str(pii_action).lower() if pii_action is not None else 'log'
@@ -122,7 +126,12 @@ class InputGate:
 
     def check(self, question: object = None, *args: object, **kwargs: object) -> InputGateResult:
         if question is None:
-            question = kwargs.get('question') or kwargs.get('text') or kwargs.get('query') or kwargs.get('input')
+            question = (
+                kwargs.get('question')
+                or kwargs.get('text')
+                or kwargs.get('query')
+                or kwargs.get('input')
+            )
         original = '' if question is None else str(question)
         normalized = self._normalize(question)
 
@@ -197,7 +206,12 @@ def input_gate(question: object = None, *args: object, **kwargs: object) -> Inpu
     data = dict(kwargs)
     q = question
     if q is None:
-        q = data.pop('question', None) or data.pop('text', None) or data.pop('query', None) or data.pop('input', None)
+        q = (
+            data.pop('question', None)
+            or data.pop('text', None)
+            or data.pop('query', None)
+            or data.pop('input', None)
+        )
     if q is None and args:
         first = args[0]
         if not hasattr(first, 'max_question_length') and not isinstance(first, bool):

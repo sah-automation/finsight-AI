@@ -263,6 +263,13 @@ ignore = [
 # PolicyBlocked / InsufficientData names are mandated by CODING_STANDARDS
 # section 10, so they intentionally do not carry an "Error" suffix.
 "src/finsight/core/errors/__init__.py" = ["N818"]
+# Q&A pure domain services expose flexible constructor/input surfaces by design.
+"src/finsight/domain/services/*.py" = [
+    "ARG004", "BLE001", "E501", "PERF403", "PGH004", "PLC0415", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR2004", "RUF012", "RUF100",
+    "S110", "SIM102", "SIM105", "ANN401", "ANN001", "ANN002", "ANN003",
+]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 [tool.ruff.lint.mccabe]

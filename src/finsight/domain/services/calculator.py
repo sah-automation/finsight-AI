@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation, getcontext
 
+from .calculation_result import CalculationResult
+
 getcontext().prec = 50
 
 
@@ -43,7 +45,6 @@ def _attr(obj: object, *names: str) -> object:
     return None
 
 
-
 def _value_from_metric(metric: object) -> object:
     if isinstance(metric, dict):
         for key in ('value', 'amount', 'figure', 'metric_value', 'result'):
@@ -68,8 +69,6 @@ def _metric_id(metric: object) -> str:
 def _scope_value(metric: object, *names: str) -> object:
     return _attr(metric, *names)
 
-
-from .calculation_result import CalculationResult
 
 
 class Calculator:
@@ -108,15 +107,25 @@ class Calculator:
                 return False
         return True
 
-    def _collect_inputs(self, *args: object, **kwargs: object) -> tuple[str, list[Decimal], list[str], list[str], dict[str, object]]:
+    def _collect_inputs(
+        self, *args: object, **kwargs: object
+    ) -> tuple[str, list[Decimal], list[str], list[str], dict[str, object]]:
         data = dict(kwargs)
 
         # Determine operation.
-        operation = data.pop('operation', None) or data.pop('op', None) or data.pop('operation_name', None) or data.pop('method', None) or data.pop('mode', None)
+        operation = (
+            data.pop('operation', None)
+            or data.pop('op', None)
+            or data.pop('operation_name', None)
+            or data.pop('method', None)
+            or data.pop('mode', None)
+        )
 
         positional_collect: list[object] = []
         for a in args:
-            if (isinstance(a, str) and operation is None) or (operation is None and isinstance(a, str)):
+            if (isinstance(a, str) and operation is None) or (
+                operation is None and isinstance(a, str)
+            ):
                 operation = a
             else:
                 positional_collect.append(a)
@@ -156,14 +165,26 @@ class Calculator:
             'company': data.pop('company_id', None) or data.pop('company', None),
             'period': data.pop('period', None) or data.pop('fiscal_period', None),
             'category': data.pop('category', None),
-            'document': data.pop('document_id', None) or data.pop('document', None) or data.pop('doc_id', None),
-            'version': data.pop('version', None) or data.pop('version_id', None) or data.pop('document_version', None),
+            'document': data.pop('document_id', None)
+            or data.pop('document', None)
+            or data.pop('doc_id', None),
+            'version': data.pop('version', None)
+            or data.pop('version_id', None)
+            or data.pop('document_version', None),
         }
         # Remove None scopes? keep for match logic (None = no filter)
 
         # Chunk numbers
         chunk_numbers = None
-        for key in ('chunk_numbers', 'cited_chunk_numbers', 'cited_numbers', 'chunk_ids', 'source_chunk_ids', 'numbers', 'cited_chunk_values'):
+        for key in (
+            'chunk_numbers',
+            'cited_chunk_numbers',
+            'cited_numbers',
+            'chunk_ids',
+            'source_chunk_ids',
+            'numbers',
+            'cited_chunk_values',
+        ):
             if key in data and data[key] is not None:
                 chunk_numbers = data.pop(key)
                 break

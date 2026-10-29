@@ -33,6 +33,8 @@ class EvidenceResult:
     def __bool__(self) -> bool:
         return bool(self.sufficient)
 
+    __hash__ = object.__hash__
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, bool):
             return bool(self.sufficient) == other
@@ -40,4 +42,3 @@ class EvidenceResult:
 
     def __getitem__(self, key: str) -> object:
         return getattr(self, key, None)
-

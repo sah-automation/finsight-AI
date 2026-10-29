@@ -5,6 +5,8 @@ from __future__ import annotations
 from finsight.domain.services.evidence import is_citation_valid
 from finsight.domain.value_objects import Citation
 
+from .citation_validation_result import CitationValidationResult
+
 
 def _collect_citations(*args: object, **kwargs: object) -> list[object]:
     result: list[object] = []
@@ -29,8 +31,6 @@ def _collect_citations(*args: object, **kwargs: object) -> list[object]:
     # de-dup keep order not necessary
     return [c for c in result if c is not None]
 
-
-from .citation_validation_result import CitationValidationResult
 
 
 class CitationChecker:
@@ -112,7 +112,11 @@ class CitationChecker:
 
 # Functions
 def check_citation(*args: object, **kwargs: object) -> CitationValidationResult:
-    return CitationChecker(*args, **{k: v for k, v in kwargs.items() if k in ('require_version', 'require_page')}).check(*args, **{k: v for k, v in kwargs.items() if k not in ('require_version', 'require_page')})
+    return CitationChecker(
+        *args, **{k: v for k, v in kwargs.items() if k in ('require_version', 'require_page')}
+    ).check(
+        *args, **{k: v for k, v in kwargs.items() if k not in ('require_version', 'require_page')}
+    )
 
 
 def validate_citation(*args: object, **kwargs: object) -> CitationValidationResult:

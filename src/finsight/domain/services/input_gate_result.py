@@ -39,6 +39,8 @@ class InputGateResult:
     def __bool__(self) -> bool:
         return bool(self.allowed)
 
+    __hash__ = object.__hash__
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, bool):
             return bool(self.allowed) == other

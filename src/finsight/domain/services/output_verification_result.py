@@ -35,6 +35,8 @@ class OutputVerificationResult:
     def __bool__(self) -> bool:
         return bool(self.passed)
 
+    __hash__ = object.__hash__
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, bool):
             return bool(self.passed) == other
@@ -42,4 +44,3 @@ class OutputVerificationResult:
 
     def __getitem__(self, key: str) -> object:
         return getattr(self, key, None)
-

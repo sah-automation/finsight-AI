@@ -51,6 +51,7 @@ from .output_gate import (
     verify_output,
 )
 from .permission_policy import is_permission_allowed
+from .route_decision import RouteDecision
 from .router import (
     DeterministicRouter,
     ModelRouter,
@@ -59,7 +60,6 @@ from .router import (
     Router,
     route_question,
 )
-from .route_decision import RouteDecision
 
 __all__ = [
     'CalculateService',

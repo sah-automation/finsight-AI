@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .evidence_result import EvidenceResult
+
 if TYPE_CHECKING:
     from finsight.domain.value_objects import Citation
 
@@ -43,7 +45,11 @@ def _to_number(value: object) -> float | None:
 
 def is_citation_valid(citation: Citation | object) -> bool:
     """Return True when a citation points at a real, answer-time source."""
-    if not getattr(citation, 'document_id', '').strip() if hasattr(citation, 'document_id') else False:
+    if (
+        not getattr(citation, 'document_id', '').strip()
+        if hasattr(citation, 'document_id')
+        else False
+    ):
         return False
     document_id = getattr(citation, 'document_id', None)
     if document_id is None or not str(document_id).strip():
@@ -76,8 +82,6 @@ def answer_has_evidence(citations: object) -> bool:
         return False
     return all(c is not None and is_citation_valid(c) for c in seq)
 
-
-from .evidence_result import EvidenceResult
 
 
 class EvidenceChecker:
@@ -124,7 +128,9 @@ class EvidenceChecker:
             elif hasattr(arg, 'evidence_min_score'):
                 cfg = arg
                 self.min_score = getattr(cfg, 'evidence_min_score', self.min_score)
-                self.min_search_score = getattr(cfg, 'evidence_min_search_score', self.min_search_score)
+                self.min_search_score = getattr(
+                    cfg, 'evidence_min_search_score', self.min_search_score
+                )
                 self.min_chunks = getattr(cfg, 'evidence_min_chunks', self.min_chunks)
 
     def _threshold(self, reranker_available: bool) -> float:
@@ -190,13 +196,27 @@ class EvidenceChecker:
 
         # Collect candidate objects
         objects: list[object] = list(args)
-        for key in ('scores', 'rerank_scores', 'search_scores', 'results', 'chunks', 'retrieved', 'retrieved_chunks', 'documents'):
+        for key in (
+            'scores',
+            'rerank_scores',
+            'search_scores',
+            'results',
+            'chunks',
+            'retrieved',
+            'retrieved_chunks',
+            'documents',
+        ):
             if key in kwargs and kwargs[key] is not None:
                 objects.append(kwargs[key])
 
         explicit_count = _coalesce(
-            'chunk_count', 'chunks_count', 'num_chunks', 'count', 'n_chunks',
-            kwargs=kwargs, default=None,
+            'chunk_count',
+            'chunks_count',
+            'num_chunks',
+            'count',
+            'n_chunks',
+            kwargs=kwargs,
+            default=None,
         )
         if explicit_count is None and 'chunk_count' not in kwargs:
             explicit_count = kwargs.get('minimum_chunks')
@@ -206,7 +226,10 @@ class EvidenceChecker:
         chunk_groups: list[object] = []
         for obj in objects:
             if isinstance(obj, (list, tuple, set, dict)):
-                if all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in (list(obj.values()) if isinstance(obj, dict) else obj)):
+                if all(
+                    isinstance(x, (int, float)) and not isinstance(x, bool)
+                    for x in (list(obj.values()) if isinstance(obj, dict) else obj)
+                ):
                     score_lists.extend(self._extract_scores(obj, reranker_available))
                 else:
                     chunk_groups.append(obj)
@@ -224,7 +247,9 @@ class EvidenceChecker:
 
         chunk_count = explicit_count
         if chunk_count is None:
-            chunk_count = len(chunk_groups) if chunk_groups and not score_lists else len(score_lists)
+            chunk_count = (
+                len(chunk_groups) if chunk_groups and not score_lists else len(score_lists)
+            )
         try:
             chunk_count = int(chunk_count)  # type: ignore[call-overload]
         except (TypeError, ValueError):
@@ -286,7 +311,16 @@ class EvidenceChecker:
 def has_sufficient_evidence(*args: object, **kwargs: object) -> EvidenceResult:
     data = dict(kwargs)
     checker_kwargs: dict[str, object] = {}
-    for key in ('min_score', 'min_search_score', 'min_chunks', 'config', 'settings', 'evidence_min_score', 'evidence_min_search_score', 'evidence_min_chunks'):
+    for key in (
+        'min_score',
+        'min_search_score',
+        'min_chunks',
+        'config',
+        'settings',
+        'evidence_min_score',
+        'evidence_min_search_score',
+        'evidence_min_chunks',
+    ):
         if key in data:
             checker_kwargs[key] = data.pop(key)
     # Allow a config object passed positionally.

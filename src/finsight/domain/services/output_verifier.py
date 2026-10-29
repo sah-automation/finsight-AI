@@ -6,7 +6,6 @@ from .output_gate import (
     verify_output,
 )
 
-OutputVerifier = OutputVerifier  # already
 __all__ = ['OutputVerificationResult', 'OutputVerifier', 'verify_output']
 # Make OutputGate available under OutputVerificationService too
 OutputVerificationService = OutputVerifier

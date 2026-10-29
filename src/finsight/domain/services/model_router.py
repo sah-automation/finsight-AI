@@ -29,8 +29,12 @@ class ModelRouter:
     """Deterministic cheap/primary router."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
-        self.cheap_model = _coalesce(kwargs, 'cheap_model', 'cheap', 'cheap_model_id', 'cheap_name', default=None)
-        self.primary_model = _coalesce(kwargs, 'primary_model', 'primary', 'primary_model_id', 'primary_name', default=None)
+        self.cheap_model = _coalesce(
+            kwargs, 'cheap_model', 'cheap', 'cheap_model_id', 'cheap_name', default=None
+        )
+        self.primary_model = _coalesce(
+            kwargs, 'primary_model', 'primary', 'primary_model_id', 'primary_name', default=None
+        )
         # config object
         cfg = kwargs.get('config') or kwargs.get('settings') or kwargs.get('llm_config')
         if cfg is not None:
@@ -196,7 +200,16 @@ class ModelRouter:
 def route_question(*args: object, **kwargs: object) -> RouteDecision:
     data = dict(kwargs)
     checker_kwargs = {}
-    for key in ('cheap_model', 'primary_model', 'cheap', 'primary', 'threshold', 'config', 'settings', 'llm_config'):
+    for key in (
+        'cheap_model',
+        'primary_model',
+        'cheap',
+        'primary',
+        'threshold',
+        'config',
+        'settings',
+        'llm_config',
+    ):
         if key in data:
             checker_kwargs[key] = data.pop(key)
     return ModelRouter(**checker_kwargs).route(*args, **data)

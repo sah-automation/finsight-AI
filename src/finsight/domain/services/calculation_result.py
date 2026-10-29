@@ -70,4 +70,3 @@ class CalculationResult:
         if key in mapping:
             return mapping[key]
         return getattr(self, key, None)
-

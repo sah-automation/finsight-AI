@@ -86,4 +86,3 @@ def _to_int_size(value: object) -> int:
         return int(digits) if digits else len(text)
     except ValueError:
         return len(text)
-
