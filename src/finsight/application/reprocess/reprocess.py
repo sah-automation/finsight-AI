@@ -563,8 +563,10 @@ class Reprocess:
                                 or result.get('id')
                                 or result.get('MessageId')
                             )
-                        elif result is not None:
+                        elif result is not None and not isinstance(result, (str, int)):
                             jid = getattr(result, 'id', None) or getattr(result, 'job_id', None)
+                        elif isinstance(result, (str, int)):
+                            jid = result
                         return True, jid
                     except TypeError:
                         continue
@@ -585,8 +587,10 @@ class Reprocess:
                         jid = None
                         if isinstance(result, dict):
                             jid = result.get('job_id') or result.get('jobId') or result.get('id')
-                        elif result is not None:
+                        elif result is not None and not isinstance(result, (str, int)):
                             jid = getattr(result, 'id', None) or getattr(result, 'job_id', None)
+                        elif isinstance(result, (str, int)):
+                            jid = result
                         return True, jid
                     except TypeError:
                         continue

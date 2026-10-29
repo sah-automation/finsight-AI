@@ -912,7 +912,10 @@ class UpdateDocument:
                                 or getattr(result, 'id', None)
                             )
                         if jid is None:
-                            jid = kwargs.get('job_id')
+                            if isinstance(result, (str, int, uuid.UUID)):
+                                jid = result
+                            else:
+                                jid = kwargs.get('job_id')
                         return True, jid
                     except TypeError:
                         continue
@@ -945,7 +948,10 @@ class UpdateDocument:
                         elif result is not None:
                             jid = getattr(result, 'job_id', None) or getattr(result, 'id', None)
                         if jid is None:
-                            jid = kwargs.get('job_id')
+                            if isinstance(result, (str, int, uuid.UUID)):
+                                jid = result
+                            else:
+                                jid = kwargs.get('job_id')
                         return True, jid
                     except TypeError:
                         continue

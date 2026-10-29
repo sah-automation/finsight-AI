@@ -598,6 +598,32 @@ class PipelineStepWorker:
         step = self.step_name
         state = self._version_state(version)
 
+        # Idempotent no-op for an already committed version: re-running any pipeline
+        # step or message must not reset, mutate, or side-effect a committed document.
+        if state in ('committed', 'done') and step in (
+            'read',
+            'parse',
+            'extract',
+            'delta',
+            'chunk',
+            'chunking',
+            'parse_chunks',
+            'embed',
+            'embedding',
+        ):
+            reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+            return {
+                'step': step,
+                'status': 'committed',
+                'version': version,
+                'committed': True,
+                'idempotent': True,
+                'idempotent_noop': True,
+                'chunk_count': len(
+                    reader_data.get('chunk_entities', []) or reader_data.get('chunks', [])
+                ),
+                'vector_count': len(reader_data.get('vectors', [])),
+            }
         # helper to ensure processing state for pipeline steps after read
         if step in ('read', 'parse', 'extract', 'delta', 'chunk', 'embed') and state in (
             'stored',
@@ -852,6 +878,30 @@ class PipelineStepWorker:
             }
 
         if step in ('save', 'commit', 'persist', 'transaction', 'transactional_save'):
+            # Idempotent no-op when the version is already committed: re-running a job or
+            # message must not duplicate chunks, vectors, side effects, cache clears, or events.
+            if state in ('committed', 'done', 'stored_complete'):
+                reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+                chunks = reader_data.get('chunks', [])
+                chunk_entities = reader_data.get('chunk_entities', []) or []
+                vectors = reader_data.get('vectors', [])
+                metrics = reader_data.get('metrics')
+                if metrics is None:
+                    metrics = _IN_MEMORY_METRICS.get(str(version_id), [])
+                return {
+                    'step': step,
+                    'status': 'committed',
+                    'version': version,
+                    'committed': True,
+                    'idempotent': True,
+                    'idempotent_noop': True,
+                    'chunk_count': len(chunk_entities) or len(chunks),
+                    'vector_count': len(vectors),
+                    'metric_count': len(metrics) if isinstance(metrics, list) else 0,
+                    'cache_cleared': False,
+                    'change_event_published': False,
+                    'no_duplicate_side_effects': True,
+                }
             reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
             chunks = reader_data.get('chunks', [])
             chunk_entities = reader_data.get('chunk_entities', []) or []
