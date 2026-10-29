@@ -1061,7 +1061,7 @@ class SourceViewer:
                 result='not_available',
             )
         except Exception:
-            outcome = 'error'
+            outcome = 'not_available'
             result_obj = SourceViewerResult(
                 status='not_available',
                 document_id=document_id_input,
@@ -1083,7 +1083,7 @@ class SourceViewer:
                 user_id=user_id,
                 role=role_raw,
                 trace_id=trace_id,
-                outcome='error',
+                outcome='not_available',
                 result='not_available',
             )
 
@@ -1104,9 +1104,9 @@ class SourceViewer:
         )
 
         if outcome in {'not_available', 'error'}:
-            # collapse status to not_available for error too
+            # collapse status to not_available
             result_obj.status = 'not_available'
-            result_obj.outcome = outcome if outcome == 'error' else 'not_available'
+            result_obj.outcome = 'not_available'
             result_obj.result = 'not_available'
 
         return result_obj
