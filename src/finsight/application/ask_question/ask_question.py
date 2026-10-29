@@ -201,7 +201,7 @@ class AskQuestion:
         if self._calculator is None:
             self._calculator = Calculator()
         if self._citation_checker is None:
-            self._citation_checker = CitationChecker(require_version=False)
+            self._citation_checker = CitationChecker(require_version=True)
         if self._output_verifier is None:
             try:
                 self._output_verifier = __import__(
@@ -1041,8 +1041,8 @@ class AskQuestion:
                 try:
                     validity = self._citation_checker.is_valid(cit)
                     if isinstance(validity, bool) and not validity:
-                        # Still append; evidence handling upstream.
-                        pass
+                        # Drop citations that cannot be pinned to a document version.
+                        continue
                 except Exception:
                     pass
             result.append(cit)

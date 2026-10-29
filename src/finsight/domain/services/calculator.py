@@ -346,11 +346,6 @@ class Calculator:
                 cost = values[1]
                 if isinstance(rev, Decimal) and rev != 0:
                     value = (rev - cost) / rev
-            elif meta.get('denominator_value') is not None and values:
-                rev_raw = meta.get('denominator_value')
-                rev = rev_raw if isinstance(rev_raw, Decimal) else None
-                if isinstance(rev, Decimal) and rev != 0:
-                    value = (values[0] - (values[1] if len(values) > 1 else Decimal(0))) / rev
         elif op == 'variance':
             if values:
                 n = len(values)

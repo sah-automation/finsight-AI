@@ -62,9 +62,8 @@ def is_citation_valid(citation: Citation | object) -> bool:
     if version is None:
         version = getattr(citation, 'version_id', None)
     if version is None or not str(version).strip():
-        # Version is strongly preferred but a document id alone is accepted for
-        # minimal citations used by some tests.
-        pass
+        # A citation must be pinned to the answer-time document version.
+        return False
     page = getattr(citation, 'page_number', None)
     if page is not None:
         try:
@@ -113,7 +112,16 @@ class EvidenceChecker:
         if self.min_chunks is None:
             self.min_chunks = 1
 
-        cfg = kwargs.get('config') or kwargs.get('settings')
+        def _unwrap_config(value: object) -> object:
+            if value is None:
+                return value
+            if isinstance(value, dict):
+                nested = value.get('retrieval')
+                return nested if nested is not None else value
+            nested = getattr(value, 'retrieval', None)
+            return nested if nested is not None else value
+
+        cfg = _unwrap_config(kwargs.get('config') or kwargs.get('settings'))
         if cfg is not None:
             self.min_score = getattr(cfg, 'evidence_min_score', self.min_score)
             self.min_search_score = getattr(cfg, 'evidence_min_search_score', self.min_search_score)
@@ -124,8 +132,8 @@ class EvidenceChecker:
                 # Ambiguous: first numeric becomes min_score
                 if self.min_score == 0.30 and 'evidence_min_score' not in kwargs:
                     self.min_score = arg
-            elif hasattr(arg, 'evidence_min_score'):
-                cfg = arg
+            elif hasattr(arg, 'evidence_min_score') or hasattr(arg, 'retrieval'):
+                cfg = _unwrap_config(arg)
                 self.min_score = getattr(cfg, 'evidence_min_score', self.min_score)
                 self.min_search_score = getattr(
                     cfg, 'evidence_min_search_score', self.min_search_score
@@ -323,7 +331,7 @@ def has_sufficient_evidence(*args: object, **kwargs: object) -> EvidenceResult:
         if key in data:
             checker_kwargs[key] = data.pop(key)
     # Allow a config object passed positionally.
-    cfg_args = [a for a in args if hasattr(a, 'evidence_min_score')]
+    cfg_args = [a for a in args if hasattr(a, 'evidence_min_score') or hasattr(a, 'retrieval')]
     if cfg_args:
         checker_kwargs['config'] = cfg_args[0]
         args = tuple(a for a in args if a is not cfg_args[0])
