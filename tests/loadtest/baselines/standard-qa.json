@@ -1,0 +1,102 @@
+{
+  "profile": "standard",
+  "scenario": "qa",
+  "environment": "staging",
+  "concurrency_cap": 40,
+  "requests": 20,
+  "concurrency": 20,
+  "throughput_qps": 20000.0,
+  "duration_ms": 0.205,
+  "first_word_ms": {
+    "min": 1507.382,
+    "p50": 1734.23,
+    "p95": 1908.56,
+    "p99": 1923.014,
+    "p999": 1926.266,
+    "max": 1926.627,
+    "mean": 1731.453
+  },
+  "streaming_ms": {
+    "min": 1854.623,
+    "p50": 2238.465,
+    "p95": 2543.328,
+    "p99": 2559.924,
+    "p999": 2563.658,
+    "max": 2564.072,
+    "mean": 2236.858
+  },
+  "search_ms": {
+    "min": 80.26,
+    "p50": 95.502,
+    "p95": 114.875,
+    "p99": 115.705,
+    "p999": 115.892,
+    "max": 115.913,
+    "mean": 96.105
+  },
+  "rerank_ms": {
+    "min": 200.057,
+    "p50": 242.656,
+    "p95": 291.83,
+    "p99": 297.528,
+    "p999": 298.81,
+    "max": 298.952,
+    "mean": 248.301
+  },
+  "database_ms": {
+    "min": 12.529,
+    "p50": 32.891,
+    "p95": 55.316,
+    "p99": 55.994,
+    "p999": 56.146,
+    "max": 56.163,
+    "mean": 34.027
+  },
+  "waiting_line": {
+    "capacity": 20,
+    "max_wait_ms": 0.0,
+    "max_queue_depth": 0,
+    "waited_count": 0,
+    "rejected_count": 0
+  },
+  "budgets_met": true,
+  "violations": [],
+  "budgets": {
+    "first_word_timing": {
+      "p95_ms": 3000.0,
+      "p99_ms": 5000.0,
+      "p999_ms": 7000.0,
+      "typical_total_ms": 15000.0
+    },
+    "streaming_behavior": {
+      "first_chunk_p95_ms": 1500.0,
+      "stream_total_p95_ms": 15000.0,
+      "max_buffered_chunks": 1
+    },
+    "search": {
+      "hybrid_search_p95_ms": 200.0,
+      "hybrid_search_p99_ms": 400.0
+    },
+    "reranking": {
+      "rerank_p95_ms": 400.0,
+      "rerank_p99_ms": 800.0
+    },
+    "database_interactions": {
+      "query_p95_ms": 100.0,
+      "query_p99_ms": 250.0,
+      "connection_wait_p95_ms": 50.0
+    },
+    "concurrency": {
+      "lambda_reserved_concurrency": 20,
+      "ingestion_max_concurrency": 4,
+      "db_pool_size_per_function": 3,
+      "question_provisioned_concurrency": 2
+    },
+    "waiting_line": {
+      "max_wait_p95_ms": 1000.0,
+      "max_queue_depth": 200,
+      "retry_after_seconds": 2
+    }
+  },
+  "generated_at": "2026-10-29T09:06:16.095537+00:00"
+}

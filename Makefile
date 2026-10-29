@@ -148,6 +148,12 @@ test-integration:
 test-golden:
 	uv run pytest tests/golden -v --tb=short -m "golden"
 
+test-performance:
+	uv run pytest tests/performance -v --tb=short -m "performance"
+
+test-load:
+	uv run pytest tests/load -v --tb=short -m "performance or load or perf or benchmark"
+
 test-contract:
 	uv run pytest tests/contract -v --tb=short -m "contract"
 
