@@ -1,0 +1,22 @@
+# Cursor Rules - MANDATORY
+
+ALWAYS read AGENTS.md, CODING_STANDARDS.md, CONTRIBUTING.md first.
+
+MANDATORY GATES - MUST PASS:
+- make lint
+- make typecheck
+- make imports
+- make arch-test
+- make test
+- make test-security
+
+ENFORCEMENT:
+- One class per file
+- mypy --strict clean
+- import-linter all KEPT
+- No vendor in domain/app
+- company_id required
+- Decimal for money
+- Constructor injection
+
+NO SHORTCUTS. FIX ALL FAILURES.

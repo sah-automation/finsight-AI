@@ -1,0 +1,17 @@
+# Baseline static security scanning for FinSight AI.
+# Scheduled/manual; not a fast PR blocker.
+rules:
+  - id: no-hardcoded-secrets
+    pattern: $SECRET
+    message: Potential hardcoded secret.
+    languages: [python]
+    severity: ERROR
+  - id: no-direct-env-read-outside-config
+    pattern: os.getenv(...)
+    message: Environment variables must be read only by core/config.
+    paths:
+      include:
+        - src/finsight
+      exclude:
+        - src/finsight/core/config
+    severity: WARNING

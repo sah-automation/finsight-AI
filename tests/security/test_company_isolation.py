@@ -16,10 +16,10 @@ pytestmark = pytest.mark.security
 
 
 class DummyContext:
-    def __init__(  # noqa: PLR0913, PLR0917
+    def __init__(
         self,
         company_id: str = 'company-a',
-        user_id: str = 'user-a',  # noqa: PLR0913, RUF100
+        user_id: str = 'user-a',
         role: Role = Role.CORPORATE_FINANCE_PLANNERS,
         trace_id: str = 'trace-a',
         permissions: dict[str, str] | None = None,

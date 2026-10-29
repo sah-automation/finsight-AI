@@ -7,7 +7,7 @@ from finsight.domain.entities import Chunk
 from finsight.domain.services import DeltaDiffer, DeltaResult
 
 
-def _chunk(  # noqa: PLR0913 - test helper mirrors the chunk factory
+def _chunk(
     *,
     document_id: str = 'doc-1',
     version_id: str = 'version-1',

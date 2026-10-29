@@ -60,6 +60,9 @@ dev = [
     "freezegun>=1.5.0,<2",
     "faker>=34.0.0,<41",
     "reportlab>=4.2.0,<5",
+    "hypothesis>=6.170.0,<7",
+    "mutmut>=3.8.0,<4",
+    "bandit>=1.9.0,<2",
 ]
 [project.urls]
 Homepage = "https://github.com/sah-automation/finsight-AI"
@@ -308,6 +311,8 @@ markers = [
     "architecture: Architecture invariant tests",
     "switch: Switch path tests",
     "security: Security tests (isolation, permissions, cache keys, evidence, PII)",
+    "property: Property-based tests",
+    "mutation: Mutation testing (scheduled/manual)",
     "performance: Performance and load tests",
     "load: Load tests",
     "perf: Performance tests",
@@ -329,6 +334,22 @@ skip_covered = false
 # Ratchet: raise this floor as the suite grows. See
 # docs/plans/quality-standards-enforcement.md.
 fail_under = 24
+[tool.mutmut]
+paths_to_mutate = ["src/finsight/domain", "src/finsight/application"]
+tests_dir = ["tests/unit", "tests/contract", "tests/architecture"]
+do_not_mutate = [
+    "src/finsight/adapters",
+    "src/finsight/entrypoints",
+    "src/finsight/composition",
+]
+runner = "python -m pytest -x -q"
+use_coverage = true
+
+[tool.bandit]
+exclude_dirs = ["tests", "migrations", "infra"]
+severity-level = "medium"
+confidence-level = "medium"
+
 [tool.coverage.html]
 directory = "htmlcov"
 [tool.importlinter]
@@ -521,5 +542,8 @@ include = ["finsight*"]
 
 [dependency-groups]
 dev = [
+    "bandit>=1.9.4",
     "diff-cover>=9.0.0,<11",
+    "hypothesis>=6.170.13",
+    "mutmut>=3.8.1",
 ]

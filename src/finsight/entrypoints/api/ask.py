@@ -21,18 +21,18 @@ from finsight.core.types import Role
 try:  # noqa: PLC0415
     from finsight.core.errors import InsufficientData as _InsufficientDataError
 except Exception:  # noqa: BLE001
-    _InsufficientDataError = None  # type: ignore
+    _InsufficientDataError = None  # type: ignore[assignment,misc]
 
 try:  # noqa: PLC0415
     from finsight.domain.entities.insufficient_data import (
         InsufficientData as _InsufficientDataResult,
     )
 except Exception:  # noqa: BLE001
-    _InsufficientDataResult = None  # type: ignore
+    _InsufficientDataResult = None  # type: ignore[assignment,misc]
 
 _get_ask_use_case: _Any = None
 try:
-    from finsight.composition.ask_question import (  # type: ignore
+    from finsight.composition.ask_question import (  # type: ignore[import-untyped]
         get_ask_use_case as _get_ask_use_case_raw,
     )
 
@@ -276,8 +276,8 @@ def _friendly_error(exc: BaseException) -> str:
             msg
             and msg != _FRIENDLY['generic']
             and 'traceback' not in msg.lower()
-            and len(msg) <= 200
-        ):  # noqa: PLR2004
+            and len(msg) <= 200  # noqa: PLR2004
+        ):
             # Be conservative: avoid leaking raw/long errors.
             return msg
     except Exception:  # noqa: BLE001

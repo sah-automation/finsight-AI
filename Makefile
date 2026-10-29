@@ -80,6 +80,20 @@ install-hooks:
 check: lint typecheck imports vulture secrets test test-security
 	@echo "✓ All quality checks passed"
 
+# Advanced quality gates (issue #80)
+property-tests:
+	uv run pytest tests/property -v --tb=short -m "property"
+
+mutation:
+	uv run mutmut run
+
+mutation-report:
+	uv run mutmut results
+
+security-scan:
+	uv run bandit -r src/finsight -c pyproject.toml
+	uv run pre-commit run detect-secrets --all-files
+	uv run --with pip-audit==2.10.1 pip-audit --local --skip-editable --progress-spinner off
 ci: lint typecheck imports vulture secrets coverage
 	@echo "✓ CI pipeline passed"
 
