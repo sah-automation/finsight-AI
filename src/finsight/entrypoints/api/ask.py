@@ -170,6 +170,40 @@ def _get(obj: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
+def _context_lookup(context: Any, *names: str) -> Any:
+    """Best-effort extraction of a named attribute from a context object or dict."""
+    if context is None:
+        return None
+    direct = _get(context, *names)
+    if direct is not None:
+        return direct
+    nested_keys = (
+        'user',
+        'principal',
+        'identity',
+        'current_user',
+        'context',
+        'request_context',
+        'auth_context',
+        'security_context',
+    )
+    if isinstance(context, dict):
+        for nested_key in nested_keys:
+            nested = context.get(nested_key)
+            if nested is not None:
+                found = _context_lookup(nested, *names)
+                if found is not None:
+                    return found
+        return None
+    for nested_key in nested_keys:
+        nested = getattr(context, nested_key, None)
+        if nested is not None:
+            found = _context_lookup(nested, *names)
+            if found is not None:
+                return found
+    return None
+
+
 def _is_context(value: Any) -> bool:
     return value is not None and (
         hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
@@ -275,6 +309,7 @@ def _friendly_error(exc: BaseException) -> str:
         if (
             msg
             and msg != _FRIENDLY['generic']
+            and msg != 'An unexpected error occurred. Please try again later.'
             and 'traceback' not in msg.lower()
             and len(msg) <= 200  # noqa: PLR2004
         ):
@@ -447,14 +482,52 @@ async def _resolve_context_and_data(
         data['role'] = _role_value
 
     role_candidate = None
-    if _is_context(context):
-        role_candidate = _get(context, 'role')
-    if role_candidate is None and isinstance(context, dict):
-        role_candidate = _get(context, 'role')
+    if context is not None:
+        role_candidate = _context_lookup(context, 'role', 'user_role', 'role_id', 'roleId')
     if role_candidate is None and '_role' in data:
         role_candidate = data.pop('_role', None)
     if role_candidate is None and 'role' in data:
         role_candidate = data.pop('role', None)
+
+    # Propagate scoping attributes from the request context into the payload.
+    access_scope_candidate = None
+    if context is not None:
+        access_scope_candidate = _context_lookup(
+            context,
+            'access_scope',
+            'accessScope',
+            'scope',
+            'access',
+            'permission_scope',
+            'categories',
+            'access_scopes',
+        )
+    if access_scope_candidate is None:
+        access_scope_candidate = _get(
+            data,
+            'access_scope',
+            'accessScope',
+            'scope',
+            'access',
+            'permission_scope',
+            'categories',
+        )
+    if access_scope_candidate is not None and 'access_scope' not in data:
+        data['access_scope'] = access_scope_candidate
+
+    company_candidate = None
+    if context is not None:
+        company_candidate = _context_lookup(
+            context,
+            'company_id',
+            'companyId',
+            'company',
+            'tenant_id',
+            'tenantId',
+            'tenant',
+        )
+    if company_candidate is not None and 'company_id' not in data:
+        data['company_id'] = company_candidate
 
     # expose role candidate back if needed
     if role_candidate is not None and 'role' not in data:
@@ -750,12 +823,25 @@ async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
 
             company_id = data.get('company_id')
             # company_id may be embedded in context.
-            if company_id is None and _is_context(context):
-                company_id = _get(context, 'company_id', 'companyId', 'tenant_id', 'tenantId')
-            if company_id is None and isinstance(context, dict):
-                company_id = _get(context, 'company_id', 'companyId', 'tenant_id', 'tenantId')
+            if company_id is None and context is not None:
+                company_id = _context_lookup(
+                    context,
+                    'company_id',
+                    'companyId',
+                    'company',
+                    'tenant_id',
+                    'tenantId',
+                    'tenant',
+                )
             if company_id is not None:
                 data['company_id'] = company_id
+            else:
+                yield _sse(
+                    'error',
+                    {'message': 'company_id is required.', 'code': 'ValidationError'},
+                )
+                yield _sse('complete', {'done': True, 'error': True})
+                return
 
             question = data.get('question') or data.get('query')
             if not question:
