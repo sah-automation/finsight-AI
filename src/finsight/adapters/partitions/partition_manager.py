@@ -19,6 +19,7 @@ DEFAULT_PARTITION_TABLES = [
     'documents',
     'document_versions',
     'document_chunks',
+    'document_tables',
     'metrics',
     'answers',
     'audit_logs',

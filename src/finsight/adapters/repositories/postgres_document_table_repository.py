@@ -183,7 +183,11 @@ def _matches(row: DocumentTable, filters: dict[str, Any]) -> bool:
     if filters.get('is_active') is not None:
         if bool(row.is_active) != bool(filters['is_active']):
             return False
-    if filters.get('include_inactive') is False and not row.is_active:
+    if (
+        filters.get('is_active') is None
+        and filters.get('include_inactive') is False
+        and not row.is_active
+    ):
         return False
     return True
 

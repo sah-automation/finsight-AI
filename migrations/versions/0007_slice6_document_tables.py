@@ -27,8 +27,12 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS document_tables (
             id uuid NOT NULL DEFAULT gen_random_uuid(),
             company_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
-            document_id uuid REFERENCES documents (id) ON DELETE CASCADE,
+            document_id uuid,
             version_id uuid,
+            FOREIGN KEY (document_id, company_id)
+                REFERENCES documents (id, company_id) ON DELETE CASCADE,
+            FOREIGN KEY (version_id, company_id)
+                REFERENCES document_versions (id, company_id) ON DELETE CASCADE,
             page integer,
             page_number integer,
             positional_index integer NOT NULL DEFAULT 0,
