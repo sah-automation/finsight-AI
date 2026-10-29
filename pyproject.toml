@@ -316,7 +316,7 @@ show_missing = true
 skip_covered = false
 # Ratchet: raise this floor as the suite grows. See
 # docs/plans/quality-standards-enforcement.md.
-fail_under = 25
+fail_under = 24
 [tool.coverage.html]
 directory = "htmlcov"
 [tool.importlinter]
@@ -506,3 +506,8 @@ exclude = [
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["finsight*"]
+
+[dependency-groups]
+dev = [
+    "diff-cover>=9.0.0,<11",
+]

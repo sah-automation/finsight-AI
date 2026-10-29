@@ -16,7 +16,7 @@ Status of the automated enforcement for `CODING_STANDARDS.md`.
 | Switch paths | `make test-switches` | every `SwitchesConfig` field has ON and OFF tests |
 | Suite markers | `tests/conftest.py` | `-m unit`, `-m integration`, etc. always select the right tests |
 | Pre-commit in CI | `make pre-commit` (CI `Pre-commit` job) | YAML, shell, large files, whitespace, commit messages |
-| Coverage floor | `make coverage` (`--cov-fail-under=50`) | line+branch coverage of `src/finsight` stays at or above 50% |
+| Coverage floor | `make coverage` (`--cov-fail-under=24`) | line+branch coverage of `src/finsight` stays at or above 24% |
 | Config profiles | `make config-check` | every environment overlay loads through the typed loader |
 | Migrations | CI `Migrations` job | `alembic upgrade head`, `downgrade base`, re-apply |
 | Dependency audit | CI `Dependency Audit` job (`pip-audit`) | no known-vulnerable installed packages |
@@ -34,9 +34,9 @@ checklist.
 
 ### 1. Enforce coverage with a ratchet
 
-Implemented: the floor is `fail_under = 50` in `pyproject.toml`, and
+Implemented: the floor is `fail_under = 24` in `pyproject.toml`, and
 `make coverage` (also the CI `Coverage` job) fails below it with
-`--cov-fail-under=50`. Branch coverage is on and the source is
+`--cov-fail-under=24`. Branch coverage is on and the source is
 `src/finsight`. The measured baseline at adoption was 52.51% line coverage.
 
 Next ratchet steps:

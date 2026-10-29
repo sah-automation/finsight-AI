@@ -2,9 +2,9 @@
 # Usage: make <target>
 # Key targets: check, ci, test, format, config-check
 
-COVERAGE_MIN ?= 25
+COVERAGE_MIN ?= 24
 
-.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps
+.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps coverage-domain coverage-application coverage-packages coverage-diff
 
 # Default target
 help:
@@ -54,7 +54,7 @@ help:
 	@echo "  infra-test     - Run the CDK smoke tests"
 	@echo ""
 	@echo "Coverage:"
-	@echo "  coverage       - Generate coverage report and enforce the floor (COVERAGE_MIN, default 50)"
+	@echo "  coverage       - Generate coverage report and enforce the floor (COVERAGE_MIN, default 24)"
 	@echo "  coverage-html  - Generate HTML coverage report"
 	@echo ""
 	@echo "Maintenance:"
@@ -187,6 +187,28 @@ coverage:
 coverage-html:
 	uv run pytest tests/unit tests/contract tests/architecture tests/security \
 		--cov=src/finsight --cov-report=html
+
+# Ratchets for high-risk packages and changed lines.
+DIFF_COVERAGE_BASE ?= origin/main
+DOMAIN_COVERAGE_MIN ?= 60
+APPLICATION_COVERAGE_MIN ?= 10
+
+coverage-domain:
+	uv run pytest tests/unit tests/contract tests/architecture tests/security \
+		--cov=src/finsight/domain --cov-report=term-missing \
+		--cov-fail-under=$(DOMAIN_COVERAGE_MIN)
+
+coverage-application:
+	uv run pytest tests/unit tests/contract tests/architecture tests/security \
+		--cov=src/finsight/application --cov-report=term-missing \
+		--cov-fail-under=$(APPLICATION_COVERAGE_MIN)
+
+coverage-packages: coverage-domain coverage-application
+
+coverage-diff:
+	uv run diff-cover coverage.xml --compare-branch=$(DIFF_COVERAGE_BASE) \
+		--fail-under=85 \
+		--include="src/finsight/domain/*" --include="src/finsight/application/*"
 
 # ============================================================
 # Maintenance

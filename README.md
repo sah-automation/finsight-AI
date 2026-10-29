@@ -177,7 +177,7 @@ make check        # lint + typecheck + imports + vulture + secrets + tests + sec
 make ci           # the same gates plus the coverage floor
 make format       # auto-format and auto-fix src and tests
 make pre-commit   # run every pre-commit hook on all files
-make coverage     # coverage floor (COVERAGE_MIN, default 50)
+make coverage     # coverage floor (COVERAGE_MIN, default 24)
 make config-check # validate every environment profile through the loader
 make docs-check   # verify every relative Markdown link resolves
 make test         # unit + contract + architecture + switch suites
@@ -185,7 +185,7 @@ make arch-test    # architecture invariant tests only
 make test-switches # switch ON/OFF path tests only
 ```
 
-Coverage is enforced at 50% line+branch for `src/finsight`
+Coverage is enforced at 24% line+branch for `src/finsight`
 (`fail_under` in `pyproject.toml`, `--cov-fail-under` in `make coverage`).
 Migrations, `conftest.py`, and generated code are excluded. Raise the floor as
 the suite grows; see `docs/plans/quality-standards-enforcement.md`.
@@ -203,7 +203,7 @@ CI Pipeline (`.github/workflows/ci.yml`):
 6. Pre-commit (all hooks, including YAML and shell checks) and Markdown link check
 7. Architecture invariant tests
 8. Unit tests
-9. Coverage floor (50% line+branch) with `coverage.xml` artifact
+9. Coverage floor (24% line+branch) with `coverage.xml` artifact
 10. Contract tests
 11. Switch path tests
 12. Integration tests (with LocalStack/PostgreSQL)

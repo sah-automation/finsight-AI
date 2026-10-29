@@ -155,6 +155,17 @@ jobs:
       - name: Run coverage gate
         run: make coverage
 
+      - name: Run high-risk package ratchets
+        run: make coverage-domain coverage-application
+
+      - name: Fetch PR base for changed-line coverage
+        if: github.event_name == 'pull_request'
+        run: git fetch origin ${{ github.base_ref }} --depth=1
+
+      - name: Run changed-line coverage ratchet
+        if: github.event_name == 'pull_request'
+        run: make coverage-diff DIFF_COVERAGE_BASE=origin/${{ github.base_ref }}
+
       - name: Upload coverage
         uses: actions/upload-artifact@v7
         with:

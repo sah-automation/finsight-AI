@@ -75,7 +75,7 @@ Rules:
 make format       # ruff format + ruff check --fix
 make check        # every gate once: lint, types, imports, vulture, secrets, tests, security
 make ci           # same gates plus the coverage floor
-make coverage     # coverage floor (COVERAGE_MIN, default 50), includes tests/security
+make coverage     # coverage floor (COVERAGE_MIN, default 24), includes tests/security
 make test-security # tenant isolation, permissions, cache keys, evidence, PII
 make config-check # load every config profile through the typed loader
 ```
