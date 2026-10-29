@@ -32,7 +32,7 @@ except Exception:  # noqa: BLE001
 
 _get_ask_use_case: _Any = None
 try:
-    from finsight.composition.ask_question import (  # type: ignore[import-untyped]
+    from finsight.composition.ask_question import (
         get_ask_use_case as _get_ask_use_case_raw,
     )
 

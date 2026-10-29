@@ -137,6 +137,12 @@ ignore = [
     "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR2004", "RET504", "RUF005",
     "S110", "S112", "SIM102", "SIM105", "TRY300", "TC001", "RUF100",
 ]
+# Ask-question use case exposes flexible constructor/input surfaces by design.
+"src/finsight/application/ask_question/*.py" = [
+    "ANN401", "ANN002", "ANN003", "BLE001", "E501", "PLC0415", "PLE0605", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR2004", "RET504", "RUF005",
+    "S110", "S112", "SIM102", "SIM105", "TRY300", "TC001", "RUF100",
+]
 # Reprocess use case exposes flexible constructor/input surfaces by design.
 "src/finsight/application/reprocess/*.py" = [
     "ANN401", "ANN002", "ANN003", "BLE001", "E501", "PLC0415", "PLE0605", "PLR0911",
