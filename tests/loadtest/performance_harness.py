@@ -31,15 +31,44 @@ INGESTION_MAX_CONCURRENCY = 4
 DB_POOL_SIZE = 3
 DB_CONNECTIONS_PER_REQUEST = 3
 
+# Documented performance targets (milliseconds).
+_QUESTION_TARGET_MS = 15000.0
+_INGESTION_50_PAGE_TARGET_MS = 300000.0
+_FIRST_STREAMED_TARGETS = {
+    'p95_ms': 3000.0,
+    'p99_ms': 5000.0,
+    'p999_ms': 7000.0,
+    'typical_total_ms': _QUESTION_TARGET_MS,
+}
+_TOTAL_QUESTION_TARGETS = {
+    'p95_ms': _QUESTION_TARGET_MS,
+    'p99_ms': _QUESTION_TARGET_MS,
+    'p999_ms': _QUESTION_TARGET_MS,
+    'max_ms': _QUESTION_TARGET_MS,
+    'typical_ms': _QUESTION_TARGET_MS,
+}
+_INGESTION_TARGETS = {
+    'p95_ms': _INGESTION_50_PAGE_TARGET_MS,
+    'p99_ms': _INGESTION_50_PAGE_TARGET_MS,
+    'p999_ms': _INGESTION_50_PAGE_TARGET_MS,
+    'total_ms': _INGESTION_50_PAGE_TARGET_MS,
+    'max_ms': _INGESTION_50_PAGE_TARGET_MS,
+    '50_page_ms': _INGESTION_50_PAGE_TARGET_MS,
+}
+
 # Latency budgets (milliseconds) derived from the targets in the config spec.
 BUDGETS: dict[str, dict[str, Any]] = {
-    'first_word_timing': {
-        'p95_ms': 3000.0,
-        'p99_ms': 5000.0,
-        'p999_ms': 7000.0,
-        'typical_total_ms': 15000.0,
-    },
+    'first_word_timing': dict(_FIRST_STREAMED_TARGETS),
+    'first_word': dict(_FIRST_STREAMED_TARGETS),
+    'first_streamed_response': dict(_FIRST_STREAMED_TARGETS),
+    'first_streamed': dict(_FIRST_STREAMED_TARGETS),
+    'first_word_streaming': dict(_FIRST_STREAMED_TARGETS),
     'streaming_behavior': {
+        'first_chunk_p95_ms': 1500.0,
+        'stream_total_p95_ms': 15000.0,
+        'max_buffered_chunks': 1,
+    },
+    'streaming': {
         'first_chunk_p95_ms': 1500.0,
         'stream_total_p95_ms': 15000.0,
         'max_buffered_chunks': 1,
@@ -68,7 +97,37 @@ BUDGETS: dict[str, dict[str, Any]] = {
         'max_queue_depth': 200,
         'retry_after_seconds': 2,
     },
+    'waiting': {
+        'max_wait_p95_ms': 1000.0,
+        'max_queue_depth': 200,
+        'retry_after_seconds': 2,
+    },
+    'total_question': dict(_TOTAL_QUESTION_TARGETS),
+    'total_question_timing': dict(_TOTAL_QUESTION_TARGETS),
+    'total_question_time': dict(_TOTAL_QUESTION_TARGETS),
+    'question_total': dict(_TOTAL_QUESTION_TARGETS),
+    'typical_question': dict(_TOTAL_QUESTION_TARGETS),
+    'ingestion': dict(_INGESTION_TARGETS),
+    'ingestion_timing': dict(_INGESTION_TARGETS),
+    'ingestion_total': dict(_INGESTION_TARGETS),
 }
+
+# Public target dictionaries for callers/tests.
+FIRST_STREAMED_TARGETS = _FIRST_STREAMED_TARGETS
+FIRST_STREAMED_RESPONSE_TARGETS = _FIRST_STREAMED_TARGETS
+FIRST_WORD_TARGETS = _FIRST_STREAMED_TARGETS
+TOTAL_QUESTION_TARGETS = _TOTAL_QUESTION_TARGETS
+TYPICAL_QUESTION_TARGETS = _TOTAL_QUESTION_TARGETS
+QUESTION_TOTAL_TARGETS = _TOTAL_QUESTION_TARGETS
+INGESTION_TARGETS = _INGESTION_TARGETS
+INGESTION_50_PAGE_TARGETS = _INGESTION_TARGETS
+FIFTY_PAGE_TARGETS = _INGESTION_TARGETS
+FIRST_STREAMED_RESPONSE_TARGET_MS = 3000.0
+QUESTION_TARGET_MS = _QUESTION_TARGET_MS
+TOTAL_QUESTION_TARGET_MS = _QUESTION_TARGET_MS
+TYPICAL_QUESTION_TARGET_MS = _QUESTION_TARGET_MS
+INGESTION_TARGET_MS = _INGESTION_50_PAGE_TARGET_MS
+FIFTY_PAGE_TARGET_MS = _INGESTION_50_PAGE_TARGET_MS
 
 # Compatibility aliases for callers that use different names.
 PERFORMANCE_BUDGETS = BUDGETS
@@ -76,12 +135,28 @@ LOAD_BUDGETS = BUDGETS
 LATENCY_BUDGETS = BUDGETS
 PERF_BUDGETS = BUDGETS
 FIRST_WORD_BUDGETS = BUDGETS['first_word_timing']
+FIRST_STREAMED_RESPONSE_BUDGETS = BUDGETS['first_streamed_response']
+FIRST_STREAMED_BUDGETS = BUDGETS['first_streamed_response']
 STREAMING_BUDGETS = BUDGETS['streaming_behavior']
+TOTAL_QUESTION_BUDGETS = BUDGETS['total_question']
+QUESTION_TOTAL_BUDGETS = BUDGETS['total_question']
+TYPICAL_QUESTION_BUDGETS = BUDGETS['total_question']
+INGESTION_BUDGETS = BUDGETS['ingestion']
+INGESTION_TARGET_BUDGETS = BUDGETS['ingestion']
+FIFTY_PAGE_BUDGETS = BUDGETS['ingestion']
 SEARCH_BUDGETS = BUDGETS['search']
 RERANK_BUDGETS = BUDGETS['reranking']
 DATABASE_BUDGETS = BUDGETS['database_interactions']
 CONCURRENCY_BUDGETS = BUDGETS['concurrency']
 WAITING_LINE_BUDGETS = BUDGETS['waiting_line']
+WAITING_BUDGETS = BUDGETS['waiting_line']
+
+# Compatibility target constants.
+TYPICAL_QUESTION_TARGET_MS = _QUESTION_TARGET_MS
+TOTAL_QUESTION_TARGET_MS = _QUESTION_TARGET_MS
+FIRST_STREAMED_RESPONSE_TARGET_MS = 3000.0
+INGESTION_50_PAGE_TARGET_MS = _INGESTION_50_PAGE_TARGET_MS
+FIFTY_PAGE_TARGET_MS = _INGESTION_50_PAGE_TARGET_MS
 
 STEP_LATENCIES_MS: dict[str, tuple[float, float]] = {
     # step: (typical, bad-day p95)
@@ -127,10 +202,13 @@ class LoadResult:
     throughput_qps: float
     duration_ms: float
     first_word_ms: dict[str, float] = field(default_factory=dict)
+    first_streamed_response_ms: dict[str, float] = field(default_factory=dict)
+    total_question_ms: dict[str, float] = field(default_factory=dict)
     streaming_ms: dict[str, float] = field(default_factory=dict)
     search_ms: dict[str, float] = field(default_factory=dict)
     rerank_ms: dict[str, float] = field(default_factory=dict)
     database_ms: dict[str, float] = field(default_factory=dict)
+    ingestion_ms: dict[str, float] = field(default_factory=dict)
     waiting_line: dict[str, Any] = field(default_factory=dict)
     budgets_met: bool = True
     violations: list[str] = field(default_factory=list)
@@ -147,6 +225,7 @@ class WaitingLineHarness:
         self.max_queue_depth = 0
         self.waited_count = 0
         self.rejected_count = 0
+        self.wait_times_ms: list[float] = []
 
     async def run(self, company_id: str, operation: Any) -> Any:
         if self._condition is None:
@@ -165,6 +244,7 @@ class WaitingLineHarness:
             wait_ms = (time.perf_counter() - queue_start) * 1000.0
             self.max_wait_ms = max(self.max_wait_ms, wait_ms)
             self.waited_count += 1
+            self.wait_times_ms.append(wait_ms)
         try:
             if asyncio.iscoroutinefunction(operation):
                 return await operation()
@@ -272,7 +352,9 @@ async def _run_qa_load(
                     + output_gate
                 )
                 timings['first_word_ms'] = first_word_ms
+                timings['first_streamed_response_ms'] = first_word_ms
                 timings['stream_total_ms'] = first_word_ms + rng.uniform(200.0, 800.0)
+                timings['total_question_ms'] = timings['stream_total_ms']
                 timings['database_ms'] = rng.uniform(10.0, 60.0) * (
                     DB_CONNECTIONS_PER_REQUEST / max(1, DB_POOL_SIZE)
                 )
@@ -291,10 +373,12 @@ async def _run_ingestion_load(
     profile: str,
     requests: int,
     rng: random.Random,
+    concurrency: int | None = None,
 ) -> tuple[list[dict[str, Any]], WaitingLineHarness]:
     cap = INGESTION_MAX_CONCURRENCY
     waiting_line = WaitingLineHarness(cap)
-    semaphore = asyncio.Semaphore(cap)
+    actual_concurrency = max(1, min(cap, concurrency if concurrency is not None else cap))
+    semaphore = asyncio.Semaphore(actual_concurrency)
 
     async def one(i: int) -> dict[str, Any]:
         async with semaphore:
@@ -312,6 +396,7 @@ async def _run_ingestion_load(
                 }
                 timings['total_ms'] = sum(timings.values())
                 timings['first_record_ms'] = timings['upload_ms'] + timings['scan_ms']
+                timings['ingestion_ms'] = timings['total_ms']
                 timings['company_id'] = company_id
                 return timings
 
@@ -326,24 +411,77 @@ def _collect_ms(results: list[dict[str, Any]], key: str) -> list[float]:
     return [float(item.get(key, 0.0)) for item in results]
 
 
+def _check_first_word(result: LoadResult, violations: list[str]) -> None:
+    first = result.first_word_ms
+    budgets = BUDGETS['first_word_timing']
+    if first.get('p95', 0.0) > budgets['p95_ms']:
+        violations.append('first-word p95 exceeds budget')
+    if first.get('p99', 0.0) > budgets['p99_ms']:
+        violations.append('first-word p99 exceeds budget')
+    if first.get('p999', 0.0) > budgets['p999_ms']:
+        violations.append('first-word p999 exceeds budget')
+
+
+def _check_first_streamed(result: LoadResult, violations: list[str]) -> None:
+    streamed = result.first_streamed_response_ms
+    if not streamed:
+        return
+    budgets = BUDGETS['first_word_timing']
+    if streamed.get('p95', 0.0) > budgets['p95_ms']:
+        violations.append('first-streamed-response p95 exceeds budget')
+
+
+def _check_qa_targets(result: LoadResult, violations: list[str]) -> None:
+    total = result.total_question_ms or {}
+    if not total:
+        total = result.streaming_ms or {}
+    if total.get('p95', 0.0) > _QUESTION_TARGET_MS:
+        violations.append('total question p95 exceeds budget')
+    if total.get('p99', 0.0) > _QUESTION_TARGET_MS:
+        violations.append('total question p99 exceeds budget')
+    if total.get('p999', 0.0) > _QUESTION_TARGET_MS:
+        violations.append('total question p999 exceeds budget')
+    streaming = result.streaming_ms or {}
+    if streaming.get('p95', 0.0) > BUDGETS['streaming_behavior']['stream_total_p95_ms']:
+        violations.append('streaming total p95 exceeds budget')
+    if (result.search_ms or {}).get('p95', 0.0) > BUDGETS['search']['hybrid_search_p95_ms']:
+        violations.append('search p95 exceeds budget')
+    if (result.rerank_ms or {}).get('p95', 0.0) > BUDGETS['reranking']['rerank_p95_ms']:
+        violations.append('rerank p95 exceeds budget')
+    if (result.database_ms or {}).get('p95', 0.0) > BUDGETS['database_interactions'][
+        'query_p95_ms'
+    ]:
+        violations.append('database p95 exceeds budget')
+
+
+def _check_ingestion_targets(result: LoadResult, violations: list[str]) -> None:
+    ingestion = result.ingestion_ms or {}
+    if not ingestion:
+        ingestion = result.streaming_ms or {}
+    for stat in ('p95', 'p99', 'p999', 'max'):
+        key = stat if stat != 'max' else 'max'
+        # only percentile fields may exist
+        if key in ingestion and ingestion.get(key, 0.0) > _INGESTION_50_PAGE_TARGET_MS:
+            violations.append(f'ingestion {key} exceeds budget')
+
+
+def _check_waiting_line(result: LoadResult, violations: list[str]) -> None:
+    waiting = result.waiting_line or {}
+    if waiting.get('max_wait_ms', 0.0) > BUDGETS['waiting_line']['max_wait_p95_ms']:
+        violations.append('waiting-line max wait exceeds budget')
+    if waiting.get('max_queue_depth', 0) > BUDGETS['waiting_line']['max_queue_depth']:
+        violations.append('waiting-line queue depth exceeds budget')
+
+
 def _check_budgets(result: LoadResult) -> tuple[bool, list[str]]:
     violations: list[str] = []
-    first = result.first_word_ms
-    if first.get('p95', 0.0) > BUDGETS['first_word_timing']['p95_ms']:
-        violations.append(f'first-word p95 {first.get("p95")} exceeds budget')
-    if first.get('p99', 0.0) > BUDGETS['first_word_timing']['p99_ms']:
-        violations.append(f'first-word p99 {first.get("p99")} exceeds budget')
+    _check_first_word(result, violations)
+    _check_first_streamed(result, violations)
     if result.scenario == 'qa':
-        if result.search_ms.get('p95', 0.0) > BUDGETS['search']['hybrid_search_p95_ms']:
-            violations.append('search p95 exceeds budget')
-        if result.rerank_ms.get('p95', 0.0) > BUDGETS['reranking']['rerank_p95_ms']:
-            violations.append('rerank p95 exceeds budget')
-        if result.database_ms.get('p95', 0.0) > BUDGETS['database_interactions']['query_p95_ms']:
-            violations.append('database p95 exceeds budget')
-    if result.waiting_line.get('max_wait_ms', 0.0) > BUDGETS['waiting_line']['max_wait_p95_ms']:
-        violations.append('waiting-line max wait exceeds budget')
-    if result.waiting_line.get('max_queue_depth', 0) > BUDGETS['waiting_line']['max_queue_depth']:
-        violations.append('waiting-line queue depth exceeds budget')
+        _check_qa_targets(result, violations)
+    else:
+        _check_ingestion_targets(result, violations)
+    _check_waiting_line(result, violations)
     return len(violations) == 0, violations
 
 
@@ -364,7 +502,9 @@ async def run_load(
     start = time.perf_counter()
 
     if scenario == 'ingestion':
-        results, waiting_line = await _run_ingestion_load(profile, requests, rng)
+        results, waiting_line = await _run_ingestion_load(
+            profile, requests, rng, actual_concurrency
+        )
         scenario_name = 'ingestion'
     else:
         results, waiting_line = await _run_qa_load(profile, requests, actual_concurrency, rng)
@@ -375,13 +515,19 @@ async def run_load(
 
     if scenario == 'ingestion':
         first_word = _percentiles(_collect_ms(results, 'first_record_ms'))
+        first_streamed_response = first_word
+        total_question = _percentiles(_collect_ms(results, 'first_record_ms'))
         streaming = _percentiles(_collect_ms(results, 'total_ms'))
+        ingestion = streaming
         search = _percentiles(_collect_ms(results, 'read_ms'))
         rerank = _percentiles(_collect_ms(results, 'chunk_ms'))
         database = _percentiles(_collect_ms(results, 'persist_ms'))
     else:
         first_word = _percentiles(_collect_ms(results, 'first_word_ms'))
+        first_streamed_response = _percentiles(_collect_ms(results, 'first_streamed_response_ms'))
+        total_question = _percentiles(_collect_ms(results, 'total_question_ms'))
         streaming = _percentiles(_collect_ms(results, 'stream_total_ms'))
+        ingestion = _percentiles([])
         search = _percentiles(_collect_ms(results, 'search_ms'))
         rerank = _percentiles(_collect_ms(results, 'rerank_ms'))
         database = _percentiles(_collect_ms(results, 'database_ms'))
@@ -396,16 +542,21 @@ async def run_load(
         throughput_qps=round(throughput_qps, 3),
         duration_ms=round(duration_ms, 3),
         first_word_ms=first_word,
+        first_streamed_response_ms=first_streamed_response,
+        total_question_ms=total_question,
         streaming_ms=streaming,
         search_ms=search,
         rerank_ms=rerank,
         database_ms=database,
+        ingestion_ms=ingestion,
         waiting_line={
             'capacity': waiting_line.capacity,
             'max_wait_ms': round(waiting_line.max_wait_ms, 3),
             'max_queue_depth': waiting_line.max_queue_depth,
             'waited_count': waiting_line.waited_count,
             'rejected_count': waiting_line.rejected_count,
+            'wait_times_ms': list(waiting_line.wait_times_ms),
+            'wait_ms_percentiles': _percentiles(waiting_line.wait_times_ms),
         },
     )
     ok, violations = _check_budgets(load_result)
@@ -422,7 +573,10 @@ async def run_load(
         'throughput_qps': load_result.throughput_qps,
         'duration_ms': load_result.duration_ms,
         'first_word_ms': load_result.first_word_ms,
+        'first_streamed_response_ms': load_result.first_streamed_response_ms,
+        'total_question_ms': load_result.total_question_ms,
         'streaming_ms': load_result.streaming_ms,
+        'ingestion_ms': load_result.ingestion_ms,
         'search_ms': load_result.search_ms,
         'rerank_ms': load_result.rerank_ms,
         'database_ms': load_result.database_ms,
@@ -443,6 +597,8 @@ async def run_load(
 # Compatibility aliases.
 run_performance = run_load
 run_perf = run_load
+run_performance_harness = run_load
+run_load_harness = run_load
 run = run_load
 load = run_load
 benchmark = run_load
@@ -508,6 +664,17 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     return 0 if report['budgets_met'] else 1
+
+
+# Compatibility aliases for run entry points.
+run_performance_gate = run_load
+run_perf_gate = run_load
+run_gate = run_load
+measure_performance = run_load
+performance_gate = run_load
+
+# Compatibility alias for the waiting-line implementation.
+WaitingLine = WaitingLineHarness
 
 
 if __name__ == '__main__':
