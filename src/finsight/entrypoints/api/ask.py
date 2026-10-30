@@ -767,6 +767,36 @@ def _events_from_outcome(outcome: Any, data: dict[str, Any]) -> list[tuple[str, 
         complete_payload['cached'] = bool(cached)
     if answer_text is None and not citations:
         complete_payload['insufficient_data'] = True
+
+    thread_id: Any = None
+    answer_id: Any = None
+    if isinstance(outcome, dict):
+        thread_id = _get(outcome, 'thread_id', 'threadId', 'thread', 'chat_id', 'conversation_id')
+        answer_id = _get(outcome, 'answer_id', 'answerId', 'answer', 'response_id', 'id')
+        nested_thread = outcome.get('thread')
+        if isinstance(nested_thread, dict):
+            thread_id = thread_id or _get(nested_thread, 'thread_id', 'threadId', 'id', 'thread')
+        nested_answer = outcome.get('answer')
+        if isinstance(nested_answer, dict):
+            answer_id = answer_id or _get(nested_answer, 'answer_id', 'answerId', 'id')
+    else:
+        thread_id = _get(outcome, 'thread_id', 'threadId', 'thread', 'chat_id', 'conversation_id')
+        answer_id = _get(outcome, 'answer_id', 'answerId', 'answer', 'response_id', 'result_id')
+        nested_thread = getattr(outcome, 'thread', None)
+        if isinstance(nested_thread, dict):
+            thread_id = thread_id or _get(nested_thread, 'thread_id', 'threadId', 'id', 'thread')
+        nested_answer = getattr(outcome, 'answer', None)
+        if isinstance(nested_answer, dict):
+            answer_id = answer_id or _get(nested_answer, 'answer_id', 'answerId', 'id')
+    # Avoid mislabeling the answer text as an id.
+    if isinstance(answer_id, str) and answer_id == answer_text:
+        answer_id = _get(outcome, 'answer_id', 'answerId', 'response_id', 'result_id')
+    if thread_id is not None:
+        complete_payload['thread_id'] = thread_id
+        complete_payload['threadId'] = thread_id
+    if answer_id is not None:
+        complete_payload['answer_id'] = answer_id
+        complete_payload['answerId'] = answer_id
     events.append(('complete', complete_payload))
     return events
 
@@ -927,6 +957,7 @@ async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
                         'question': data.get('question'),
                         'context': context,
                         'company_id': data.get('company_id'),
+                        'thread_id': data.get('thread_id'),
                     }
                 )
             except TypeError:

@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from finsight.entrypoints.api import ask, current_user, documents, onboarding, source_viewer, upload
+from finsight.entrypoints.api import (
+    ask,
+    current_user,
+    documents,
+    onboarding,
+    source_viewer,
+    threads,
+    upload,
+)
 
 
 def create_app() -> FastAPI:
@@ -21,6 +29,7 @@ def create_app() -> FastAPI:
         upload.router,
         source_viewer.router,
         current_user.router,
+        threads.router,
     )
     for router_obj in primary_routers:
         app.include_router(router_obj)
@@ -29,6 +38,8 @@ def create_app() -> FastAPI:
     for extra in getattr(ask, 'EXTRA_ROUTERS', ()):
         app.include_router(extra)
     for extra in getattr(current_user, 'EXTRA_ROUTERS', ()):
+        app.include_router(extra)
+    for extra in getattr(threads, 'EXTRA_ROUTERS', ()):
         app.include_router(extra)
 
     return app

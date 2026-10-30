@@ -204,6 +204,21 @@ class AskQuestion:
             'citation_signing_key',
             default=None,
         )
+        self._thread_history = _get_attr(
+            kwargs,
+            'chat_history',
+            'thread_history',
+            'thread_repository',
+            'threads_repository',
+            'threads',
+            'thread_store',
+            'thread_store_adapter',
+            'history',
+            'history_store',
+            'conversation_repository',
+            'conversations',
+            default=None,
+        )
 
         # Domain services (lazy-created if missing).
         self._input_gate = _get_attr(kwargs, 'input_gate', 'input_gater', 'gate', default=None)
@@ -265,6 +280,7 @@ class AskQuestion:
         self._question: str = ''
         self._role: Any = None
         self._access_scope: Any = None
+        self._thread_id: Any = None
 
     # ------------------------------------------------------------------
     # Entry points
@@ -377,6 +393,14 @@ class AskQuestion:
         user_id = _first(merged, 'user_id', 'userId', 'user', 'uid', 'user_id_str')
         if user_id is None and ctx is not None:
             user_id = _first(ctx, 'user_id', 'userId', 'user', 'uid')
+        thread_id_raw = _first(
+            merged, 'thread_id', 'ThreadId', 'threadId', 'thread', 'chat_id', 'conversation_id'
+        )
+        if thread_id_raw is None and ctx is not None:
+            thread_id_raw = _first(
+                ctx, 'thread_id', 'ThreadId', 'threadId', 'thread', 'chat_id', 'conversation_id'
+            )
+        self._thread_id = None if thread_id_raw is None else str(thread_id_raw).strip() or None
         document_stamp = _first(merged, 'document_stamp', 'documentStamp', 'stamp', 'doc_stamp')
         self._company_id = company_id
         self._question = question
@@ -742,6 +766,70 @@ class AskQuestion:
                     )
                 except Exception:
                     pass
+
+            # Persist the Q&A thread (reuse existing chat history shape) when a
+            # thread history adapter is available. Stored under company/thread ids.
+            resolved_thread_id = self._thread_id
+            if resolved_thread_id in (None, ''):
+                resolved_thread_id = str(__import__('uuid').uuid4())
+            self._thread_id = resolved_thread_id
+            try:
+                answer.thread_id = resolved_thread_id  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            try:
+                answer.extras['thread_id'] = resolved_thread_id
+            except Exception:
+                pass
+
+            repo = self._thread_history
+            if repo is not None:
+                payload = {
+                    'company_id': company_id,
+                    'thread_id': resolved_thread_id,
+                    'user_id': user_id,
+                    'role': role,
+                    'question': q,
+                    'answer': text,
+                    'answer_id': getattr(answer, 'answer_id', None),
+                    'citations': citations,
+                    'model': final_model_text,
+                    'access_scope': access_scope,
+                }
+                persisted = False
+                for method_name in (
+                    'persist_thread',
+                    'save_thread',
+                    'store_thread',
+                    'put_thread',
+                    'upsert_thread',
+                    'record_thread',
+                    'create_thread',
+                    'append_thread',
+                    'save',
+                    'store',
+                    'put',
+                    'record',
+                ):
+                    method = getattr(repo, method_name, None)
+                    if not callable(method):
+                        continue
+                    try:
+                        await _await(method(company_id, **payload))
+                        persisted = True
+                        break
+                    except TypeError:
+                        try:
+                            result = method(company_id, **payload)
+                            await _await(result)
+                            persisted = True
+                            break
+                        except Exception:
+                            continue
+                    except Exception:
+                        continue
+                # no-op when nothing matches; adapter unavailable
+                _ = persisted
             return answer
 
         # ---- Waiting line handling ----
@@ -810,6 +898,12 @@ class AskQuestion:
                     'documentStamp',
                     'stamp',
                     'doc_stamp',
+                    'thread_id',
+                    'ThreadId',
+                    'threadId',
+                    'thread',
+                    'chat_id',
+                    'conversation_id',
                 ):
                     value = _get_attr(request, attr, default=None)
                     if value is not None:
