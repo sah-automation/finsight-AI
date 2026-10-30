@@ -3251,6 +3251,20 @@ def _build_llm_stack(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         return None
     _extra = dict(kwargs)
+    for _drop in (
+        'config',
+        'settings',
+        'configuration',
+        'app_config',
+        'session',
+        'db_session',
+        'container',
+        'composition',
+        'root',
+        'app',
+        'context',
+    ):
+        _extra.pop(_drop, None)
     metering = _extra.pop('metering', None)
     if metering is None:
         try:
@@ -3301,6 +3315,20 @@ def _build_embedding_stack(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         return None
     _extra = dict(kwargs)
+    for _drop in (
+        'config',
+        'settings',
+        'configuration',
+        'app_config',
+        'session',
+        'db_session',
+        'container',
+        'composition',
+        'root',
+        'app',
+        'context',
+    ):
+        _extra.pop(_drop, None)
     metering = _extra.pop('metering', None)
     if metering is None:
         try:
@@ -3347,6 +3375,20 @@ def _build_reranker_stack(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         return None
     _extra = dict(kwargs)
+    for _drop in (
+        'config',
+        'settings',
+        'configuration',
+        'app_config',
+        'session',
+        'db_session',
+        'container',
+        'composition',
+        'root',
+        'app',
+        'context',
+    ):
+        _extra.pop(_drop, None)
     metering = _extra.pop('metering', None)
     if metering is None:
         try:
@@ -3393,6 +3435,20 @@ def _build_extraction_stack(*args: Any, **kwargs: Any) -> Any:
         return None
     # Need an underlying reader/extractor. Prefer injected.
     _extra = dict(kwargs)
+    for _drop in (
+        'config',
+        'settings',
+        'configuration',
+        'app_config',
+        'session',
+        'db_session',
+        'container',
+        'composition',
+        'root',
+        'app',
+        'context',
+    ):
+        _extra.pop(_drop, None)
     reader = (
         _extra.pop('reader', None)
         or _extra.pop('wrapped', None)

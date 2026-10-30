@@ -1,4 +1,4 @@
-# ruff: noqa: S110
+# ruff: noqa: PLC0415, S110
 from __future__ import annotations
 
 import inspect
@@ -46,9 +46,13 @@ class MeteredReranker:
             return None
         return getattr(inner, 'metering', None)
 
-    async def _record_usage(self, company_id: Any) -> None:
+    async def _record_usage(self, company_id: Any, trace_id: Any = None) -> None:
         metering = self.metering
-        if metering is None or self._inner_metering() is metering:
+        import uuid
+
+        if trace_id is None:
+            trace_id = str(uuid.uuid4())
+        if metering is None or self._inner_metering() is metering or company_id is None:
             return
         try:
             method = None

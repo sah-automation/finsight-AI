@@ -48,9 +48,13 @@ class MeteredEmbedding(LiteLLMEmbedding):
             return None
         return getattr(inner, 'metering', None)
 
-    async def _record_metering(self, company_id: Any, units: int = 1) -> None:
+    async def _record_metering(self, company_id: Any, units: int = 1, trace_id: Any = None) -> None:
         metering = self.metering
-        if metering is None or self._inner_metering() is metering:
+        import uuid
+
+        if trace_id is None:
+            trace_id = str(uuid.uuid4())
+        if metering is None or self._inner_metering() is metering or company_id is None:
             return
         try:
             method = None

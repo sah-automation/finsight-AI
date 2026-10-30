@@ -1,4 +1,3 @@
-# ruff: noqa: TRY004
 from __future__ import annotations
 
 import inspect
@@ -41,9 +40,13 @@ class MeteredExtraction:
             return None
         return getattr(inner, 'metering', None)
 
-    async def _record_usage(self, company_id: Any) -> None:
+    async def _record_usage(self, company_id: Any, trace_id: Any = None) -> None:
         metering = self.metering
-        if metering is None or self._inner_metering() is metering:
+        import uuid
+
+        if trace_id is None:
+            trace_id = str(uuid.uuid4())
+        if metering is None or self._inner_metering() is metering or company_id is None:
             return
         try:
             method = None
@@ -81,14 +84,16 @@ class MeteredExtraction:
         target = self._inner if self._inner is not None else self
         method = getattr(target, method_name, None)
         if not callable(method):
-            raise AttributeError(method_name)
+            raise AttributeError(method_name)  # noqa: TRY004
         try:
             result = method(*args, **kwargs)
             if inspect.isawaitable(result):
                 result = await result
             return result
         finally:
-            await self._record_usage(company_id)
+            await self._record_usage(
+                company_id, trace_id=kwargs.get('trace_id', kwargs.get('trace'))
+            )
 
     async def read(self, *args: Any, company_id: Any = None, **kwargs: Any) -> Any:
         company_id = (

@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001
+# ruff: noqa: ANN401, BLE001, PLC0415
 """Metered LLM decorator (records usage around an inner LLM gateway)."""
 
 from __future__ import annotations
@@ -58,9 +58,13 @@ class MeteredLLM(LiteLLMGateway):
             return None
         return getattr(inner, 'metering', None)
 
-    async def _record_metering(self, company_id: Any) -> None:
+    async def _record_metering(self, company_id: Any, trace_id: Any = None) -> None:
+        import uuid
+
+        if trace_id is None:
+            trace_id = str(uuid.uuid4())
         metering = self.metering
-        if metering is None:
+        if metering is None or company_id is None:
             return
         if self._inner_metering() is metering:
             return
@@ -89,7 +93,8 @@ class MeteredLLM(LiteLLMGateway):
                         model='llm',
                         units=1,
                         estimated_cost=None,
-                        trace_id=None,
+                        trace_id=trace_id,
+                        trace=trace_id,
                     )
                 except TypeError:
                     result = method(company_id, service='llm', units=1)
@@ -111,7 +116,8 @@ class MeteredLLM(LiteLLMGateway):
             if not recorded:
                 recorded = True
                 await self._record_metering(
-                    company_id if company_id is not None else kwargs.get('company_id')
+                    company_id if company_id is not None else kwargs.get('company_id'),
+                    trace_id=kwargs.get('trace_id', kwargs.get('trace')),
                 )
 
     async def stream(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
@@ -125,7 +131,8 @@ class MeteredLLM(LiteLLMGateway):
             recorded = True
             try:
                 await self._record_metering(
-                    company_id if company_id is not None else kwargs.get('company_id')
+                    company_id if company_id is not None else kwargs.get('company_id'),
+                    trace_id=kwargs.get('trace_id', kwargs.get('trace')),
                 )
             except Exception as exc:
                 _LOGGER.debug('metered llm stream usage recording failed: %s', exc)
