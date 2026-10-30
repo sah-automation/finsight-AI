@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import contextlib
+from pathlib import Path
 from typing import Any
 import importlib
 
 from finsight.core.config.models import Config
+from finsight.core.config.price_table import PriceTable, load_price_table
 from finsight.application.onboarding import CreateCompany
 
 from .composition_container import CompositionContainer
@@ -590,6 +592,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
             'vector_write',
             'answer_cache',
             'change_event_publisher',
+            'metering',
         ):
             value = getattr(container_arg, attr, None)
             if value is not None:
@@ -611,6 +614,11 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         config=config,
         **_extra,
     )
+    metering = (
+        provided_deps.get('metering')
+        or _existing(kwargs, 'metering', 'meter', 'metering_port')
+        or build_metering(config=config, **_extra)
+    )
     onboarding_use_case = provided_deps.get('onboarding_use_case') or build_onboarding_use_case(
         config=config,
         session=session,
@@ -618,7 +626,12 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         user_repository=user_repository,
         partition_manager=partition_manager,
         partition_metadata_repository=partition_metadata_repository,
-        **_extra,
+        metering=metering,
+        **{
+            k: v
+            for k, v in _extra.items()
+            if k not in {'metering', 'meter', 'metering_port', 'usage_metering'}
+        },
     )
     upload_use_case = provided_deps.get('upload_use_case') or build_upload_use_case(
         config=config,
@@ -821,6 +834,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         vector_write=vector_write,
         answer_cache=answer_cache,
         change_event_publisher=change_event_publisher,
+        metering=metering,
         pipeline_worker=_pip,
         pipeline_workers=worker_set,
         ingestion_worker=_pip,
@@ -1370,6 +1384,84 @@ def build_change_event_publisher(*args: Any, **kwargs: Any) -> Any:
         return None
     except Exception:
         raise
+
+
+def build_metering(*args: Any, **kwargs: Any) -> Any:
+    """Build the DynamoDB metering adapter and validate configured prices."""
+    provided = _existing(
+        kwargs,
+        'metering',
+        'meter',
+        'metering_port',
+        'usage_metering',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'metering',
+            'meter',
+            'metering_port',
+            'usage_metering',
+            'price_table',
+            'prices',
+        }
+    }
+
+    price_table = _existing(kwargs, 'price_table', 'prices')
+    if price_table is None:
+        price_table = load_price_table(_configured_price_path(config))
+    elif not isinstance(price_table, PriceTable):
+        price_table = (
+            load_price_table(price_table)
+            if isinstance(price_table, (str, Path))
+            else PriceTable(price_table)
+        )
+    _require_model_prices(config, price_table)
+
+    Cls = _import_adapter('finsight.adapters.metering.dynamo_metering', 'DynamoMetering')
+    if Cls is None:
+        raise ImportError('DynamoMetering adapter is unavailable')
+    return Cls(config=config, price_table=price_table, **_extra)
+
+
+def _configured_price_path(config: Any) -> Any:
+    if config is None:
+        return None
+    metering = getattr(config, 'metering', None)
+    if metering is None:
+        return None
+    if isinstance(metering, dict):
+        return metering.get('price_table')
+    return getattr(metering, 'price_table', None)
+
+
+def _require_model_prices(config: Any, price_table: Any) -> None:
+    models: list[str] = []
+    llm = getattr(config, 'llm', None) if config is not None else None
+    primary = getattr(llm, 'primary_model', None) if llm is not None else None
+    if primary is not None:
+        models.append(str(getattr(primary, 'model_id', '')))
+    for fallback in getattr(llm, 'fallback_models', None) or []:
+        models.append(str(getattr(fallback, 'model_id', '')))
+    embedding = getattr(llm, 'embedding_model', None) if llm is not None else None
+    if embedding is not None:
+        models.append(str(getattr(embedding, 'model_id', '')))
+
+    reranker = getattr(config, 'reranker', None) if config is not None else None
+    if reranker is not None:
+        provider = str(getattr(reranker, 'provider', '') or '')
+        model = str(getattr(reranker, 'model', '') or '')
+        if model:
+            models.append(model if '/' in model or not provider else f'{provider}/{model}')
+
+    price_table.require_models([model for model in models if model])
 
 
 def build_answer_cache(*args: Any, **kwargs: Any) -> Any:

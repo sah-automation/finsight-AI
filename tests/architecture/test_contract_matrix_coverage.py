@@ -26,6 +26,7 @@ PORT_CONTRACT_FILES = {
     'Reranker': 'test_reranker_contract.py',
     'MetricRepository': 'test_metric_repository_contract.py',
     'WaitingLine': 'test_waiting_line_contract.py',
+    'MeteringPort': 'test_metering_port_contract.py',
 }
 
 # Primary adapter exercised by each shared suite.
@@ -42,6 +43,7 @@ PORT_ADAPTER_CLASSES = {
     'Reranker': 'CohereReranker',
     'MetricRepository': 'PostgresMetricRepository',
     'WaitingLine': 'WaitingLineAdapter',
+    'MeteringPort': 'DynamoMetering',
 }
 
 

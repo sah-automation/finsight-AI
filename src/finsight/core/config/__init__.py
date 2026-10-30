@@ -41,6 +41,7 @@ from .models import (
     SwitchesConfig,
     VectorStoreConfig,
 )
+from .price_table import PriceNotFoundError, PriceTable, load_price_table
 
 __all__ = [
     'AccessConfig',
@@ -65,6 +66,8 @@ __all__ = [
     'OutputGateConfig',
     'PermissionsConfig',
     'PiiAction',
+    'PriceNotFoundError',
+    'PriceTable',
     'QuestionFlowConfig',
     'QueueConfig',
     'ReadersConfig',
@@ -78,5 +81,6 @@ __all__ = [
     'VectorStoreConfig',
     'get_config',
     'load_config',
+    'load_price_table',
     'reset_config',
 ]

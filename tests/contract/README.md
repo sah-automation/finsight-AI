@@ -35,6 +35,7 @@ tests/contract/
 | `Reranker` | `finsight.adapters.rerank.cohere_reranker.CohereReranker` | `tests/contract/test_reranker_contract.py` |
 | `MetricRepository` | `finsight.adapters.repositories.postgres_metric_repository.PostgresMetricRepository` | `tests/contract/test_metric_repository_contract.py` |
 | `WaitingLine` | `finsight.adapters.waiting_line.waiting_line_adapter.WaitingLineAdapter` | `tests/contract/test_waiting_line_contract.py` |
+| `MeteringPort` | `finsight.adapters.metering.dynamo_metering.DynamoMetering` | `tests/contract/test_metering_port_contract.py` |
 
 **Integration-only contract coverage:** ports whose adapters require a database,
 AWS, or another external service do not have an in-memory unit path. Their

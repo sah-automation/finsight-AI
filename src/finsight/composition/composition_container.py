@@ -61,6 +61,10 @@ class CompositionContainer:
         object_storage: Any = None,
         answer_cache: Any = None,
         queue: Any = None,
+        metering: Any = None,
+        meter: Any = None,
+        metering_port: Any = None,
+        usage_metering: Any = None,
         **deps: Any,
     ) -> None:
         self.config = config
@@ -87,6 +91,24 @@ class CompositionContainer:
         )
         self.answer_cache = answer_cache if answer_cache is not None else deps.get('answer_cache')
         self.queue = queue if queue is not None else deps.get('queue')
+        self.metering = (
+            metering
+            if metering is not None
+            else meter
+            if meter is not None
+            else metering_port
+            if metering_port is not None
+            else usage_metering
+            if usage_metering is not None
+            else deps.get('metering')
+            or deps.get('meter')
+            or deps.get('metering_port')
+            or deps.get('usage_metering')
+        )
+        self.meter = self.metering
+        self.metering_port = self.metering
+        self.usage_metering = self.metering
+        self.usage_recorder = self.metering
         self.onboarding_use_case = onboarding_use_case
         self.onboarding = onboarding_use_case
         self.create_company_use_case = onboarding_use_case
@@ -328,6 +350,9 @@ class CompositionContainer:
             'publisher': self.publisher,
             'answer_cache': self.answer_cache,
             'queue': self.queue,
+            'metering': self.metering,
+            'meter': self.metering,
+            'metering_port': self.metering,
         }
         self.repositories = {
             'company': company_repository,
@@ -388,6 +413,10 @@ class CompositionContainer:
             'object_storage': self.object_storage,
             'answer_cache': self.answer_cache,
             'queue': self.queue,
+            'metering': self.metering,
+            'meter': self.metering,
+            'metering_port': self.metering,
+            'usage_metering': self.metering,
             'ingestion_use_case': self.ingestion_use_case,
             'ingestion': self.ingestion_pipeline,
         }

@@ -1,3 +1,4 @@
+# ruff: noqa: PLR0915
 """Tracing span value object and company-id conversion helper."""
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ class Span:
     """Minimal structured span emitted by tracing ports/adapters."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__setattr__('_initialized', False)
         positional = [
             'name',
             'company_id',
@@ -47,9 +49,11 @@ class Span:
         mode = _coalesce(kwargs, data, 'mode', default=None)
         if mode is None:
             mode = 'active' if bool(active) else 'disabled'
-        minimal = _coalesce(kwargs, data, 'minimal', default=None)
-        if minimal is None:
-            minimal = mode == 'disabled'
+        if not bool(active):
+            minimal = True
+        else:
+            minimal_obj = _coalesce(kwargs, data, 'minimal', default=None)
+            minimal = False if minimal_obj is None else bool(minimal_obj)
         if attributes is None:
             attributes = {}
         if not isinstance(attributes, dict):
@@ -87,6 +91,7 @@ class Span:
         if self.span_id is None:
             seed = f'{self.name}:{self.company_id}:{self.trace_id}'
             self.span_id = hashlib.sha256(seed.encode('utf-8')).hexdigest()[:16]
+        super().__setattr__('_initialized', True)
 
     @property
     def company_hash(self) -> object:

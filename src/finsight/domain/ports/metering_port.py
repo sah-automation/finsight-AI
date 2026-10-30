@@ -1,10 +1,9 @@
-# ruff: noqa: ANN401,PLR0913
+# ruff: noqa: PLR0913
 """Port for recording usage/cost metering events."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
 
 from finsight.domain.value_objects.usage_record import UsageRecord
 
@@ -19,20 +18,20 @@ class MeteringPort(ABC):
     @abstractmethod
     async def record_usage(
         self,
-        company_id: Any = None,
+        company_id: object,
         *,
         service: str | None = None,
-        model: Any = None,
+        model: object = None,
         units: int = 1,
         unit_count: int | None = None,
-        cost: Any = None,
-        estimated_cost: Any = None,
-        trace_id: Any = None,
-        trace: Any = None,
-        metadata: dict[str, Any] | None = None,
-        attributes: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> Any:
+        cost: object = None,
+        estimated_cost: object = None,
+        trace_id: object = None,
+        trace: object = None,
+        metadata: dict[str, object] | None = None,
+        attributes: dict[str, object] | None = None,
+        **kwargs: object,
+    ) -> object:
         """Record one usage event."""
         _ = (
             company_id,
@@ -52,52 +51,52 @@ class MeteringPort(ABC):
 
     async def record(
         self,
-        company_id: Any = None,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+        company_id: object,
+        *args: object,
+        **kwargs: object,
+    ) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def record_event(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def record_event(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def write_usage(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def write_usage(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def write(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def write(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def track_usage(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def track_usage(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def meter(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def meter(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def meter_call(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def meter_call(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def on_usage(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def on_usage(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def put(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def put(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def emit(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def emit(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
-    async def append(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        return await self.record_usage(company_id, *args, **kwargs)
+    async def append(self, company_id: object, *args: object, **kwargs: object) -> object:
+        return await self.record_usage(company_id, *args, **kwargs)  # type: ignore[arg-type]
 
     async def build_record(
         self,
-        company_id: Any = None,
-        *args: Any,
-        **kwargs: Any,
+        company_id: object,
+        *args: object,
+        **kwargs: object,
     ) -> UsageRecord:
         """Convenience factory used by adapters/tests."""
         return UsageRecord(company_id=company_id, **kwargs)
 
-    def make_record(self, *args: Any, **kwargs: Any) -> UsageRecord:
+    def make_record(self, *args: object, **kwargs: object) -> UsageRecord:
         return UsageRecord(*args, **kwargs)
 
 

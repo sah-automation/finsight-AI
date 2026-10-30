@@ -244,6 +244,7 @@ class MeteringConfig(StrictBaseModel):
     table_name: str
     flush_interval_seconds: int = Field(ge=1)
     batch_size: int = Field(ge=1)
+    price_table: str = 'config/prices.yaml'
 
 
 class AlertConfig(StrictBaseModel):

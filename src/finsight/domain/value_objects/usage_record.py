@@ -34,7 +34,7 @@ def _as_decimal(value: object) -> object:
         try:
             return Decimal(text)
         except Exception:  # noqa: BLE001
-            return value
+            return None
     return value
 
 
@@ -42,6 +42,7 @@ class UsageRecord:
     """Typed usage/cost record produced by metering."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__setattr__('_initialized', False)
         positional = [
             'company_id',
             'service',
@@ -129,6 +130,7 @@ class UsageRecord:
             seed = f'{self.company_id}:{self.trace_id}:{self.service}:{self.model}'
             self.record_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, seed))
         self.id = self.record_id
+        super().__setattr__('_initialized', True)
 
     @property
     def idempotency_key(self) -> tuple[object, object, object, object]:

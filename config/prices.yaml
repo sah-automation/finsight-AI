@@ -1,11 +1,24 @@
 # Pricing Configuration
-# STATUS: planned. Not read by any code yet; tracked in issue #11.
-# Model and service prices in USD per million tokens/units.
-# Intended single source of truth for cost calculation and metering.
-# It will be loaded by core/config and used by the metering adapter.
+# STATUS: read by finsight.core.config.price_table and the DynamoDB metering adapter.
+# Single source of truth for cost calculation and metering. Never hard-code prices.
+# Model and service prices in the units declared under price_sections below.
 
-# Last updated: 2026-10-25
+# Last updated: 2026-10-30
 # Source: Provider public pricing pages
+
+# Divisor applied to each section's prices (raw units -> billed unit).
+unit_scales:
+  per_million_tokens: 1000000
+  per_thousand_documents: 1000
+  per_unit: 1
+
+# The scale each section's prices are expressed in.
+price_sections:
+  llm_models: {scale: per_million_tokens}
+  embedding_models: {scale: per_million_tokens}
+  reranker_models: {scale: per_thousand_documents}
+  aws_services: {scale: per_unit}
+  cohere: {scale: per_unit}
 
 # LLM Models (per 1M tokens)
 llm_models:
@@ -42,6 +55,11 @@ llm_models:
     output: 30.00
     cache_read: 1.00
     cache_write: 3.75
+  "openai/gpt-3.5-turbo":
+    input: 0.50
+    output: 1.50
+    cache_read: 0.50
+    cache_write: 0.50
 
   # Amazon Bedrock (via LiteLLM)
   "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0":
@@ -50,6 +68,17 @@ llm_models:
   "bedrock/anthropic.claude-3-haiku-20240307-v1:0":
     input: 0.25
     output: 1.25
+
+  # Test fixtures used by config/test.yaml. Zero-priced so CI never accrues cost.
+  "test/primary":
+    input: 0.00
+    output: 0.00
+  "test/fallback-1":
+    input: 0.00
+    output: 0.00
+  "test/fallback-2":
+    input: 0.00
+    output: 0.00
 
 # Embedding Models (per 1M tokens)
 embedding_models:
@@ -61,6 +90,8 @@ embedding_models:
     input: 0.02
   "cohere/embed-english-v3.0":
     input: 0.10
+  "test/embedding":
+    input: 0.00
 
 # Reranker (per 1K documents)
 reranker_models:
@@ -68,6 +99,8 @@ reranker_models:
     per_1k_docs: 1.00
   "cohere/rerank-multilingual-v3.0":
     per_1k_docs: 1.00
+  "cohere/test":
+    per_1k_docs: 0.00
 
 # AWS Services
 aws_services:

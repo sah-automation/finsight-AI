@@ -233,6 +233,9 @@ ignore = [
 "src/finsight/adapters/cache/answer_cache.py" = [
     "ANN401", "BLE001", "PLR0912", "PLR0913",
 ]
+"src/finsight/adapters/metering/*.py" = [
+    "ANN401", "BLE001", "PLR0913",
+]
 "src/finsight/adapters/messaging/*.py" = [
     "ANN401", "BLE001", "PLR0913",
 ]
