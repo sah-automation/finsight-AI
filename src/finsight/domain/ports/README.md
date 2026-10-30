@@ -19,6 +19,7 @@ Interfaces (abstract classes or Protocols) that the outside world must fulfil.
 - `QueuePort` - enqueue jobs
 - `AuthPort` - verify token, get role
 - `MeteringPort` - record usage
+- `TracingPort` - emit spans
 
 **Naming convention:** Ports end with what they are (`Gateway`, `Search`, `Repository`, `Reader`).
 

@@ -17,6 +17,8 @@ from .money_units import MoneyUnits
 from .period import Period
 from .presigned_upload import PresignedUpload
 from .reader_result import ReaderResult
+from .span import Span
+from .usage_record import UsageRecord
 from .virus_scan_result import VirusScanResult
 
 __all__ = [
@@ -31,6 +33,8 @@ __all__ = [
     'Period',
     'PresignedUpload',
     'ReaderResult',
+    'Span',
+    'UsageRecord',
     'VirusScanResult',
     'mint_citation_locator',
     'verify_citation_locator',

@@ -15,12 +15,14 @@ from .hybrid_search import HybridSearch, HybridSearchPort, VectorSearch
 from .job_progress_port import JobProgressPort
 from .job_repository import JobRepository
 from .llm_gateway import LLM, LLMGateway
+from .metering_port import MeteringPort
 from .metric_repository import MetricRepository, MetricsRepository
 from .object_storage import ObjectStorage
 from .partition_gateway import PartitionGateway, PartitionManager
 from .partition_metadata_repository import PartitionMetadataRepository
 from .queue import Queue, QueuePort
 from .reranker import Reranker, RerankerPort
+from .tracing_port import TracingPort
 from .unit_of_work import UnitOfWork
 from .user_repository import UserRepository
 from .vector_write import VectorWrite
@@ -53,6 +55,7 @@ __all__ = [
     'JobProgressPort',
     'JobRepository',
     'LLMGateway',
+    'MeteringPort',
     'MetricRepository',
     'MetricsRepository',
     'ObjectStorage',
@@ -66,6 +69,7 @@ __all__ = [
     'RerankerPort',
     'TableRepository',
     'TablesRepository',
+    'TracingPort',
     'UnitOfWork',
     'UserRepository',
     'VectorSearch',

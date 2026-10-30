@@ -13,6 +13,8 @@ from .document_version import (
 from .insufficient_data import InsufficientData
 from .metric import Metric
 from .partition_metadata import PartitionMetadata
+from .span import Span
+from .usage_record import UsageRecord
 from .user import User
 
 __all__ = [
@@ -29,5 +31,7 @@ __all__ = [
     'InvalidDocumentVersionTransitionError',
     'Metric',
     'PartitionMetadata',
+    'Span',
+    'UsageRecord',
     'User',
 ]
