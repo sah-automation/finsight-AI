@@ -152,7 +152,8 @@ export function formatFigure(figure: FigureRecord | JsonRecord): string {
     if (currency) {
       try {
         formatted = new Intl.NumberFormat(undefined, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(parsed);
-      } catch {
+      } catch (error) {
+        console.error('Invalid currency for figure formatting', currency, error);
         formatted = grouped;
       }
     }
