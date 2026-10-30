@@ -132,22 +132,35 @@ function recordList(value: unknown): JsonRecord[] {
   return [];
 }
 
-function canAskPermission(permissions: string[] | undefined): boolean {
+export function canAskPermission(permissions: string[] | undefined): boolean {
   const resolved = permissions ?? [];
-  return resolved.includes('ask') || resolved.includes('question') || resolved.includes('chat') || resolved.length === 0;
+  // Access is driven by server-provided permission actions, never by role names
+  // and never granted as a default when the list is empty.
+  // Ask capability is expressed by the server-provided 'read' action only.
+  return resolved.includes('read');
 }
 
 export function formatFigure(figure: FigureRecord | JsonRecord): string {
   const rawValue = (figure as FigureRecord).value;
   const parsed = typeof rawValue === 'number' ? rawValue : Number(String(rawValue).replace(/,/g, ''));
-  const currency = txt((figure as FigureRecord).currency) ?? 'USD';
-  const units = txt((figure as FigureRecord).units) ?? 'units';
-  const period = txt((figure as FigureRecord).period) ?? '-';
+  const currency = txt((figure as FigureRecord).currency);
+  const units = txt((figure as FigureRecord).units);
+  const period = txt((figure as FigureRecord).period);
   if (Number.isFinite(parsed)) {
-    const formatted = new Intl.NumberFormat(undefined, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(parsed);
-    return `${formatted} ${units}, ${period}`.trim();
+    const grouped = new Intl.NumberFormat(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(parsed);
+    let formatted = grouped;
+    if (currency) {
+      try {
+        formatted = new Intl.NumberFormat(undefined, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(parsed);
+      } catch {
+        formatted = grouped;
+      }
+    }
+    const trailing = [units, period].filter(Boolean).join(', ');
+    return trailing ? `${formatted} ${trailing}`.trim() : formatted;
   }
-  return `${String(rawValue)} ${units}, ${period}`.trim();
+  const trailing = [units, period].filter(Boolean).join(', ');
+  return trailing ? `${String(rawValue)} ${trailing}`.trim() : String(rawValue);
 }
 
 function formatCitationName(citation: CitationRecord, index: number): string {
@@ -165,14 +178,18 @@ function citationDocumentName(citation: CitationRecord): string {
   return txt(citation.document_name ?? citation.documentName ?? citation.document_title ?? citation.title ?? citation.filename) ?? txt(citation.document_id ?? citation.documentId) ?? 'Document';
 }
 
-function statusMessage(status: string): string {
-  const value = status.toLowerCase();
+export function statusMessage(status: string): string {
+  const value = String(status ?? '').toLowerCase().trim();
   if (value.includes('wak')) return messages.results.wakingUp;
   if (value.includes('busy')) return messages.results.busy;
   if (value.includes('unavail')) return messages.results.temporarilyUnavailable;
+  // Explicit, documented remote states take precedence over substring guessing.
+  if (value === 'received' || value === 'searching' || value === 'searching_documents') return messages.working.search;
+  if (value === 'checking_numbers' || value === 'numbers' || value === 'metrics') return messages.working.numbers;
+  if (value === 'checking_evidence' || value === 'verifying_sources' || value === 'verifying' || value === 'sources') return messages.working.sources;
+  if (value === 'answering' || value === 'generating' || value === 'generating_answer') return messages.working.search;
   if (value.includes('number') || value.includes('calc') || value.includes('metric')) return messages.working.numbers;
   if (value.includes('source') || value.includes('verif') || value.includes('citation') || value.includes('evidence')) return messages.working.sources;
-  if (value.includes('answer') || value.includes('generat') || value.includes('received')) return messages.working.search;
   return messages.working.search;
 }
 

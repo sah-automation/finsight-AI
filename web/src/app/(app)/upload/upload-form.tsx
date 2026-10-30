@@ -41,7 +41,6 @@ export interface UploadFormProps {
   onUploaded?: (documentId: string) => void;
 }
 
-const DEFAULT_ALLOWED_TYPES = ['pdf', 'xlsx', 'xls', 'csv', 'docx'];
 const PERIOD_RE = /^\d{4}-(?:Q[1-4]|\d{2})$/;
 const TERMINAL_STATES = new Set(['ready', 'needs_review', 'failed', 'rejected', 'superseded', 'deleted']);
 
@@ -164,14 +163,15 @@ export function UploadForm({
   const allowedFiles = useMemo(() => {
     const passed = asArray(allowedFileTypes);
     if (passed.length > 0) return passed.map((item) => item.toLowerCase());
-    return DEFAULT_ALLOWED_TYPES;
+    // Allowed types and limits are contract-provided; do not invent defaults.
+    return [];
   }, [allowedFileTypes]);
 
   const maxFileSize = useMemo(() => {
     if (maxFileSizeBytes === null || maxFileSizeBytes === undefined || maxFileSizeBytes === '')
-      return 25 * 1024 * 1024;
+      return Number.POSITIVE_INFINITY;
     const parsed = num(maxFileSizeBytes);
-    return parsed ?? 25 * 1024 * 1024;
+    return parsed ?? Number.POSITIVE_INFINITY;
   }, [maxFileSizeBytes]);
 
   const documentOptions = useMemo(() => {

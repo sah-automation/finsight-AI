@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import uuid
 from typing import Any
 
 from finsight.core.errors import PolicyBlocked
@@ -771,7 +772,7 @@ class AskQuestion:
             # thread history adapter is available. Stored under company/thread ids.
             resolved_thread_id = self._thread_id
             if resolved_thread_id in (None, ''):
-                resolved_thread_id = str(__import__('uuid').uuid4())
+                resolved_thread_id = str(uuid.uuid4())
             self._thread_id = resolved_thread_id
             try:
                 answer.thread_id = resolved_thread_id  # type: ignore[attr-defined]
