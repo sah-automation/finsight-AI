@@ -20,6 +20,17 @@ class CompositionContainer:
         job_repo: Any = None,
         onboarding_use_case: Any = None,
         upload_use_case: Any = None,
+        ask_question_use_case: Any = None,
+        ask_use_case: Any = None,
+        ask_question: Any = None,
+        ask: Any = None,
+        qa_use_case: Any = None,
+        question_use_case: Any = None,
+        source_viewer_use_case: Any = None,
+        source_viewer: Any = None,
+        source_view_use_case: Any = None,
+        view_source_use_case: Any = None,
+        source_view: Any = None,
         mode: str = 'standard',
         reader_registry: Any = None,
         readers: Any = None,
@@ -82,6 +93,57 @@ class CompositionContainer:
         self.create_company = onboarding_use_case
         self.upload_use_case = upload_use_case
         self.upload = upload_use_case
+
+        self.ask_question_use_case = (
+            ask_question_use_case
+            if ask_question_use_case is not None
+            else ask_use_case
+            if ask_use_case is not None
+            else ask_question
+            if ask_question is not None
+            else ask
+            if ask is not None
+            else qa_use_case
+            if qa_use_case is not None
+            else question_use_case
+            if question_use_case is not None
+            else deps.get('ask_question_use_case')
+            or deps.get('ask_use_case')
+            or deps.get('ask_question')
+            or deps.get('ask')
+            or deps.get('qa_use_case')
+            or deps.get('question_use_case')
+        )
+        self.ask_use_case = self.ask_question_use_case
+        self.ask_question = self.ask_question_use_case
+        self.ask = self.ask_question_use_case
+        self.qa_use_case = self.ask_question_use_case
+        self.question_use_case = self.ask_question_use_case
+        self.ask_question_orchestrator = self.ask_question_use_case
+
+        self.source_viewer_use_case = (
+            source_viewer_use_case
+            if source_viewer_use_case is not None
+            else source_viewer
+            if source_viewer is not None
+            else source_view_use_case
+            if source_view_use_case is not None
+            else view_source_use_case
+            if view_source_use_case is not None
+            else source_view
+            if source_view is not None
+            else deps.get('source_viewer_use_case')
+            or deps.get('source_viewer')
+            or deps.get('source_view_use_case')
+            or deps.get('view_source_use_case')
+            or deps.get('source_view')
+        )
+        self.source_viewer = self.source_viewer_use_case
+        self.source_view_use_case = self.source_viewer_use_case
+        self.view_source_use_case = self.source_viewer_use_case
+        self.source_view = self.source_viewer_use_case
+        self.source_viewer_service = self.source_viewer_use_case
+
         self.deps = deps
         # Allow deps fallback.
         reader_registry = (
@@ -235,6 +297,14 @@ class CompositionContainer:
             'onboarding': onboarding_use_case,
             'upload': upload_use_case,
             'ingestion': self.ingestion_use_case,
+            'ask': self.ask_question_use_case,
+            'ask_question': self.ask_question_use_case,
+            'ask_question_use_case': self.ask_question_use_case,
+            'qa': self.ask_question_use_case,
+            'source_viewer': self.source_viewer_use_case,
+            'source_view': self.source_viewer_use_case,
+            'source_viewer_use_case': self.source_viewer_use_case,
+            'view_source': self.source_viewer_use_case,
         }
         self.adapters = {
             'company_repository': company_repository,

@@ -1,5 +1,12 @@
 """Composition root package."""
 
+from .ask_question import (
+    build_ask_question,
+    build_ask_question_use_case,
+    build_ask_use_case,
+    get_ask_use_case,
+    resolve_ask_use_case,
+)
 from .composition_container import CompositionContainer
 from .container import (
     ReaderFactory,
@@ -53,6 +60,11 @@ from .container import (
 from .onboarding import (
     create_onboarding_use_case,
 )
+from .source_viewer import (
+    build_source_viewer_use_case,
+    create_source_viewer_use_case,
+    get_source_viewer_use_case,
+)
 from .upload import (
     create_upload_use_case,
 )
@@ -64,6 +76,9 @@ __all__ = [
     'ReaderRegistry',
     'build_answer_cache',
     'build_app_container',
+    'build_ask_question',
+    'build_ask_question_use_case',
+    'build_ask_use_case',
     'build_change_event_publisher',
     'build_chunk_repository',
     'build_composition_container',
@@ -89,6 +104,7 @@ __all__ = [
     'build_readers',
     'build_root',
     'build_scan_worker',
+    'build_source_viewer_use_case',
     'build_standard',
     'build_standard_container',
     'build_standard_set',
@@ -102,10 +118,12 @@ __all__ = [
     'create_onboarding_use_case',
     'create_reader',
     'create_reader_registry',
+    'create_source_viewer_use_case',
     'create_upload_use_case',
     'get_container',
     'get_onboarding_use_case',
     'get_reader',
     'get_reader_registry',
+    'get_source_viewer_use_case',
     'get_upload_use_case',
 ]

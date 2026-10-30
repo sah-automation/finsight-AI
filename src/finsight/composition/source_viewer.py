@@ -156,28 +156,25 @@ def build_source_viewer_use_case(*args: Any, **kwargs: Any) -> Any:
                 object_storage = StorageClass()
     except Exception:
         pass
-    try:
-        from finsight.application.source_viewer import SourceViewer
+    from finsight.application.source_viewer import SourceViewer
 
-        return SourceViewer(
-            config=config,
-            document_repository=document_repository,
-            chunk_repository=chunk_repository,
-            document_table_repository=table_repository,
-            table_repository=table_repository,
-            object_storage=object_storage,
-            storage=object_storage,
-            audit_log=audit_log,
-            request_context=_existing(kwargs, 'request_context', 'context', 'ctx'),
-            company_id=_existing(kwargs, 'company_id', 'companyId', 'company', 'tenant_id'),
-            user_id=_existing(kwargs, 'user_id', 'userId', 'actor'),
-            role=_existing(kwargs, 'role'),
-            trace_id=_existing(kwargs, 'trace_id', 'traceId', 'trace'),
-            access_scope=_existing(kwargs, 'access_scope', 'accessScope'),
-            permissions=_existing(kwargs, 'permissions'),
-        )
-    except Exception:
-        return None
+    return SourceViewer(
+        config=config,
+        document_repository=document_repository,
+        chunk_repository=chunk_repository,
+        document_table_repository=table_repository,
+        table_repository=table_repository,
+        object_storage=object_storage,
+        storage=object_storage,
+        audit_log=audit_log,
+        request_context=_existing(kwargs, 'request_context', 'context', 'ctx'),
+        company_id=_existing(kwargs, 'company_id', 'companyId', 'company', 'tenant_id'),
+        user_id=_existing(kwargs, 'user_id', 'userId', 'actor'),
+        role=_existing(kwargs, 'role'),
+        trace_id=_existing(kwargs, 'trace_id', 'traceId', 'trace'),
+        access_scope=_existing(kwargs, 'access_scope', 'accessScope'),
+        permissions=_existing(kwargs, 'permissions'),
+    )
 
 
 def get_source_viewer_use_case(*args: Any, **kwargs: Any) -> Any:

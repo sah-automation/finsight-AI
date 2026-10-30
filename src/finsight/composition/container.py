@@ -111,8 +111,10 @@ def build_company_repository(*args: Any, **kwargs: Any) -> Any:
         module = importlib.import_module('finsight.adapters.repositories.company_repository')
         CompanyRepository = getattr(module, 'CompanyRepository')
         return CompanyRepository(session=session)
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def build_user_repository(*args: Any, **kwargs: Any) -> Any:
@@ -131,8 +133,10 @@ def build_user_repository(*args: Any, **kwargs: Any) -> Any:
         module = importlib.import_module('finsight.adapters.repositories.user_repository')
         UserRepository = getattr(module, 'UserRepository')
         return UserRepository(session=session)
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def build_partition_metadata_repository(*args: Any, **kwargs: Any) -> Any:
@@ -158,8 +162,10 @@ def build_partition_metadata_repository(*args: Any, **kwargs: Any) -> Any:
         )
         PartitionMetadataRepository = getattr(module, 'PartitionMetadataRepository')
         return PartitionMetadataRepository(session=session)
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def build_partition_manager(*args: Any, **kwargs: Any) -> Any:
@@ -205,8 +211,10 @@ def build_partition_manager(*args: Any, **kwargs: Any) -> Any:
             metadata_repository=metadata_repository,
             tables=tables,
         )
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 _DEFAULT_ONBOARDING: Any = None
@@ -386,8 +394,11 @@ def build_onboarding_use_case(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         try:
             return CreateCompany()
-        except Exception:
+        except ImportError:
             return None
+
+        except Exception:
+            raise
 
 
 def build_upload_use_case(*args: Any, **kwargs: Any) -> Any:
@@ -717,6 +728,68 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
 
     _pip = worker_set.get('pipeline') if hasattr(worker_set, 'get') else None
 
+    ask_question_use_case = _existing(
+        kwargs,
+        'ask_question_use_case',
+        'ask_use_case',
+        'ask_question',
+        'ask',
+        'qa_use_case',
+        'question_use_case',
+    )
+    if ask_question_use_case is None:
+        ask_question_use_case = provided_deps.get('ask_question_use_case')
+    if ask_question_use_case is None:
+        from finsight.application.ask_question import AskQuestion
+
+        ask_question_use_case = AskQuestion(
+            config=config,
+            answer_cache=answer_cache,
+            **{
+                k: v
+                for k, v in (_extra or {}).items()
+                if k
+                in {
+                    'llm_gateway',
+                    'llm',
+                    'gateway',
+                    'model_gateway',
+                    'embedding_provider',
+                    'embedding',
+                    'hybrid_search',
+                    'search',
+                    'reranker',
+                    'metric_repository',
+                    'metrics',
+                    'waiting_line',
+                    'waiting',
+                }
+            },
+        )
+
+    source_viewer_use_case = _existing(
+        kwargs,
+        'source_viewer_use_case',
+        'source_viewer',
+        'source_view_use_case',
+        'view_source_use_case',
+        'source_view',
+    )
+    if source_viewer_use_case is None:
+        source_viewer_use_case = provided_deps.get('source_viewer_use_case')
+    if source_viewer_use_case is None:
+        from finsight.application.source_viewer import SourceViewer
+
+        source_viewer_use_case = SourceViewer(
+            config=config,
+            document_repository=document_repository,
+            chunk_repository=chunk_repository,
+            document_table_repository=document_table_repository,
+            table_repository=document_table_repository,
+            object_storage=object_storage,
+            storage=object_storage,
+        )
+
     container = CompositionContainer(
         config=config,
         session=session,
@@ -757,6 +830,10 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         step_function_workers=worker_set,
         step_workers=worker_set,
         workers=worker_set,
+        ask_question_use_case=ask_question_use_case,
+        ask_use_case=ask_question_use_case,
+        source_viewer_use_case=source_viewer_use_case,
+        source_viewer=source_viewer_use_case,
     )
     set_default_container(container)
     set_default_onboarding_use_case(onboarding_use_case)
@@ -854,8 +931,10 @@ def get_onboarding_use_case(*args: Any, **kwargs: Any) -> Any:
         return default
     try:
         return CreateCompany()
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def get_upload_use_case(*args: Any, **kwargs: Any) -> Any:
@@ -925,8 +1004,11 @@ def build_object_storage(*args: Any, **kwargs: Any) -> Any:
             module = importlib.import_module('finsight.adapters.storage')
             S3Storage = getattr(module, 'S3Storage')
             return S3Storage(client=client, config=config, session=session, **_extra)
-        except Exception:
+        except ImportError:
             return None
+
+        except Exception:
+            raise
 
 
 # Aliases for varying caller naming.
@@ -958,8 +1040,10 @@ def get_object_storage(*args: Any, **kwargs: Any) -> Any:
         return default
     try:
         return build_object_storage()
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 class _WorkerSet(list[Any]):
@@ -1076,8 +1160,10 @@ def build_job_repository(*args: Any, **kwargs: Any) -> Any:
         if Cls is None:
             return None
         return Cls(session=session, config=config, **_extra)
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def build_document_repository(*args: Any, **kwargs: Any) -> Any:
@@ -1280,8 +1366,10 @@ def build_change_event_publisher(*args: Any, **kwargs: Any) -> Any:
         if Cls is None:
             return None
         return Cls(config=config, **_extra)
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def build_answer_cache(*args: Any, **kwargs: Any) -> Any:
@@ -1346,8 +1434,10 @@ def build_virus_scanner(*args: Any, **kwargs: Any) -> Any:
         if Cls is None:
             return None
         return Cls(config=config, session=session, **_extra)
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def build_job_progress(*args: Any, **kwargs: Any) -> Any:
@@ -1483,8 +1573,10 @@ def _instantiate_reader(cls: Any, config: Any, session: Any, extra: dict[str, An
             continue
     try:
         return cls()
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def _select_reader_instance(
@@ -2359,8 +2451,11 @@ class _ReaderFactory:
         try:
             registry = build_reader_registry(config=config, session=session, **extra)
             return registry.get(str(name)) if hasattr(registry, 'get') else registry.get(name)
-        except Exception:
+        except ImportError:
             return None
+
+        except Exception:
+            raise
 
     @classmethod
     def build(cls, *args: Any, **kwargs: Any) -> Any:
@@ -2466,8 +2561,10 @@ def get_reader_registry(*args: Any, **kwargs: Any) -> Any:
         return build_reader_registry(*args, **kwargs)
     try:
         return build_reader_registry()
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 _READER_FACTORY_BUILDERS: dict[str, Any] = {}
@@ -2636,8 +2733,10 @@ def build_page_router(*args: Any, **kwargs: Any) -> Any:
             enabled=router_enabled,
             **_extra,
         )
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def build_scan_worker_object(*args: Any, **kwargs: Any) -> Any:
@@ -2736,8 +2835,10 @@ def build_scan_worker(*args: Any, **kwargs: Any) -> Any:
                 except Exception:  # noqa: S110
                     pass
         return instance
-    except Exception:
+    except ImportError:
         return None
+    except Exception:
+        raise
 
 
 def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
