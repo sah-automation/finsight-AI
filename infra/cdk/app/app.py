@@ -21,6 +21,7 @@ from stacks.data import DataStack
 from stacks.messaging import MessagingStack
 from stacks.network import NetworkStack
 from stacks.observability import ObservabilityStack
+from stacks.step_functions import StepFunctionsStack
 
 CDK_ROOT = Path(__file__).resolve().parent.parent
 
@@ -76,6 +77,13 @@ def main() -> None:
         messaging=msg,
         auth=auth,
         lambda_zip=_lambda_asset(),
+    )
+    StepFunctionsStack(
+        app,
+        f'FinSight-{env_name}-StepFunctions',
+        env=env,
+        env_name=env_name,
+        messaging=msg,
     )
     ObservabilityStack(app, f'FinSight-{env_name}-Observability', env=env, env_name=env_name)
 

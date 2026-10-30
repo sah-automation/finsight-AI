@@ -7,7 +7,7 @@ This is a validated scaffold, not a deployed environment. See issue #10.
 ## Run from the repository root
 
 ```bash
-make infra-synth   # synthesize all six stacks; no AWS credentials needed
+make infra-synth   # synthesize all CDK stacks; no AWS credentials needed
 make infra-test    # smoke tests, including unknown-environment rejection
 ```
 
@@ -32,6 +32,7 @@ cdk synth --all
 | Auth | Cognito user pool and app client |
 | Compute | Placeholder Lambda function and execution role |
 | Observability | CloudWatch log group |
+| Step Functions | Ingestion workflow state machine with DLQ catch targets |
 
 The Data stack defines the rebuildable DynamoDB side of D2: answer cache, role
 cache, metering, job progress, sessions and chat history. All six tables are
@@ -41,7 +42,7 @@ remains the source of truth for documents, jobs and chat metadata, so DynamoDB
 views and caches can be rebuilt from it. Environment settings (retention,
 point-in-time recovery, Aurora backups, key mode) come from `config/envs.yaml`.
 
-Not implemented yet: Step Functions, CloudWatch dashboards and alarms, Secrets
+Not implemented yet: CloudWatch dashboards and alarms, Secrets
 Manager/SSM wiring, per-function IAM, and the deploy workflow.
 
 ## Environment selection
