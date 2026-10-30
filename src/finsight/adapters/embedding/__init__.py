@@ -10,6 +10,8 @@ from .lite_llm_embedding import (
     LiteLLMEmbeddings,
 )
 from .metered_embedding import MeteredEmbedding
+from .retrying_embedding import RetryingEmbedding
+from .traced_embedding import TracedEmbedding
 
 __all__ = [
     'Embedding',
@@ -22,4 +24,6 @@ __all__ = [
     'LiteLLMEmbedding',
     'LiteLLMEmbeddings',
     'MeteredEmbedding',
+    'RetryingEmbedding',
+    'TracedEmbedding',
 ]

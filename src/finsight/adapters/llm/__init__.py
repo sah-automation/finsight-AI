@@ -13,6 +13,7 @@ from .llm_gateway import LLMGateway as LLMGatewayAlias
 from .metered_llm import MeteredLLM
 from .model_gateway import ModelGateway as ModelGatewayAlias
 from .retrying_llm import RetryingLLM
+from .traced_llm import TracedLLM
 
 __all__ = [
     'CachedLLM',
@@ -28,4 +29,5 @@ __all__ = [
     'ModelGateway',
     'ModelGatewayAlias',
     'RetryingLLM',
+    'TracedLLM',
 ]

@@ -1,4 +1,5 @@
 """Delete document application use case (soft delete, restore, purge)."""
+# ruff: noqa: BLE001, PLC0415, E501, PLR0912, PLR0915
 
 from __future__ import annotations
 
@@ -87,6 +88,17 @@ class DeleteDocument:
         )
         self._config = _get_attr(
             kwargs, 'config', 'settings', 'configuration', 'app_config', default=None
+        )
+        self._tracing = _get_attr(
+            kwargs,
+            'tracing',
+            'tracer',
+            'tracing_port',
+            'span_tracer',
+            'span_tracing',
+            'trace',
+            'tracing_adapter',
+            default=None,
         )
         self._unit_of_work = _get_attr(
             kwargs, 'unit_of_work', 'uow', 'transaction', 'tx', default=None
@@ -195,7 +207,38 @@ class DeleteDocument:
         kwargs.setdefault('action', 'schedule')
         return self._run(request, kwargs)
 
+    async def _trace(self, company_id: Any, operation: str) -> None:
+        tracer = self._tracing
+        if tracer is None:
+            return
+        try:
+            import inspect
+
+            method = None
+            for name in (
+                'start_span',
+                'span',
+                'emit_span',
+                'trace',
+                'trace_operation',
+                'record_span',
+                'emit',
+                'record',
+            ):
+                candidate = getattr(tracer, name, None)
+                if callable(candidate):
+                    method = candidate
+                    break
+            if method is None:
+                return
+            result = method(company_id, operation)
+            if inspect.isawaitable(result):
+                await result
+        except Exception:
+            return
+
     async def _run(self, request: Any = None, extra: dict[str, Any] | None = None) -> DeleteResult:
+        await self._trace('deletion', 'deletion')
         extra = extra or {}
         # normalise request input
         request = self._normalise(request, extra)

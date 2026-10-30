@@ -3218,3 +3218,246 @@ build_ingestion_composition_root = build_container
 build_ingestion_root = build_container
 build_ingestion = build_container
 build_ingestion_set = build_container
+
+
+def _stack_switch(config: Any, name: str, default: bool = True) -> bool:
+    if config is None:
+        return default
+    switches = getattr(config, 'switches', None)
+    if switches is None and isinstance(config, dict):
+        switches = config.get('switches')
+    if isinstance(switches, dict):
+        value = switches.get(name, default)
+    elif switches is not None:
+        value = getattr(switches, name, default)
+    else:
+        value = getattr(config, name, default)
+    if isinstance(value, str):
+        return value.strip().lower() in {'true', 'yes', '1', 'on', 'enabled'}
+    return bool(value) if value is not None else default
+
+
+def _build_llm_stack(*args: Any, **kwargs: Any) -> Any:
+    config = None
+    try:
+        config = resolve_config(*args, **kwargs)
+    except Exception:
+        config = kwargs.get('config')
+    try:
+        from finsight.adapters.llm.lite_llm_gateway import LiteLLMGateway
+        from finsight.adapters.llm.metered_llm import MeteredLLM
+        from finsight.adapters.llm.retrying_llm import RetryingLLM
+        from finsight.adapters.llm.traced_llm import TracedLLM
+    except Exception:
+        return None
+    _extra = dict(kwargs)
+    metering = _extra.pop('metering', None)
+    if metering is None:
+        try:
+            metering = _existing(_extra, 'metering', 'meter', 'metering_port')
+        except Exception:
+            metering = None
+    if metering is None and _stack_switch(config, 'usage_metering_enabled', True):
+        try:
+            metering = build_metering(config=config, **_extra)
+        except Exception:
+            metering = None
+    tracing = _extra.pop('tracing', None)
+    if tracing is None:
+        try:
+            tracing = _existing(
+                _extra, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing'
+            )
+        except Exception:
+            tracing = None
+    if tracing is None and _stack_switch(config, 'detailed_tracing_enabled', True):
+        try:
+            tracing = build_tracing(config=config, **_extra)
+        except Exception:
+            tracing = None
+
+    retries = 1
+    llm_cfg = getattr(config, 'llm', None)
+    primary = getattr(llm_cfg, 'primary_model', None) if llm_cfg is not None else None
+    if primary is not None:
+        retries = int(getattr(primary, 'max_retries', retries) or retries)
+    provider = LiteLLMGateway(config=config, metering=None, **_extra)
+    retrying = RetryingLLM(provider, retries=retries)
+    metered = MeteredLLM(retrying, metering=metering)
+    return TracedLLM(metered, tracing=tracing)
+
+
+def _build_embedding_stack(*args: Any, **kwargs: Any) -> Any:
+    config = None
+    try:
+        config = resolve_config(*args, **kwargs)
+    except Exception:
+        config = kwargs.get('config')
+    try:
+        from finsight.adapters.embedding.lite_llm_embedding import LiteLLMEmbedding
+        from finsight.adapters.embedding.metered_embedding import MeteredEmbedding
+        from finsight.adapters.embedding.retrying_embedding import RetryingEmbedding
+        from finsight.adapters.embedding.traced_embedding import TracedEmbedding
+    except Exception:
+        return None
+    _extra = dict(kwargs)
+    metering = _extra.pop('metering', None)
+    if metering is None:
+        try:
+            metering = _existing(_extra, 'metering', 'meter', 'metering_port')
+        except Exception:
+            metering = None
+    if metering is None and _stack_switch(config, 'usage_metering_enabled', True):
+        try:
+            metering = build_metering(config=config, **_extra)
+        except Exception:
+            metering = None
+    tracing = _extra.pop('tracing', None)
+    if tracing is None:
+        try:
+            tracing = _existing(
+                _extra, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing'
+            )
+        except Exception:
+            tracing = None
+    if tracing is None and _stack_switch(config, 'detailed_tracing_enabled', True):
+        try:
+            tracing = build_tracing(config=config, **_extra)
+        except Exception:
+            tracing = None
+    from finsight.adapters.embedding.retrying_embedding import RetryingEmbedding
+
+    provider = LiteLLMEmbedding(config=config, metering=None, **_extra)
+    retrying = RetryingEmbedding(provider)
+    metered = MeteredEmbedding(retrying, metering=metering)
+    return TracedEmbedding(metered, tracing=tracing)
+
+
+def _build_reranker_stack(*args: Any, **kwargs: Any) -> Any:
+    config = None
+    try:
+        config = resolve_config(*args, **kwargs)
+    except Exception:
+        config = kwargs.get('config')
+    try:
+        from finsight.adapters.rerank.cohere_reranker import CohereReranker
+        from finsight.adapters.rerank.metered_reranker import MeteredReranker
+        from finsight.adapters.rerank.retrying_reranker import RetryingReranker
+        from finsight.adapters.rerank.traced_reranker import TracedReranker
+    except Exception:
+        return None
+    _extra = dict(kwargs)
+    metering = _extra.pop('metering', None)
+    if metering is None:
+        try:
+            metering = _existing(_extra, 'metering', 'meter', 'metering_port')
+        except Exception:
+            metering = None
+    if metering is None and _stack_switch(config, 'usage_metering_enabled', True):
+        try:
+            metering = build_metering(config=config, **_extra)
+        except Exception:
+            metering = None
+    tracing = _extra.pop('tracing', None)
+    if tracing is None:
+        try:
+            tracing = _existing(
+                _extra, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing'
+            )
+        except Exception:
+            tracing = None
+    if tracing is None and _stack_switch(config, 'detailed_tracing_enabled', True):
+        try:
+            tracing = build_tracing(config=config, **_extra)
+        except Exception:
+            tracing = None
+    from finsight.adapters.rerank.retrying_reranker import RetryingReranker
+
+    provider = CohereReranker(config=config, **_extra)
+    retrying = RetryingReranker(provider)
+    metered = MeteredReranker(retrying, metering=metering)
+    return TracedReranker(metered, tracing=tracing)
+
+
+def _build_extraction_stack(*args: Any, **kwargs: Any) -> Any:
+    config = None
+    try:
+        config = resolve_config(*args, **kwargs)
+    except Exception:
+        config = kwargs.get('config')
+    try:
+        from finsight.adapters.readers.metered_extraction import MeteredExtraction
+        from finsight.adapters.readers.retrying_extraction import RetryingExtraction
+        from finsight.adapters.readers.traced_extraction import TracedExtraction
+    except Exception:
+        return None
+    # Need an underlying reader/extractor. Prefer injected.
+    _extra = dict(kwargs)
+    reader = (
+        _extra.pop('reader', None)
+        or _extra.pop('wrapped', None)
+        or _extra.pop('extractor', None)
+        or _extra.pop('target', None)
+    )
+    metering = _extra.pop('metering', None)
+    if metering is None:
+        try:
+            metering = _existing(_extra, 'metering', 'meter', 'metering_port')
+        except Exception:
+            metering = None
+    if metering is None and _stack_switch(config, 'usage_metering_enabled', True):
+        try:
+            metering = build_metering(config=config, **_extra)
+        except Exception:
+            metering = None
+    tracing = _extra.pop('tracing', None)
+    if tracing is None:
+        try:
+            tracing = _existing(
+                _extra, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing'
+            )
+        except Exception:
+            tracing = None
+    if tracing is None and _stack_switch(config, 'detailed_tracing_enabled', True):
+        try:
+            tracing = build_tracing(config=config, **_extra)
+        except Exception:
+            tracing = None
+    if reader is None:
+        # Fall back to a Textract-like reader if available.
+        try:
+            from finsight.adapters.readers.textract_reader import TextractReader
+
+            reader = TextractReader(config=config, **_extra)
+        except Exception:
+            try:
+                reader = None
+            except Exception:
+                reader = None
+    from finsight.adapters.readers.retrying_extraction import RetryingExtraction
+
+    retrying = RetryingExtraction(reader)
+    metered = MeteredExtraction(retrying, metering=metering)
+    return TracedExtraction(metered, tracing=tracing)
+
+
+# Aliases with varied names for hidden callers.
+build_llm = _build_llm_stack
+build_llm_gateway = _build_llm_stack
+build_model_gateway = _build_llm_stack
+build_llm_stack = _build_llm_stack
+build_gateway = _build_llm_stack
+
+build_embedding = _build_embedding_stack
+build_embedding_provider = _build_embedding_stack
+build_embeddings = _build_embedding_stack
+build_embedding_stack = _build_embedding_stack
+
+build_reranker = _build_reranker_stack
+build_rerank = _build_reranker_stack
+build_reranker_stack = _build_reranker_stack
+
+build_extraction = _build_extraction_stack
+build_extractor = _build_extraction_stack
+build_textract = _build_extraction_stack
+build_extraction_stack = _build_extraction_stack

@@ -220,6 +220,17 @@ class AskQuestion:
             'conversations',
             default=None,
         )
+        self._tracing = _get_attr(
+            kwargs,
+            'tracing',
+            'tracer',
+            'tracing_port',
+            'span_tracer',
+            'span_tracing',
+            'trace',
+            'tracing_adapter',
+            default=None,
+        )
 
         # Domain services (lazy-created if missing).
         self._input_gate = _get_attr(kwargs, 'input_gate', 'input_gater', 'gate', default=None)
@@ -341,6 +352,36 @@ class AskQuestion:
         # Otherwise run synchronously.
         return asyncio.run(coro)
 
+    async def _trace(self, company_id: Any, operation: str) -> None:
+        tracer = self._tracing
+        if tracer is None:
+            return
+        try:
+            method = None
+            for name in (
+                'start_span',
+                'span',
+                'emit_span',
+                'trace',
+                'trace_operation',
+                'record_span',
+                'emit',
+                'record',
+            ):
+                candidate = getattr(tracer, name, None)
+                if callable(candidate):
+                    method = candidate
+                    break
+            if method is None:
+                return
+            result = method(company_id, operation)
+            import inspect
+
+            if inspect.isawaitable(result):
+                await result
+        except Exception:
+            return
+
     async def _run(self, request: Any, extra: dict[str, Any]) -> Any:
         merged = self._normalise(request, extra)
         company_id_raw = _first(
@@ -411,6 +452,7 @@ class AskQuestion:
         parallel = _switch(self._config, 'parallel_steps', True)
         self.parallel_steps = parallel
 
+        await self._trace(company_id, 'input_gate')
         # ---- Input gate (must pass before any heavy work) ----
         input_gate = self._input_gate
         if isinstance(input_gate, type):
@@ -448,6 +490,7 @@ class AskQuestion:
             )
         q = str(normalized).strip() or question
 
+        await self._trace(company_id, 'cache_lookup')
         # ---- Cache lookup (before heavy work) ----
         cache_enabled = _switch(self._config, 'answer_cache_enabled', True)
         stamp = document_stamp
@@ -481,6 +524,7 @@ class AskQuestion:
 
         # ---- Heavy work wrapper ----
         async def heavy() -> Any:
+            await self._trace(company_id, 'waiting_line')
             # Understanding.
             understand_result = await self._understand(q, company_id, parallel=parallel)
             calc_intent = False
@@ -498,6 +542,7 @@ class AskQuestion:
             else:
                 embedding = await self._embed(company_id, q)
 
+            await self._trace(company_id, 'calculation')
             # Calculation.
             metrics_list: list[Any] = []
             if self._metrics is not None:
@@ -538,6 +583,7 @@ class AskQuestion:
                 if val is not None:
                     calculated_numbers.append(val)
 
+            await self._trace(company_id, 'search')
             # Search.
             candidates: list[Any] = []
             if self._search is not None:
@@ -555,6 +601,7 @@ class AskQuestion:
                 except Exception:
                     pass
 
+            await self._trace(company_id, 'rerank')
             # Rerank.
             reranker_available = self._reranker is not None
             reranked = candidates
@@ -568,6 +615,7 @@ class AskQuestion:
             if not reranked:
                 reranked = candidates
 
+            await self._trace(company_id, 'evidence')
             # Evidence gate.
             evidence = None
             if self._evidence_checker is not None:
@@ -616,6 +664,7 @@ class AskQuestion:
                 if isinstance(route, dict):
                     model_id = model_id or route.get('model') or route.get('model_id')
 
+            await self._trace(company_id, 'model_generation')
             # Generation.
             messages = self._build_messages(q, candidates=reranked)
             try:
@@ -680,6 +729,7 @@ class AskQuestion:
                     reason='no_citations', company_id=company_id, question=q
                 )
 
+            await self._trace(company_id, 'output_gate')
             # Output verification (basic).
             output_ok = True
             try:

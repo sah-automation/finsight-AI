@@ -195,6 +195,17 @@ class SourceViewer:
         )
         self._user_id = _coalesce(kwargs.get('user_id'), kwargs.get('userId'), kwargs.get('actor'))
         self._role = _coalesce(kwargs.get('role'))
+        self._tracing = _get_attr(
+            kwargs,
+            'tracing',
+            'tracer',
+            'tracing_port',
+            'span_tracer',
+            'span_tracing',
+            'trace',
+            'tracing_adapter',
+            default=None,
+        )
         self._trace_id = _coalesce(
             kwargs.get('trace_id'), kwargs.get('traceId'), kwargs.get('trace')
         )
@@ -330,6 +341,36 @@ class SourceViewer:
 
     async def __call__(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
         return await self._execute(*args, **kwargs)
+
+    async def _trace(self, company_id: Any, operation: str) -> None:
+        tracer = self._tracing
+        if tracer is None:
+            return
+        try:
+            method = None
+            for name in (
+                'start_span',
+                'span',
+                'emit_span',
+                'trace',
+                'trace_operation',
+                'record_span',
+                'emit',
+                'record',
+            ):
+                candidate = getattr(tracer, name, None)
+                if callable(candidate):
+                    method = candidate
+                    break
+            if method is None:
+                return
+            import inspect
+
+            result = method(company_id, operation)
+            if inspect.isawaitable(result):
+                await result
+        except Exception:
+            return
 
     async def _execute(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
         # absorb a positional request
@@ -631,6 +672,7 @@ class SourceViewer:
                 raise _NotAvailable()
 
             # Permission + access scope (category may be unknown)
+            await self._trace(company_id, 'source_authorization')
             if not self._authorize_role(role_raw, permissions, access_scope, category_input):
                 outcome = 'not_available'
                 raise _NotAvailable()
@@ -989,6 +1031,7 @@ class SourceViewer:
                     ttl_int = None
                 if ttl_int is None:
                     ttl_int = self._ttl_from_config()
+                await self._trace(company_id, 'source_fetch')
                 signed_original_link = await storage.generate_presigned_download_url(
                     company_id,
                     storage_key,
