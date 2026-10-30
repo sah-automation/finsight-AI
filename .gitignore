@@ -163,3 +163,13 @@ data/
 tmp/
 temp/
 *.tmp
+*.tmp
+
+# Frontend
+web/node_modules/
+web/.next/
+web/tsconfig.tsbuildinfo
+web/coverage/
+web/.env.local
+web/.env.*.local
+web/npm-debug.log*

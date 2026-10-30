@@ -1,0 +1,15 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Publish a complete, typed OpenAPI contract from the existing FastAPI entrypoints (typed request and response models, including SSE question events) and add a current-user context endpoint returning the authenticated user's company, role, permissions, and company display name. The frontend must not branch on role names; navigation and action availability come only from these server-provided permissions.
+
+## Acceptance criteria
+
+- [ ] FastAPI entrypoints use typed request and response models so the generated OpenAPI schema is complete and stable
+- [ ] The current-user endpoint returns company id, company name, role, and permission actions derived from `permissions.yaml`
+- [ ] No raw identity-provider or role strings are required by the client for access decisions
+- [ ] OpenAPI publication is checked in CI against committed generated schema
+- [ ] Cross-company safety remains: company identity comes only from the authenticated context

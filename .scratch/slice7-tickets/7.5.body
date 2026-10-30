@@ -1,0 +1,17 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Build the Documents screen as a searchable, filterable, sortable document library with document detail, version history, page counts, ingestion state, and stale-content warnings. Support soft delete to the recycle bin, restore within the retention period, and privileged permanent purge. Role-aware rendering keeps audit users read-only with no upload or mutation controls beyond permitted actions.
+
+## Acceptance criteria
+
+- [ ] Library supports search and filters by category, period, status, and ingestion state
+- [ ] Sorting and filtering remain responsive for large libraries
+- [ ] Document detail shows versions, page counts, and category or period context
+- [ ] Documents that may be affected by a change surface a clear stale-content warning
+- [ ] Soft delete, restore, and purge use the existing document endpoints and update library state
+- [ ] Audit users see a fully read-only experience
+- [ ] All states (loading, empty, error, success) are handled and tested

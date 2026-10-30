@@ -1,0 +1,17 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Verify and harden the complete Slice 7 implementation across role flows, accessibility, responsive behaviour, message consistency, and contract/test coverage. Exercise all four roles for visible and hidden controls, run axe on every screen, validate breakpoints and mobile bottom-sheet behaviour, check the generated client against the published contract, and cover loading, empty, error, and success states for major components.
+
+## Acceptance criteria
+
+- [ ] Four role journeys are covered for sign in, documents, upload, ask, and source viewer
+- [ ] Cross-company citation id never opens another company's content
+- [ ] Accessibility checks at WCAG 2.2 AA pass, including keyboard navigation and `aria-live` streaming
+- [ ] axe fails builds on new serious or critical issues
+- [ ] Playwright covers sign in, upload paths, ask, citation opening and highlight, insufficient data, busy and waking states, and permission denied
+- [ ] Contract check verifies generated client against the published OpenAPI schema
+- [ ] Visual snapshots protect tokens and core components

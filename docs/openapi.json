@@ -4908,6 +4908,27 @@
         "additionalProperties": true,
         "type": "object",
         "title": "FeedbackRequest"
+      },
+      "AskQuestionEvent": {
+        "description": "Representative typed SSE question event.",
+        "properties": {
+          "event": {
+            "description": "SSE event name.",
+            "title": "Event",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "description": "Event payload.",
+            "title": "Data",
+            "type": "object"
+          }
+        },
+        "required": [
+          "event"
+        ],
+        "title": "AskQuestionEvent",
+        "type": "object"
       }
     }
   }

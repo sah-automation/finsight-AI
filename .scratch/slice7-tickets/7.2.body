@@ -1,0 +1,15 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Persist Q&A threads using the existing DynamoDB chat history and expose list and read endpoints that let users reopen prior questions. Question requests may carry an optional thread id, and the completion event returns thread and answer ids once a thread has been persisted, so the UI can continue prior analysis without inventing client-side state.
+
+## Acceptance criteria
+
+- [ ] Question acceptance optionally accepts a thread id and associates the run with that thread
+- [ ] The completion event returns thread and answer identifiers
+- [ ] List and read endpoints return only threads scoped to the authenticated company and user permissions
+- [ ] Thread persistence reuses existing chat history rather than a new data shape
+- [ ] Backend changes keep the OpenAPI contract typed and generated client updated

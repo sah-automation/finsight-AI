@@ -1,0 +1,15 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Add a minimal feedback endpoint that stores a thumbs up/down rating, an optional thumbs-down reason (`Wrong numbers`, `Wrong sources`, `Out of date`, `Incomplete`), and a citation reference for reported wrong sources. Storage stays scoped to company and role context so feedback is auditable without leaking cross-company data.
+
+## Acceptance criteria
+
+- [ ] Feedback endpoint accepts rating, optional reason, and citation reference
+- [ ] Report-wrong-source control is supported from both answer feedback and source viewer footer
+- [ ] Stored feedback is scoped by company and role and cannot cross company boundaries
+- [ ] Only the approved reason values are accepted
+- [ ] Backend changes keep the OpenAPI contract typed and generated client updated

@@ -1,0 +1,18 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Create the server-rendered Next.js application with TypeScript strict mode, token-driven Tailwind styling, locally copied accessible primitives, and minimal justified dependencies. Implement the Backend-for-Frontend with embedded Cognito sign-in using the configured SRP flow: the BFF stores the refresh token in a server-side session keyed by a session id, returns only an `HttpOnly`, `Secure`, `SameSite` cookie, and attaches access tokens to proxied API calls including SSE. Add the typed client generated from the OpenAPI contract, the single approved frontend message module, role-aware shell and navigation derived from server-provided permissions, permission-denied routes, and the sign-in screen with clear wrong-password/locked-account/expired-session handling.
+
+## Acceptance criteria
+
+- [ ] Browser never receives Cognito tokens or company data in browser storage
+- [ ] All backend access flows through BFF server routes with auth attached
+- [ ] Session expiry forces a graceful return to sign in
+- [ ] Navigation and actions are derived from permissions, not role-name checks
+- [ ] Executives land on Ask after sign in; system admins land on permitted settings only
+- [ ] User menu shows company name and role
+- [ ] Design tokens only are used; no raw colors or pixel values
+- [ ] Generated client is checked against the published OpenAPI contract in CI

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import FastAPI
 
 from finsight.entrypoints.api import (
@@ -46,7 +48,24 @@ def create_app() -> FastAPI:
     for extra in getattr(feedback, 'EXTRA_ROUTERS', ()):
         app.include_router(extra)
 
+    _install_ask_event_schema(app)
     return app
+
+
+def _install_ask_event_schema(app: FastAPI) -> None:
+    """Register the manually referenced SSE event model with OpenAPI components."""
+    base_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        if app.openapi_schema is None:
+            schema = base_openapi()
+            components = schema.setdefault('components', {})
+            schemas = components.setdefault('schemas', {})
+            schemas['AskQuestionEvent'] = ask.AskQuestionEvent.model_json_schema()
+            app.openapi_schema = schema
+        return app.openapi_schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
 
 
 app = create_app()

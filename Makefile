@@ -4,7 +4,7 @@
 
 COVERAGE_MIN ?= 24
 
-.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps coverage-domain coverage-application coverage-packages coverage-diff
+.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps coverage-domain coverage-application coverage-packages coverage-diff web-typecheck web-lint web-test web-build web-api-check web-verify
 
 # Default target
 help:
@@ -52,8 +52,12 @@ help:
 	@echo "  docker-build   - Build the application container image"
 	@echo "  infra-synth    - Synthesize every CDK stack (non-deploying)"
 	@echo "  infra-test     - Run the CDK smoke tests"
-	@echo ""
-	@echo "Coverage:"
+	@echo "  web-typecheck - Run the web type checker"
+	@echo "  web-lint     - Run the web ESLint checks"
+	@echo "  web-test     - Run the web tests"
+	@echo "  web-build    - Build the web application"
+	@echo "  web-api-check- Check the generated web API client against OpenAPI"
+	@echo "  web-verify   - Run all web quality checks"
 	@echo "  coverage       - Generate coverage report and enforce the floor (COVERAGE_MIN, default 24)"
 	@echo "  coverage-html  - Generate HTML coverage report"
 	@echo ""
@@ -245,3 +249,25 @@ clean:
 update-deps:
 	uv lock --upgrade
 	uv sync --all-extras
+
+
+# ============================================================
+# Web frontend
+# ============================================================
+web-typecheck:
+		cd web && npm run typecheck
+
+web-lint:
+		cd web && npm run lint
+
+web-test:
+		cd web && npm run test
+
+web-build:
+		cd web && BACKEND_API_URL=http://127.0.0.1:8000 COGNITO_REGION=us-east-1 COGNITO_USER_POOL_ID=us-east-1_test COGNITO_CLIENT_ID=testclient SESSION_COOKIE_SECURE=false npm run build
+
+web-api-check:
+		cd web && npm run api:check
+
+web-verify: web-api-check web-typecheck web-lint web-test web-build
+	@echo "✓ Web quality checks passed"
