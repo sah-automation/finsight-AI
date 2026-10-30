@@ -10,6 +10,7 @@ from typing import Any as _Any
 
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ConfigDict, Field
 
 from finsight.core.errors import (  # noqa: PLC0415
     AuthorizationError,
@@ -997,11 +998,50 @@ async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
     )
 
 
+class _AskQuestionRequest(BaseModel):
+    """Typed request model for ask endpoints."""
+
+    model_config = ConfigDict(title='AskQuestionRequest')
+
+    question: str | None = None
+    query: str | None = None
+    q: str | None = None
+    company_id: str | None = None
+    companyId: str | None = None
+    thread_id: str | None = None
+    threadId: str | None = None  # noqa: N815
+    access_scope: Any = None
+    context: Any = None
+    use_case: Any = None
+
+
+# Public alias used by generated/OpenAPI callers.
+AskQuestionRequest = _AskQuestionRequest
+
+
+class _AskQuestionEvent(BaseModel):
+    """Representative typed SSE question event."""
+
+    model_config = ConfigDict(title='AskQuestionEvent')
+
+    event: str = Field(..., description='SSE event name.')
+    data: dict[str, Any] = Field(default_factory=dict, description='Event payload.')
+
+
+AskQuestionEvent = _AskQuestionEvent
+
 # FastAPI routes for all router aliases.
 
 
-async def _http_ask(payload: Any = Body(default=None), context: Any = None) -> StreamingResponse:
-    return await _handle(payload, context=context)
+async def _http_ask(
+    payload: _AskQuestionRequest | None = Body(default=None), context: Any = None
+) -> StreamingResponse:
+    data = (
+        payload.model_dump(exclude_none=True)
+        if isinstance(payload, _AskQuestionRequest)
+        else payload
+    )
+    return await _handle(data, context=context)
 
 
 for _r in (router, router_qa, router_question, router_questions):
@@ -1010,15 +1050,53 @@ for _r in (router, router_qa, router_question, router_questions):
     async def _health() -> dict[str, str]:
         return {'status': 'ok'}
 
-    @_r.post('')
-    async def _post(payload: Any = Body(default=None), context: Any = None) -> StreamingResponse:
-        return await _handle(payload, context=context)
-
-    @_r.post('/')
-    async def _post_slash(
-        payload: Any = Body(default=None), context: Any = None
+    @_r.post(
+        '',
+        response_model=None,
+        responses={
+            200: {
+                'description': 'Server-sent event stream of typed question events.',
+                'content': {
+                    'text/event-stream': {
+                        'schema': {'$ref': '#/components/schemas/AskQuestionEvent'}
+                    }
+                },
+            }
+        },
+    )
+    async def _post(
+        payload: _AskQuestionRequest | None = Body(default=None), context: Any = None
     ) -> StreamingResponse:
-        return await _handle(payload, context=context)
+        data = (
+            payload.model_dump(exclude_none=True)
+            if isinstance(payload, _AskQuestionRequest)
+            else payload
+        )
+        return await _handle(data, context=context)
+
+    @_r.post(
+        '/',
+        response_model=None,
+        responses={
+            200: {
+                'description': 'Server-sent event stream of typed question events.',
+                'content': {
+                    'text/event-stream': {
+                        'schema': {'$ref': '#/components/schemas/AskQuestionEvent'}
+                    }
+                },
+            }
+        },
+    )
+    async def _post_slash(
+        payload: _AskQuestionRequest | None = Body(default=None), context: Any = None
+    ) -> StreamingResponse:
+        data = (
+            payload.model_dump(exclude_none=True)
+            if isinstance(payload, _AskQuestionRequest)
+            else payload
+        )
+        return await _handle(data, context=context)
 
 
 # Provide many aliases for callers (mirrors other entrypoints).

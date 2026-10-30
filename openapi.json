@@ -159,6 +159,99 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "_AskQuestionRequest": {
+        "description": "Typed request model for ask endpoints.",
+        "properties": {
+          "access_scope": {
+            "title": "Access Scope"
+          },
+          "companyId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyid"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "context": {
+            "title": "Context"
+          },
+          "q": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Q"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "threadId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threadid"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id"
+          },
+          "use_case": {
+            "title": "Use Case"
+          }
+        },
+        "title": "AskQuestionRequest",
+        "type": "object"
       }
     }
   },
@@ -186,6 +279,14 @@
           "content": {
             "application/json": {
               "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_AskQuestionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
                 "title": "Payload"
               }
             }
@@ -196,9 +297,14 @@
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionEvent"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent event stream of typed question events."
           },
           "422": {
             "content": {
@@ -234,6 +340,14 @@
           "content": {
             "application/json": {
               "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_AskQuestionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
                 "title": "Payload"
               }
             }
@@ -244,9 +358,14 @@
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionEvent"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent event stream of typed question events."
           },
           "422": {
             "content": {
@@ -1099,6 +1218,14 @@
           "content": {
             "application/json": {
               "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_AskQuestionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
                 "title": "Payload"
               }
             }
@@ -1109,9 +1236,14 @@
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionEvent"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent event stream of typed question events."
           },
           "422": {
             "content": {
@@ -1147,6 +1279,14 @@
           "content": {
             "application/json": {
               "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_AskQuestionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
                 "title": "Payload"
               }
             }
@@ -1157,9 +1297,14 @@
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionEvent"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent event stream of typed question events."
           },
           "422": {
             "content": {
@@ -1220,6 +1365,14 @@
           "content": {
             "application/json": {
               "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_AskQuestionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
                 "title": "Payload"
               }
             }
@@ -1230,9 +1383,14 @@
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionEvent"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent event stream of typed question events."
           },
           "422": {
             "content": {
@@ -1268,6 +1426,14 @@
           "content": {
             "application/json": {
               "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_AskQuestionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
                 "title": "Payload"
               }
             }
@@ -1278,9 +1444,14 @@
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionEvent"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent event stream of typed question events."
           },
           "422": {
             "content": {
@@ -1341,6 +1512,14 @@
           "content": {
             "application/json": {
               "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_AskQuestionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
                 "title": "Payload"
               }
             }
@@ -1351,9 +1530,14 @@
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionEvent"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent event stream of typed question events."
           },
           "422": {
             "content": {
@@ -1389,6 +1573,14 @@
           "content": {
             "application/json": {
               "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/_AskQuestionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
                 "title": "Payload"
               }
             }
@@ -1399,9 +1591,14 @@
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskQuestionEvent"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-sent event stream of typed question events."
           },
           "422": {
             "content": {

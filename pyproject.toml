@@ -165,7 +165,7 @@ ignore = [
 "src/finsight/entrypoints/api/ask.py" = [
     "ANN001", "ANN002", "ANN003", "ANN401", "E501", "B009", "PLR0911",
     "PLR0912", "PLR0913", "PLR0915", "PLC0415", "BLE001", "S110", "SIM105",
-    "TRY300", "N818", "RUF100",
+    "TRY300", "N815", "N818", "RUF100",
 ]
 # Document lifecycle endpoint exposes flexible surfaces for varied caller shapes.
 "src/finsight/entrypoints/api/documents.py" = [

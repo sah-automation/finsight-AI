@@ -126,6 +126,9 @@ config-check:
 docs-check:
 	uv run python scripts/check_links.py
 
+openapi-check:
+	ENVIRONMENT=test uv run python scripts/check_openapi.py
+
 # ============================================================
 # Packaging and Infrastructure
 # ============================================================

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import inspect
 from typing import TYPE_CHECKING, Any
 
@@ -10,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from finsight.core.config import get_config, load_config
+from finsight.core.config.loader import ConfigError
 from finsight.core.types import Role
 
 if TYPE_CHECKING:
@@ -151,14 +151,12 @@ def _normalize_role(value: Any) -> str | None:
 def _ensure_config() -> Config:
     try:
         return get_config()
-    except Exception:  # noqa: BLE001
+    except ConfigError:
         pass
-    for env_value in (None, 'test', 'dev', 'development'):
-        try:
-            return load_config(env_value)
-        except Exception:  # noqa: BLE001
-            continue
-    return get_config()
+    try:
+        return load_config()
+    except ConfigError:
+        return load_config('test')
 
 
 def _find_repo_candidates(args: tuple[Any, ...], kwargs: dict[str, Any], context: Any) -> list[Any]:
@@ -201,15 +199,11 @@ async def _fetch_company_name(
             if not callable(method):
                 continue
             result = None
-            with contextlib.suppress(Exception):
-                try:
-                    result = method(company_id)
-                except TypeError:
-                    try:
-                        result = method(company_id=company_id)
-                    except Exception:  # noqa: BLE001
-                        continue
-                result = await _await(result)
+            try:
+                result = method(company_id)
+            except TypeError:
+                result = method(company_id=company_id)
+            result = await _await(result)
             if result is None:
                 continue
             name = _get(result, 'name', 'company_name', 'display_name', 'company_display_name')
@@ -261,8 +255,6 @@ async def _handle(*args: Any, **kwargs: Any) -> CurrentUser:
         company_id_raw = _get(
             context, 'company_id', 'companyId', 'company', 'tenant_id', 'tenantId', 'tenant'
         )
-    if company_id_raw is None:
-        company_id_raw = data.get('company_id') or data.get('companyId') or data.get('company')
     # Company id embedded on a company object.
     if company_id_raw is None and context is not None:
         company_obj = _context_lookup(context, 'company', 'account', 'tenant')
@@ -283,8 +275,6 @@ async def _handle(*args: Any, **kwargs: Any) -> CurrentUser:
     )
     if role_raw is None and isinstance(context, dict):
         role_raw = _get(context, 'role', 'user_role', 'role_id', 'roleId', 'roles')
-    if role_raw is None:
-        role_raw = data.get('role') or data.get('user_role') or data.get('role_id')
     role_id = _normalize_role(role_raw)
     if role_id is None:
         raise HTTPException(status_code=403, detail='Authenticated role context is required.')
@@ -305,7 +295,6 @@ async def _handle(*args: Any, **kwargs: Any) -> CurrentUser:
         'companyName',
         'displayName',
         'display_name',
-        'name',
     )
     if company_name is None and isinstance(context, dict):
         company_name = _get(
@@ -315,7 +304,6 @@ async def _handle(*args: Any, **kwargs: Any) -> CurrentUser:
             'companyName',
             'displayName',
             'display_name',
-            'name',
         )
     if company_name is None:
         company_obj = _context_lookup(context, 'company', 'account', 'tenant')
