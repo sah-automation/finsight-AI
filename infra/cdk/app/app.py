@@ -67,6 +67,13 @@ def main() -> None:
     )
     msg = MessagingStack(app, f'FinSight-{env_name}-Messaging', env=env, env_name=env_name)
     auth = AuthStack(app, f'FinSight-{env_name}-Auth', env=env, env_name=env_name)
+    step_functions = StepFunctionsStack(
+        app,
+        f'FinSight-{env_name}-StepFunctions',
+        env=env,
+        env_name=env_name,
+        messaging=msg,
+    )
     ComputeStack(
         app,
         f'FinSight-{env_name}-Compute',
@@ -77,13 +84,7 @@ def main() -> None:
         messaging=msg,
         auth=auth,
         lambda_zip=_lambda_asset(),
-    )
-    StepFunctionsStack(
-        app,
-        f'FinSight-{env_name}-StepFunctions',
-        env=env,
-        env_name=env_name,
-        messaging=msg,
+        step_functions=step_functions,
     )
     ObservabilityStack(app, f'FinSight-{env_name}-Observability', env=env, env_name=env_name)
 
