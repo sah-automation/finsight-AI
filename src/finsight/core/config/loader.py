@@ -47,13 +47,17 @@ class ConfigLoader:
         self.config_dir = Path(config_dir)
         self._config: Config | None = None
 
-    def _load_yaml(self, path: Path) -> dict[str, Any]:
+    def _load_yaml(
+        self,
+        path: Path,
+        environment: Environment | str | None = None,
+    ) -> dict[str, Any]:
         if not path.exists():
             raise ConfigError(f'Config file not found: {path}')
         try:
             with path.open('r', encoding='utf-8') as f:
                 content = f.read()
-            content = self._substitute_env_vars(content)
+            content = self._substitute_env_vars(content, environment)
             data = yaml.safe_load(content)
             if data is None:
                 data = {}
@@ -64,7 +68,17 @@ class ConfigLoader:
         else:
             return data
 
-    def _substitute_env_vars(self, content: str) -> str:
+    def _substitute_env_vars(
+        self,
+        content: str,
+        environment: Environment | str | None = None,
+    ) -> str:
+        env_value = (
+            str(getattr(environment, 'value', environment))
+            if environment is not None
+            else os.environ.get('ENVIRONMENT', '')
+        )
+
         def replace(match: re.Match[str]) -> str:
             var_expr = match.group(1)
             if ':-' in var_expr:
@@ -76,8 +90,7 @@ class ConfigLoader:
             var_name = var_expr
             value = os.environ.get(var_name)
             if value is None:
-                env = os.environ.get('ENVIRONMENT', '')
-                if env == 'test':
+                if env_value == 'test':
                     return f'test-{var_name.lower()}'
                 raise ConfigError(f'Required environment variable not set: {var_name}')
             return value
@@ -120,8 +133,8 @@ class ConfigLoader:
                 env_path = self.config_dir / 'test.yaml'
         permissions_path = self.config_dir / 'permissions.yaml'
 
-        schema_data = self._load_yaml(schema_path)
-        env_data = self._load_yaml(env_path)
+        schema_data = self._load_yaml(schema_path, environment)
+        env_data = self._load_yaml(env_path, environment)
         # Try to load permissions from config dir or fallback to repo root
         if not permissions_path.exists():
             repo_root = Path(__file__).parent.parent.parent.parent
@@ -131,7 +144,7 @@ class ConfigLoader:
             elif (repo_root.parent / 'config' / 'permissions.yaml').exists():
                 permissions_path = repo_root.parent / 'config' / 'permissions.yaml'
         try:
-            permissions_data = self._load_yaml(permissions_path)
+            permissions_data = self._load_yaml(permissions_path, environment)
         except Exception:
             # Last resort - copy from repo root
             import shutil
@@ -145,7 +158,7 @@ class ConfigLoader:
                     try:
                         permissions_path.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy(cand, permissions_path)
-                        permissions_data = self._load_yaml(permissions_path)
+                        permissions_data = self._load_yaml(permissions_path, environment)
                         break
                     except Exception:  # noqa: BLE001,S112
                         continue

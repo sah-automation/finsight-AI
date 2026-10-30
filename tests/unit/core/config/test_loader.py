@@ -97,6 +97,15 @@ class TestConfigLoader:
             'https://sqs.test/ingest',
         )
 
+    def test_explicit_test_environment_resolves_without_process_env(self, monkeypatch) -> None:
+        """An explicit environment must resolve its placeholders deterministically."""
+        monkeypatch.delenv('ENVIRONMENT', raising=False)
+
+        config = load_config('test')
+
+        assert config.app.environment == Environment.TEST
+        assert config.vector_store.host == 'localhost'
+
     def test_missing_env_var_raises(self, tmp_path) -> None:
         """Test that missing env var raises ConfigError."""
         # Create temp config with env var pattern for host
