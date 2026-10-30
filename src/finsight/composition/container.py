@@ -593,6 +593,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
             'answer_cache',
             'change_event_publisher',
             'metering',
+            'tracing',
         ):
             value = getattr(container_arg, attr, None)
             if value is not None:
@@ -619,6 +620,11 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         or _existing(kwargs, 'metering', 'meter', 'metering_port')
         or build_metering(config=config, **_extra)
     )
+    tracing = (
+        provided_deps.get('tracing')
+        or _existing(kwargs, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing')
+        or build_tracing(config=config, **_extra)
+    )
     onboarding_use_case = provided_deps.get('onboarding_use_case') or build_onboarding_use_case(
         config=config,
         session=session,
@@ -630,7 +636,18 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         **{
             k: v
             for k, v in _extra.items()
-            if k not in {'metering', 'meter', 'metering_port', 'usage_metering'}
+            if k
+            not in {
+                'metering',
+                'meter',
+                'metering_port',
+                'usage_metering',
+                'tracing',
+                'tracer',
+                'tracing_port',
+                'span_tracer',
+                'span_tracing',
+            }
         },
     )
     upload_use_case = provided_deps.get('upload_use_case') or build_upload_use_case(
@@ -838,6 +855,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         answer_cache=answer_cache,
         change_event_publisher=change_event_publisher,
         metering=metering,
+        tracing=tracing,
         pipeline_worker=_pip,
         pipeline_workers=worker_set,
         ingestion_worker=_pip,
@@ -1432,6 +1450,40 @@ def build_metering(*args: Any, **kwargs: Any) -> Any:
     if Cls is None:
         raise ImportError('DynamoMetering adapter is unavailable')
     return Cls(config=config, price_table=price_table, **_extra)
+
+
+def build_tracing(*args: Any, **kwargs: Any) -> Any:
+    """Build the tracing adapter."""
+    provided = _existing(
+        kwargs,
+        'tracing',
+        'tracer',
+        'tracing_port',
+        'span_tracer',
+        'span_tracing',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'tracing',
+            'tracer',
+            'tracing_port',
+            'span_tracer',
+            'span_tracing',
+        }
+    }
+    # Switch may mark tracing disabled, but the adapter still emits minimal spans.
+    Cls = _import_adapter('finsight.adapters.tracing.tracing_adapter', 'TracingAdapter')
+    if Cls is None:
+        raise ImportError('TracingAdapter adapter is unavailable')
+    return Cls(config=config, **_extra)
 
 
 def _configured_price_path(config: Any) -> Any:

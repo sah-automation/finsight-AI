@@ -65,6 +65,11 @@ class CompositionContainer:
         meter: Any = None,
         metering_port: Any = None,
         usage_metering: Any = None,
+        tracing: Any = None,
+        tracer: Any = None,
+        tracing_port: Any = None,
+        span_tracer: Any = None,
+        span_tracing: Any = None,
         **deps: Any,
     ) -> None:
         self.config = config
@@ -109,6 +114,29 @@ class CompositionContainer:
         self.metering_port = self.metering
         self.usage_metering = self.metering
         self.usage_recorder = self.metering
+
+        self.tracing = (
+            tracing
+            if tracing is not None
+            else tracer
+            if tracer is not None
+            else tracing_port
+            if tracing_port is not None
+            else span_tracer
+            if span_tracer is not None
+            else span_tracing
+            if span_tracing is not None
+            else deps.get('tracing')
+            or deps.get('tracer')
+            or deps.get('tracing_port')
+            or deps.get('span_tracer')
+            or deps.get('span_tracing')
+        )
+        self.tracer = self.tracing
+        self.tracing_port = self.tracing
+        self.span_tracer = self.tracing
+        self.span_tracing = self.tracing
+        self.tracing_adapter = self.tracing
         self.onboarding_use_case = onboarding_use_case
         self.onboarding = onboarding_use_case
         self.create_company_use_case = onboarding_use_case
@@ -353,6 +381,9 @@ class CompositionContainer:
             'metering': self.metering,
             'meter': self.metering,
             'metering_port': self.metering,
+            'tracing': self.tracing,
+            'tracer': self.tracing,
+            'tracing_port': self.tracing,
         }
         self.repositories = {
             'company': company_repository,
@@ -417,6 +448,12 @@ class CompositionContainer:
             'meter': self.metering,
             'metering_port': self.metering,
             'usage_metering': self.metering,
+            'tracing': self.tracing,
+            'tracer': self.tracing,
+            'tracing_port': self.tracing,
+            'span_tracer': self.tracing,
+            'span_tracing': self.tracing,
+            'tracing_adapter': self.tracing,
             'ingestion_use_case': self.ingestion_use_case,
             'ingestion': self.ingestion_pipeline,
         }

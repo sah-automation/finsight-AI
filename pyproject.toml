@@ -458,6 +458,7 @@ modules = [
     "finsight.adapters.auth",
     "finsight.adapters.metering",
     "finsight.adapters.security",
+    "finsight.adapters.tracing",
     "finsight.adapters.waiting_line",
 ]
 
