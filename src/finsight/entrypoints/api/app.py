@@ -8,6 +8,7 @@ from finsight.entrypoints.api import (
     ask,
     current_user,
     documents,
+    feedback,
     onboarding,
     source_viewer,
     threads,
@@ -25,6 +26,7 @@ def create_app() -> FastAPI:
     primary_routers = (
         ask.router,
         documents.router,
+        feedback.router,
         onboarding.router,
         upload.router,
         source_viewer.router,
@@ -40,6 +42,8 @@ def create_app() -> FastAPI:
     for extra in getattr(current_user, 'EXTRA_ROUTERS', ()):
         app.include_router(extra)
     for extra in getattr(threads, 'EXTRA_ROUTERS', ()):
+        app.include_router(extra)
+    for extra in getattr(feedback, 'EXTRA_ROUTERS', ()):
         app.include_router(extra)
 
     return app
