@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { InlineNotice } from '@/components/ui/inline-notice';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
+import { SourceViewer } from '@/components/ui/source-viewer';
 import { useRouter } from 'next/navigation';
 import type { CurrentUser } from '@/lib/auth/current-user';
 import { API_BASE_PATH } from '@/lib/api/client';
@@ -38,13 +39,19 @@ export interface CitationRecord {
   content?: string | null;
   status?: string | null;
   document_status?: string | null;
+  category?: string | null;
+  document_category?: string | null;
+  period?: string | null;
+  reporting_period?: string | null;
+  state?: string | null;
+  ingestion_state?: string | null;
+  ingestionState?: string | null;
   sources?: CitationRecord[] | null;
   calculated?: boolean;
   low_confidence?: boolean;
   needs_review?: boolean;
   currency?: string | null;
   units?: string | null;
-  period?: string | null;
   value?: number | string | null;
 }
 
@@ -197,6 +204,8 @@ export function AskScreen({
   const [filters, setFilters] = useState<string[]>(() => (filtersProp ?? []) as string[]);
   const [filterInput, setFilterInput] = useState('');
   const [selectedCitation, setSelectedCitation] = useState<CitationRecord | null>(null);
+  const [citationSources, setCitationSources] = useState<CitationRecord[]>([]);
+  const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [showReasons, setShowReasons] = useState(false);
   const [related, setRelated] = useState<string[]>([]);
@@ -414,6 +423,26 @@ export function AskScreen({
     if (lastUser?.question) void sendMessage(lastUser.question);
   }, [messagesList, sendMessage]);
 
+  const handleNextCitation = useCallback(() => {
+    if (citationSources.length > 0) {
+      setCurrentSourceIndex((prev) => Math.min(prev + 1, citationSources.length - 1));
+    }
+  }, [citationSources.length]);
+
+  const handlePreviousCitation = useCallback(() => {
+    if (citationSources.length > 0) {
+      setCurrentSourceIndex((prev) => Math.max(prev - 1, 0));
+    }
+  }, [citationSources.length]);
+
+  const handleNewerVersion = useCallback(async () => {
+    // The SourceViewer handles fetching the newer version internally
+    // For now, just close the viewer
+    setSelectedCitation(null);
+    setCitationSources([]);
+    setCurrentSourceIndex(0);
+  }, []);
+
   const reopenThread = useCallback(async (thread: ThreadRecord) => {
     const threadIdValue = thread.thread_id ?? thread.threadId ?? thread.id ?? null;
     if (threadIdValue) setThreadId(String(threadIdValue));
@@ -443,8 +472,20 @@ export function AskScreen({
 
   const openSource = useCallback((citation: CitationRecord) => {
     setSelectedCitation(citation);
+    // Gather all sources from this citation and the message's citations for navigation
+    const lastAssistant = [...messagesList].reverse().find((item) => item.role === 'assistant');
+    if (lastAssistant?.citations.length) {
+      const allSources = lastAssistant.citations.flatMap((c) =>
+        Array.isArray(c.sources) && c.sources.length > 0 ? c.sources : [c]
+      );
+      setCitationSources(allSources);
+      const idx = allSources.findIndex(
+        (s) => s.citation_id === citation.citation_id || s.id === citation.id
+      );
+      setCurrentSourceIndex(idx >= 0 ? idx : 0);
+    }
     if (onOpenSource) onOpenSource(citation);
-  }, [onOpenSource]);
+  }, [onOpenSource, messagesList]);
 
   const lastAssistant = useMemo(() => [...messagesList].reverse().find((item) => item.role === 'assistant'), [messagesList]);
   const isEmptyConversation = messagesList.length === 0;
@@ -630,17 +671,32 @@ export function AskScreen({
         )}
 
         {selectedCitation ? (
-          <aside aria-label="Source viewer" className="w-full rounded-lg border border-line bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-primary">Source viewer</h3>
-              <Button type="button" variant="secondary" onClick={() => setSelectedCitation(null)}>{messages.actions.close}</Button>
-            </div>
-            <div className="mt-3 space-y-2 text-sm text-primary">
-              <p><strong>{citationDocumentName(selectedCitation)}</strong></p>
-              {selectedCitation.version !== undefined && selectedCitation.version !== null ? <p>Version {selectedCitation.version}</p> : null}
-              {selectedCitation.page !== undefined && selectedCitation.page !== null ? <p>Page {selectedCitation.page}</p> : null}
-            </div>
-          </aside>
+          <SourceViewer
+            citation={{
+              document_id: selectedCitation.document_id ?? selectedCitation.documentId ?? '',
+              citation_id: selectedCitation.citation_id ?? selectedCitation.id ?? '',
+              document_title: citationDocumentName(selectedCitation),
+              document_version: selectedCitation.version ?? undefined,
+              page_number: (selectedCitation.page ?? selectedCitation.page_number ?? selectedCitation.pageNumber) ?? undefined,
+              table_id: (selectedCitation.table_id ?? selectedCitation.tableId ?? selectedCitation.table) ?? undefined,
+              category: selectedCitation.category ?? selectedCitation.document_category ?? undefined,
+              period: selectedCitation.period ?? selectedCitation.reporting_period ?? undefined,
+              document_status: selectedCitation.status ?? selectedCitation.state ?? selectedCitation.ingestion_state ?? selectedCitation.ingestionState ?? undefined,
+            }}
+            isOpen={true}
+            onClose={() => {
+              setSelectedCitation(null);
+              setCitationSources([]);
+              setCurrentSourceIndex(0);
+            }}
+            onNext={handleNextCitation}
+            onPrevious={handlePreviousCitation}
+            onNewerVersion={handleNewerVersion}
+            hasNext={currentSourceIndex < citationSources.length - 1}
+            hasPrevious={currentSourceIndex > 0}
+            totalCitations={citationSources.length}
+            currentCitationIndex={currentSourceIndex}
+          />
         ) : null}
       </div>
     </div>

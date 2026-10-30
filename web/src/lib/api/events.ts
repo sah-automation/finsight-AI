@@ -1,5 +1,82 @@
 import { API_BASE_PATH } from '@/lib/api/client';
 
+export interface SourceViewerHighlight {
+  start_char?: number;
+  end_char?: number;
+  char_start?: number;
+  char_end?: number;
+  start?: number;
+  end?: number;
+  s?: number;
+  e?: number;
+}
+
+export interface SourceViewerTable {
+  table_id?: string;
+  id?: string;
+  page?: number;
+  page_number?: number;
+  headers?: string[] | null;
+  rows?: Array<string[] | Record<string, unknown>> | null;
+  data?: unknown;
+  text?: string | null;
+  needs_review?: boolean;
+  [key: string]: unknown;
+}
+
+export interface SourceViewerResponse {
+  status: 'available' | 'not_available';
+  document_id?: string | null;
+  document_title?: string | null;
+  title?: string | null;
+  document_version?: string | number | null;
+  version?: string | number | null;
+  version_id?: string | null;
+  page_number?: number | string | null;
+  page?: number | string | null;
+  content_type?: 'text' | 'table';
+  text?: string | null;
+  table?: SourceViewerTable | null;
+  tables?: SourceViewerTable[] | null;
+  highlight?: SourceViewerHighlight | null;
+  needs_review?: boolean;
+  newer_version_available?: boolean;
+  newer_version_id?: string | null;
+  original_available?: boolean;
+  original_link?: string | null;
+  citation?: string | null;
+  citation_locator?: string | null;
+  locator?: string | null;
+  company_id?: string | null;
+  user_id?: string | null;
+  role?: string | null;
+  trace_id?: string | null;
+  outcome?: string;
+  result?: string;
+  // Document metadata fields
+  category?: string | null;
+  period?: string | null;
+  document_status?: string | null;
+}
+
+export interface SourceViewerCitation {
+  document_id: string;
+  citation_id: string;
+  document_title?: string;
+  document_version?: string | number;
+  page_number?: number | string;
+  table_id?: string;
+  category?: string | null;
+  period?: string | null;
+  document_status?: string | null;
+}
+
+export interface SourceViewerOriginalResponse {
+  status: 'available';
+  original_link: string;
+  original_available: boolean;
+}
+
 export interface AskStatusEvent {
   type: 'status';
   status: string;
@@ -271,4 +348,82 @@ export async function streamAskQuestion(
   }
 
   await readSseStream(response.body, options.onEvent, options.signal);
+}
+
+export async function fetchSourceViewer(
+  citation: SourceViewerCitation,
+  options?: { signal?: AbortSignal; fetchImpl?: typeof fetch },
+): Promise<SourceViewerResponse> {
+  const fetchImpl = options?.fetchImpl ?? fetch;
+  const response = await fetchImpl(
+    `${API_BASE_PATH}/documents/${encodeURIComponent(citation.document_id)}/citations/${encodeURIComponent(citation.citation_id)}/source`,
+    {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      signal: options?.signal,
+    },
+  );
+
+  if (response.status === 401) {
+    throw new ApiSessionExpiredError();
+  }
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    if (errorBody?.status === 'not_available') {
+      return { status: 'not_available' } as SourceViewerResponse;
+    }
+    throw new ApiUnavailableError();
+  }
+
+  return response.json() as Promise<SourceViewerResponse>;
+}
+
+export async function fetchOriginalDocument(
+  citation: SourceViewerCitation,
+  options?: { signal?: AbortSignal; fetchImpl?: typeof fetch },
+): Promise<SourceViewerOriginalResponse> {
+  const fetchImpl = options?.fetchImpl ?? fetch;
+  const response = await fetchImpl(
+    `${API_BASE_PATH}/documents/${encodeURIComponent(citation.document_id)}/citations/${encodeURIComponent(citation.citation_id)}/source/original`,
+    {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      signal: options?.signal,
+    },
+  );
+
+  if (response.status === 401) {
+    throw new ApiSessionExpiredError();
+  }
+  if (!response.ok) {
+    throw new ApiUnavailableError();
+  }
+
+  return response.json() as Promise<SourceViewerOriginalResponse>;
+}
+
+export async function reportWrongSource(
+  citationReference: unknown,
+  options?: { signal?: AbortSignal; fetchImpl?: typeof fetch },
+): Promise<void> {
+  const fetchImpl = options?.fetchImpl ?? fetch;
+  const response = await fetchImpl(`${API_BASE_PATH}/report-wrong-source`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ citation_reference: citationReference }),
+    signal: options?.signal,
+  });
+
+  if (response.status === 401) {
+    throw new ApiSessionExpiredError();
+  }
+  if (!response.ok) {
+    throw new ApiUnavailableError();
+  }
 }
