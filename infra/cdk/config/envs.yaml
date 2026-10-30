@@ -1,9 +1,24 @@
 dev:
   name: dev
   removal_policy: destroy
+  key_mode: aws_managed
+  data:
+    point_in_time_recovery: false
+    aurora_backup_retention_days: 1
+    aurora_deletion_protection: false
 staging:
   name: staging
   removal_policy: destroy
+  key_mode: aws_managed
+  data:
+    point_in_time_recovery: false
+    aurora_backup_retention_days: 1
+    aurora_deletion_protection: false
 prod:
   name: prod
   removal_policy: retain
+  key_mode: aws_managed
+  data:
+    point_in_time_recovery: true
+    aurora_backup_retention_days: 35
+    aurora_deletion_protection: true

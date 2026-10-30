@@ -27,6 +27,13 @@ class JobProgressPort(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def reconcile_progress(
+        self, company_id: CompanyId, *args: object, **kwargs: object
+    ) -> object:
+        """Apply one Aurora-committed state using a strict ordering token."""
+        raise NotImplementedError
+
+    @abstractmethod
     async def delete_progress(
         self, company_id: CompanyId, *args: object, **kwargs: object
     ) -> object:

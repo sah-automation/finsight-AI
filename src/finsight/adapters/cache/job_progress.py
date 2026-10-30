@@ -102,6 +102,104 @@ def _norm(value: Any) -> str:
     return str(value)
 
 
+_ORDER_FIELDS = ('revision', 'aurora_revision', 'sequence')
+_AURORA_TIME_FIELDS = ('aurora_committed_at', 'source_updated_at')
+_CONDITIONAL_WRITE_ATTEMPTS = 3
+
+
+def _as_int(value: Any) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    parsed: datetime | None
+    try:
+        if isinstance(value, datetime):
+            parsed = value
+        elif isinstance(value, (int, float)):
+            parsed = datetime.fromtimestamp(value, UTC)
+        else:
+            text = str(value).strip()
+            if text.endswith('Z'):
+                text = f'{text[:-1]}+00:00'
+            parsed = datetime.fromisoformat(text) if text else None
+    except (OverflowError, OSError, ValueError):
+        return None
+    if parsed is None:
+        return None
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
+
+
+def _order_key(item: dict[str, Any]) -> tuple[str, int | datetime] | None:
+    """Return the Aurora ordering token carried by a progress row."""
+    for field in _ORDER_FIELDS:
+        revision = _as_int(item.get(field))
+        if revision is not None:
+            return ('revision', revision)
+    for field in _AURORA_TIME_FIELDS:
+        committed_at = _as_datetime(item.get(field))
+        if committed_at is not None:
+            return ('committed_at', committed_at)
+    return None
+
+
+def _order_field(item: dict[str, Any]) -> str | None:
+    """Return the attribute name that carried the item's ordering token."""
+    for field in _ORDER_FIELDS:
+        if _as_int(item.get(field)) is not None:
+            return field
+    for field in _AURORA_TIME_FIELDS:
+        if _as_datetime(item.get(field)) is not None:
+            return field
+    return None
+
+
+def _is_newer(existing: dict[str, Any] | None, incoming: dict[str, Any]) -> bool:
+    """Only a strictly newer Aurora ordering token may replace a view row."""
+    incoming_order = _order_key(incoming)
+    if incoming_order is None:
+        return existing is None
+    existing_order = _order_key(existing) if existing is not None else None
+    if existing_order is None:
+        return True
+    if incoming_order[0] != existing_order[0]:
+        # Mixed tokens cannot be compared safely; keep the existing row.
+        return False
+    incoming_value = incoming_order[1]
+    existing_value = existing_order[1]
+    if isinstance(incoming_value, int) and isinstance(existing_value, int):
+        return incoming_value > existing_value
+    if isinstance(incoming_value, datetime) and isinstance(existing_value, datetime):
+        return incoming_value > existing_value
+    return False
+
+
+def _with_company_id(company_id: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Copy kwargs and add the positional company id when the caller omitted it."""
+    copied = dict(kwargs)
+    if company_id is not None and not any(
+        key in copied for key in ('company_id', 'companyId', 'company')
+    ):
+        copied['company_id'] = company_id
+    return copied
+
+
+def _is_conditional_failure(exc: BaseException) -> bool:
+    """Return True for a DynamoDB conditional-check failure."""
+    response = getattr(exc, 'response', None)
+    if not isinstance(response, dict):
+        return False
+    error = response.get('Error')
+    return isinstance(error, dict) and error.get('Code') == 'ConditionalCheckFailedException'
+
+
 class _ProgressRecord(dict[str, Any]):
     def __getattr__(self, name: str) -> Any:
         try:
@@ -295,60 +393,86 @@ class JobProgress(JobProgressPort):
                 item[key] = val
         return item
 
-    async def _persist(self, item: dict[str, Any]) -> None:
+    def _store_memory(self, item: dict[str, Any]) -> None:
         cid = _norm(item.get('company_id'))
         jid = _norm(item.get('job_id'))
         self._memory.setdefault(cid, {})[jid] = dict(item)
-        if self.table is not None:
+
+    async def _persist(self, item: dict[str, Any], expected: dict[str, Any] | None = None) -> None:
+        """Write one row, using an optimistic condition when ordering matters."""
+        if self.table is None:
+            self._store_memory(item)
+            return
+
+        kwargs: dict[str, Any] = {'Item': item}
+        expected_field = _order_field(expected) if expected is not None else None
+        if expected is not None and expected_field is not None:
+            kwargs['ConditionExpression'] = 'attribute_not_exists(#order) OR #order = :expected'
+            kwargs['ExpressionAttributeNames'] = {'#order': expected_field}
+            kwargs['ExpressionAttributeValues'] = {':expected': expected[expected_field]}
+        elif _order_key(item) is not None:
+            # Creating an ordered row: never silently replace a concurrent write.
+            kwargs['ConditionExpression'] = 'attribute_not_exists(#order)'
+            kwargs['ExpressionAttributeNames'] = {'#order': _order_field(item)}
+
+        await _maybe_await(self.table.put_item, **kwargs)
+        self._store_memory(item)
+
+    async def _persist_newer(self, item: dict[str, Any]) -> dict[str, Any]:
+        """Persist an ordered row, retrying against concurrent newer writers."""
+        cid = _norm(item.get('company_id'))
+        jid = _norm(item.get('job_id'))
+        for _attempt in range(_CONDITIONAL_WRITE_ATTEMPTS):
+            existing = await self._fetch(cid, jid)
+            if existing is not None and not _is_newer(existing, item):
+                return dict(existing)
             try:
-                await _maybe_await(self.table.put_item, Item=item)
-            except Exception:
-                with contextlib.suppress(Exception):
-                    await _maybe_await(self.table.put_item, item=item)
+                await self._persist(item, expected=existing)
+            except Exception as exc:
+                if not _is_conditional_failure(exc):
+                    raise
+                continue
+            return dict(item)
+        existing = await self._fetch(cid, jid)
+        if existing is not None:
+            return dict(existing)
+        raise RuntimeError(f'could not persist progress for job {jid!r}')
 
     async def _fetch(self, company_id: Any, job_id: Any) -> dict[str, Any] | None:
         cid = _norm(company_id)
         jid = _norm(job_id)
+        if self.table is not None:
+            for key in (
+                {'job_id': jid, 'company_id': cid},
+                {'pk': self._key(company_id, job_id)},
+            ):
+                try:
+                    resp = await _maybe_await(self.table.get_item, Key=key, ConsistentRead=True)
+                except Exception:
+                    continue
+                item = None
+                if isinstance(resp, dict):
+                    item = resp.get('Item', resp.get('item'))
+                if isinstance(item, dict):
+                    if (
+                        _norm(item.get('company_id')) not in ('', None)
+                        and _norm(item.get('company_id')) != cid
+                    ):
+                        continue
+                    self._store_memory(item)
+                    return dict(item)
         rec = self._memory.get(cid, {}).get(jid)
         if isinstance(rec, dict):
             if (
                 _norm(rec.get('company_id')) not in ('', None)
                 and _norm(rec.get('company_id')) != cid
             ):
-                pass
-            else:
-                return dict(rec)
-        if self.table is not None:
-            for key in (
-                {'pk': self._key(company_id, job_id)},
-                {'company_id': cid, 'job_id': jid},
-            ):
-                try:
-                    resp = await _maybe_await(self.table.get_item, Key=key)
-                    item = None
-                    if isinstance(resp, dict):
-                        item = resp.get('Item', resp.get('item'))
-                    if isinstance(item, dict):
-                        if (
-                            _norm(item.get('company_id')) not in ('', None)
-                            and _norm(item.get('company_id')) != cid
-                        ):
-                            continue
-                        self._memory.setdefault(cid, {})[jid] = dict(item)
-                        return dict(item)
-                except Exception:
-                    continue
+                return None
+            return dict(rec)
         return None
 
     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
-        kwargs_copy = dict(kwargs)
-        if (
-            company_id is not None
-            and 'company_id' not in kwargs_copy
-            and 'companyId' not in kwargs_copy
-            and 'company' not in kwargs_copy
-        ):
-            kwargs_copy['company_id'] = company_id
+        kwargs_copy = _with_company_id(company_id, kwargs)
         cid, jid, payload = self._extract(args, kwargs_copy)
         if _norm(cid) == '' and isinstance(company_id, str):
             cid = company_id
@@ -366,18 +490,31 @@ class JobProgress(JobProgressPort):
         if _norm(jid) == '':
             raise ValueError('job_id required')
         item = self._build(cid, jid, payload)
+        if _order_key(item) is not None:
+            return _ProgressRecord(await self._persist_newer(item))
         await self._persist(item)
         return _ProgressRecord(item)
 
+    async def reconcile_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+        """Apply one Aurora-committed state to the rebuildable progress view.
+
+        The row is keyed by company and job id. A strict Aurora ordering token
+        (``revision``/``sequence`` or ``aurora_committed_at``) is mandatory so
+        stale retries and duplicate deliveries can never overwrite a newer row.
+        """
+        kwargs_copy = _with_company_id(company_id, kwargs)
+        cid, jid, payload = self._extract(args, kwargs_copy)
+        if _norm(cid) == '':
+            cid = company_id
+        if _norm(jid) == '':
+            raise ValueError('job_id required')
+        if _order_key(payload) is None:
+            raise ValueError('revision or aurora_committed_at required to reconcile progress')
+        payload.setdefault('source', 'aurora')
+        return await self.write_progress(cid, jid, **payload)
+
     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
-        kwargs_copy = dict(kwargs)
-        if (
-            company_id is not None
-            and 'company_id' not in kwargs_copy
-            and 'companyId' not in kwargs_copy
-            and 'company' not in kwargs_copy
-        ):
-            kwargs_copy['company_id'] = company_id
+        kwargs_copy = _with_company_id(company_id, kwargs)
         cid, jid, payload = self._extract(args, kwargs_copy)
         if _norm(cid) == '' and isinstance(company_id, str):
             cid = company_id
@@ -446,9 +583,19 @@ class JobProgress(JobProgressPort):
             return True
         store = self._memory.get(_norm(cid), {})
         deleted = store.pop(_norm(jid), None) is not None
+        delete_errors: list[Exception] = []
         if self.table is not None:
-            with contextlib.suppress(Exception):
-                await _maybe_await(self.table.delete_item, Key={'pk': self._key(cid, jid)})
+            for key in (
+                {'job_id': _norm(jid), 'company_id': _norm(cid)},
+                {'pk': self._key(cid, jid)},
+            ):
+                try:
+                    await _maybe_await(self.table.delete_item, Key=key)
+                    break
+                except Exception as exc:
+                    delete_errors.append(exc)
+            else:
+                raise delete_errors[-1]
         return deleted
 
     async def rebuild(self, *args: Any, **kwargs: Any) -> Any:
