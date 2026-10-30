@@ -265,6 +265,7 @@ class CohereReranker(RerankerPort):
                 'reranker fallback to search order',
                 extra={
                     'alert': 'reranker_down',
+                    'reranker_down': True,
                     'company_id': company,
                     'fallback_mode': 'search_order',
                     'error': str(exc),

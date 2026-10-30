@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _resolve_wrapped(kwargs: dict[str, Any], args: list[Any]) -> Any:
@@ -40,6 +43,17 @@ class RetryingEmbedding:
                 last_error = exc
                 await asyncio.sleep(self.delay)
         if last_error is not None:
+            try:
+                _LOGGER.warning(
+                    'embedding retries exceeded',
+                    extra={
+                        'embedding_retries': self.retries + 1,
+                        'embedding_retries_exceeded': self.retries + 1,
+                        'alert': 'embedding_retries_exceeded',
+                    },
+                )
+            except Exception as exc:  # pragma: no cover - best-effort logging
+                _LOGGER.debug('embedding retry alert log failed', exc_info=exc)
             raise last_error
         return await target.embed(company_id, *args, **kwargs)
 

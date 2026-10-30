@@ -4,12 +4,27 @@ from __future__ import annotations
 
 import inspect
 import json
+import logging
 import uuid
 from typing import Any
 
 import boto3  # type: ignore[import-untyped]
 
 from finsight.domain.ports.queue import QueuePort as QueuePortBase
+
+
+class _JobRetryList(list[Any]):
+    """List that records a structured alert whenever a job enters retry."""
+
+    def append(self, item: Any) -> None:
+        try:
+            _LOGGER.warning('job entered retry list', extra={'job_in_retry_list': True})
+        except Exception as exc:  # pragma: no cover - best-effort logging
+            _LOGGER.debug('job retry alert log failed', exc_info=exc)
+        super().append(item)
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _coerce_str(value: Any) -> str:
@@ -271,7 +286,7 @@ class SqsQueue(QueuePortBase):
         self._queue_state: dict[str, list[dict[str, Any]]] = {}
         self._sent: list[dict[str, Any]] = []
         self._dead_letters: list[dict[str, Any]] = []
-        self._retry_list: list[dict[str, Any]] = []
+        self._retry_list: list[dict[str, Any]] = _JobRetryList()
         self.dead_letters = self._dead_letters
         self.dead_lettered = self._dead_letters
         self.retry_list = self._retry_list

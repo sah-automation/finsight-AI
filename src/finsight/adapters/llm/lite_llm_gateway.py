@@ -499,7 +499,14 @@ class LiteLLMGateway(LLMGatewayPort):
             return
         try:
             self.logger.warning(
-                'Fallback 3 used: %s', model_id, extra={'tag': 'fallback_3_used', 'model': model_id}
+                'Fallback 3 used: %s',
+                model_id,
+                extra={
+                    'fallback_3_used': True,
+                    'fallback_3_model': model_id,
+                    'tag': 'fallback_3_used',
+                    'model': model_id,
+                },
             )
         except Exception:
             _LOGGER.warning('Fallback 3 used: %s', model_id)
