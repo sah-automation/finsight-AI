@@ -27,6 +27,10 @@ class UnavailableResult:
     message: str = 'AI service is temporarily unavailable. Please try again later.'
     model_id: str = 'unavailable'
     status: str = 'unavailable'
+    insufficient_data: bool = False
+    access_denied: bool = False
+    numbers: list[Any] = field(default_factory=list)
+    citations: list[Any] = field(default_factory=list)
 
     @property
     def unavailable(self) -> bool:

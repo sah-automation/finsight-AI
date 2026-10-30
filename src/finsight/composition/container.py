@@ -763,6 +763,9 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
                 for k, v in (_extra or {}).items()
                 if k
                 in {
+                    'input_gate',
+                    'input_gater',
+                    'gate',
                     'llm_gateway',
                     'llm',
                     'gateway',

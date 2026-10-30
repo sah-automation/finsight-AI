@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -13,6 +13,9 @@ class InsufficientData:
     company_id: object = None
     question: str | None = None
     citations: list[object] = None  # type: ignore[assignment]
+    insufficient_data: bool = True
+    access_denied: bool = False
+    numbers: list[object] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.citations is None:

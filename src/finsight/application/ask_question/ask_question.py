@@ -744,6 +744,12 @@ class AskQuestion:
                 model_name=final_model_text,
                 user_id=None if user_id is None else UserId(str(user_id)),
             )
+            try:
+                answer.numbers = list(calculated_numbers)  # type: ignore[attr-defined]
+                answer.insufficient_data = False  # type: ignore[attr-defined]
+                answer.access_denied = False  # type: ignore[attr-defined]
+            except Exception:
+                pass
 
             # Optional cache storage: never cache fallback-3 or unavailable.
             should_cache = (

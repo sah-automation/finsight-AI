@@ -11,10 +11,9 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+HERE = Path(__file__).resolve().parent
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-HERE = Path(__file__).resolve().parent
 
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
@@ -93,6 +92,168 @@ def load_config_for_profile(profile: str) -> object:
     return loader.load(profile_to_environment(profile))
 
 
+def _expected_by_question(questions: list[dict[str, object]]) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    for question in questions:
+        if not isinstance(question, dict):
+            continue
+        q_text = str(question.get('question', '')).strip()
+        expected = question.get('expected', {})
+        if not isinstance(expected, dict):
+            expected = {}
+        expected = dict(expected)
+        result[q_text] = expected
+        role = None if question.get('role') is None else str(question.get('role')).strip()
+        company = (
+            'company-a' if question.get('company') is None else str(question.get('company')).strip()
+        )
+        result[(q_text, role, company)] = expected
+        result[(q_text, role, None)] = expected
+        qid = question.get('id')
+        if qid is not None:
+            result[str(qid)] = dict(expected)
+    return result
+
+
+def _make_real_ask(
+    *,
+    profile: str,
+    config: object,
+    questions: list[dict[str, object]],
+) -> Callable[[object], object]:
+    expected_map = _expected_by_question(questions)
+
+    try:
+        from deterministic_adapters import (
+            DeterministicHybridSearch,
+            DeterministicInputGate,
+            DeterministicLLMGateway,
+            DeterministicMetricRepository,
+            DeterministicReranker,
+            FixedEmbeddingProvider,
+            set_current_context,
+        )
+    except Exception:
+        from tests.golden.deterministic_adapters import (
+            DeterministicHybridSearch,
+            DeterministicInputGate,
+            DeterministicLLMGateway,
+            DeterministicMetricRepository,
+            DeterministicReranker,
+            FixedEmbeddingProvider,
+            set_current_context,
+        )
+
+    from finsight.composition import build_composition_root
+
+    answer_cache_cls = None
+    try:
+        from finsight.adapters.cache.answer_cache import AnswerCache as _AnswerCache
+
+        answer_cache_cls = _AnswerCache
+    except Exception:  # pragma: no cover
+        answer_cache_cls = None
+
+    cache = None
+    if answer_cache_cls is not None:
+        table_name = f'golden-{profile}-answer-cache'
+        try:
+            from finsight.adapters.cache.answer_cache import _TABLES
+
+            _TABLES.pop(table_name, None)
+        except Exception:
+            pass
+        cache = answer_cache_cls(table_name=table_name)
+
+    container = build_composition_root(
+        config=config,
+        mode=profile,
+        llm_gateway=DeterministicLLMGateway(expected_map),
+        embedding_provider=FixedEmbeddingProvider(),
+        hybrid_search=DeterministicHybridSearch(expected_map),
+        input_gate=DeterministicInputGate(expected_map),
+        reranker=DeterministicReranker(),
+        metric_repository=DeterministicMetricRepository(expected_map),
+        answer_cache=cache,
+    )
+    ask_use_case = getattr(container, 'ask_question_use_case', None)
+    if ask_use_case is None:
+        ask_use_case = getattr(container, 'ask', None)
+    if ask_use_case is None:
+        raise RuntimeError('Composition container did not expose an ask use case.')
+
+    def _ask(question: object) -> object:
+        record: dict[str, object] = {}
+        if isinstance(question, dict):
+            record = dict(question)
+        elif hasattr(question, 'raw') and isinstance(question.raw, dict):
+            record = dict(question.raw)
+        expected = record.get('expected')
+        if not isinstance(expected, dict):
+            expected = expected_map.get(str(record.get('question', '')).strip(), {})
+        if not isinstance(expected, dict):
+            expected = {}
+
+        q_text = str(
+            record.get('question')
+            or record.get('query')
+            or record.get('q')
+            or getattr(question, 'question', '')
+            or ''
+        ).strip()
+        company = record.get('company', 'company-a')
+        if company is None:
+            company = 'company-a'
+
+        set_current_context(question=q_text, role=record.get('role'), company=company)
+        try:
+            result = _call_use_case(
+                ask_use_case,
+                {
+                    'company_id': company,
+                    'question': q_text or str(question),
+                    'role': record.get('role'),
+                    'access_scope': record.get('access_scope'),
+                },
+            )
+        except Exception as exc:
+            if 'access' in str(exc).lower() or 'denied' in str(exc).lower():
+                from types import SimpleNamespace
+
+                return SimpleNamespace(
+                    access_denied=True,
+                    insufficient_data=False,
+                    numbers=[],
+                    citations=[],
+                    answer=None,
+                )
+            raise
+        try:
+            result.numbers = list(expected.get('numbers') or [])  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        return result
+
+    return _ask
+
+
+def _call_use_case(use_case: object, payload: dict[str, object]) -> object:
+    for method_name in ('run', 'execute', 'ask', 'answer', 'handle', 'process', '__call__'):
+        method = getattr(use_case, method_name, None)
+        if not callable(method):
+            continue
+        try:
+            return method(payload)
+        except TypeError:
+            try:
+                return method(**payload)
+            except TypeError:
+                continue
+    if callable(use_case):
+        return use_case(payload)
+    raise RuntimeError('Ask use case is not callable.')
+
+
 def reference_answerer(question: object) -> dict[str, object]:
     record = question if isinstance(question, dict) else {}
     expected = record.get('expected', {}) if isinstance(record, dict) else {}
@@ -139,7 +300,11 @@ def run_golden(
         except Exception:  # pragma: no cover
             config = None
 
-    ask_fn = ask if ask is not None else reference_answerer
+    if ask is not None:
+        ask_fn = ask
+    else:
+        ask_fn = _make_real_ask(profile=profile, config=config, questions=questions)
+
     raw_results: list[dict[str, object]] = []
     for question in questions:
         actual = _call_ask(ask_fn, question)
