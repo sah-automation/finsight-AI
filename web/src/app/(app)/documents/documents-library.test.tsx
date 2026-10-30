@@ -42,7 +42,7 @@ describe('DocumentsLibrary', () => {
   it('shows loading then empty state', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ documents: [] })),
+      vi.fn().mockImplementation(() => jsonResponse({ documents: [] })),
     );
     render(<DocumentsLibrary user={USER as never} permissions={['read']} />);
     expect(screen.getByText('Loading documents')).toBeInTheDocument();
@@ -52,7 +52,7 @@ describe('DocumentsLibrary', () => {
   it('renders documents and details', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
+      vi.fn().mockImplementation(() =>
         jsonResponse({
           documents: [
             {
@@ -77,7 +77,7 @@ describe('DocumentsLibrary', () => {
   });
 
   it('shows error state on failed fetch', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, 500)));
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => jsonResponse({}, 500)));
     render(<DocumentsLibrary user={USER as never} permissions={['read']} />);
     await waitFor(() =>
       expect(screen.getByText('Documents are temporarily unavailable. Please try again.')).toBeInTheDocument(),
@@ -87,7 +87,7 @@ describe('DocumentsLibrary', () => {
   it('audit users do not see delete controls', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
+      vi.fn().mockImplementation(() =>
         jsonResponse({
           documents: [
             {

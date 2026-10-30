@@ -350,6 +350,8 @@ export async function streamAskQuestion(
   await readSseStream(response.body, options.onEvent, options.signal);
 }
 
+const CITATION_UNAVAILABLE_STATUSES = new Set([403, 404, 410]);
+
 export async function fetchSourceViewer(
   citation: SourceViewerCitation,
   options?: { signal?: AbortSignal; fetchImpl?: typeof fetch },
@@ -370,6 +372,11 @@ export async function fetchSourceViewer(
     throw new ApiSessionExpiredError();
   }
   if (!response.ok) {
+    // Cross-company, unauthorized, and unavailable citations must never expose
+    // another company's content; surface them as not available instead.
+    if (CITATION_UNAVAILABLE_STATUSES.has(response.status)) {
+      return { status: 'not_available' } as SourceViewerResponse;
+    }
     const errorBody = await response.json().catch(() => ({}));
     if (errorBody?.status === 'not_available') {
       return { status: 'not_available' } as SourceViewerResponse;
