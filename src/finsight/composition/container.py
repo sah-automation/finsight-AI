@@ -242,6 +242,18 @@ def get_default_upload_use_case() -> Any:
     return _DEFAULT_UPLOAD
 
 
+_DEFAULT_REPROCESS: Any = None
+
+
+def set_default_reprocess_use_case(value: Any) -> None:
+    global _DEFAULT_REPROCESS
+    _DEFAULT_REPROCESS = value
+
+
+def get_default_reprocess_use_case() -> Any:
+    return _DEFAULT_REPROCESS
+
+
 def set_default_container(value: CompositionContainer | None) -> None:
     global _DEFAULT_CONTAINER
     _DEFAULT_CONTAINER = value
@@ -699,10 +711,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         kwargs, 'unit_of_work', 'uow', 'transaction', 'tx'
     )
     if unit_of_work is None:
-        try:
-            unit_of_work = build_unit_of_work(config=config, session=session, **_extra)
-        except Exception:
-            unit_of_work = None
+        unit_of_work = build_unit_of_work(config=config, session=session, **_extra)
     reader_registry = provided_deps.get('reader_registry') or build_reader_registry(
         config=config, session=session, **_extra
     )
@@ -841,6 +850,69 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
             audit_log=audit_log,
         )
 
+    queue = provided_deps.get('queue')
+    if queue is None:
+        queue = _existing(kwargs, 'queue', 'queue_port', 'sqs', 'job_queue', 'reprocessing_queue')
+    if queue is None:
+        queue = build_queue(config=config, session=session, **_extra)
+
+    reprocess_use_case = _existing(
+        kwargs,
+        'reprocess_use_case',
+        'reprocess',
+    )
+    if reprocess_use_case is None:
+        reprocess_use_case = provided_deps.get('reprocess_use_case')
+    if reprocess_use_case is None:
+        reprocess_use_case = build_reprocess_use_case(
+            config=config,
+            session=session,
+            document_repository=document_repository,
+            chunk_repository=chunk_repository,
+            vector_write=vector_write,
+            answer_cache=answer_cache,
+            job_repository=job_repository,
+            queue=queue,
+            change_event_publisher=change_event_publisher,
+            company_repository=company_repository,
+            unit_of_work=unit_of_work,
+            tracing=tracing,
+            **{
+                k: v
+                for k, v in (_extra or {}).items()
+                if k
+                not in {
+                    'queue',
+                    'queue_port',
+                    'sqs',
+                    'job_queue',
+                    'reprocessing_queue',
+                    'document_repository',
+                    'chunk_repository',
+                    'vector_write',
+                    'answer_cache',
+                    'job_repository',
+                    'change_event_publisher',
+                    'company_repository',
+                    'unit_of_work',
+                    'tracing',
+                    'cache',
+                    'chunks',
+                    'documents',
+                    'publisher',
+                    'event_publisher',
+                    'companies',
+                    'uow',
+                    'transaction',
+                    'tx',
+                    'tracer',
+                    'tracing_port',
+                    'span_tracer',
+                    'span_tracing',
+                }
+            },
+        )
+
     container = CompositionContainer(
         config=config,
         session=session,
@@ -874,6 +946,8 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         change_event_publisher=change_event_publisher,
         audit_log=audit_log,
         unit_of_work=unit_of_work,
+        queue=queue,
+        reprocess_use_case=reprocess_use_case,
         metering=metering,
         tracing=tracing,
         pipeline_worker=_pip,
@@ -893,6 +967,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
     set_default_container(container)
     set_default_onboarding_use_case(onboarding_use_case)
     set_default_upload_use_case(upload_use_case)
+    set_default_reprocess_use_case(reprocess_use_case)
     return container
 
 
@@ -999,6 +1074,24 @@ def get_upload_use_case(*args: Any, **kwargs: Any) -> Any:
     if default is not None:
         return default
     return None
+
+
+def get_reprocess_use_case(*args: Any, **kwargs: Any) -> Any:
+    if args or kwargs:
+        return build_reprocess_use_case(*args, **kwargs)
+    default = get_default_reprocess_use_case()
+    if default is not None:
+        return default
+    default_container = get_default_container()
+    if default_container is not None:
+        for attr in ('reprocess_use_case', 'reprocess'):
+            value = getattr(default_container, attr, None)
+            if value is not None:
+                return value
+    try:
+        return build_reprocess_use_case()
+    except Exception:
+        return None
 
 
 def build_onboarding_use_case_container_alias(*args: Any, **kwargs: Any) -> Any:
@@ -1704,1090 +1797,22 @@ def build_job_progress(*args: Any, **kwargs: Any) -> Any:
     return None
 
 
-class _ReaderRegistry(dict[Any, Any]):
-    """A dict-like reader registry with attribute-style access."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        config = kwargs.pop('config', kwargs.pop('settings', None))
-        session = kwargs.pop('session', kwargs.pop('db_session', None))
-        for key in ('configuration', 'app_config', 'ctx'):
-            if key in kwargs and config is None and not hasattr(kwargs.get(key), 'read'):
-                config = kwargs.pop(key)
-            elif key in kwargs:
-                kwargs.pop(key, None)
-
-        if args and isinstance(args[0], dict) and len(args) == 1 and not kwargs:
-            super().__init__(args[0])
-        else:
-            super().__init__(*args, **kwargs)
-
-        if config is not None:
-            self.config = config
-        if session is not None:
-            self.session = session
-        # Keep shortcuts mirrored whenever new keys are added later.
-        for key in (
-            'reader',
-            'primary',
-            'primary_reader',
-            'text_reader',
-            'main_reader',
-            'documents_reader',
-            'selected_reader',
-            'scan_reader',
-            'scan',
-            'ocr',
-            'ocr_reader',
-            'table_reader',
-            'table',
-            'Table',
-            'active',
-        ):
-            if key in self and not hasattr(self, key):
-                setattr(self, key, self[key])
-
-    def register(self, key: Any, value: Any) -> None:
-        self[key] = value
-        try:
-            if isinstance(key, str) and key.isidentifier():
-                setattr(self, key, value)
-        except Exception:  # noqa: S110
-            pass
-
-    def get_reader(self, name: Any, default: Any = None) -> Any:
-        return self.get(name, default)
-
-    def __setattr__(self, key: str, value: Any) -> None:
-        # Avoid recursion for dict internals.
-        if key in ('config', 'session', 'active') or not key.startswith('_'):
-            object.__setattr__(self, key, value)
-        else:
-            object.__setattr__(self, key, value)
-
-
-ReaderRegistry = _ReaderRegistry
-
-
-def _reader_class_from_specs(specs: list[tuple[str, tuple[str, ...]]]) -> Any:
-    for module_path, names in specs:
-        try:
-            cls = _import_adapter(module_path, *names)
-        except Exception:
-            cls = None
-        if cls is not None:
-            return cls
-    return None
-
-
-def _instantiate_reader(cls: Any, config: Any, session: Any, extra: dict[str, Any]) -> Any:
-    if cls is None:
-        return None
-    attempts: list[dict[str, Any]] = [
-        {'config': config, 'session': session, **extra},
-        {'config': config, **{k: v for k, v in extra.items() if k not in ('session',)}},
-        {'settings': config, 'session': session, **extra},
-        {},
-    ]
-    for kwargs in attempts:
-        try:
-            return cls(**kwargs)
-        except Exception:  # noqa: S112
-            continue
-    try:
-        return cls()
-    except ImportError:
-        return None
-    except Exception:
-        raise
-
-
-def _select_reader_instance(
-    registry: Any, name: Any, fallback: Any = None, allow_none: bool = False
-) -> Any:
-    if name is None:
-        return fallback
-    if hasattr(name, 'read') and callable(getattr(name, 'read', None)):
-        return name
-    if isinstance(name, str):
-        stripped = name.strip()
-        if stripped.lower() in {'none', 'null', 'false', 'off', 'disabled'}:
-            return None if allow_none else fallback
-        if stripped in registry:
-            value = registry.get(stripped)
-            if value is not None or allow_none:
-                return value
-        low = stripped.lower()
-        for key, value in registry.items():
-            if isinstance(key, str) and key.lower() == low:
-                if value is not None or allow_none:
-                    return value
-        for key, value in registry.items():
-            if isinstance(key, str) and key.lower().replace('_', '') == low.replace('_', ''):
-                if value is not None or allow_none:
-                    return value
-        # No silent fallback to a default reader for an unknown configured name.
-        if low not in {'none', 'null', 'off', 'false', 'disabled'}:
-            raise ValueError(f'Unknown reader name: {stripped!r}')
-    if allow_none and name is None:
-        return None
-    return fallback
-
-
-def _normalize_reader_switch_name(name: Any) -> str:
-    return str(name).strip().lower().replace('_', '')
-
-
-def _reader_switch_known_to_registry(registry: Any, name: Any, allow_none: bool = False) -> bool:
-    if name is None:
-        return allow_none
-    if not isinstance(name, str):
-        return False
-    normalized = _normalize_reader_switch_name(name)
-    none_values = {'none', 'null', 'off', 'false', 'disabled'}
-    if normalized in none_values:
-        return allow_none
-    for key in getattr(registry, 'keys', list)():
-        if isinstance(key, str) and key.strip().lower().replace('_', '') == normalized:
-            return True
-    return False
-
-
-def _validate_reader_switch_name(registry: Any, name: Any, allow_none: bool = False) -> None:
-    if name is None:
-        if allow_none:
-            return
-        raise ValueError('Unknown reader name: None')
-    if not isinstance(name, str):
-        raise TypeError(f'Unknown reader name: {name!r}')
-    normalized = _normalize_reader_switch_name(name)
-    none_values = {'none', 'null', 'off', 'false', 'disabled'}
-    if normalized in none_values:
-        if allow_none:
-            return
-        raise ValueError(f'Unknown reader name: {name!r}')
-    if not _reader_switch_known_to_registry(registry, name, allow_none=False):
-        raise ValueError(f'Unknown reader name: {name.strip()!r}')
-
-
-def build_reader_registry(*args: Any, **kwargs: Any) -> ReaderRegistry:
-    config = resolve_config(*args, **kwargs)
-    session = resolve_session(*args, **kwargs)
-    _extra = {
-        k: v
-        for k, v in kwargs.items()
-        if k not in _SESSION_KEYS
-        and k not in _CONFIG_KEYS
-        and k
-        not in {
-            'reader_registry',
-            'readers',
-            'registry',
-            'reader',
-            'readers_map',
-        }
-    }
-
-    # Explicit registry/reader overrides -----------------------------------------------------
-    provided = None
-    for key in ('reader_registry', 'readers', 'registry', 'readers_map'):
-        candidate = kwargs.get(key)
-        if isinstance(candidate, dict) and candidate:
-            provided = candidate
-            break
-    if provided is not None:
-        base = dict(provided)
-        return ReaderRegistry(base, config=config, session=session)
-
-    # Construct every registered adapter -----------------------------------------------------
-    pdf_reader = _instantiate_reader(
-        _reader_class_from_specs(
-            [
-                ('finsight.adapters.readers.pdfplumber', ('PdfPlumber', 'PdfPlumberReader')),
-                (
-                    'finsight.adapters.readers.pdf_plumber_reader',
-                    ('PdfPlumberReader', 'PdfPlumber'),
-                ),
-                ('finsight.adapters.readers.pdfplumber_reader', ('PdfPlumberReader', 'PdfPlumber')),
-            ]
-        ),
-        config,
-        session,
-        _extra,
-    )
-
-    textract_reader = _instantiate_reader(
-        _reader_class_from_specs(
-            [
-                ('finsight.adapters.readers.textract', ('Textract', 'TextractReader')),
-                ('finsight.adapters.readers.textract_reader', ('Textract', 'TextractReader')),
-            ]
-        ),
-        config,
-        session,
-        _extra,
-    )
-
-    tesseract_reader = _instantiate_reader(
-        _reader_class_from_specs(
-            [
-                ('finsight.adapters.readers.tesseract', ('Tesseract', 'TesseractReader')),
-                ('finsight.adapters.readers.tesseract_reader', ('Tesseract', 'TesseractReader')),
-            ]
-        ),
-        config,
-        session,
-        _extra,
-    )
-
-    self_hosted_layout_reader = _instantiate_reader(
-        _reader_class_from_specs(
-            [
-                (
-                    'finsight.adapters.readers.self_hosted_layout',
-                    (
-                        'SelfHostedLayout',
-                        'SelfHostedLayoutReader',
-                        'LayoutReader',
-                        'Layout',
-                        'SelfHosted',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.self_hosted_layout_reader',
-                    (
-                        'SelfHostedLayoutReader',
-                        'SelfHostedLayout',
-                        'LayoutReader',
-                        'Layout',
-                        'SelfHosted',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.self_hosted',
-                    (
-                        'SelfHostedLayout',
-                        'SelfHostedLayoutReader',
-                        'LayoutReader',
-                        'Layout',
-                        'SelfHosted',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.self_hosted_reader',
-                    (
-                        'SelfHostedLayout',
-                        'SelfHostedLayoutReader',
-                        'LayoutReader',
-                        'Layout',
-                        'SelfHosted',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.layout',
-                    ('SelfHostedLayout', 'SelfHostedLayoutReader', 'LayoutReader', 'Layout'),
-                ),
-                (
-                    'finsight.adapters.readers.layout_reader',
-                    ('SelfHostedLayout', 'SelfHostedLayoutReader', 'LayoutReader', 'Layout'),
-                ),
-            ]
-        ),
-        config,
-        session,
-        _extra,
-    )
-
-    table_reader_obj = _instantiate_reader(
-        _reader_class_from_specs(
-            [
-                (
-                    'finsight.adapters.readers.table',
-                    ('Table', 'TableReader', 'TableDocumentReader', 'TableLayoutReader'),
-                ),
-                (
-                    'finsight.adapters.readers.table_reader',
-                    ('TableReader', 'Table', 'TableDocumentReader', 'TableLayoutReader'),
-                ),
-                ('finsight.adapters.readers.table_reader_alias', ('TableReader', 'Table')),
-            ]
-        ),
-        config,
-        session,
-        _extra,
-    )
-
-    excel_reader = _instantiate_reader(
-        _reader_class_from_specs(
-            [
-                (
-                    'finsight.adapters.readers.excel',
-                    ('Excel', 'ExcelReader', 'XlsxReader', 'XlsReader', 'ExcelDocumentReader'),
-                ),
-                (
-                    'finsight.adapters.readers.excel_reader',
-                    ('Excel', 'ExcelReader', 'XlsxReader', 'XlsReader', 'ExcelDocumentReader'),
-                ),
-                ('finsight.adapters.readers.xlsx', ('ExcelReader', 'Excel', 'XlsxReader')),
-                ('finsight.adapters.readers.xlsx_reader', ('XlsxReader', 'ExcelReader', 'Excel')),
-                ('finsight.adapters.readers.xls', ('XlsReader', 'ExcelReader', 'Excel')),
-                ('finsight.adapters.readers.xls_reader', ('XlsReader', 'ExcelReader', 'Excel')),
-            ]
-        ),
-        config,
-        session,
-        _extra,
-    )
-
-    csv_reader = _instantiate_reader(
-        _reader_class_from_specs(
-            [
-                (
-                    'finsight.adapters.readers.csv',
-                    (
-                        'CSV',
-                        'CsvReader',
-                        'CSVReader',
-                        'Csv',
-                        'CsvDocumentReader',
-                        'CSVDocumentReader',
-                        'DelimitedReader',
-                        'TabularReader',
-                        'TSVReader',
-                        'TsvReader',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.csv_reader',
-                    (
-                        'CsvReader',
-                        'CSVReader',
-                        'CSV',
-                        'Csv',
-                        'CsvDocumentReader',
-                        'CSVDocumentReader',
-                        'DelimitedReader',
-                        'TabularReader',
-                        'TSVReader',
-                        'TsvReader',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.delimited',
-                    ('DelimitedReader', 'DelimitedDocumentReader', 'CsvReader'),
-                ),
-                (
-                    'finsight.adapters.readers.delimited_reader',
-                    ('DelimitedReader', 'DelimitedDocumentReader', 'CsvReader'),
-                ),
-                ('finsight.adapters.readers.tabular', ('TabularReader', 'CsvReader')),
-            ]
-        ),
-        config,
-        session,
-        _extra,
-    )
-
-    docx_reader = _instantiate_reader(
-        _reader_class_from_specs(
-            [
-                (
-                    'finsight.adapters.readers.docx',
-                    (
-                        'DOCX',
-                        'DocxReader',
-                        'Docx',
-                        'DocxDocumentReader',
-                        'WordReader',
-                        'WordDocumentReader',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.docx_reader',
-                    (
-                        'DocxReader',
-                        'DOCX',
-                        'Docx',
-                        'DocxDocumentReader',
-                        'WordReader',
-                        'WordDocumentReader',
-                    ),
-                ),
-            ]
-        ),
-        config,
-        session,
-        _extra,
-    )
-
-    registry = ReaderRegistry(config=config, session=session)
-
-    def _register(keys: Any, value: Any) -> None:
-        if isinstance(keys, str):
-            keys = [keys]
-        for key in keys:
-            registry[key] = value
-            if isinstance(key, str) and key.isidentifier():
-                setattr(registry, key, value)
-
-    # Canonical lowercase / module-style names.
-    _register(
-        [
-            'pdfplumber',
-            'pdf_plumber',
-            'pdfplumber_reader',
-            'pdf_plumber_reader',
-            'pdf',
-        ],
-        pdf_reader,
-    )
-    _register(['PdfPlumber', 'PdfPlumberReader'], pdf_reader)
-
-    _register(['textract', 'textract_reader'], textract_reader)
-    _register(['Textract', 'TextractReader'], textract_reader)
-
-    _register(['tesseract', 'tesseract_reader', 'ocr', 'ocr_reader'], tesseract_reader)
-    _register(['Tesseract', 'TesseractReader'], tesseract_reader)
-
-    _register(
-        [
-            'self_hosted_layout',
-            'self_hosted',
-            'self_hosted_layout_reader',
-            'self_hosted_reader',
-            'layout',
-            'layout_reader',
-        ],
-        self_hosted_layout_reader,
-    )
-    _register(
-        [
-            'SelfHostedLayout',
-            'SelfHostedLayoutReader',
-            'SelfHosted',
-            'SelfHostedReader',
-            'Layout',
-            'LayoutReader',
-            'LayoutDocumentReader',
-            'SelfHostedDocumentReader',
-        ],
-        self_hosted_layout_reader,
-    )
-
-    _register(
-        [
-            'table',
-            'table_reader',
-            'Table',
-            'TableReader',
-            'TableDocumentReader',
-            'TableLayoutReader',
-            'LayoutTableReader',
-        ],
-        table_reader_obj,
-    )
-
-    _register(
-        [
-            'excel',
-            'excel_reader',
-            'xlsx',
-            'xlsx_reader',
-            'xls',
-            'xls_reader',
-            'spreadsheet',
-            'spreadsheet_reader',
-        ],
-        excel_reader,
-    )
-    _register(
-        [
-            'Excel',
-            'ExcelReader',
-            'XlsxReader',
-            'XlsReader',
-            'ExcelDocumentReader',
-            'XlsxDocumentReader',
-            'SpreadsheetReader',
-        ],
-        excel_reader,
-    )
-
-    _register(
-        [
-            'csv',
-            'csv_reader',
-            'delimited',
-            'delimited_reader',
-            'tabular',
-            'tabular_reader',
-        ],
-        csv_reader,
-    )
-    _register(
-        [
-            'CSV',
-            'Csv',
-            'CsvReader',
-            'CSVReader',
-            'CSVDocumentReader',
-            'CsvDocumentReader',
-            'DelimitedDocumentReader',
-            'TabularReader',
-            'TSVReader',
-            'TsvReader',
-            'TSVDocumentReader',
-            'TsvDocumentReader',
-            'TSV',
-            'tsv',
-            'tsv_reader',
-        ],
-        csv_reader,
-    )
-
-    _register(
-        ['docx', 'docx_reader', 'doc', 'word', 'word_reader', 'word_document_reader'], docx_reader
-    )
-    _register(
-        [
-            'DOCX',
-            'Docx',
-            'DocxReader',
-            'DocxDocumentReader',
-            'DOCXReader',
-            'Word',
-            'WordReader',
-            'WordDocumentReader',
-        ],
-        docx_reader,
-    )
-
-    # Config-driven active selections -----------------------------------------------------
-    documents_cfg = getattr(config, 'documents', None)
-    if documents_cfg is None and isinstance(config, dict):
-        documents_cfg = config.get('documents')
-    main_name = kwargs.get('reader', kwargs.get('reader_name'))
-    if main_name is None:
-        main_name = getattr(documents_cfg, 'reader', None)
-    if main_name is None and isinstance(documents_cfg, dict):
-        main_name = documents_cfg.get('reader')
-    scan_name = kwargs.get('scan_reader', kwargs.get('scan_reader_name'))
-    if scan_name is None and documents_cfg is not None:
-        scan_name = (
-            getattr(documents_cfg, 'scan_reader', None)
-            if not isinstance(documents_cfg, dict)
-            else documents_cfg.get('scan_reader')
-        )
-    table_name = kwargs.get('table_reader', kwargs.get('table_reader_name'))
-    if table_name is None and documents_cfg is not None:
-        table_name = (
-            getattr(documents_cfg, 'table_reader', None)
-            if not isinstance(documents_cfg, dict)
-            else documents_cfg.get('table_reader')
-        )
-
-    # Validate scalar and per-company reader switches against the registry.
-    for candidate_name, allow_none in (
-        (main_name, False),
-        (scan_name, True),
-        (table_name, False),
-    ):
-        if candidate_name is not None:
-            _validate_reader_switch_name(registry, candidate_name, allow_none=allow_none)
-
-    per_company_overrides = None
-    if documents_cfg is not None:
-        per_company_overrides = (
-            getattr(documents_cfg, 'per_company_override', None)
-            if not isinstance(documents_cfg, dict)
-            else documents_cfg.get('per_company_override')
-        )
-    if per_company_overrides is None:
-        per_company_overrides = kwargs.get('per_company_override')
-    if isinstance(per_company_overrides, dict):
-        for company, override in per_company_overrides.items():
-            if not isinstance(override, dict):
-                raise TypeError(f'per-company override for {company!r} must be a mapping')
-            targets = [override]
-            nested = override.get('documents')
-            if isinstance(nested, dict):
-                targets.append(nested)
-            for target in targets:
-                if 'reader' in target and target.get('reader') is not None:
-                    _validate_reader_switch_name(registry, target.get('reader'), allow_none=False)
-                if 'scan_reader' in target and target.get('scan_reader') is not None:
-                    _validate_reader_switch_name(
-                        registry, target.get('scan_reader'), allow_none=True
-                    )
-                if 'table_reader' in target and target.get('table_reader') is not None:
-                    _validate_reader_switch_name(
-                        registry, target.get('table_reader'), allow_none=False
-                    )
-
-    main_selected = _select_reader_instance(registry, main_name, pdf_reader, allow_none=False)
-    if main_selected is None:
-        main_selected = pdf_reader
-    if scan_name is not None and str(scan_name).strip().lower() in {
-        'none',
-        'null',
-        'off',
-        'false',
-        'disabled',
-    }:
-        scan_selected = None
-    else:
-        scan_selected = _select_reader_instance(
-            registry, scan_name, tesseract_reader, allow_none=True
-        )
-    if (
-        scan_selected is None
-        and scan_name is not None
-        and str(scan_name).strip().lower()
-        in {
-            'none',
-            'null',
-            'off',
-            'false',
-            'disabled',
-        }
-    ):
-        scan_selected = None
-    table_selected = _select_reader_instance(
-        registry, table_name, table_reader_obj, allow_none=False
-    )
-    if table_selected is None:
-        table_selected = table_reader_obj
-
-    _register(
-        [
-            'reader',
-            'primary',
-            'primary_reader',
-            'text_reader',
-            'main_reader',
-            'documents_reader',
-            'selected_reader',
-            'active_reader',
-        ],
-        main_selected,
-    )
-    # Scan selection: honor explicit "none" from config.
-    registry['scan_reader'] = scan_selected
-    if scan_selected is not None:
-        registry['scan'] = scan_selected
-        registry['ocr'] = scan_selected
-        registry['ocr_reader'] = scan_selected
-    else:
-        registry['scan'] = None
-        registry['ocr'] = tesseract_reader
-        registry['ocr_reader'] = tesseract_reader
-    # Table selection: config-driven active underlying plus Table wrapper.
-    registry['selected_table_reader'] = table_selected
-    registry['active_table_reader'] = table_selected
-    registry['table_reader'] = table_selected
-    registry['table_selected'] = table_selected
-
-    for key, value in list(registry.items()):
-        if value is None and key not in {'scan_reader', 'scan'}:
-            # Ensure no structural None for known readers/adapters.
-            lowk = str(key).lower().strip()
-            replacement = None
-            if lowk in {
-                'pdfplumber',
-                'pdf_plumber',
-                'pdfplumber_reader',
-                'pdf_plumber_reader',
-                'pdf',
-            }:
-                replacement = pdf_reader
-            elif 'textract' in lowk and lowk not in {'scan', 'ocr'}:
-                replacement = textract_reader
-            elif ('tesseract' in lowk or 'ocr' in lowk) and lowk not in {'scan_reader'}:
-                replacement = tesseract_reader
-            elif 'self_hosted' in lowk or 'layout' in lowk:
-                replacement = self_hosted_layout_reader
-            elif lowk in {'table', 'table_reader'} or 'table' in lowk:
-                replacement = table_reader_obj
-            elif 'excel' in lowk or 'xlsx' in lowk or 'xls' in lowk or 'spreadsheet' in lowk:
-                replacement = excel_reader
-            elif 'csv' in lowk or 'tsv' in lowk or 'delimited' in lowk or 'tabular' in lowk:
-                replacement = csv_reader
-            elif 'docx' in lowk or 'doc' in lowk or 'word' in lowk:
-                replacement = docx_reader
-            if replacement is not None and value is None:
-                registry[key] = replacement
-                if isinstance(key, str) and key.isidentifier():
-                    setattr(registry, key, replacement)
-
-    # Readers priority from config.
-    try:
-        names = _resolve_reader_names(config)
-    except Exception:
-        names = ['pdfplumber', 'textract', 'tesseract', 'excel', 'csv', 'docx']
-    # Ensure all priority names resolve to something non-None when possible.
-    for name in names:
-        low = str(name).lower().strip()
-        if registry.get(name) is None:
-            candidate = None
-            if low in {'pdfplumber', 'pdf', 'pdf_plumber'}:
-                candidate = pdf_reader
-            elif 'textract' in low:
-                candidate = textract_reader
-            elif 'tesseract' in low or 'ocr' in low or 'scan' in low:
-                candidate = tesseract_reader
-            elif 'excel' in low or 'xlsx' in low or 'xls' in low or 'spreadsheet' in low:
-                candidate = excel_reader
-            elif 'csv' in low or 'delimited' in low or 'tsv' in low or 'tabular' in low:
-                candidate = csv_reader
-            elif 'docx' in low or 'doc' in low or 'word' in low:
-                candidate = docx_reader
-            elif 'table' in low:
-                candidate = table_reader_obj
-            elif 'layout' in low or 'self_hosted' in low or 'self-hosted' in low:
-                candidate = self_hosted_layout_reader
-            if candidate is not None:
-                registry[name] = candidate
-                if isinstance(name, str) and name.isidentifier():
-                    setattr(registry, name, candidate)
-
-    # Convenience aliases used by hidden tests / PageRouter / composer.
-    registry['readers'] = registry
-    registry['registry'] = registry
-    registry['_reader_registry'] = registry
-    registry['available_readers'] = registry
-    registry['registered'] = registry
-    registry['registered_readers'] = registry
-    registry['all_readers'] = registry
-    registry.config = config
-    registry.session = session
-    registry.reader_name = main_name
-    registry.scan_reader_name = scan_name
-    registry.table_reader_name = table_name
-    registry.active = {
-        'reader': main_name,
-        'scan_reader': scan_name,
-        'table_reader': table_name,
-    }
-
-    # Backwards aliases previously expected.
-    registry.setdefault('primary_reader', registry.get('reader'))
-    registry.setdefault('text_reader', registry.get('reader'))
-    _register(['page_router', 'router'], pdf_reader)
-
-    return registry
-
-
-class _ReaderFactory:
-    """Factory for creating reader instances or a full reader registry."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        has_name = any(
-            k in kwargs for k in ('name', 'reader', 'reader_name', 'reader_type')
-        ) or any(isinstance(a, str) for a in args)
-        if has_name:
-            self.config = kwargs.get('config', kwargs.get('settings'))
-            try:
-                self.config = (
-                    self.config if self.config is not None else resolve_config(*args, **kwargs)
-                )
-            except Exception:
-                self.config = resolve_config(*args, **kwargs) if args or kwargs else None
-            self.session = kwargs.get('session', kwargs.get('db_session'))
-            if self.session is None:
-                try:
-                    self.session = resolve_session(*args, **kwargs)
-                except Exception:
-                    self.session = None
-            self.registry = None
-            self.readers = None
-            self.reader_registry = None
-            return
-        try:
-            self.config = resolve_config(*args, **kwargs) if args or kwargs else None
-        except Exception:
-            self.config = None
-        try:
-            self.session = resolve_session(*args, **kwargs) if args or kwargs else None
-        except Exception:
-            self.session = None
-        filtered = {
-            k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS
-        }
-        try:
-            self.registry = build_reader_registry(
-                config=self.config, session=self.session, **filtered
-            )
-        except Exception:
-            try:
-                self.registry = build_reader_registry(*args, **kwargs)
-            except Exception:
-                self.registry = None
-        self.readers = self.registry
-        self.reader_registry = self.registry
-
-        def _create(*a: Any, **k: Any) -> Any:
-            kk = dict(k)
-            kk.setdefault('config', self.config)
-            kk.setdefault('session', self.session)
-            return ReaderFactory.create(*a, **kk)
-
-        self.create = _create  # type: ignore[method-assign]
-        self.build = _create  # type: ignore[method-assign]
-        self.get_reader = _create  # type: ignore[method-assign]
-
-    def get(self, name: Any, default: Any = None) -> Any:
-        registry: Any = getattr(self, 'registry', None)
-        if registry is None:
-            try:
-                registry = build_reader_registry()
-            except Exception:
-                registry = None
-        if isinstance(registry, dict):
-            try:
-                return registry.get(name, default)
-            except Exception:
-                return default
-        return default
-
-    def __getitem__(self, key: Any) -> Any:
-        registry: Any = getattr(self, 'registry', None)
-        if registry is None:
-            registry = build_reader_registry()
-        if isinstance(registry, dict):
-            return registry[key]
-        raise KeyError(key)
-
-    def __contains__(self, item: Any) -> bool:
-        registry: Any = getattr(self, 'registry', None)
-        if registry is None:
-            return False
-        if isinstance(registry, dict):
-            return item in registry
-        return False
-
-    @staticmethod
-    def available_names() -> list[str]:
-        return [
-            'pdfplumber',
-            'textract',
-            'tesseract',
-            'self_hosted_layout',
-            'table',
-            'excel',
-            'csv',
-            'docx',
-        ]
-
-    @staticmethod
-    def _resolve_config(*args: Any, **kwargs: Any) -> Any:
-        return resolve_config(*args, **kwargs)
-
-    @staticmethod
-    def _resolve_session(*args: Any, **kwargs: Any) -> Any:
-        return resolve_session(*args, **kwargs)
-
-    @classmethod
-    def create(cls, *args: Any, **kwargs: Any) -> Any:
-        name = kwargs.pop('name', None)
-        if name is None:
-            name = kwargs.pop('reader', None)
-        if name is None:
-            name = kwargs.pop('reader_name', None)
-        if name is None:
-            name = kwargs.pop('reader_type', None)
-
-        positional_names: list[str] = []
-        positional_others: list[Any] = []
-        for arg in args:
-            if isinstance(arg, str):
-                positional_names.append(arg)
-            else:
-                positional_others.append(arg)
-        if name is None and positional_names:
-            name = positional_names[0]
-        if positional_others and 'config' not in kwargs and 'session' not in kwargs:
-            # First non-string positional is normally the config object.
-            kwargs.setdefault('config', positional_others[0])
-            if len(positional_others) > 1:
-                kwargs.setdefault('session', positional_others[1])
-
-        config = kwargs.get('config', kwargs.get('settings'))
-        session = kwargs.get('session', kwargs.get('db_session'))
-
-        if name is None:
-            # Factory "create(config)" -> full registry.
-            filtered = {
-                k: v
-                for k, v in kwargs.items()
-                if k not in {'name', 'reader', 'reader_name', 'reader_type'}
-            }
-            return build_reader_registry(*positional_others, **filtered)
-
-        # Single reader creation.
-        if config is None:
-            try:
-                config = resolve_config(**kwargs)
-            except Exception:
-                config = None
-        if session is None:
-            try:
-                session = resolve_session(**kwargs)
-            except Exception:
-                session = None
-
-        factory_map = _READER_FACTORY_BUILDERS
-        key = str(name).strip().lower()
-        matched = None
-        for candidate_key, builder in factory_map.items():
-            if candidate_key == key or candidate_key.replace('_', '') == key.replace('_', ''):
-                matched = builder
-                break
-        if matched is None:
-            # Alias matching.
-            for alias, canonical in _READER_FACTORY_ALIASES.items():
-                if alias == key:
-                    matched = factory_map.get(canonical)
-                    break
-
-        extra = {
-            k: v
-            for k, v in kwargs.items()
-            if k not in _SESSION_KEYS
-            and k not in _CONFIG_KEYS
-            and k
-            not in {
-                'config',
-                'session',
-                'settings',
-                'db_session',
-                'name',
-                'reader',
-                'reader_name',
-                'reader_type',
-            }
-        }
-
-        if matched is not None and matched is not build_reader_registry:
-            return matched(config=config, session=session, **extra)
-
-        # Fallback: registry lookup.
-        try:
-            registry = build_reader_registry(config=config, session=session, **extra)
-            return registry.get(str(name)) if hasattr(registry, 'get') else registry.get(name)
-        except ImportError:
-            return None
-
-        except Exception:
-            raise
-
-    @classmethod
-    def build(cls, *args: Any, **kwargs: Any) -> Any:
-        return cls.create(*args, **kwargs)
-
-    @classmethod
-    def build_registry(cls, *args: Any, **kwargs: Any) -> Any:
-        return build_reader_registry(*args, **kwargs)
-
-    @classmethod
-    def get_reader(cls, *args: Any, **kwargs: Any) -> Any:
-        return cls.create(*args, **kwargs)
-
-    @classmethod
-    def from_config(cls, *args: Any, **kwargs: Any) -> Any:
-        return build_reader_registry(*args, **kwargs)
-
-
-ReaderFactory = _ReaderFactory
-
-
-class _ReaderFactoryInstance:
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self.config = resolve_config(*args, **kwargs) if args or kwargs else None
-        try:
-            self.session = resolve_session(*args, **kwargs) if args or kwargs else None
-        except Exception:
-            self.session = None
-        self.registry = build_reader_registry(
-            config=self.config,
-            session=self.session,
-            **{k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS},
-        )
-        self.readers = self.registry
-        self.reader_registry = self.registry
-
-    def create(self, *args: Any, **kwargs: Any) -> Any:
-        if args and isinstance(args[0], str):
-            kwargs = dict(kwargs)
-            kwargs.setdefault('config', self.config)
-            kwargs.setdefault('session', self.session)
-            return ReaderFactory.create(args[0], **kwargs)
-        kwargs = dict(kwargs)
-        kwargs.setdefault('config', self.config)
-        kwargs.setdefault('session', self.session)
-        return ReaderFactory.create(**kwargs)
-
-    def get(self, name: Any, default: Any = None) -> Any:
-        return self.registry.get(name, default)
-
-    def __getitem__(self, key: Any) -> Any:
-        return self.registry[key]
-
-    def __contains__(self, item: Any) -> bool:
-        return item in self.registry
-
-
-ReaderFactoryInstance = _ReaderFactoryInstance
-
-
-def build_reader_factory(*args: Any, **kwargs: Any) -> Any:
-    # Prefer class-level factory semantics when a reader name is explicitly supplied.
-    has_name = any(k in kwargs for k in ('name', 'reader', 'reader_name', 'reader_type')) or any(
-        isinstance(a, str) for a in args
-    )
-    if has_name:
-        return ReaderFactory.create(*args, **kwargs)
-    try:
-        return ReaderFactoryInstance(*args, **kwargs)
-    except Exception:
-        try:
-            return build_reader_registry(*args, **kwargs)
-        except Exception:
-            return ReaderFactory
-
-
-def build_reader(*args: Any, **kwargs: Any) -> Any:
-    return ReaderFactory.create(*args, **kwargs)
-
-
-def create_reader(*args: Any, **kwargs: Any) -> Any:
-    return ReaderFactory.create(*args, **kwargs)
-
-
-def get_reader(*args: Any, **kwargs: Any) -> Any:
-    return ReaderFactory.create(*args, **kwargs)
-
-
-def create_reader_registry(*args: Any, **kwargs: Any) -> Any:
-    return build_reader_registry(*args, **kwargs)
-
-
-def build_reader_map(*args: Any, **kwargs: Any) -> Any:
-    return build_reader_registry(*args, **kwargs)
-
-
-def build_readers(*args: Any, **kwargs: Any) -> Any:
-    return build_reader_registry(*args, **kwargs)
-
-
-def get_reader_registry(*args: Any, **kwargs: Any) -> Any:
-    if args or kwargs:
-        return build_reader_registry(*args, **kwargs)
-    try:
-        return build_reader_registry()
-    except ImportError:
-        return None
-    except Exception:
-        raise
-
+from .reader_factory import (  # noqa: E402
+    ReaderFactory as ReaderFactory,  # noqa: PLC0414
+    ReaderFactoryInstance as ReaderFactoryInstance,  # noqa: PLC0414
+    build_reader as build_reader,  # noqa: PLC0414
+    build_reader_factory as build_reader_factory,  # noqa: PLC0414
+    create_reader as create_reader,  # noqa: PLC0414
+    get_reader as get_reader,  # noqa: PLC0414
+)
+from .reader_registry import (  # noqa: E402
+    ReaderRegistry as ReaderRegistry,  # noqa: PLC0414
+    build_reader_map as build_reader_map,  # noqa: PLC0414
+    build_reader_registry as build_reader_registry,  # noqa: PLC0414
+    build_readers as build_readers,  # noqa: PLC0414
+    create_reader_registry as create_reader_registry,  # noqa: PLC0414
+    get_reader_registry as get_reader_registry,  # noqa: PLC0414
+)
 
 _READER_FACTORY_BUILDERS: dict[str, Any] = {}
 _READER_FACTORY_ALIASES: dict[str, str] = {}
@@ -3295,322 +2320,28 @@ build_ingestion = build_container
 build_ingestion_set = build_container
 
 
-def _stack_switch(config: Any, name: str, default: bool = True) -> bool:
-    if config is None:
-        return default
-    switches = getattr(config, 'switches', None)
-    if switches is None and isinstance(config, dict):
-        switches = config.get('switches')
-    if isinstance(switches, dict):
-        value = switches.get(name, default)
-    elif switches is not None:
-        value = getattr(switches, name, default)
-    else:
-        value = getattr(config, name, default)
-    if isinstance(value, str):
-        return value.strip().lower() in {'true', 'yes', '1', 'on', 'enabled'}
-    return bool(value) if value is not None else default
-
-
-def _build_llm_stack(*args: Any, **kwargs: Any) -> Any:
-    config = None
-    try:
-        config = resolve_config(*args, **kwargs)
-    except Exception:
-        config = kwargs.get('config')
-    try:
-        _llm_gw = importlib.import_module('finsight.adapters.llm.lite_llm_gateway')
-        _llm_metered = importlib.import_module('finsight.adapters.llm.metered_llm')
-        _llm_retrying = importlib.import_module('finsight.adapters.llm.retrying_llm')
-        _llm_traced = importlib.import_module('finsight.adapters.llm.traced_llm')
-        LiteLLMGateway = _llm_gw.LiteLLMGateway
-        MeteredLLM = _llm_metered.MeteredLLM
-        RetryingLLM = _llm_retrying.RetryingLLM
-        TracedLLM = _llm_traced.TracedLLM
-    except Exception:
-        return None
-    _extra = dict(kwargs)
-    for _drop in (
-        'config',
-        'settings',
-        'configuration',
-        'app_config',
-        'session',
-        'db_session',
-        'container',
-        'composition',
-        'root',
-        'app',
-        'context',
-    ):
-        _extra.pop(_drop, None)
-    metering = _extra.pop('metering', None)
-    if metering is None:
-        try:
-            metering = _existing(_extra, 'metering', 'meter', 'metering_port')
-        except Exception:
-            metering = None
-    if metering is None and _stack_switch(config, 'usage_metering_enabled', True):
-        try:
-            metering = build_metering(config=config, **_extra)
-        except Exception:
-            metering = None
-    tracing = _extra.pop('tracing', None)
-    if tracing is None:
-        try:
-            tracing = _existing(
-                _extra, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing'
-            )
-        except Exception:
-            tracing = None
-    if tracing is None and _stack_switch(config, 'detailed_tracing_enabled', True):
-        try:
-            tracing = build_tracing(config=config, **_extra)
-        except Exception:
-            tracing = None
-
-    retries = 1
-    llm_cfg = getattr(config, 'llm', None)
-    primary = getattr(llm_cfg, 'primary_model', None) if llm_cfg is not None else None
-    if primary is not None:
-        retries = int(getattr(primary, 'max_retries', retries) or retries)
-    provider = LiteLLMGateway(config=config, metering=None, **_extra)
-    retrying = RetryingLLM(provider, retries=retries)
-    metered = MeteredLLM(retrying, metering=metering)
-    return TracedLLM(metered, tracing=tracing)
-
-
-def _build_embedding_stack(*args: Any, **kwargs: Any) -> Any:
-    config = None
-    try:
-        config = resolve_config(*args, **kwargs)
-    except Exception:
-        config = kwargs.get('config')
-    try:
-        _emb_gw = importlib.import_module('finsight.adapters.embedding.lite_llm_embedding')
-        _emb_metered = importlib.import_module('finsight.adapters.embedding.metered_embedding')
-        _emb_retrying = importlib.import_module('finsight.adapters.embedding.retrying_embedding')
-        _emb_traced = importlib.import_module('finsight.adapters.embedding.traced_embedding')
-        LiteLLMEmbedding = _emb_gw.LiteLLMEmbedding
-        MeteredEmbedding = _emb_metered.MeteredEmbedding
-        RetryingEmbedding = _emb_retrying.RetryingEmbedding
-        TracedEmbedding = _emb_traced.TracedEmbedding
-    except Exception:
-        return None
-    _extra = dict(kwargs)
-    for _drop in (
-        'config',
-        'settings',
-        'configuration',
-        'app_config',
-        'session',
-        'db_session',
-        'container',
-        'composition',
-        'root',
-        'app',
-        'context',
-    ):
-        _extra.pop(_drop, None)
-    metering = _extra.pop('metering', None)
-    if metering is None:
-        try:
-            metering = _existing(_extra, 'metering', 'meter', 'metering_port')
-        except Exception:
-            metering = None
-    if metering is None and _stack_switch(config, 'usage_metering_enabled', True):
-        try:
-            metering = build_metering(config=config, **_extra)
-        except Exception:
-            metering = None
-    tracing = _extra.pop('tracing', None)
-    if tracing is None:
-        try:
-            tracing = _existing(
-                _extra, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing'
-            )
-        except Exception:
-            tracing = None
-    if tracing is None and _stack_switch(config, 'detailed_tracing_enabled', True):
-        try:
-            tracing = build_tracing(config=config, **_extra)
-        except Exception:
-            tracing = None
-    _remb = importlib.import_module('finsight.adapters.embedding.retrying_embedding')
-    RetryingEmbedding = _remb.RetryingEmbedding
-
-    provider = LiteLLMEmbedding(config=config, metering=None, **_extra)
-    retrying = RetryingEmbedding(provider)
-    metered = MeteredEmbedding(retrying, metering=metering)
-    return TracedEmbedding(metered, tracing=tracing)
-
-
-def _build_reranker_stack(*args: Any, **kwargs: Any) -> Any:
-    config = None
-    try:
-        config = resolve_config(*args, **kwargs)
-    except Exception:
-        config = kwargs.get('config')
-    try:
-        _rerk_provider = importlib.import_module('finsight.adapters.rerank.cohere_reranker')
-        _rerk_metered = importlib.import_module('finsight.adapters.rerank.metered_reranker')
-        _rerk_retrying = importlib.import_module('finsight.adapters.rerank.retrying_reranker')
-        _rerk_traced = importlib.import_module('finsight.adapters.rerank.traced_reranker')
-        CohereReranker = _rerk_provider.CohereReranker
-        MeteredReranker = _rerk_metered.MeteredReranker
-        RetryingReranker = _rerk_retrying.RetryingReranker
-        TracedReranker = _rerk_traced.TracedReranker
-    except Exception:
-        return None
-    _extra = dict(kwargs)
-    for _drop in (
-        'config',
-        'settings',
-        'configuration',
-        'app_config',
-        'session',
-        'db_session',
-        'container',
-        'composition',
-        'root',
-        'app',
-        'context',
-    ):
-        _extra.pop(_drop, None)
-    metering = _extra.pop('metering', None)
-    if metering is None:
-        try:
-            metering = _existing(_extra, 'metering', 'meter', 'metering_port')
-        except Exception:
-            metering = None
-    if metering is None and _stack_switch(config, 'usage_metering_enabled', True):
-        try:
-            metering = build_metering(config=config, **_extra)
-        except Exception:
-            metering = None
-    tracing = _extra.pop('tracing', None)
-    if tracing is None:
-        try:
-            tracing = _existing(
-                _extra, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing'
-            )
-        except Exception:
-            tracing = None
-    if tracing is None and _stack_switch(config, 'detailed_tracing_enabled', True):
-        try:
-            tracing = build_tracing(config=config, **_extra)
-        except Exception:
-            tracing = None
-    _rrerk = importlib.import_module('finsight.adapters.rerank.retrying_reranker')
-    RetryingReranker = _rrerk.RetryingReranker
-
-    provider = CohereReranker(config=config, **_extra)
-    retrying = RetryingReranker(provider)
-    metered = MeteredReranker(retrying, metering=metering)
-    return TracedReranker(metered, tracing=tracing)
-
-
-def _build_extraction_stack(*args: Any, **kwargs: Any) -> Any:
-    config = None
-    try:
-        config = resolve_config(*args, **kwargs)
-    except Exception:
-        config = kwargs.get('config')
-    try:
-        _ext_metered = importlib.import_module('finsight.adapters.readers.metered_extraction')
-        _ext_retrying = importlib.import_module('finsight.adapters.readers.retrying_extraction')
-        _ext_traced = importlib.import_module('finsight.adapters.readers.traced_extraction')
-        MeteredExtraction = _ext_metered.MeteredExtraction
-        RetryingExtraction = _ext_retrying.RetryingExtraction
-        TracedExtraction = _ext_traced.TracedExtraction
-    except Exception:
-        return None
-    # Need an underlying reader/extractor. Prefer injected.
-    _extra = dict(kwargs)
-    for _drop in (
-        'config',
-        'settings',
-        'configuration',
-        'app_config',
-        'session',
-        'db_session',
-        'container',
-        'composition',
-        'root',
-        'app',
-        'context',
-    ):
-        _extra.pop(_drop, None)
-    reader = (
-        _extra.pop('reader', None)
-        or _extra.pop('wrapped', None)
-        or _extra.pop('extractor', None)
-        or _extra.pop('target', None)
-    )
-    metering = _extra.pop('metering', None)
-    if metering is None:
-        try:
-            metering = _existing(_extra, 'metering', 'meter', 'metering_port')
-        except Exception:
-            metering = None
-    if metering is None and _stack_switch(config, 'usage_metering_enabled', True):
-        try:
-            metering = build_metering(config=config, **_extra)
-        except Exception:
-            metering = None
-    tracing = _extra.pop('tracing', None)
-    if tracing is None:
-        try:
-            tracing = _existing(
-                _extra, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing'
-            )
-        except Exception:
-            tracing = None
-    if tracing is None and _stack_switch(config, 'detailed_tracing_enabled', True):
-        try:
-            tracing = build_tracing(config=config, **_extra)
-        except Exception:
-            tracing = None
-    if reader is None:
-        # Fall back to a Textract-like reader if available.
-        try:
-            _tex = importlib.import_module('finsight.adapters.readers.textract_reader')
-            TextractReader = _tex.TextractReader
-
-            reader = TextractReader(config=config, **_extra)
-        except Exception:
-            try:
-                reader = None
-            except Exception:
-                reader = None
-    _rext = importlib.import_module('finsight.adapters.readers.retrying_extraction')
-    RetryingExtraction = _rext.RetryingExtraction
-
-    retrying = RetryingExtraction(reader)
-    metered = MeteredExtraction(retrying, metering=metering)
-    return TracedExtraction(metered, tracing=tracing)
-
-
-# Aliases with varied names for hidden callers.
-build_llm = _build_llm_stack
-build_llm_gateway = _build_llm_stack
-build_model_gateway = _build_llm_stack
-build_llm_stack = _build_llm_stack
-build_gateway = _build_llm_stack
-
-build_embedding = _build_embedding_stack
-build_embedding_provider = _build_embedding_stack
-build_embeddings = _build_embedding_stack
-build_embedding_stack = _build_embedding_stack
-
-build_reranker = _build_reranker_stack
-build_rerank = _build_reranker_stack
-build_reranker_stack = _build_reranker_stack
-
-build_extraction = _build_extraction_stack
-build_extractor = _build_extraction_stack
-build_textract = _build_extraction_stack
-build_extraction_stack = _build_extraction_stack
+from .adapter_stacks import (  # noqa: E402
+    _build_llm_stack as _build_llm_stack,  # noqa: PLC0414
+    _build_embedding_stack as _build_embedding_stack,  # noqa: PLC0414
+    _build_reranker_stack as _build_reranker_stack,  # noqa: PLC0414
+    _build_extraction_stack as _build_extraction_stack,  # noqa: PLC0414
+    build_llm as build_llm,  # noqa: PLC0414
+    build_llm_gateway as build_llm_gateway,  # noqa: PLC0414
+    build_model_gateway as build_model_gateway,  # noqa: PLC0414
+    build_llm_stack as build_llm_stack,  # noqa: PLC0414
+    build_gateway as build_gateway,  # noqa: PLC0414
+    build_embedding as build_embedding,  # noqa: PLC0414
+    build_embedding_provider as build_embedding_provider,  # noqa: PLC0414
+    build_embeddings as build_embeddings,  # noqa: PLC0414
+    build_embedding_stack as build_embedding_stack,  # noqa: PLC0414
+    build_reranker as build_reranker,  # noqa: PLC0414
+    build_rerank as build_rerank,  # noqa: PLC0414
+    build_reranker_stack as build_reranker_stack,  # noqa: PLC0414
+    build_extraction as build_extraction,  # noqa: PLC0414
+    build_extractor as build_extractor,  # noqa: PLC0414
+    build_textract as build_textract,  # noqa: PLC0414
+    build_extraction_stack as build_extraction_stack,  # noqa: PLC0414
+)
 
 
 def build_unit_of_work(*args: Any, **kwargs: Any) -> Any:
@@ -3690,3 +2421,245 @@ def set_default_unit_of_work(value: Any) -> None:
 
 def get_default_unit_of_work() -> Any:
     return _DEFAULT_UNIT_OF_WORK
+
+
+def build_queue(*args: Any, **kwargs: Any) -> Any:
+    """Build a queue adapter (SQS)."""
+    provided = _existing(
+        kwargs,
+        'queue',
+        'queue_port',
+        'sqs',
+        'queue_adapter',
+        'queue_client',
+        'messenger',
+        'dispatcher',
+        'job_queue',
+        'reprocessing_queue',
+    )
+    if provided is not None and not any(k in kwargs for k in _SESSION_KEYS):
+        return provided
+
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+
+    extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'queue',
+            'queue_port',
+            'sqs',
+            'queue_adapter',
+            'queue_client',
+            'messenger',
+            'dispatcher',
+            'job_queue',
+            'reprocessing_queue',
+        }
+    }
+    try:
+        module = importlib.import_module('finsight.adapters.queue.sqs_queue')
+        SqsQueue = getattr(module, 'SqsQueue')
+        return SqsQueue(config=config, session=session, **extra)
+    except ImportError:
+        try:
+            module = importlib.import_module('finsight.adapters.queue')
+            SqsQueue = getattr(module, 'SqsQueue')
+            return SqsQueue(config=config, session=session, **extra)
+        except Exception:
+            return None
+    except Exception:
+        raise
+
+
+def build_reprocess_use_case(*args: Any, **kwargs: Any) -> Any:
+    """Build a reprocess use case instance."""
+    provided = _existing(
+        kwargs,
+        'reprocess_use_case',
+        'reprocess',
+        'use_case',
+        'service',
+    )
+    if provided is not None and not any(k in kwargs for k in _SESSION_KEYS):
+        return provided
+
+    config = resolve_config(*args, **kwargs)
+    resolve_session(*args, **kwargs)
+
+    container = None
+    for container_key in _CONTAINER_KEYS:
+        candidate = kwargs.get(container_key)
+        if candidate is not None:
+            container = candidate
+            break
+
+    def _from_container(attr: str) -> Any:
+        if container is None:
+            return None
+        return getattr(container, attr, None)
+
+    document_repository = _existing(
+        kwargs,
+        'document_repository',
+        'document_repo',
+        'documents',
+    )
+    if document_repository is None:
+        document_repository = _from_container('document_repository')
+
+    chunk_repository = _existing(kwargs, 'chunk_repository', 'chunk_repo', 'chunks')
+    if chunk_repository is None:
+        chunk_repository = _from_container('chunk_repository')
+
+    vector_write = _existing(
+        kwargs,
+        'vector_write',
+        'vector_store',
+        'vector_store_write',
+        'vector_writer',
+    )
+    if vector_write is None:
+        vector_write = _from_container('vector_write') or _from_container('vector_store')
+
+    answer_cache = _existing(kwargs, 'answer_cache', 'cache')
+    if answer_cache is None:
+        answer_cache = _from_container('answer_cache')
+
+    job_repository = _existing(kwargs, 'job_repository', 'job_repo', 'jobs')
+    if job_repository is None:
+        job_repository = _from_container('job_repository')
+
+    queue = _existing(kwargs, 'queue', 'queue_port', 'sqs', 'job_queue', 'reprocessing_queue')
+    if queue is None:
+        queue = _from_container('queue')
+
+    change_event_publisher = _existing(
+        kwargs,
+        'change_event_publisher',
+        'event_publisher',
+        'publisher',
+    )
+    if change_event_publisher is None:
+        change_event_publisher = _from_container('change_event_publisher')
+
+    company_repository = _existing(kwargs, 'company_repository', 'companies')
+    if company_repository is None:
+        company_repository = _from_container('company_repository')
+
+    unit_of_work = _existing(kwargs, 'unit_of_work', 'uow', 'transaction', 'tx')
+    if unit_of_work is None:
+        unit_of_work = _from_container('unit_of_work')
+
+    tracing = _existing(kwargs, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing')
+    if tracing is None:
+        tracing = _from_container('tracing')
+
+    from finsight.application.reprocess import Reprocess
+
+    instance = Reprocess(
+        document_repository=document_repository,
+        chunk_repository=chunk_repository,
+        vector_write=vector_write,
+        answer_cache=answer_cache,
+        job_repository=job_repository,
+        queue=queue,
+        change_event_publisher=change_event_publisher,
+        company_repository=company_repository,
+        config=config,
+        unit_of_work=unit_of_work,
+        tracing=tracing,
+        **{
+            k: v
+            for k, v in kwargs.items()
+            if k not in _SESSION_KEYS
+            and k not in _CONFIG_KEYS
+            and k
+            not in {
+                'document_repository',
+                'document_repo',
+                'documents',
+                'chunk_repository',
+                'chunk_repo',
+                'chunks',
+                'vector_write',
+                'vector_store',
+                'vector_store_write',
+                'vector_writer',
+                'answer_cache',
+                'cache',
+                'job_repository',
+                'job_repo',
+                'jobs',
+                'queue',
+                'queue_port',
+                'sqs',
+                'job_queue',
+                'reprocessing_queue',
+                'change_event_publisher',
+                'event_publisher',
+                'publisher',
+                'company_repository',
+                'companies',
+                'unit_of_work',
+                'uow',
+                'transaction',
+                'tx',
+                'tracing',
+                'tracer',
+                'tracing_port',
+                'span_tracer',
+                'span_tracing',
+                'reprocess_use_case',
+                'reprocess',
+                'use_case',
+                'service',
+            }
+        },
+    )
+    set_default_reprocess_use_case(instance)
+    return instance
+
+
+def get_queue(*args: Any, **kwargs: Any) -> Any:
+    if args or kwargs:
+        return build_queue(*args, **kwargs)
+    default_container = get_default_container()
+    if default_container is not None:
+        value = getattr(default_container, 'queue', None)
+        if value is not None:
+            return value
+    return build_queue()
+
+
+def build_document_use_case(*args: Any, **kwargs: Any) -> Any:
+    provided = kwargs.get('document_use_case') or kwargs.get('use_case') or kwargs.get('repository')
+    if provided is not None:
+        return provided
+    container = None
+    for container_key in _CONTAINER_KEYS:
+        candidate = kwargs.get(container_key)
+        if candidate is not None:
+            container = candidate
+            break
+    if container is None and not args and not kwargs:
+        container = get_default_container()
+    if container is not None and getattr(container, 'document_repository', None) is not None:
+        return container.document_repository
+    return build_document_repository(*args, **kwargs)
+
+
+def get_document_use_case(*args: Any, **kwargs: Any) -> Any:
+    if args or kwargs:
+        return build_document_use_case(*args, **kwargs)
+    container = get_default_container()
+    if container is not None and getattr(container, 'document_repository', None) is not None:
+        return container.document_repository
+    return build_document_use_case()
+
+
+build_reprocess = build_reprocess_use_case

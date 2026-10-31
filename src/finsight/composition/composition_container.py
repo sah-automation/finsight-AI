@@ -20,6 +20,7 @@ class CompositionContainer:
         job_repo: Any = None,
         onboarding_use_case: Any = None,
         upload_use_case: Any = None,
+        reprocess_use_case: Any = None,
         ask_question_use_case: Any = None,
         ask_use_case: Any = None,
         ask_question: Any = None,
@@ -166,6 +167,11 @@ class CompositionContainer:
         self.create_company = onboarding_use_case
         self.upload_use_case = upload_use_case
         self.upload = upload_use_case
+        self.reprocess_use_case = (
+            reprocess_use_case if reprocess_use_case is not None else deps.get('reprocess_use_case')
+        )
+        self.reprocess = self.reprocess_use_case
+        self.reprocessor = self.reprocess_use_case
 
         self.ask_question_use_case = (
             ask_question_use_case
@@ -379,6 +385,8 @@ class CompositionContainer:
             'source_view': self.source_viewer_use_case,
             'source_viewer_use_case': self.source_viewer_use_case,
             'view_source': self.source_viewer_use_case,
+            'reprocess': self.reprocess_use_case,
+            'reprocess_use_case': self.reprocess_use_case,
         }
         self.adapters = {
             'company_repository': company_repository,
@@ -490,6 +498,8 @@ class CompositionContainer:
             'tracing_adapter': self.tracing,
             'ingestion_use_case': self.ingestion_use_case,
             'ingestion': self.ingestion_pipeline,
+            'reprocess_use_case': self.reprocess_use_case,
+            'reprocess': self.reprocess_use_case,
         }
         if key in aliases:
             return aliases[key]
@@ -507,32 +517,40 @@ class CompositionContainer:
         import contextlib
 
         with contextlib.suppress(Exception):
+            import finsight.entrypoints.api.source_viewer as source_viewer_entrypoint
+
+            source_viewer_entrypoint.get_source_viewer_use_case = lambda *_a, **_k: getattr(
+                self, 'source_viewer_use_case', None
+            )
+            source_viewer_entrypoint.get_source_view_use_case = (
+                source_viewer_entrypoint.get_source_viewer_use_case
+            )
+            source_viewer_entrypoint.get_view_source_use_case = (
+                source_viewer_entrypoint.get_source_viewer_use_case
+            )
+
+        with contextlib.suppress(Exception):
+            import finsight.entrypoints.api.ask as ask_entrypoint
+
+            ask_entrypoint._get_ask_use_case = lambda *_a, **_k: self.ask_question_use_case
+
+        with contextlib.suppress(Exception):
             import finsight.entrypoints.api.onboarding as onboarding_entrypoint
 
             onboarding_entrypoint.get_onboarding_use_case = lambda *_a, **_k: (
                 self.onboarding_use_case
             )
+
         with contextlib.suppress(Exception):
             import finsight.entrypoints.api.upload as upload_entrypoint
 
             upload_entrypoint.get_upload_use_case = lambda *_a, **_k: self.upload_use_case
-        with contextlib.suppress(Exception):
-            import finsight.entrypoints.api.source_viewer as source_viewer_entrypoint
 
-            source_viewer_entrypoint.get_source_viewer_use_case = lambda *_a, **_k: (
-                getattr(self, 'source_viewer_use_case', None)
-                or __import__(
-                    'finsight.composition.source_viewer', fromlist=['build_source_viewer_use_case']
-                ).build_source_viewer_use_case(
-                    config=self.config,
-                    document_repository=self.document_repository,
-                    chunk_repository=self.chunk_repository,
-                    document_table_repository=self.document_table_repository,
-                    table_repository=self.document_table_repository,
-                    object_storage=self.object_storage,
-                    audit_log=getattr(self, 'audit_log', None),
-                    request_context=None,
-                )
+        with contextlib.suppress(Exception):
+            import finsight.entrypoints.api.documents as documents_entrypoint
+
+            documents_entrypoint.get_document_use_case = lambda *_a, **_k: getattr(
+                self, 'document_repository', None
             )
 
 

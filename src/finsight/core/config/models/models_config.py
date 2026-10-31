@@ -120,7 +120,7 @@ class ModelsConfig(StrictBaseModel):
             return flattened
         if not isinstance(value, (list, tuple, set)):
             value = [value]
-        assert isinstance(value, (list, tuple, set))  # noqa: S101
+        assert isinstance(value, (list, tuple, set))
         normalized: list[object] = []
         for item in value:
             if isinstance(item, str):

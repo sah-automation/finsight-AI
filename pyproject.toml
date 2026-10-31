@@ -449,6 +449,13 @@ forbidden_modules = [
 [[tool.importlinter.contracts]]
 name = "Adapters must be independent"
 type = "independence"
+ignore_imports = [
+    "finsight.adapters.audit.postgres_audit_log -> finsight.adapters.repositories.base_repository",
+    "finsight.adapters.repositories.audit_log -> finsight.adapters.audit.postgres_audit_log",
+    "finsight.adapters.repositories.audit_log_repository -> finsight.adapters.audit.postgres_audit_log",
+    "finsight.adapters.repositories.postgres_audit_log -> finsight.adapters.audit.postgres_audit_log",
+    "finsight.adapters.repositories.postgres_audit_log_repository -> finsight.adapters.audit.postgres_audit_log",
+]
 modules = [
     "finsight.adapters.llm",
     "finsight.adapters.embedding",

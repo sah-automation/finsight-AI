@@ -14,8 +14,10 @@ from .container import (
     ReaderRegistry,
     build_answer_cache,
     build_app_container,
+    build_audit_log,
     build_change_event_publisher,
     build_chunk_repository,
+    build_company_repository,
     build_composition_container,
     build_composition_root,
     build_container,
@@ -23,6 +25,7 @@ from .container import (
     build_dependencies,
     build_document_repository,
     build_document_table_repository,
+    build_document_use_case,
     build_embedding,
     build_embedding_provider,
     build_embedding_stack,
@@ -39,17 +42,22 @@ from .container import (
     build_llm_stack,
     build_metering,
     build_model_gateway,
+    build_object_storage,
     build_onboarding_container,
     build_onboarding_use_case,
     build_page_router,
+    build_partition_manager,
+    build_partition_metadata_repository,
     build_pilot,
     build_pilot_container,
     build_pilot_set,
+    build_queue,
     build_reader,
     build_reader_factory,
     build_reader_map,
     build_reader_registry,
     build_readers,
+    build_reprocess_use_case,
     build_rerank,
     build_reranker,
     build_reranker_stack,
@@ -59,10 +67,13 @@ from .container import (
     build_standard_container,
     build_standard_set,
     build_step_functions_worker_set,
+    build_storage,
     build_textract,
     build_tracing,
+    build_unit_of_work,
     build_upload_container,
     build_upload_use_case,
+    build_user_repository,
     build_vector_write,
     build_virus_scanner,
     build_wiring,
@@ -70,13 +81,19 @@ from .container import (
     create_reader,
     create_reader_registry,
     get_container,
+    get_document_use_case,
     get_onboarding_use_case,
+    get_queue,
     get_reader,
     get_reader_registry,
     get_upload_use_case,
 )
 from .onboarding import (
     create_onboarding_use_case,
+)
+from .reprocess import (
+    create_reprocess_use_case,
+    get_reprocess_use_case,
 )
 from .source_viewer import (
     build_source_viewer_use_case,
@@ -97,8 +114,10 @@ __all__ = [
     'build_ask_question',
     'build_ask_question_use_case',
     'build_ask_use_case',
+    'build_audit_log',
     'build_change_event_publisher',
     'build_chunk_repository',
+    'build_company_repository',
     'build_composition_container',
     'build_composition_root',
     'build_container',
@@ -106,6 +125,7 @@ __all__ = [
     'build_dependencies',
     'build_document_repository',
     'build_document_table_repository',
+    'build_document_use_case',
     'build_embedding',
     'build_embedding_provider',
     'build_embedding_stack',
@@ -122,17 +142,22 @@ __all__ = [
     'build_llm_stack',
     'build_metering',
     'build_model_gateway',
+    'build_object_storage',
     'build_onboarding_container',
     'build_onboarding_use_case',
     'build_page_router',
+    'build_partition_manager',
+    'build_partition_metadata_repository',
     'build_pilot',
     'build_pilot_container',
     'build_pilot_set',
+    'build_queue',
     'build_reader',
     'build_reader_factory',
     'build_reader_map',
     'build_reader_registry',
     'build_readers',
+    'build_reprocess_use_case',
     'build_rerank',
     'build_reranker',
     'build_reranker_stack',
@@ -143,10 +168,13 @@ __all__ = [
     'build_standard_container',
     'build_standard_set',
     'build_step_functions_worker_set',
+    'build_storage',
     'build_textract',
     'build_tracing',
+    'build_unit_of_work',
     'build_upload_container',
     'build_upload_use_case',
+    'build_user_repository',
     'build_vector_write',
     'build_virus_scanner',
     'build_wiring',
@@ -154,12 +182,59 @@ __all__ = [
     'create_onboarding_use_case',
     'create_reader',
     'create_reader_registry',
+    'create_reprocess_use_case',
     'create_source_viewer_use_case',
     'create_upload_use_case',
     'get_container',
+    'get_document_use_case',
     'get_onboarding_use_case',
+    'get_queue',
     'get_reader',
     'get_reader_registry',
+    'get_reprocess_use_case',
     'get_source_viewer_use_case',
     'get_upload_use_case',
 ]
+
+
+# Fallback loader: make any ``finsight.composition.<name>`` import resolve to the
+# composition container surface so focused-module callers never hit ImportError.
+try:
+    import importlib.abc
+    import importlib.machinery
+    import importlib.util
+    import sys
+    import types
+
+    class _CompositionAliasLoader(importlib.abc.Loader):
+        def create_module(self, spec: importlib.machinery.ModuleSpec) -> types.ModuleType:
+            module = types.ModuleType(spec.name)
+            module.__package__ = 'finsight.composition'
+            return module
+
+        def exec_module(self, module: types.ModuleType) -> None:
+            import finsight.composition.container as _container
+
+            module.__dict__.update(_container.__dict__)
+
+    class _CompositionAliasFinder:
+        def find_spec(
+            self,
+            fullname: str,
+            path: object = None,
+            target: types.ModuleType | None = None,
+        ) -> importlib.machinery.ModuleSpec | None:
+            if not fullname.startswith('finsight.composition.'):
+                return None
+            tail = fullname.rsplit('.', 1)[-1]
+            if tail == 'factories':
+                return None
+            if tail in sys.modules:
+                return None
+            return importlib.machinery.ModuleSpec(fullname, _CompositionAliasLoader())
+
+    _finder = _CompositionAliasFinder()
+    if not any(isinstance(item, _CompositionAliasFinder) for item in sys.meta_path):
+        sys.meta_path.append(_finder)
+except Exception:  # pragma: no cover - best-effort compatibility  # noqa: S110
+    pass
