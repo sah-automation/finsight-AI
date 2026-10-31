@@ -228,10 +228,6 @@ def _make_real_ask(
                     answer=None,
                 )
             raise
-        try:
-            result.numbers = list(expected.get('numbers') or [])  # type: ignore[attr-defined]
-        except Exception:
-            pass
         return result
 
     return _ask

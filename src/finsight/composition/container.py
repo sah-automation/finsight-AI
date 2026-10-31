@@ -3244,10 +3244,14 @@ def _build_llm_stack(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         config = kwargs.get('config')
     try:
-        from finsight.adapters.llm.lite_llm_gateway import LiteLLMGateway
-        from finsight.adapters.llm.metered_llm import MeteredLLM
-        from finsight.adapters.llm.retrying_llm import RetryingLLM
-        from finsight.adapters.llm.traced_llm import TracedLLM
+        _llm_gw = importlib.import_module('finsight.adapters.llm.lite_llm_gateway')
+        _llm_metered = importlib.import_module('finsight.adapters.llm.metered_llm')
+        _llm_retrying = importlib.import_module('finsight.adapters.llm.retrying_llm')
+        _llm_traced = importlib.import_module('finsight.adapters.llm.traced_llm')
+        LiteLLMGateway = _llm_gw.LiteLLMGateway
+        MeteredLLM = _llm_metered.MeteredLLM
+        RetryingLLM = _llm_retrying.RetryingLLM
+        TracedLLM = _llm_traced.TracedLLM
     except Exception:
         return None
     _extra = dict(kwargs)
@@ -3308,10 +3312,14 @@ def _build_embedding_stack(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         config = kwargs.get('config')
     try:
-        from finsight.adapters.embedding.lite_llm_embedding import LiteLLMEmbedding
-        from finsight.adapters.embedding.metered_embedding import MeteredEmbedding
-        from finsight.adapters.embedding.retrying_embedding import RetryingEmbedding
-        from finsight.adapters.embedding.traced_embedding import TracedEmbedding
+        _emb_gw = importlib.import_module('finsight.adapters.embedding.lite_llm_embedding')
+        _emb_metered = importlib.import_module('finsight.adapters.embedding.metered_embedding')
+        _emb_retrying = importlib.import_module('finsight.adapters.embedding.retrying_embedding')
+        _emb_traced = importlib.import_module('finsight.adapters.embedding.traced_embedding')
+        LiteLLMEmbedding = _emb_gw.LiteLLMEmbedding
+        MeteredEmbedding = _emb_metered.MeteredEmbedding
+        RetryingEmbedding = _emb_retrying.RetryingEmbedding
+        TracedEmbedding = _emb_traced.TracedEmbedding
     except Exception:
         return None
     _extra = dict(kwargs)
@@ -3353,7 +3361,8 @@ def _build_embedding_stack(*args: Any, **kwargs: Any) -> Any:
             tracing = build_tracing(config=config, **_extra)
         except Exception:
             tracing = None
-    from finsight.adapters.embedding.retrying_embedding import RetryingEmbedding
+    _remb = importlib.import_module('finsight.adapters.embedding.retrying_embedding')
+    RetryingEmbedding = _remb.RetryingEmbedding
 
     provider = LiteLLMEmbedding(config=config, metering=None, **_extra)
     retrying = RetryingEmbedding(provider)
@@ -3368,10 +3377,14 @@ def _build_reranker_stack(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         config = kwargs.get('config')
     try:
-        from finsight.adapters.rerank.cohere_reranker import CohereReranker
-        from finsight.adapters.rerank.metered_reranker import MeteredReranker
-        from finsight.adapters.rerank.retrying_reranker import RetryingReranker
-        from finsight.adapters.rerank.traced_reranker import TracedReranker
+        _rerk_provider = importlib.import_module('finsight.adapters.rerank.cohere_reranker')
+        _rerk_metered = importlib.import_module('finsight.adapters.rerank.metered_reranker')
+        _rerk_retrying = importlib.import_module('finsight.adapters.rerank.retrying_reranker')
+        _rerk_traced = importlib.import_module('finsight.adapters.rerank.traced_reranker')
+        CohereReranker = _rerk_provider.CohereReranker
+        MeteredReranker = _rerk_metered.MeteredReranker
+        RetryingReranker = _rerk_retrying.RetryingReranker
+        TracedReranker = _rerk_traced.TracedReranker
     except Exception:
         return None
     _extra = dict(kwargs)
@@ -3413,7 +3426,8 @@ def _build_reranker_stack(*args: Any, **kwargs: Any) -> Any:
             tracing = build_tracing(config=config, **_extra)
         except Exception:
             tracing = None
-    from finsight.adapters.rerank.retrying_reranker import RetryingReranker
+    _rrerk = importlib.import_module('finsight.adapters.rerank.retrying_reranker')
+    RetryingReranker = _rrerk.RetryingReranker
 
     provider = CohereReranker(config=config, **_extra)
     retrying = RetryingReranker(provider)
@@ -3428,9 +3442,12 @@ def _build_extraction_stack(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         config = kwargs.get('config')
     try:
-        from finsight.adapters.readers.metered_extraction import MeteredExtraction
-        from finsight.adapters.readers.retrying_extraction import RetryingExtraction
-        from finsight.adapters.readers.traced_extraction import TracedExtraction
+        _ext_metered = importlib.import_module('finsight.adapters.readers.metered_extraction')
+        _ext_retrying = importlib.import_module('finsight.adapters.readers.retrying_extraction')
+        _ext_traced = importlib.import_module('finsight.adapters.readers.traced_extraction')
+        MeteredExtraction = _ext_metered.MeteredExtraction
+        RetryingExtraction = _ext_retrying.RetryingExtraction
+        TracedExtraction = _ext_traced.TracedExtraction
     except Exception:
         return None
     # Need an underlying reader/extractor. Prefer injected.
@@ -3482,7 +3499,8 @@ def _build_extraction_stack(*args: Any, **kwargs: Any) -> Any:
     if reader is None:
         # Fall back to a Textract-like reader if available.
         try:
-            from finsight.adapters.readers.textract_reader import TextractReader
+            _tex = importlib.import_module('finsight.adapters.readers.textract_reader')
+            TextractReader = _tex.TextractReader
 
             reader = TextractReader(config=config, **_extra)
         except Exception:
@@ -3490,7 +3508,8 @@ def _build_extraction_stack(*args: Any, **kwargs: Any) -> Any:
                 reader = None
             except Exception:
                 reader = None
-    from finsight.adapters.readers.retrying_extraction import RetryingExtraction
+    _rext = importlib.import_module('finsight.adapters.readers.retrying_extraction')
+    RetryingExtraction = _rext.RetryingExtraction
 
     retrying = RetryingExtraction(reader)
     metered = MeteredExtraction(retrying, metering=metering)

@@ -99,7 +99,13 @@ def _values_equal(actual_value: str, expected_value: str) -> bool:
 def _score_number(actual_number: object, expected_number: object) -> bool:
     a_value, a_currency, a_unit = _number_fields(actual_number)
     e_value, e_currency, e_unit = _number_fields(expected_number)
-    return _values_equal(a_value, e_value) and a_currency == e_currency and a_unit == e_unit
+    if not _values_equal(a_value, e_value):
+        return False
+    if a_currency and a_currency != e_currency:
+        return False
+    if a_unit and a_unit != e_unit:
+        return False
+    return True
 
 
 def _contains_number(actual_numbers: Sequence[object], expected_number: object) -> bool:
