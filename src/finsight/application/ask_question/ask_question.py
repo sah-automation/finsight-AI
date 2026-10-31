@@ -422,6 +422,42 @@ class AskQuestion:
             )
         return str(normalized).strip() or question
 
+    async def _step_cache_lookup(
+        self, company_id: Any, question: str, role: Any, access_scope: Any, document_stamp: Any
+    ) -> Any:
+        """Named step: answer-cache lookup."""
+        await self._trace(company_id, 'cache_lookup')
+        # ---- Cache lookup (before heavy work) ----
+        cache_enabled = _switch(self._config, 'answer_cache_enabled', True)
+        stamp = document_stamp
+        if stamp is None:
+            stamp = self._make_stamp(company_id)
+        if self._cache is None or not cache_enabled:
+            return None
+        try:
+            cached = await self._cache.get(
+                company_id,
+                role=role,
+                access_scope=access_scope,
+                question=question,
+                document_stamp=stamp,
+            )
+        except TypeError:
+            try:
+                cached = await self._cache.get(
+                    company_id,
+                    key=None,
+                    role=role,
+                    access_scope=access_scope,
+                    question=question,
+                    document_stamp=stamp,
+                )
+            except Exception:
+                cached = None
+        except Exception:
+            cached = None
+        return cached
+
     async def _run(self, request: Any, extra: dict[str, Any]) -> Any:
         merged = self._normalise(request, extra)
         company_id_raw = _first(
@@ -494,37 +530,14 @@ class AskQuestion:
 
         q = await self._step_input_gate(question, company_id)
 
-        await self._trace(company_id, 'cache_lookup')
-        # ---- Cache lookup (before heavy work) ----
         cache_enabled = _switch(self._config, 'answer_cache_enabled', True)
+
+        cached = await self._step_cache_lookup(company_id, q, role, access_scope, document_stamp)
+        if cached is not None:
+            return cached
         stamp = document_stamp
         if stamp is None:
             stamp = self._make_stamp(company_id)
-        if self._cache is not None and cache_enabled:
-            try:
-                cached = await self._cache.get(
-                    company_id,
-                    role=role,
-                    access_scope=access_scope,
-                    question=q,
-                    document_stamp=stamp,
-                )
-            except TypeError:
-                try:
-                    cached = await self._cache.get(
-                        company_id,
-                        key=None,
-                        role=role,
-                        access_scope=access_scope,
-                        question=q,
-                        document_stamp=stamp,
-                    )
-                except Exception:
-                    cached = None
-            except Exception:
-                cached = None
-            if cached is not None:
-                return cached
 
         # ---- Heavy work wrapper ----
         async def heavy() -> Any:
