@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import io
-from pathlib import Path
 from typing import Any
 
 from finsight.domain.value_objects.reader_result import ReaderResult
@@ -220,168 +218,25 @@ class TesseractReader(BaseReader):
         data = self._as_bytes(source)
         return bool(isinstance(data, (bytes, bytearray)) and len(data) >= 4 and data[:4] == b'%PDF')
 
-    def _load_images(
-        self,
-        source: Any,
-        filename: Any = None,
-        file_name: Any = None,
-        file_path: Any = None,
-        content_type: Any = None,
-    ) -> list[Any]:
-        if self._is_pdf_source(source, filename, file_name, file_path, content_type):
-            import pdf2image
+    def _load_images(self, *args: Any, **kwargs: Any) -> None:
+        from ._tesseract_reader_load_images import _load_images as _adapter_method
 
-            data = self._as_bytes(source)
-            if data is not None:
-                return list(pdf2image.convert_from_bytes(data, dpi=self._dpi()))
-            if isinstance(source, (str, Path)):
-                return list(pdf2image.convert_from_path(str(source), dpi=self._dpi()))
-            path = file_path or filename or file_name
-            if path is not None:
-                return list(pdf2image.convert_from_path(str(path), dpi=self._dpi()))
-            raise ValueError('Unable to resolve a PDF source for Tesseract rendering')
+        _adapter_method(self, *args, **kwargs)
 
-        # Image handling.
-        data = self._as_bytes(source)
-        if data is not None:
-            try:
-                from PIL import Image
+    def _ocr_image(self, *args: Any, **kwargs: Any) -> None:
+        from ._tesseract_reader_ocr_image import _ocr_image as _adapter_method
 
-                image = Image.open(io.BytesIO(data))
-                image.load()
-            except (OSError, ValueError):
-                pass
-            else:
-                return [image]
-        if hasattr(source, 'save') and hasattr(source, 'size'):
-            return [source]
-        if isinstance(source, (str, Path)):
-            try:
-                from PIL import Image
-
-                return [Image.open(str(source))]
-            except Exception:
-                pass
-        raise ValueError('Unable to resolve an image source for Tesseract OCR')
-
-    def _ocr_image(self, image: Any) -> tuple[str, float, list[float]]:
-        import pytesseract  # type: ignore[import-untyped]
-
-        cmd = self._tesseract_cmd()
-        if cmd is not None:
-            pytesseract.pytesseract.tesseract_cmd = cmd
-
-        languages = self._languages()
-        lang = ','.join(languages) if languages else None
-        config_str = self._ocr_config()
-
-        kwargs: dict[str, Any] = {'output_type': pytesseract.Output.DICT}
-        if lang:
-            kwargs['lang'] = lang
-        if config_str:
-            kwargs['config'] = config_str
-
-        data = pytesseract.image_to_data(image, **kwargs)
-        if not isinstance(data, dict):
-            data = {}
-        texts = list(data.get('text', []) or [])
-        confs_raw = list(data.get('conf', []) or [])
-
-        words: list[str] = []
-        confidences: list[float] = []
-        for index, raw_text in enumerate(texts):
-            word = '' if raw_text is None else str(raw_text).strip()
-            if not word:
-                continue
-            words.append(word)
-            conf_value = None
-            if index < len(confs_raw):
-                try:
-                    conf_value = float(confs_raw[index])
-                except (TypeError, ValueError):
-                    conf_value = None
-            if conf_value is not None and conf_value >= 0:
-                confidences.append(conf_value)
-
-        page_text = ' '.join(words)
-        if confidences:
-            page_confidence = sum(confidences) / len(confidences)
-        else:
-            page_confidence = 0.0
-        return page_text, page_confidence, confidences
+        _adapter_method(self, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # Read entry point
     # ------------------------------------------------------------------
-    async def read(
-        self,
-        company_id: Any,
-        content: Any = None,
-        *,
-        file_path: Any = None,
-        filename: Any = None,
-        file_name: Any = None,
-        content_type: Any = None,
-        **kwargs: Any,
-    ) -> ReaderResult:
-        self._require_company_id(company_id)
-        source = self._resolve_source(
-            content, file_path=file_path, filename=filename, file_name=file_name, **kwargs
-        )
+    async def read(self, *args: Any, **kwargs: Any) -> ReaderResult:
+        from typing import cast
 
-        # Empty-input safety.
-        if self._is_empty_content(source):
-            return self._empty_result()
+        from ._tesseract_reader_read import _read as _adapter_read
 
-        # Allow explicit overrides from kwargs.
-        filename = filename if filename is not None else kwargs.get('filename')
-        file_name = file_name if file_name is not None else kwargs.get('file_name')
-        file_path = file_path if file_path is not None else kwargs.get('file_path')
-        content_type = content_type if content_type is not None else kwargs.get('content_type')
-
-        images = self._load_images(
-            source,
-            filename=filename,
-            file_name=file_name,
-            file_path=file_path,
-            content_type=content_type,
-        )
-
-        text_parts: list[str] = []
-        page_confidences: list[float] = []
-        all_confidences: list[float] = []
-        page_numbers: list[int] = []
-
-        if not images:
-            return self._empty_result()
-
-        for page_number, image in enumerate(images, start=1):
-            page_text, page_confidence, confidences = self._ocr_image(image)
-            text_parts.append(page_text)
-            page_numbers.append(page_number)
-            page_confidences.append(page_confidence)
-            all_confidences.extend(confidences)
-
-        full_text = '\n\n'.join(part for part in text_parts if part.strip()).strip()
-        if not full_text:
-            full_text = '\n\n'.join(text_parts).strip()
-
-        if all_confidences:
-            confidence: Any = sum(all_confidences) / len(all_confidences)
-        elif page_confidences:
-            confidence = sum(page_confidences) / len(page_confidences)
-        else:
-            confidence = 0.0
-
-        locators: list[dict[str, Any]] = [{'page': page, 'type': 'ocr'} for page in page_numbers]
-
-        return ReaderResult(
-            text=full_text,
-            tables=[],
-            page_numbers=page_numbers,
-            confidence=confidence,
-            locators=list(locators),
-        )
+        return cast('ReaderResult', await _adapter_read(self, *args, **kwargs))
 
     # Aliases.
     async def read_document(

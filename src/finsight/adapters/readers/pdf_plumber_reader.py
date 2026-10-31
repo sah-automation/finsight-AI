@@ -35,53 +35,12 @@ class PdfPlumberReader(BaseReader):
     def confidence_threshold(self) -> Any:
         return self._confidence_threshold
 
-    async def read(
-        self,
-        company_id: Any,
-        content: Any = None,
-        *,
-        file_path: Any = None,
-        filename: Any = None,
-        file_name: Any = None,
-        content_type: Any = None,
-        **kwargs: Any,
-    ) -> ReaderResult:
-        source = self._resolve_source(
-            content, file_path=file_path, filename=filename, file_name=file_name, **kwargs
-        )
-        # Empty-input safety: never raise on empty buffers/strings.
-        if self._is_empty_content(source):
-            return self._empty_result()
-        data = self._as_bytes(source)
-        if data is not None and len(data) == 0:
-            return self._empty_result()
-        self._require_company_id(company_id)
-        text_parts: list[str] = []
-        tables: list[object] = []
-        page_numbers: list[int] = []
-        page_confidences: list[float] = []
+    async def read(self, *args: Any, **kwargs: Any) -> ReaderResult:
+        from typing import cast
 
-        with self._open_pdf(source) as pdf:
-            for page_number, page in enumerate(pdf.pages, start=1):
-                page_text = ''
-                try:
-                    page_text = page.extract_text() or ''
-                except Exception:
-                    page_text = ''
-                tables.extend(self._extract_tables(page, page_number))
-                page_numbers.append(page_number)
-                text_parts.append(page_text)
-                page_confidences.append(1.0 if page_text.strip() else 0.0)
+        from ._pdf_plumber_reader_read import _read as _adapter_read
 
-        full_text = '\n\n'.join(part for part in text_parts)
-        confidence = (sum(page_confidences) / len(page_confidences)) if page_confidences else 1.0
-
-        return ReaderResult(
-            text=full_text,
-            tables=tables,
-            page_numbers=page_numbers,
-            confidence=confidence,
-        )
+        return cast('ReaderResult', await _adapter_read(self, *args, **kwargs))
 
     async def read_document(
         self, company_id: Any, content: Any = None, **kwargs: Any
@@ -107,45 +66,10 @@ class PdfPlumberReader(BaseReader):
             return pdfplumber.open(io.BytesIO(data))
         return pdfplumber.open(source)
 
-    def _extract_tables(self, page: Any, page_number: int) -> list[dict[str, Any]]:
-        found_tables: list[Any] = []
-        try:
-            found_tables = list(page.find_tables() or [])
-        except Exception:
-            found_tables = []
-        extracted: list[Any] = []
-        try:
-            extracted = list(page.extract_tables() or [])
-        except Exception:
-            extracted = []
+    def _extract_tables(self, *args: Any, **kwargs: Any) -> Any:
+        from ._pdf_plumber_reader_extract_tables import _extract_tables as _adapter_method
 
-        if not extracted and found_tables:
-            for table in found_tables:
-                if hasattr(table, 'extract'):
-                    try:
-                        extracted.append(table.extract())
-                    except Exception:
-                        extracted.append(None)
-
-        result: list[dict[str, Any]] = []
-        for index, rows in enumerate(extracted):
-            bbox: Any = None
-            if index < len(found_tables):
-                bbox = getattr(found_tables[index], 'bbox', None)
-            result.append(
-                {
-                    'page': page_number,
-                    'page_number': page_number,
-                    'rows': rows,
-                    'table': rows,
-                    'data': rows,
-                    'cells': rows,
-                    'bbox': bbox,
-                    'bounding_box': bbox,
-                    'boundaries': bbox,
-                }
-            )
-        return result
+        return _adapter_method(self, *args, **kwargs)
 
 
 __all__ = ['PdfPlumberReader']
