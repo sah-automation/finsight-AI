@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from finsight.core.types import CompanyId, Role, UserId
@@ -42,6 +42,7 @@ class UserRepository(UserRepositoryPort, BaseRepository):
 
     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
         super().__init__(session, **kwargs)
+        self._memory: dict[str, dict[str, User]] = {}
 
     async def create_user(
         self,
@@ -50,6 +51,23 @@ class UserRepository(UserRepositoryPort, BaseRepository):
         email: str,
         role: Role,
     ) -> User:
+        if self._session is None:
+            now = datetime.now(UTC)
+            store = self._memory.setdefault(str(company_id), {})
+            for existing_id, existing_user in list(store.items()):
+                if existing_user.email == email and existing_id != str(user_id):
+                    del store[existing_id]
+            prior = store.get(str(user_id))
+            user = User(
+                id=user_id,
+                company_id=company_id,
+                email=email,
+                role=role,
+                created_at=prior.created_at if prior is not None else now,
+                updated_at=now,
+            )
+            store[str(user_id)] = user
+            return user
         await self._set_rls_context(company_id)
         result = await self._execute(
             f"""
@@ -67,16 +85,18 @@ class UserRepository(UserRepositoryPort, BaseRepository):
             },
         )
         row = await self._fetchone(result)
-        user = _row_to_user(row)
-        if user is None:
+        user_row: User | None = _row_to_user(row)
+        if user_row is None:
             return User(id=user_id, company_id=company_id, email=email, role=role)
-        return user
+        return user_row
 
     async def get_user(
         self,
         company_id: CompanyId,
         user_id: UserId,
     ) -> User | None:
+        if self._session is None:
+            return self._memory.get(str(company_id), {}).get(str(user_id))
         await self._set_rls_context(company_id)
         result = await self._execute(
             f"""
@@ -94,6 +114,11 @@ class UserRepository(UserRepositoryPort, BaseRepository):
         company_id: CompanyId,
         email: str,
     ) -> User | None:
+        if self._session is None:
+            for user in self._memory.get(str(company_id), {}).values():
+                if user.email == email:
+                    return user
+            return None
         await self._set_rls_context(company_id)
         result = await self._execute(
             f"""
@@ -110,6 +135,8 @@ class UserRepository(UserRepositoryPort, BaseRepository):
         self,
         company_id: CompanyId,
     ) -> list[User]:
+        if self._session is None:
+            return list(self._memory.get(str(company_id), {}).values())
         await self._set_rls_context(company_id)
         result = await self._execute(
             f"""
@@ -141,6 +168,21 @@ class UserRepository(UserRepositoryPort, BaseRepository):
         email: str | None = None,
         role: Role | None = None,
     ) -> User | None:
+        if self._session is None:
+            store = self._memory.get(str(company_id), {})
+            existing = store.get(str(user_id))
+            if existing is None:
+                return None
+            updated = User(
+                id=existing.id,
+                company_id=existing.company_id,
+                email=email if email is not None else existing.email,
+                role=role if role is not None else existing.role,
+                created_at=existing.created_at,
+                updated_at=datetime.now(UTC),
+            )
+            store[str(user_id)] = updated
+            return updated
         await self._set_rls_context(company_id)
         result = await self._execute(
             f"""
@@ -166,6 +208,11 @@ class UserRepository(UserRepositoryPort, BaseRepository):
         company_id: CompanyId,
         user_id: UserId,
     ) -> bool:
+        if self._session is None:
+            store = self._memory.get(str(company_id), {})
+            existed = str(user_id) in store
+            store.pop(str(user_id), None)
+            return existed
         await self._set_rls_context(company_id)
         result = await self._execute(
             f'DELETE FROM {_TABLE} WHERE company_id = :company_id AND id = :id',

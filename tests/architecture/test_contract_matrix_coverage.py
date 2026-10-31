@@ -33,6 +33,11 @@ PORT_CONTRACT_FILES = {
     'QueuePort': 'test_queue_port_contract.py',
     'PartitionGateway': 'test_partition_gateway_contract.py',
     'UnitOfWork': 'test_unit_of_work_contract.py',
+    'CompanyRepository': 'test_company_repository_contract.py',
+    'UserRepository': 'test_user_repository_contract.py',
+    'JobRepository': 'test_job_repository_contract.py',
+    'DocumentTableRepository': 'test_document_table_repository_contract.py',
+    'AuditLog': 'test_audit_log_contract.py',
 }
 
 # Primary adapter exercised by each shared suite.
@@ -56,6 +61,11 @@ PORT_ADAPTER_CLASSES = {
     'QueuePort': 'SqsQueue',
     'PartitionGateway': 'PartitionManager',
     'UnitOfWork': 'PostgresUnitOfWork',
+    'CompanyRepository': 'CompanyRepository',
+    'UserRepository': 'UserRepository',
+    'JobRepository': 'JobRepository',
+    'DocumentTableRepository': 'PostgresDocumentTableRepository',
+    'AuditLog': 'PostgresAuditLog',
 }
 
 

@@ -342,6 +342,8 @@ def build_onboarding_use_case(*args: Any, **kwargs: Any) -> Any:
             config=config,
             **_extra2,
         )
+    if canonical.get('audit_log') is None:
+        canonical['audit_log'] = build_audit_log(session=session, config=config, **_extra2)
 
     if config is not None:
         switches = getattr(config, 'switches', None)
@@ -592,6 +594,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
             'vector_write',
             'answer_cache',
             'change_event_publisher',
+            'audit_log',
             'metering',
             'tracing',
         ):
@@ -687,6 +690,11 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
     change_event_publisher = provided_deps.get(
         'change_event_publisher'
     ) or build_change_event_publisher(config=config, **_extra)
+    audit_log = (
+        provided_deps.get('audit_log')
+        or _existing(kwargs, 'audit_log', 'audit', 'audit_logger', 'audit_log_port')
+        or build_audit_log(session=session, config=config, **_extra)
+    )
     unit_of_work = provided_deps.get('unit_of_work') or _existing(
         kwargs, 'unit_of_work', 'uow', 'transaction', 'tx'
     )
@@ -757,6 +765,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         vector_write=vector_write,
         answer_cache=answer_cache,
         change_event_publisher=change_event_publisher,
+        audit_log=audit_log,
         job_repository=job_repository,
         virus_scanner=virus_scanner,
         object_storage=object_storage,
@@ -829,6 +838,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
             table_repository=document_table_repository,
             object_storage=object_storage,
             storage=object_storage,
+            audit_log=audit_log,
         )
 
     container = CompositionContainer(
@@ -862,6 +872,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         vector_write=vector_write,
         answer_cache=answer_cache,
         change_event_publisher=change_event_publisher,
+        audit_log=audit_log,
         unit_of_work=unit_of_work,
         metering=metering,
         tracing=tracing,
@@ -1208,6 +1219,61 @@ def build_job_repository(*args: Any, **kwargs: Any) -> Any:
         return None
     except Exception:
         raise
+
+
+def build_audit_log(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(
+        kwargs,
+        'audit_log',
+        'audit',
+        'audit_logger',
+        'audit_log_port',
+        'audit_repository',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k not in {'audit_log', 'audit', 'audit_logger', 'audit_log_port', 'audit_repository'}
+    }
+    for module_path, names in (
+        (
+            'finsight.adapters.audit.postgres_audit_log',
+            ('PostgresAuditLog', 'AuditLog'),
+        ),
+        (
+            'finsight.adapters.audit.audit_log',
+            ('PostgresAuditLog', 'AuditLog'),
+        ),
+        (
+            'finsight.adapters.repositories.postgres_audit_log',
+            ('PostgresAuditLog', 'AuditLog'),
+        ),
+        (
+            'finsight.adapters.repositories.postgres_audit_log_repository',
+            ('PostgresAuditLog', 'AuditLog'),
+        ),
+        (
+            'finsight.adapters.repositories.audit_log_repository',
+            ('PostgresAuditLog', 'AuditLog'),
+        ),
+        (
+            'finsight.adapters.repositories.audit_log',
+            ('PostgresAuditLog', 'AuditLog'),
+        ),
+    ):
+        try:
+            Cls = _import_adapter(module_path, *names)
+            if Cls is not None:
+                return Cls(session=session, config=config, **_extra)
+        except Exception:  # noqa: S112
+            continue
+    return None
 
 
 def build_document_repository(*args: Any, **kwargs: Any) -> Any:

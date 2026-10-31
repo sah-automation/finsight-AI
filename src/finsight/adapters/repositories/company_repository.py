@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from finsight.core.types import CompanyId
@@ -40,6 +40,7 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
 
     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
         super().__init__(session, **kwargs)
+        self._memory: dict[str, dict[str, Company]] = {}
 
     async def create_company(
         self,
@@ -47,6 +48,19 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
         name: str,
         slug: str,
     ) -> Company:
+        if self._session is None:
+            now = datetime.now(UTC)
+            store = self._memory.setdefault(str(company_id), {})
+            existing = store.get(str(company_id))
+            company = Company(
+                id=company_id,
+                name=name,
+                slug=slug,
+                created_at=existing.created_at if existing is not None else now,
+                updated_at=now,
+            )
+            store[str(company_id)] = company
+            return company
         await self._set_rls_context(company_id)
         result = await self._execute(
             f"""
@@ -58,15 +72,17 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
             {'id': str(company_id), 'name': name, 'slug': slug},
         )
         row = await self._fetchone(result)
-        company = _row_to_company(row)
-        if company is None:
+        company_row: Company | None = _row_to_company(row)
+        if company_row is None:
             return Company(id=company_id, name=name, slug=slug)
-        return company
+        return company_row
 
     async def get_company(
         self,
         company_id: CompanyId,
     ) -> Company | None:
+        if self._session is None:
+            return self._memory.get(str(company_id), {}).get(str(company_id))
         await self._set_rls_context(company_id)
         result = await self._execute(
             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} WHERE id = :id',
@@ -80,6 +96,11 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
         company_id: CompanyId,
         slug: str,
     ) -> Company | None:
+        if self._session is None:
+            for company in self._memory.get(str(company_id), {}).values():
+                if company.slug == slug:
+                    return company
+            return None
         await self._set_rls_context(company_id)
         result = await self._execute(
             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} WHERE slug = :slug AND id = :id LIMIT 1',
@@ -94,6 +115,20 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
         name: str | None = None,
         slug: str | None = None,
     ) -> Company | None:
+        if self._session is None:
+            store = self._memory.get(str(company_id), {})
+            existing = store.get(str(company_id))
+            if existing is None:
+                return None
+            updated = Company(
+                id=existing.id,
+                name=name if name is not None else existing.name,
+                slug=slug if slug is not None else existing.slug,
+                created_at=existing.created_at,
+                updated_at=datetime.now(UTC),
+            )
+            store[str(company_id)] = updated
+            return updated
         await self._set_rls_context(company_id)
         result = await self._execute(
             f"""
@@ -113,6 +148,11 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
         self,
         company_id: CompanyId,
     ) -> bool:
+        if self._session is None:
+            store = self._memory.get(str(company_id), {})
+            existed = str(company_id) in store
+            store.pop(str(company_id), None)
+            return existed
         await self._set_rls_context(company_id)
         result = await self._execute(
             f'DELETE FROM {_TABLE} WHERE id = :id',
@@ -127,6 +167,8 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
         self,
         company_id: CompanyId,
     ) -> list[Company]:
+        if self._session is None:
+            return list(self._memory.get(str(company_id), {}).values())
         await self._set_rls_context(company_id)
         result = await self._execute(
             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} ORDER BY created_at DESC',

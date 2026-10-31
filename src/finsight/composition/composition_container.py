@@ -57,6 +57,7 @@ class CompositionContainer:
         vector_store: Any = None,
         vector_write: Any = None,
         change_event_publisher: Any = None,
+        audit_log: Any = None,
         event_publisher: Any = None,
         object_storage: Any = None,
         unit_of_work: Any = None,
@@ -349,6 +350,7 @@ class CompositionContainer:
         self.vector_write = vector_write
         self.vector_store_write = vector_write
         self.change_event_publisher = change_event_publisher
+        self.audit_log = audit_log
         self.event_publisher = change_event_publisher
         self.publisher = change_event_publisher
 
@@ -528,7 +530,7 @@ class CompositionContainer:
                     document_table_repository=self.document_table_repository,
                     table_repository=self.document_table_repository,
                     object_storage=self.object_storage,
-                    audit_log=None,
+                    audit_log=getattr(self, 'audit_log', None),
                     request_context=None,
                 )
             )

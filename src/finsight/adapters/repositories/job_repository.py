@@ -89,6 +89,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
 
     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
         super().__init__(session, **kwargs)
+        self._memory: dict[str, dict[str, _JobRecord]] = {}
 
     async def create_job(
         self,
@@ -98,7 +99,8 @@ class JobRepository(JobRepositoryPort, BaseRepository):
         status: JobStatus | str | None = None,
         **kwargs: object,
     ) -> object:
-        await self._set_rls_context(company_id)
+        if self._session is not None:
+            await self._set_rls_context(company_id)
 
         status = status if status is not None else kwargs.pop('status', None)  # type: ignore[assignment]
         status_value = _normalise_status(status) or 'queued'
@@ -185,6 +187,18 @@ class JobRepository(JobRepositoryPort, BaseRepository):
                 values['error' if key == 'error_text' else 'receive_count'] = val
                 kwargs.pop(key, None)
 
+        if self._session is None:
+            store = self._memory.setdefault(str(company_id), {})
+            key: Any = values.get('job_id')  # type: ignore[no-redef]
+            if key is None:
+                key = _as_str_or_none(job_id)
+            if key is None:
+                key = str(uuid.uuid4())
+            values.setdefault('job_id', key)
+            record = _JobRecord(dict(values))
+            store[str(key)] = record
+            return record
+
         conflict_target_present = 'job_id' in values
 
         columns = list(values.keys())
@@ -208,7 +222,7 @@ class JobRepository(JobRepositoryPort, BaseRepository):
 
         result = await self._execute(sql, values)
         row = await self._fetchone(result)
-        record = _row_to_record(row)
+        record: _JobRecord | None = _row_to_record(row)  # type: ignore[no-redef]
         if record is None:
             return _JobRecord(dict(values))
         return record
@@ -219,6 +233,17 @@ class JobRepository(JobRepositoryPort, BaseRepository):
         job_id: object,
         **kwargs: object,
     ) -> object:
+        if self._session is None:
+            store = self._memory.get(str(company_id), {})
+            key = _as_str_or_none(job_id)
+            record = store.get(str(key)) if key is not None and str(key) in store else None
+            if record is not None:
+                status_filter = kwargs.get('status', kwargs.get('job_status'))
+                if status_filter is not None and _normalise_status(status_filter) != record.get(
+                    'status'
+                ):
+                    return None
+            return record
         await self._set_rls_context(company_id)
         sql = f'SELECT * FROM {_TABLE} WHERE company_id = :company_id AND job_id = :job_id'
         params: dict[str, Any] = {
@@ -247,6 +272,42 @@ class JobRepository(JobRepositoryPort, BaseRepository):
         status: JobStatus | str | None = None,
         **kwargs: object,
     ) -> object:
+        if self._session is None:
+            store = self._memory.get(str(company_id), {})
+            key = _as_str_or_none(job_id)
+            existing = store.get(str(key)) if key is not None else None
+            if existing is None:
+                return None
+            data = dict(existing)
+            provided_status = status
+            if provided_status is None and 'status' in kwargs:
+                provided_status = kwargs.get('status')  # type: ignore[assignment]
+            new_status = _normalise_status(provided_status)
+            if new_status is not None:
+                data['status'] = new_status
+            for field in (
+                'progress',
+                'error',
+                'error_message',
+                'message',
+                'failure_reason',
+                'receive_count',
+                'document_id',
+                'document_version_id',
+                'version',
+            ):
+                if field in kwargs and kwargs.get(field) is not None:
+                    data[field] = kwargs.get(field)
+            if 'document_id' not in kwargs and kwargs.get('doc_id') is not None:
+                data['document_id'] = kwargs.get('doc_id')
+            for k, v in list(kwargs.items()):
+                if k not in {'company_id', 'job_id', 'status'}:
+                    data.setdefault(k, v)
+            record = _JobRecord(data)
+            if 'job_id' not in record or record.get('job_id') is None:
+                record['job_id'] = key
+            store[str(key)] = record
+            return record
         await self._set_rls_context(company_id)
 
         provided_status = status
@@ -367,6 +428,33 @@ class JobRepository(JobRepositoryPort, BaseRepository):
         company_id: CompanyId,
         **kwargs: object,
     ) -> list[object]:
+        if self._session is None:
+            store = self._memory.get(str(company_id), {})
+            records = list(store.values())
+            status_filter = kwargs.get('status', kwargs.get('job_status'))
+            if status_filter is not None:
+                normalised = _normalise_status(status_filter)
+                records = [
+                    r
+                    for r in records
+                    if r.get('status') == normalised or r.get('status') == str(status_filter)
+                ]
+            document_id = kwargs.get('document_id', kwargs.get('documentId', kwargs.get('doc_id')))
+            if document_id is not None:
+                records = [
+                    r
+                    for r in records
+                    if r.get('document_id') == document_id
+                    or str(r.get('document_id')) == str(document_id)
+                ]
+            job_id = kwargs.get('job_id', kwargs.get('jobId', kwargs.get('id')))
+            if job_id is not None:
+                records = [
+                    r
+                    for r in records
+                    if r.get('job_id') == job_id or str(r.get('job_id')) == str(job_id)
+                ]
+            return records  # type: ignore[return-value]
         await self._set_rls_context(company_id)
         where = ['company_id = :company_id']
         params: dict[str, Any] = {'company_id': str(company_id)}
@@ -432,12 +520,12 @@ class JobRepository(JobRepositoryPort, BaseRepository):
 
         result = await self._execute(sql, params)
         rows = await self._fetchall(result)
-        records: list[object] = []
+        db_records: list[object] = []
         for row in rows or []:
             record = _row_to_record(row)
             if record is not None:
-                records.append(record)
-        return records
+                db_records.append(record)
+        return db_records
 
     async def delete_job(
         self,
@@ -445,6 +533,13 @@ class JobRepository(JobRepositoryPort, BaseRepository):
         job_id: object,
         **kwargs: object,
     ) -> bool:
+        if self._session is None:
+            store = self._memory.get(str(company_id), {})
+            key = _as_str_or_none(job_id)
+            if key is not None and key in store:
+                del store[key]
+                return True
+            return False
         await self._set_rls_context(company_id)
         params: dict[str, Any] = {
             'company_id': str(company_id),

@@ -41,12 +41,16 @@ tests/contract/
 | `QueuePort` | `finsight.adapters.queue.sqs_queue.SqsQueue` | `tests/contract/test_queue_port_contract.py` |
 | `PartitionGateway` | `finsight.adapters.partitions.partition_manager.PartitionManager` | `tests/contract/test_partition_gateway_contract.py` |
 | `UnitOfWork` | `finsight.adapters.repositories.postgres_unit_of_work.PostgresUnitOfWork` | `tests/contract/test_unit_of_work_contract.py` |
+| `CompanyRepository` | `finsight.adapters.repositories.company_repository.CompanyRepository` | `tests/contract/test_company_repository_contract.py` |
+| `UserRepository` | `finsight.adapters.repositories.user_repository.UserRepository` | `tests/contract/test_user_repository_contract.py` |
+| `JobRepository` | `finsight.adapters.repositories.job_repository.JobRepository` | `tests/contract/test_job_repository_contract.py` |
+| `DocumentTableRepository` | `finsight.adapters.repositories.postgres_document_table_repository.PostgresDocumentTableRepository` | `tests/contract/test_document_table_repository_contract.py` |
+| `AuditLog` | `finsight.adapters.audit.postgres_audit_log.PostgresAuditLog` | `tests/contract/test_audit_log_contract.py` |
 
 **Integration-only contract coverage:** ports whose adapters require a database,
 AWS, or another external service do not have an in-memory unit path. Their
 shared suites run against real services in integration CI:
-`CompanyRepository`, `JobRepository`, `PartitionMetadataRepository`,
-`UserRepository`.
+`PartitionMetadataRepository`.
 
 **Rules:**
 - Every new adapter must pass all contract tests for its port

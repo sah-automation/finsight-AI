@@ -21,8 +21,8 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **no_sensitive_data_in_logs**: No sensitive data in logs
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
-  - composition/container.py: 3626 lines
-  - composition/composition_container.py: 543 lines
+  - composition/container.py: 3692 lines
+  - composition/composition_container.py: 545 lines
   - core/config/models.py: 732 lines
   - core/security/citation_locator.py: 495 lines
   - adapters/tracing/tracing_adapter.py: 540 lines
@@ -31,7 +31,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - adapters/cache/job_progress.py: 706 lines
   - adapters/security/virus_scanner.py: 788 lines
   - adapters/embedding/lite_llm_embedding.py: 432 lines
-  - adapters/repositories/job_repository.py: 480 lines
+  - adapters/repositories/job_repository.py: 575 lines
   - adapters/repositories/postgres_unit_of_work.py: 347 lines
   - adapters/repositories/postgres_metric_repository.py: 414 lines
   - adapters/repositories/postgres_document_repository.py: 829 lines
@@ -45,7 +45,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
   - Unit: 38
-  - Contract: 21
+  - Contract: 25
   - Switch: 15
 
 ---
