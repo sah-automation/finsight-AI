@@ -26,14 +26,6 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/composition_container.py: 563 lines
   - core/security/citation_locator.py: 495 lines
   - adapters/readers/textract_reader.py: 351 lines
-  - entrypoints/api/current_user.py: 484 lines
-  - entrypoints/api/upload.py: 828 lines
-  - entrypoints/api/ask.py: 1182 lines
-  - entrypoints/api/feedback.py: 1154 lines
-  - entrypoints/api/onboarding.py: 452 lines
-  - entrypoints/api/documents.py: 833 lines
-  - entrypoints/api/threads.py: 1183 lines
-  - entrypoints/api/source_viewer.py: 771 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
   - application/source_viewer/source_viewer.py: 2089 lines
@@ -41,6 +33,14 @@ Generated from tests/architecture/test_standards_checklist.py
   - application/ingest_document/upload_document.py: 886 lines
   - application/ingest_document/scan_worker.py: 905 lines
   - application/ingest_document/pipeline_step_worker.py: 1912 lines
+  - application/ask_question/ask_question.py: 1410 lines
+  - application/onboarding/create_company.py: 634 lines
+  - domain/services/evidence_checker.py: 355 lines
+  - domain/services/output_gate.py: 338 lines
+  - domain/services/calculator.py: 427 lines
+  - domain/entities/document_version.py: 443 lines
+  - composition/reader_registry.py::build_reader_registry: 607 lines
+  - composition/ask_question.py::get_ask_use_case: 79 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
