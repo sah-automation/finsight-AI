@@ -1,8 +1,4 @@
-from __future__ import annotations
-
-from typing import Literal
-
-from pydantic import ConfigDict, Field, field_validator, model_validator
+from pydantic import model_validator
 
 from .access_config import AccessConfig
 from .answer_check_config import AnswerCheckConfig
@@ -34,10 +30,7 @@ from .scale_config import ScaleConfig
 from .security_config import SecurityConfig
 from .storage_config import StorageConfig
 from .strict_base_model import (
-    _MAX_FALLBACK_MODELS,
-    _MIN_ANSWER_CACHE_TTL_SECONDS,
     _MIN_PRODUCTION_TRACE_SAMPLE_RATE,
-    _MIN_ROLE_CACHE_TTL_SECONDS,
     StrictBaseModel,
 )
 from .switches_config import SwitchesConfig
@@ -80,7 +73,7 @@ class Config(StrictBaseModel):
     scale: ScaleConfig | None = None
 
     @model_validator(mode='after')
-    def validate_production_rules(self) -> Config:
+    def validate_production_rules(self) -> 'Config':
         if self.app.environment == Environment.PRODUCTION:
             if self.observability.trace_sample_rate < _MIN_PRODUCTION_TRACE_SAMPLE_RATE:
                 raise ValueError(

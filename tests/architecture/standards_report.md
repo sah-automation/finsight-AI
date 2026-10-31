@@ -23,7 +23,6 @@ Generated from tests/architecture/test_standards_checklist.py
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
   - composition/container.py: 3692 lines
   - composition/composition_container.py: 545 lines
-  - core/config/models.py: 732 lines
   - core/security/citation_locator.py: 495 lines
   - adapters/tracing/tracing_adapter.py: 540 lines
   - adapters/llm/lite_llm_gateway.py: 820 lines
@@ -41,10 +40,11 @@ Generated from tests/architecture/test_standards_checklist.py
   - adapters/vector_store/aurora_pg_vector_search.py: 526 lines
   - adapters/storage/s3_storage.py: 1041 lines
   - adapters/partitions/partition_manager.py: 362 lines
+  - adapters/queue/sqs_queue.py: 1258 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 38
+  - Unit: 39
   - Contract: 25
   - Switch: 15
 

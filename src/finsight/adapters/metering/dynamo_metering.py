@@ -80,7 +80,7 @@ def _resolve_config(*args: Any, **kwargs: Any) -> Any:
 
 
 def _config_value(config: Any, *names: str, default: Any = None) -> Any:
-    sections = ('metering', 'metering_ext')
+    sections = ('metering',)
     for name in names:
         if config is None:
             break

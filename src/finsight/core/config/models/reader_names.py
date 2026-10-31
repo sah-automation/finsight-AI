@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 _KNOWN_READER_NAMES_LOWER = frozenset(
     {
         '_reader_registry',

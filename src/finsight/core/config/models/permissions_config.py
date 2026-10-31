@@ -1,15 +1,9 @@
-from __future__ import annotations
+from typing import Any
 
-from typing import Any, Literal
-
-from pydantic import ConfigDict, Field, field_validator, model_validator
+from pydantic import model_validator
 
 from .role_permission_entry import RolePermissionEntry
 from .strict_base_model import (
-    _MAX_FALLBACK_MODELS,
-    _MIN_ANSWER_CACHE_TTL_SECONDS,
-    _MIN_PRODUCTION_TRACE_SAMPLE_RATE,
-    _MIN_ROLE_CACHE_TTL_SECONDS,
     StrictBaseModel,
 )
 
@@ -20,7 +14,7 @@ class PermissionsConfig(StrictBaseModel):
     permissions: dict[str, RolePermissionEntry]
 
     @model_validator(mode='after')
-    def validate_permissions_complete(self) -> PermissionsConfig:
+    def validate_permissions_complete(self) -> 'PermissionsConfig':
         role_ids = {r.get('id') for r in self.roles}
         expected_roles = {
             'executive_leadership',
