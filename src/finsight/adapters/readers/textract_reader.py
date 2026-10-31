@@ -313,12 +313,17 @@ class TextractReader(BaseReader):
     # ------------------------------------------------------------------
     # Read entry point
     # ------------------------------------------------------------------
-    async def read(self, *args: Any, **kwargs: Any) -> ReaderResult:
+    async def read(
+        self,
+        company_id: Any = None,
+        content: Any = None,
+        **kwargs: Any,
+    ) -> ReaderResult:
         from typing import cast
 
         from ._textract_reader_read import _read as _adapter_read
 
-        return cast('ReaderResult', await _adapter_read(self, *args, **kwargs))
+        return cast('ReaderResult', await _adapter_read(self, company_id, content, **kwargs))
 
     async def read_document(
         self, company_id: Any, content: Any = None, **kwargs: Any

@@ -270,3 +270,23 @@ def trace_context(
 ) -> TraceContext:
     """Create a trace context manager."""
     return TraceContext(trace_id, company_id, user_id, span_name, switches)
+
+
+__all__ = [
+    'TextFormatter',
+    'TraceContext',
+    'TraceFormatter',
+    'configure_logging',
+    'get_company_id',
+    'get_logger',
+    'get_span_name',
+    'get_switch_values',
+    'get_trace_id',
+    'get_user_id',
+    'set_company_id',
+    'set_span_name',
+    'set_switch_values',
+    'set_trace_id',
+    'set_user_id',
+    'trace_context',
+]

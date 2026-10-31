@@ -1,4 +1,13 @@
-"""Alias module for the current-user endpoint."""
+"""Alias module for the current-user endpoint.
+
+Retained compatibility shim.
+
+Reason: preserves an alternate import path/name for
+the canonical module without duplicating implementation.
+
+Removal condition: after callers and tests migrate to
+the canonical module and this path is absent from the
+alias inventory."""
 
 from finsight.entrypoints.api import current_user as _cu
 from finsight.entrypoints.api.current_user import *  # noqa: F403
