@@ -41,7 +41,7 @@ def _ok_completion(**kwargs: Any) -> list[dict[str, Any]]:
 
 
 async def _slow_completion(**kwargs: Any) -> list[dict[str, Any]]:
-    await asyncio.sleep(10)
+    await asyncio.sleep(2)
     return _ok_completion()
 
 
@@ -86,18 +86,19 @@ class _LLMGatewayContract:
     async def test_provider_failure_is_handled_gracefully(self) -> None:
         gateway = self.make_gateway(completion_func=_failing_completion, retries=0)
         result = await gateway.complete(COMPANY_A, prompt='question')
-        assert isinstance(result, str) or result is not None
-        assert 'unavailable' in str(result).lower() or result is not None
+        assert 'unavailable' in str(result).lower()
 
     async def test_timeout_is_handled_gracefully(self) -> None:
         gateway = self.make_gateway(completion_func=_slow_completion, timeout=1, retries=0)
         result = await gateway.complete(COMPANY_A, prompt='question')
         assert result is not None
+        assert 'unavailable' in str(result).lower()
 
     async def test_empty_input_does_not_crash(self) -> None:
         gateway = self.make_gateway()
         result = await gateway.complete(COMPANY_A, prompt='')
         assert result is not None
+        assert isinstance(str(result), str)
 
     async def test_company_scoping_records_calling_company(self) -> None:
         metering = FakeMetering()
@@ -128,6 +129,7 @@ class TestLiteLLMGatewayContract(_LLMGatewayContract):
             completion_func=completion_func or _ok_completion,
             model='test-model',
             timeout_seconds=timeout,
+            first_token_timeout_seconds=timeout,
             max_retries=retries,
             metering=metering,
         )
@@ -147,6 +149,7 @@ class TestRetryingLLMContract(_LLMGatewayContract):
             completion_func=completion_func or _ok_completion,
             model='test-model',
             timeout_seconds=timeout,
+            first_token_timeout_seconds=timeout,
             max_retries=0,
         )
         return RetryingLLM(inner, retries=retries)
@@ -166,6 +169,7 @@ class TestMeteredLLMContract(_LLMGatewayContract):
             completion_func=completion_func or _ok_completion,
             model='test-model',
             timeout_seconds=timeout,
+            first_token_timeout_seconds=timeout,
             max_retries=0,
         )
         retry = RetryingLLM(inner, retries=0)
@@ -186,6 +190,7 @@ class TestTracedLLMContract(_LLMGatewayContract):
             completion_func=completion_func or _ok_completion,
             model='test-model',
             timeout_seconds=timeout,
+            first_token_timeout_seconds=timeout,
             max_retries=0,
         )
         retry = RetryingLLM(inner, retries=0)
@@ -207,6 +212,7 @@ class TestCachedLLMContract(_LLMGatewayContract):
             completion_func=completion_func or _ok_completion,
             model='test-model',
             timeout_seconds=timeout,
+            first_token_timeout_seconds=timeout,
             max_retries=0,
         )
         return CachedLLM(inner)

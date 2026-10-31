@@ -6,7 +6,7 @@ from .lite_llm_gateway import LiteLLMGateway
 
 class CachedLLM(LiteLLMGateway):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self.cache = kwargs.pop('cache', kwargs.pop('answer_cache', None))
+        kwargs.pop('cache', kwargs.pop('answer_cache', None))
         self.wrapped = (
             kwargs.pop('gateway', None) or kwargs.pop('llm', None) or kwargs.pop('target', None)
         )
