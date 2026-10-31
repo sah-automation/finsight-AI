@@ -679,8 +679,9 @@ class SourceViewer:
                 raise _NotAvailable()
 
             # Permission + access scope (category may be unknown)
-            await self._trace(company_id, 'source_authorization')
-            if not self._authorize_role(role_raw, permissions, access_scope, category_input):
+            if not await self._step_authorization(
+                company_id, role_raw, permissions, access_scope, category_input
+            ):
                 outcome = 'not_available'
                 raise _NotAvailable()
 
