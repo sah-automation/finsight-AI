@@ -44,7 +44,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 39
+  - Unit: 40
   - Contract: 25
   - Switch: 15
 

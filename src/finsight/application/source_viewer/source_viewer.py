@@ -372,6 +372,13 @@ class SourceViewer:
         except Exception:
             return
 
+    async def _step_authorization(
+        self, company_id: Any, role_raw: Any, permissions: Any, access_scope: Any, category: Any
+    ) -> bool:
+        """Named step: source authorization."""
+        await self._trace(company_id, 'source_authorization')
+        return bool(self._authorize_role(role_raw, permissions, access_scope, category))
+
     async def _execute(self, *args: Any, **kwargs: Any) -> SourceViewerResult:
         # absorb a positional request
         request = None

@@ -385,6 +385,43 @@ class AskQuestion:
         except Exception:
             return
 
+    async def _step_input_gate(self, question: str, company_id: Any) -> str:
+        """Named step: input gate."""
+        await self._trace(company_id, 'input_gate')
+        # ---- Input gate (must pass before any heavy work) ----
+        input_gate = self._input_gate
+        if isinstance(input_gate, type):
+            input_gate = input_gate(config=self._config) if self._config is not None else None
+        gate_result: InputGateResult
+        if input_gate is None:
+            gate_result = InputGateResult(
+                allowed=True,
+                normalized_question=question,
+                question=question,
+                original_question=question,
+                company_id=company_id,
+            )
+        else:
+            gate_result = await _await(input_gate.check, question, company_id=company_id)
+        if isinstance(gate_result, InputGateResult):
+            allowed = gate_result.allowed
+            normalized = gate_result.normalized_question or gate_result.question or question
+        else:
+            # Flexible: support dict/result objects.
+            allowed = getattr(gate_result, 'allowed', None)
+            if allowed is None:
+                allowed = getattr(gate_result, 'is_allowed', True)
+            normalized = (
+                getattr(gate_result, 'normalized_question', None)
+                or getattr(gate_result, 'question', None)
+                or question
+            )
+        if not allowed:
+            raise PolicyBlocked(
+                str(getattr(gate_result, 'reason', 'input_blocked') or 'input_blocked')
+            )
+        return str(normalized).strip() or question
+
     async def _run(self, request: Any, extra: dict[str, Any]) -> Any:
         merged = self._normalise(request, extra)
         company_id_raw = _first(
@@ -455,40 +492,7 @@ class AskQuestion:
         parallel = _switch(self._config, 'parallel_steps', True)
         self.parallel_steps = parallel
 
-        await self._trace(company_id, 'input_gate')
-        # ---- Input gate (must pass before any heavy work) ----
-        input_gate = self._input_gate
-        if isinstance(input_gate, type):
-            input_gate = input_gate(config=self._config) if self._config is not None else None
-        gate_result: InputGateResult
-        if input_gate is None:
-            gate_result = InputGateResult(
-                allowed=True,
-                normalized_question=question,
-                question=question,
-                original_question=question,
-                company_id=company_id,
-            )
-        else:
-            gate_result = await _await(input_gate.check, question, company_id=company_id)
-        if isinstance(gate_result, InputGateResult):
-            allowed = gate_result.allowed
-            normalized = gate_result.normalized_question or gate_result.question or question
-        else:
-            # Flexible: support dict/result objects.
-            allowed = getattr(gate_result, 'allowed', None)
-            if allowed is None:
-                allowed = getattr(gate_result, 'is_allowed', True)
-            normalized = (
-                getattr(gate_result, 'normalized_question', None)
-                or getattr(gate_result, 'question', None)
-                or question
-            )
-        if not allowed:
-            raise PolicyBlocked(
-                str(getattr(gate_result, 'reason', 'input_blocked') or 'input_blocked')
-            )
-        q = str(normalized).strip() or question
+        q = await self._step_input_gate(question, company_id)
 
         await self._trace(company_id, 'cache_lookup')
         # ---- Cache lookup (before heavy work) ----
