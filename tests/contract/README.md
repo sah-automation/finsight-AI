@@ -36,6 +36,8 @@ tests/contract/
 | `MetricRepository` | `finsight.adapters.repositories.postgres_metric_repository.PostgresMetricRepository` | `tests/contract/test_metric_repository_contract.py` |
 | `WaitingLine` | `finsight.adapters.waiting_line.waiting_line_adapter.WaitingLineAdapter` | `tests/contract/test_waiting_line_contract.py` |
 | `MeteringPort` | `finsight.adapters.metering.dynamo_metering.DynamoMetering` | `tests/contract/test_metering_port_contract.py` |
+| `LLMGateway` | `finsight.adapters.llm.lite_llm_gateway.LiteLLMGateway` | `tests/contract/test_llm_gateway_contract.py` |
+| `EmbeddingProvider` | `finsight.adapters.embedding.lite_llm_embedding.LiteLLMEmbedding` | `tests/contract/test_embedding_provider_contract.py` |
 
 **Integration-only contract coverage:** ports whose adapters require a database,
 AWS, or another external service do not have an in-memory unit path. Their
@@ -43,8 +45,8 @@ shared suites run against real services in integration CI:
 `CompanyRepository`, `JobRepository`, `PartitionMetadataRepository`,
 `UserRepository`, `PartitionGateway`, `ObjectStorage`, `QueuePort`.
 
-**Not yet implemented:** `LLMGateway`, `EmbeddingProvider`, `UnitOfWork` have no adapter yet;
-each gains a shared contract suite when its adapter lands.
+**Not yet implemented:** `UnitOfWork` has no adapter yet;
+it gains a shared contract suite when its adapter lands.
 
 **Rules:**
 - Every new adapter must pass all contract tests for its port

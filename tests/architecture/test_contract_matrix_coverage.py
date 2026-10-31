@@ -27,6 +27,8 @@ PORT_CONTRACT_FILES = {
     'MetricRepository': 'test_metric_repository_contract.py',
     'WaitingLine': 'test_waiting_line_contract.py',
     'MeteringPort': 'test_metering_port_contract.py',
+    'LLMGateway': 'test_llm_gateway_contract.py',
+    'EmbeddingProvider': 'test_embedding_provider_contract.py',
 }
 
 # Primary adapter exercised by each shared suite.
@@ -44,6 +46,8 @@ PORT_ADAPTER_CLASSES = {
     'MetricRepository': 'PostgresMetricRepository',
     'WaitingLine': 'WaitingLineAdapter',
     'MeteringPort': 'DynamoMetering',
+    'LLMGateway': 'LiteLLMGateway',
+    'EmbeddingProvider': 'LiteLLMEmbedding',
 }
 
 

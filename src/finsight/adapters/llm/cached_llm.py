@@ -1,9 +1,7 @@
 # ruff: noqa: ANN401
-from __future__ import annotations
-
 from typing import Any
 
-from .litellm_gateway import LiteLLMGateway
+from .lite_llm_gateway import LiteLLMGateway
 
 
 class CachedLLM(LiteLLMGateway):
@@ -12,7 +10,11 @@ class CachedLLM(LiteLLMGateway):
         self.wrapped = (
             kwargs.pop('gateway', None) or kwargs.pop('llm', None) or kwargs.pop('target', None)
         )
-        if self.wrapped is None and args and not hasattr(args[0], 'config'):
+        if (
+            self.wrapped is None
+            and args
+            and (hasattr(args[0], 'complete') or hasattr(args[0], 'stream'))
+        ):
             self.wrapped = args[0]
             args = args[1:]
         super().__init__(*args, **kwargs)
@@ -23,7 +25,18 @@ class CachedLLM(LiteLLMGateway):
 
     async def complete(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         gateway = self._inner if self._inner is not None else self
+        if gateway is self:
+            return await super().complete(company_id, *args, **kwargs)
         return await gateway.complete(company_id, *args, **kwargs)
+
+    async def stream(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
+        gateway = self._inner if self._inner is not None else self
+        if gateway is self:
+            async for item in super().stream(company_id, *args, **kwargs):  # type: ignore[attr-defined]
+                yield item
+            return
+        async for item in gateway.stream(company_id, *args, **kwargs):
+            yield item
 
 
 __all__ = ['CachedLLM']
