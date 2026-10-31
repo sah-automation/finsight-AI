@@ -159,9 +159,7 @@ class Config(StrictBaseModel):
 
     def _validate_model_rules(self) -> None:  # noqa: PLR0912
         models = self.models
-        if models is None:
-            return
-        if models.backup_request_enabled:
+        if models is not None and getattr(models, 'backup_request_enabled', False):
             answer_models = getattr(models, 'answer', None)
             fallbacks = getattr(answer_models, 'primary_fallbacks', None) or []
             if not fallbacks:
@@ -183,7 +181,7 @@ class Config(StrictBaseModel):
             model = str(getattr(reranker, 'model', '') or '')
             if model:
                 model_ids.append(model if '/' in model or not provider else f'{provider}/{model}')
-        answer_cfg = getattr(models, 'answer', None)
+        answer_cfg = getattr(models, 'answer', None) if models is not None else None
         if answer_cfg is not None:
             for value in [getattr(answer_cfg, 'primary', None), getattr(answer_cfg, 'cheap', None)]:
                 if value is not None:
@@ -194,22 +192,19 @@ class Config(StrictBaseModel):
             ]:
                 if value is not None:
                     model_ids.append(str(value))
-        embedding_cfg = getattr(models, 'embedding', None)
+        embedding_cfg = getattr(models, 'embedding', None) if models is not None else None
         if embedding_cfg is not None and getattr(embedding_cfg, 'primary', None) is not None:
             model_ids.append(str(embedding_cfg.primary))
-        rerank_cfg = getattr(models, 'rerank', None)
+        rerank_cfg = getattr(models, 'rerank', None) if models is not None else None
         if rerank_cfg is not None and getattr(rerank_cfg, 'primary', None) is not None:
             model_ids.append(str(rerank_cfg.primary))
 
         model_ids = [item for item in model_ids if item]
         if not model_ids:
             return
-        try:
-            from finsight.core.config.price_table import PriceNotFoundError, load_price_table  # noqa: PLC0415
+        from finsight.core.config.price_table import load_price_table  # noqa: PLC0415
 
-            load_price_table().require_models(model_ids)
-        except (PriceNotFoundError, Exception) as exc:
-            raise ValueError(str(exc)) from exc
+        load_price_table().require_models(model_ids)
 
     def _validate_document_and_ingestion_rules(self) -> None:
         documents = self.documents

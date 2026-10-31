@@ -42,7 +42,9 @@ class ApprovedModelConfig(StrictBaseModel):
             return [value]
         if isinstance(value, Mapping):
             return [str(key) for key in value]
-        return [str(item) for item in value]
+        if isinstance(value, (list, tuple, set)):
+            return [str(item) for item in value]
+        return [str(value)]
 
     @field_validator('model_id', mode='before')
     @classmethod

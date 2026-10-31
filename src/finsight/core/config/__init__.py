@@ -10,7 +10,6 @@ from .loader import (
 )
 from .models import (
     AccessConfig,
-    AlertConfig,
     AnswerCheckConfig,
     AppConfig,
     ApprovedModel,
@@ -59,7 +58,6 @@ from .price_table import PriceNotFoundError, PriceTable, load_price_table
 
 __all__ = [
     'AccessConfig',
-    'AlertConfig',
     'AnswerCheckConfig',
     'AppConfig',
     'ApprovedModel',
