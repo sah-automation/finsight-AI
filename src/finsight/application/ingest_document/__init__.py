@@ -77,5 +77,6 @@ __all__ = [
 ]
 
 # Ingestion scan and pipeline workers
+from .ingestion_steps import *  # noqa: F401,F403
 from .pipeline import *  # noqa: F401,F403
 from .scan_worker import *  # noqa: F401,F403

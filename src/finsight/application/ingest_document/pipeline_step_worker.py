@@ -196,6 +196,11 @@ class PipelineStepWorker:
         self.config = _first(
             kwargs, 'config', 'settings', 'configuration', 'app_config', default=None
         )
+        # Allow selecting a named step explicitly through construction so each step
+        # can be exercised independently without a dedicated subclass.
+        _step_name_override = _first(kwargs, 'step_name', 'step', default=None)
+        if _step_name_override is not None:
+            self.step_name = str(_step_name_override)
         self.unit_of_work = _first(kwargs, 'unit_of_work', 'uow', 'transaction', 'tx', default=None)
         self.queue = _first(kwargs, 'queue', 'queue_port', 'sqs', default=None)
         self.job_repository = _first(kwargs, 'job_repository', 'job_repo', 'jobs', default=None)
@@ -1745,6 +1750,15 @@ class PipelineStepWorker:
     # Public entry points
     async def handle(self, *args: Any, **kwargs: Any) -> Any:
         return await self._handle_request(*args, **kwargs)
+
+    async def run_named_step(self, step_name: str, *args: Any, **kwargs: Any) -> Any:
+        previous = getattr(self, 'step_name', None)
+        self.step_name = str(step_name)
+        try:
+            return await self._handle_request(*args, **kwargs)
+        finally:
+            if previous is not None:
+                self.step_name = previous
 
     async def run(self, *args: Any, **kwargs: Any) -> Any:
         return await self._handle_request(*args, **kwargs)
