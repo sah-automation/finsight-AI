@@ -509,7 +509,9 @@ def _collect_check_results() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     # 14. Thresholds are config-driven (not hardcoded)
     # ============================================================
     # Check that key threshold names exist in config models
-    config_models = (SRC_ROOT / 'core' / 'config' / 'models.py').read_text()
+    config_models = '\n'.join(
+        p.read_text() for p in (SRC_ROOT / 'core' / 'config' / 'models').glob('*.py')
+    )
     required_thresholds = [
         'evidence_min_score',
         'evidence_min_search_score',
