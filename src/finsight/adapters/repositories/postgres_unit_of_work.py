@@ -2,67 +2,14 @@
 
 from __future__ import annotations
 
-import inspect
 from typing import Any
 
 from finsight.domain.ports.unit_of_work import UnitOfWork as UnitOfWorkPort
 
-try:
-    from finsight.adapters.repositories.base_repository import set_rls_context as _set_rls_context
-except ImportError:  # pragma: no cover
-    _set_rls_context = None  # type: ignore[assignment]
-
-__all__ = [
-    'DatabaseUnitOfWork',
-    'DbUnitOfWork',
-    'PgUnitOfWork',
-    'PostgresUnitOfWork',
-    'SessionUnitOfWork',
-    'SqlAlchemyUnitOfWork',
-    'SqlUnitOfWork',
-    'UnitOfWork',
-    'UnitOfWorkAdapter',
-    'UnitOfWorkImpl',
-]
-
-
-def _looks_like_session(value: object) -> bool:
-    return (
-        hasattr(value, 'execute')
-        or hasattr(value, 'begin')
-        or hasattr(value, 'commit')
-        or hasattr(value, 'rollback')
-    )
-
-
-async def _await_maybe(value: object) -> object:
-    if inspect.isawaitable(value):
-        return await value
-    return value
-
-
-def _resolve_session(*args: object, **kwargs: object) -> object:
-    for arg in args:
-        if arg is None or isinstance(arg, (dict, str, int, float, bool)):
-            continue
-        if _looks_like_session(arg):
-            return arg
-    for key in (
-        'session',
-        'db_session',
-        'database_session',
-        'connection',
-        'engine',
-        'session_or_engine',
-    ):
-        value = kwargs.get(key)
-        if value is not None:
-            return value
-    for key in ('session_factory', 'factory'):
-        value = kwargs.get(key)
-        if value is not None:
-            return value
-    return None
+from ._postgres_unit_of_work_shared import (
+    _looks_like_session,
+    _resolve_session,
+)
 
 
 class PostgresUnitOfWork(UnitOfWorkPort):
@@ -118,114 +65,44 @@ class PostgresUnitOfWork(UnitOfWorkPort):
     def connection(self) -> object:
         return self._session
 
-    def _session_candidates(self, transaction: object = None) -> list[Any]:
-        candidates: list[Any] = []
-        if transaction is not None and transaction is not self:
-            session = getattr(transaction, 'session', None)
-            if session is None and hasattr(transaction, '_session'):
-                session = getattr(transaction, '_session', None)
-            if session is not None:
-                candidates.append(session)
-            if hasattr(transaction, 'commit') or hasattr(transaction, 'rollback'):
-                candidates.append(transaction)
-        if self._session is not None:
-            candidates.append(self._session)
-        out: list[Any] = []
-        for candidate in candidates:
-            if candidate is not None and candidate not in out:
-                out.append(candidate)
-        return out
+    def _session_candidates(self, *args: Any, **kwargs: Any) -> list[Any]:
+        from ._postgres_unit_of_work__session_candidates import (
+            _session_candidates as _adapter_method,
+        )
 
-    async def _call_best_effort(
-        self, obj: object, method_name: str, *args: object, **kwargs: object
-    ) -> object:
-        method = getattr(obj, method_name, None)
-        if not callable(method):
-            return None
-        try:
-            result = method(*args, **kwargs)
-            return await _await_maybe(result)
-        except TypeError:
-            try:
-                result = method()
-                return await _await_maybe(result)
-            except Exception:
-                return None
-        except Exception:
-            return None
+        return _adapter_method(self, *args, **kwargs)
 
-    async def _set_company_context(self) -> None:
-        company = self.company_id
-        if company is None:
-            return
-        session = self._session
-        if session is None:
-            return
-        try:
-            session_any: Any = session
-            session_any.company_id = company
-        except Exception:
-            pass
-        try:
-            if callable(_set_rls_context):
-                await _set_rls_context(session, company)
-                return
-        except Exception:
-            pass
-        try:
-            if hasattr(session, 'execute'):
-                from sqlalchemy import text
+    async def _call_best_effort(self, *args: Any, **kwargs: Any) -> object:
+        from ._postgres_unit_of_work__call_best_effort import _call_best_effort as _adapter_method
 
-                result = session.execute(
-                    text("SELECT set_config('app.company_id', :company_id, true)"),
-                    {'company_id': str(company)},
-                )
-                await _await_maybe(result)
-        except Exception:
-            pass
+        return await _adapter_method(self, *args, **kwargs)
 
-    async def begin(self, company_id: object = None, **kwargs: object) -> PostgresUnitOfWork:
-        if company_id is not None:
-            self.company_id = company_id
-        if self._session is None and self._session_factory is not None:
-            try:
-                factory = self._session_factory
-                result = factory() if callable(factory) else None
-                self._session = await _await_maybe(result)
-            except Exception:
-                self._session = None
-        if self.company_id is None:
-            self.company_id = (
-                kwargs.get('company') or kwargs.get('tenant_id') or kwargs.get('tenant')
-            )
-        session = self._session
-        if session is not None:
-            await self._call_best_effort(session, 'begin')
-        await self._set_company_context()
-        self._started = True
-        self.started = True
-        return self
+    async def _set_company_context(self, *args: Any, **kwargs: Any) -> None:
+        from ._postgres_unit_of_work__set_company_context import (
+            _set_company_context as _adapter_method,
+        )
+
+        await _adapter_method(self, *args, **kwargs)
+
+    async def begin(self, company_id: Any = None, *args: Any, **kwargs: Any) -> PostgresUnitOfWork:
+        from ._postgres_unit_of_work_begin import _begin as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
     async def commit(self, transaction: object = None, **kwargs: object) -> None:
-        for session in self._session_candidates(transaction):
-            if hasattr(session, 'commit') and callable(getattr(session, 'commit', None)):
-                result = session.commit()
-                await _await_maybe(result)
-        self._committed_count += 1
-        self.committed = True
+        from ._postgres_unit_of_work_commit import _commit as _adapter_method
+
+        await _adapter_method(self, transaction, **kwargs)
 
     async def rollback(self, transaction: object = None, **kwargs: object) -> None:
-        for session in self._session_candidates(transaction):
-            if hasattr(session, 'rollback') and callable(getattr(session, 'rollback', None)):
-                result = session.rollback()
-                await _await_maybe(result)
-        self._rollback_count += 1
-        self.rolled_back = True
+        from ._postgres_unit_of_work_rollback import _rollback as _adapter_method
+
+        await _adapter_method(self, transaction, **kwargs)
 
     async def close(self, transaction: object = None, **kwargs: object) -> None:
-        for session in self._session_candidates(transaction):
-            await self._call_best_effort(session, 'close')
-        self._closed = True
+        from ._postgres_unit_of_work_close import _close as _adapter_method
+
+        await _adapter_method(self, transaction, **kwargs)
 
     async def __aenter__(self) -> PostgresUnitOfWork:
         return await self.begin()
@@ -237,85 +114,80 @@ class PostgresUnitOfWork(UnitOfWorkPort):
             await self.commit(self)
         return False
 
-    async def transaction(self, company_id: object = None, **kwargs: object) -> PostgresUnitOfWork:
-        return await self.begin(company_id, **kwargs)
-
-    async def begin_transaction(
-        self, company_id: object = None, **kwargs: object
+    async def transaction(
+        self, company_id: Any = None, *args: Any, **kwargs: Any
     ) -> PostgresUnitOfWork:
-        return await self.begin(company_id, **kwargs)
+        from ._postgres_unit_of_work_transaction import _transaction as _adapter_method
 
-    async def start(self, company_id: object = None, **kwargs: object) -> PostgresUnitOfWork:
-        return await self.begin(company_id, **kwargs)
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def start_transaction(
-        self, company_id: object = None, **kwargs: object
-    ) -> PostgresUnitOfWork:
-        return await self.begin(company_id, **kwargs)
+    async def begin_transaction(self, company_id: Any = None, **kwargs: Any) -> PostgresUnitOfWork:
+        from ._postgres_unit_of_work_begin_transaction import _begin_transaction as _adapter_method
 
-    async def open(self, company_id: object = None, **kwargs: object) -> PostgresUnitOfWork:
-        return await self.begin(company_id, **kwargs)
+        return await _adapter_method(self, company_id, **kwargs)
 
-    async def enter(self, company_id: object = None, **kwargs: object) -> PostgresUnitOfWork:
-        return await self.begin(company_id, **kwargs)
+    async def start(self, company_id: Any = None, *args: Any, **kwargs: Any) -> PostgresUnitOfWork:
+        from ._postgres_unit_of_work_start import _start as _adapter_method
 
-    async def execute(self, company_id: object = None, **kwargs: object) -> object:
-        if company_id is not None:
-            await self.begin(company_id)
-        session = self._session
-        sql = kwargs.get('sql') or kwargs.get('statement')
-        params = kwargs.get('params') or {}
-        if session is not None and hasattr(session, 'execute'):
-            try:
-                result = session.execute(sql, params)
-                return await _await_maybe(result)
-            except Exception:
-                return None
-        return None
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def run_in_transaction(self, company_id: object = None, **kwargs: object) -> object:
-        func = kwargs.get('func') or kwargs.get('function') or kwargs.get('callback')
-        if func is None:
-            args_value: Any = kwargs.get('args', ()) or ()
-            iterable: Any = args_value if isinstance(args_value, (tuple, list)) else ()
-            for value in iterable:
-                if callable(value):
-                    func = value
-                    break
-        if company_id is not None:
-            await self.begin(company_id)
-        try:
-            result = None
-            if callable(func):
-                result = func(self)
-                result = await _await_maybe(result)
-            await self.commit(self)
-            return result
-        except Exception:
-            await self.rollback(self)
-            raise
+    async def start_transaction(self, company_id: Any = None, **kwargs: Any) -> PostgresUnitOfWork:
+        from ._postgres_unit_of_work_start_transaction import _start_transaction as _adapter_method
 
-    async def set_company_context(self, company_id: object) -> None:
-        self.company_id = company_id
-        if self._session is not None:
-            try:
-                session_any: Any = self._session
-                session_any.company_id = company_id
-            except Exception:
-                pass
-        await self._set_company_context()
+        return await _adapter_method(self, company_id, **kwargs)
 
-    async def set_rls_context(self, company_id: object) -> None:
-        await self.set_company_context(company_id)
+    async def open(self, company_id: Any = None, *args: Any, **kwargs: Any) -> PostgresUnitOfWork:
+        from ._postgres_unit_of_work_open import _open as _adapter_method
 
-    async def set_tenant_context(self, company_id: object) -> None:
-        await self.set_company_context(company_id)
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def set_context(self, company_id: object) -> None:
-        await self.set_company_context(company_id)
+    async def enter(self, company_id: Any = None, *args: Any, **kwargs: Any) -> PostgresUnitOfWork:
+        from ._postgres_unit_of_work_enter import _enter as _adapter_method
 
-    async def ensure_rls_context(self, company_id: object) -> None:
-        await self.set_company_context(company_id)
+        return await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def execute(self, company_id: Any = None, *args: Any, **kwargs: Any) -> object:
+        from ._postgres_unit_of_work_execute import _execute as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def run_in_transaction(self, company_id: Any = None, *args: Any, **kwargs: Any) -> object:
+        from ._postgres_unit_of_work_run_in_transaction import (
+            _run_in_transaction as _adapter_method,
+        )
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def set_company_context(self, company_id: Any = None, *args: Any, **kwargs: Any) -> None:
+        from ._postgres_unit_of_work_set_company_context import (
+            _set_company_context as _adapter_method,
+        )
+
+        await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def set_rls_context(self, company_id: Any = None, *args: Any, **kwargs: Any) -> None:
+        from ._postgres_unit_of_work_set_rls_context import _set_rls_context as _adapter_method
+
+        await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def set_tenant_context(self, company_id: Any = None, *args: Any, **kwargs: Any) -> None:
+        from ._postgres_unit_of_work_set_tenant_context import (
+            _set_tenant_context as _adapter_method,
+        )
+
+        await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def set_context(self, company_id: Any = None, *args: Any, **kwargs: Any) -> None:
+        from ._postgres_unit_of_work_set_context import _set_context as _adapter_method
+
+        await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def ensure_rls_context(self, company_id: Any = None, *args: Any, **kwargs: Any) -> None:
+        from ._postgres_unit_of_work_ensure_rls_context import (
+            _ensure_rls_context as _adapter_method,
+        )
+
+        await _adapter_method(self, company_id, *args, **kwargs)
 
     @property
     def commit_count(self) -> int:
@@ -330,18 +202,19 @@ class PostgresUnitOfWork(UnitOfWorkPort):
         return self._started
 
 
-SqlAlchemyUnitOfWork = PostgresUnitOfWork
+# Compatibility aliases (preserved for external imports)
+DatabaseTransaction = PostgresUnitOfWork
 DatabaseUnitOfWork = PostgresUnitOfWork
+DbTransaction = PostgresUnitOfWork
 DbUnitOfWork = PostgresUnitOfWork
+PgUnitOfWork = PostgresUnitOfWork
+SessionTransaction = PostgresUnitOfWork
 SessionUnitOfWork = PostgresUnitOfWork
+SqlAlchemyTransaction = PostgresUnitOfWork
+SqlAlchemyUnitOfWork = PostgresUnitOfWork
 SqlUnitOfWork = PostgresUnitOfWork
+TransactionManager = PostgresUnitOfWork
+UnitOfWork = PostgresUnitOfWork
 UnitOfWorkAdapter = PostgresUnitOfWork
 UnitOfWorkImpl = PostgresUnitOfWork
-PgUnitOfWork = PostgresUnitOfWork
-UnitOfWork = PostgresUnitOfWork
-DatabaseTransaction = PostgresUnitOfWork
-SqlAlchemyTransaction = PostgresUnitOfWork
-TransactionManager = PostgresUnitOfWork
 UnitOfWorkManager = PostgresUnitOfWork
-DbTransaction = PostgresUnitOfWork
-SessionTransaction = PostgresUnitOfWork

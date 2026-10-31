@@ -17,7 +17,6 @@ from finsight.domain.ports.vector_write import VectorWrite as VectorWritePort
 from .base_vector_store import BaseVectorStore
 
 if TYPE_CHECKING:
-    from finsight.core.types import ChunkId, CompanyId
     from finsight.domain.entities.chunk import Chunk
 
 _TABLE = 'document_chunks'
@@ -112,212 +111,71 @@ class AuroraPgVectorWrite(VectorWritePort, BaseVectorStore):
         super().__init__(session, **kwargs)
         self._memory: dict[str, dict[str, dict[str, Any]]] = {}
 
-    async def upsert_chunks(
-        self,
-        company_id: CompanyId,
-        version_id: str,
-        *,
-        chunks: Sequence[Chunk],
-        vectors: object,
-        only_changed: bool = True,
-        **kwargs: object,
-    ) -> int:
-        company = _text(company_id)
-        version = _text(version_id)
-        if not company:
-            raise ValueError('company_id is required for a vector write')
-        if not version:
-            raise ValueError('version_id is required for a vector write')
-        vector_map = _vector_map(chunks, vectors)
-        existing = await self._existing(company, [str(chunk.chunk_id) for chunk in chunks])
-        model_override = kwargs.get('embedding_model_version')
-        written = 0
-        for chunk in chunks:
-            vector = vector_map.get(_text(chunk.chunk_id))
-            if vector is None or chunk.is_parent:
-                continue
-            model = _text(chunk.embedding_model_version or model_override)
-            current = existing.get(_text(chunk.chunk_id))
-            if only_changed and self._unchanged(chunk, current, model):
-                await self._touch(company, version, chunk, current)
-                continue
-            await self._write(company, version, chunk, vector, model)
-            written += 1
-        return written
+    async def upsert_chunks(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_upsert_chunks import _upsert_chunks as _adapter_method
 
-    async def mark_version_inactive(
-        self,
-        company_id: CompanyId,
-        version_id: str,
-        *,
-        exclude_chunk_ids: Sequence[ChunkId] = (),
-        **kwargs: object,
-    ) -> int:
-        company = _text(company_id)
-        version = _text(version_id)
-        excluded = {_text(chunk_id) for chunk_id in exclude_chunk_ids}
-        if self._session is None:
-            records = self._memory.get(company, {})
-            changed = 0
-            for chunk_id, record in records.items():
-                if record.get('version_id') != version or chunk_id in excluded:
-                    continue
-                if record.get('is_active'):
-                    record['is_active'] = False
-                    changed += 1
-            return changed
-        await self._set_rls_context(company_id)
-        result = await self._execute(
-            f'UPDATE {_TABLE} SET is_active = FALSE, updated_at = now() '
-            'WHERE company_id = :company_id AND version_id = :version_id AND is_active = TRUE '
-            'AND (cardinality(:exclude_ids) = 0 OR NOT (chunk_id = ANY(:exclude_ids)))',
-            {
-                'company_id': company,
-                'version_id': version,
-                'exclude_ids': list(excluded),
-            },
-        )
-        return _rowcount(result)
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def commit_version(
-        self,
-        company_id: CompanyId,
-        version_id: str,
-        **kwargs: object,
-    ) -> int:
-        company = _text(company_id)
-        version = _text(version_id)
-        if self._session is None:
-            records = self._memory.get(company, {})
-            documents = {
-                record.get('document_id')
-                for record in records.values()
-                if record.get('version_id') == version
-            }
-            for record in records.values():
-                if record.get('document_id') not in documents:
-                    continue
-                if record.get('version_id') != version and record.get('is_active'):
-                    record['is_active'] = False
-            activated = 0
-            for record in records.values():
-                if record.get('version_id') != version or record.get('embedding') is None:
-                    continue
-                if not record.get('is_active'):
-                    activated += 1
-                record['is_active'] = True
-            return activated
-        await self._set_rls_context(company_id)
-        result = await self._execute(
-            f'WITH target AS ('
-            f'SELECT DISTINCT document_id FROM {_TABLE} '
-            'WHERE company_id = :company_id AND version_id = :version_id), '
-            f'deactivated AS ('
-            f'UPDATE {_TABLE} SET is_active = FALSE, updated_at = now() '
-            'WHERE company_id = :company_id AND is_active = TRUE '
-            'AND document_id IN (SELECT document_id FROM target) '
-            'AND version_id <> :version_id RETURNING 1) '
-            f'UPDATE {_TABLE} SET is_active = TRUE, updated_at = now() '
-            'WHERE company_id = :company_id AND version_id = :version_id '
-            'AND embedding IS NOT NULL',
-            {'company_id': company, 'version_id': version},
+    async def mark_version_inactive(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_mark_version_inactive import (
+            _mark_version_inactive as _adapter_method,
         )
-        return _rowcount(result)
 
-    async def delete_chunks(
-        self,
-        company_id: CompanyId,
-        chunk_ids: Sequence[ChunkId],
-        **kwargs: object,
-    ) -> int:
-        company = _text(company_id)
-        ids = [_text(chunk_id) for chunk_id in chunk_ids]
-        if not ids:
-            return 0
-        if self._session is None:
-            records = self._memory.get(company, {})
-            doomed = [chunk_id for chunk_id in ids if chunk_id in records]
-            for chunk_id in doomed:
-                del records[chunk_id]
-            return len(doomed)
-        await self._set_rls_context(company_id)
-        result = await self._execute(
-            f'DELETE FROM {_TABLE} WHERE company_id = :company_id AND chunk_id = ANY(:chunk_ids)',
-            {'company_id': company, 'chunk_ids': ids},
-        )
-        return _rowcount(result)
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def delete_version(
-        self,
-        company_id: CompanyId,
-        version_id: str,
-        **kwargs: object,
-    ) -> int:
-        company = _text(company_id)
-        version = _text(version_id)
-        if self._session is None:
-            records = self._memory.get(company, {})
-            doomed = [
-                chunk_id
-                for chunk_id, record in records.items()
-                if record.get('version_id') == version
-            ]
-            for chunk_id in doomed:
-                del records[chunk_id]
-            return len(doomed)
-        await self._set_rls_context(company_id)
-        result = await self._execute(
-            f'DELETE FROM {_TABLE} WHERE company_id = :company_id AND version_id = :version_id',
-            {'company_id': company, 'version_id': version},
-        )
-        return _rowcount(result)
+    async def commit_version(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_commit_version import _commit_version as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def delete_chunks(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_delete_chunks import _delete_chunks as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def delete_version(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_delete_version import _delete_version as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # Flexible aliases used by the ingestion pipeline
     # ------------------------------------------------------------------
 
-    async def upsert(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> int:
-        """Alias that accepts either ``(company, version, chunks=..., vectors=...)``
-        or ``(company, chunks, vectors)`` so callers can use either shape."""
-        version_id = kwargs.pop('version_id', None)
-        chunks = kwargs.get('chunks')
-        vectors = kwargs.get('vectors', kwargs.get('embeddings'))
-        rest = list(args)
-        if rest and isinstance(rest[0], str) and version_id is None:
-            version_id = rest.pop(0)
-        if chunks is None and rest:
-            chunks = rest.pop(0)
-        if vectors is None and rest:
-            vectors = rest.pop(0)
-        if chunks is None:
-            raise ValueError('chunks are required for a vector write')
-        if version_id is None:
-            version_id = getattr(chunks[0], 'version_id', None) if chunks else None
-        return await self.upsert_chunks(
-            company_id,
-            _text(version_id),
-            chunks=chunks,
-            vectors=vectors,
-            **kwargs,
-        )
+    async def upsert(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_upsert import _upsert as _adapter_method
 
-    async def upsert_vectors(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> int:
-        return await self.upsert(company_id, *args, **kwargs)
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def save_vectors(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> int:
-        return await self.upsert(company_id, *args, **kwargs)
+    async def upsert_vectors(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_upsert_vectors import _upsert_vectors as _adapter_method
 
-    async def save(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> int:
-        return await self.upsert(company_id, *args, **kwargs)
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def insert(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> int:
-        return await self.upsert(company_id, *args, **kwargs)
+    async def save_vectors(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_save_vectors import _save_vectors as _adapter_method
 
-    async def add(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> int:
-        return await self.upsert(company_id, *args, **kwargs)
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def delete_vectors(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> int:
-        return await self.delete_chunks(company_id, *args, **kwargs)
+    async def save(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_save import _save as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def insert(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_insert import _insert as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def add(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_add import _add as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def delete_vectors(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        from ._aurora_pg_vector_write_delete_vectors import _delete_vectors as _adapter_method
+
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # Storage helpers
@@ -336,98 +194,21 @@ class AuroraPgVectorWrite(VectorWritePort, BaseVectorStore):
         return _text(current.get('embedding_model_version')) == model
 
     async def _existing(
-        self,
-        company_id: str,
-        chunk_ids: Sequence[str],
+        self, company_id: Any, *args: Any, **kwargs: Any
     ) -> dict[str, dict[str, object]]:
-        if not chunk_ids:
-            return {}
-        if self._session is None:
-            records = self._memory.get(company_id, {})
-            return {
-                chunk_id: dict(records[chunk_id]) for chunk_id in chunk_ids if chunk_id in records
-            }
-        await self._set_rls_context(company_id)
-        result = await self._execute(
-            f'SELECT {_RETURNING_COLUMNS} FROM {_TABLE} '
-            'WHERE company_id = :company_id AND chunk_id = ANY(:chunk_ids)',
-            {'company_id': company_id, 'chunk_ids': list(chunk_ids)},
-        )
-        return _rows_by_id(await self._fetchall(result))
+        from ._aurora_pg_vector_write__existing import _existing as _adapter_method
 
-    async def _touch(
-        self,
-        company_id: str,
-        version_id: str,
-        chunk: Chunk,
-        current: dict[str, object] | None,
-    ) -> None:
-        """Relink an unchanged vector to the new version without re-embedding."""
-        if self._session is None:
-            record = self._memory.setdefault(company_id, {}).get(_text(chunk.chunk_id))
-            if record is None:
-                return
-            if record.get('version_id') != version_id:
-                record['is_active'] = False
-            record['version_id'] = version_id
-            return
-        await self._execute(
-            f'UPDATE {_TABLE} SET '
-            'is_active = CASE WHEN version_id = :version_id THEN is_active ELSE FALSE END, '
-            'version_id = :version_id, updated_at = now() '
-            'WHERE company_id = :company_id AND chunk_id = :chunk_id',
-            {
-                'company_id': company_id,
-                'version_id': version_id,
-                'chunk_id': _text(chunk.chunk_id),
-            },
-        )
+        return await _adapter_method(self, company_id, *args, **kwargs)
 
-    async def _write(
-        self,
-        company_id: str,
-        version_id: str,
-        chunk: Chunk,
-        vector: object,
-        model: str,
-    ) -> None:
-        if self._session is None:
-            records = self._memory.setdefault(company_id, {})
-            records[_text(chunk.chunk_id)] = {
-                'chunk_id': _text(chunk.chunk_id),
-                'document_id': _text(chunk.document_id),
-                'version_id': version_id,
-                'content_hash': chunk.content_hash,
-                'embedding_model_version': model,
-                'embedding': vector,
-                'has_embedding': vector is not None,
-                'is_active': False,
-            }
-            return
-        await self._execute(
-            f'INSERT INTO {_TABLE} '
-            '(company_id, chunk_id, document_id, version_id, content_hash, '
-            'embedding_model_version, embedding, is_active, updated_at) '
-            'VALUES (:company_id, :chunk_id, :document_id, :version_id, :content_hash, '
-            ':embedding_model_version, CAST(:embedding AS vector), FALSE, now()) '
-            'ON CONFLICT (company_id, chunk_id) DO UPDATE SET '
-            'document_id = EXCLUDED.document_id, '
-            'version_id = EXCLUDED.version_id, '
-            'content_hash = EXCLUDED.content_hash, '
-            'embedding_model_version = EXCLUDED.embedding_model_version, '
-            'embedding = EXCLUDED.embedding, '
-            'is_active = FALSE, '
-            'updated_at = now()',
-            {
-                'company_id': company_id,
-                'chunk_id': _text(chunk.chunk_id),
-                'document_id': _text(chunk.document_id),
-                'version_id': version_id,
-                'content_hash': chunk.content_hash,
-                'embedding_model_version': model,
-                'embedding': _vector_literal(vector),
-            },
-        )
+    async def _touch(self, company_id: Any, *args: Any, **kwargs: Any) -> None:
+        from ._aurora_pg_vector_write__touch import _touch as _adapter_method
+
+        await _adapter_method(self, company_id, *args, **kwargs)
+
+    async def _write(self, company_id: Any, *args: Any, **kwargs: Any) -> None:
+        from ._aurora_pg_vector_write__write import _write as _adapter_method
+
+        await _adapter_method(self, company_id, *args, **kwargs)
 
 
 # Naming variants used across the project/tests.

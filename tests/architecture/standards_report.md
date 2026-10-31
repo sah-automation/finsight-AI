@@ -32,15 +32,15 @@ Generated from tests/architecture/test_standards_checklist.py
   - adapters/cache/job_progress.py: 706 lines
   - adapters/security/virus_scanner.py: 788 lines
   - adapters/embedding/lite_llm_embedding.py: 432 lines
-  - adapters/repositories/job_repository.py: 575 lines
-  - adapters/repositories/postgres_unit_of_work.py: 347 lines
-  - adapters/repositories/postgres_metric_repository.py: 414 lines
-  - adapters/repositories/postgres_document_repository.py: 829 lines
-  - adapters/repositories/postgres_chunk_repository.py: 450 lines
-  - adapters/repositories/postgres_document_table_repository.py: 919 lines
-  - adapters/vector_store/aurora_pg_vector_write.py: 449 lines
-  - adapters/vector_store/aurora_pg_vector_search.py: 526 lines
   - adapters/storage/s3_storage.py: 1041 lines
+  - adapters/queue/sqs_queue.py: 1258 lines
+  - adapters/metering/dynamo_metering.py: 397 lines
+  - adapters/readers/textract_reader.py: 351 lines
+  - adapters/rerank/cohere_reranker.py: 418 lines
+  - entrypoints/api/current_user.py: 484 lines
+  - entrypoints/api/upload.py: 828 lines
+  - entrypoints/api/ask.py: 1182 lines
+  - entrypoints/api/feedback.py: 1154 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
