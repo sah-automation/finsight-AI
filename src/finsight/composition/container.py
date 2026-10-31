@@ -687,6 +687,14 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
     change_event_publisher = provided_deps.get(
         'change_event_publisher'
     ) or build_change_event_publisher(config=config, **_extra)
+    unit_of_work = provided_deps.get('unit_of_work') or _existing(
+        kwargs, 'unit_of_work', 'uow', 'transaction', 'tx'
+    )
+    if unit_of_work is None:
+        try:
+            unit_of_work = build_unit_of_work(config=config, session=session, **_extra)
+        except Exception:
+            unit_of_work = None
     reader_registry = provided_deps.get('reader_registry') or build_reader_registry(
         config=config, session=session, **_extra
     )
@@ -854,6 +862,7 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
         vector_write=vector_write,
         answer_cache=answer_cache,
         change_event_publisher=change_event_publisher,
+        unit_of_work=unit_of_work,
         metering=metering,
         tracing=tracing,
         pipeline_worker=_pip,
@@ -3536,3 +3545,82 @@ build_extraction = _build_extraction_stack
 build_extractor = _build_extraction_stack
 build_textract = _build_extraction_stack
 build_extraction_stack = _build_extraction_stack
+
+
+def build_unit_of_work(*args: Any, **kwargs: Any) -> Any:
+    """Build a :class:`UnitOfWork` adapter over the current DB session."""
+    provided = _existing(
+        kwargs,
+        'unit_of_work',
+        'uow',
+        'transaction',
+        'tx',
+        'unit_of_work_adapter',
+    )
+    if provided is not None:
+        return provided
+
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    company_id = _existing(kwargs, 'company_id', 'company', 'tenant_id', 'tenant')
+
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'unit_of_work',
+            'uow',
+            'transaction',
+            'tx',
+            'unit_of_work_adapter',
+            'company_id',
+            'company',
+            'tenant_id',
+            'tenant',
+        }
+    }
+
+    aliases = (
+        'finsight.adapters.repositories.postgres_unit_of_work',
+        'finsight.adapters.repositories.sqlalchemy_unit_of_work',
+        'finsight.adapters.repositories.database_unit_of_work',
+        'finsight.adapters.repositories.unit_of_work',
+        'finsight.adapters.unit_of_work',
+        'finsight.adapters.database.unit_of_work',
+    )
+    for module_name in aliases:
+        try:
+            module = importlib.import_module(module_name)
+            cls = (
+                getattr(module, 'PostgresUnitOfWork', None)
+                or getattr(module, 'SqlAlchemyUnitOfWork', None)
+                or getattr(module, 'DatabaseUnitOfWork', None)
+                or getattr(module, 'UnitOfWork', None)
+            )
+            if cls is not None:
+                return cls(session=session, config=config, company_id=company_id, **_extra)
+        except Exception:  # noqa: S112
+            continue
+    return None
+
+
+# Aliases for varying caller naming.
+build_uow = build_unit_of_work
+build_transaction = build_unit_of_work
+build_tx = build_unit_of_work
+build_unit_of_work_adapter = build_unit_of_work
+
+# Default unit-of-work handle.
+_DEFAULT_UNIT_OF_WORK: Any = None
+
+
+def set_default_unit_of_work(value: Any) -> None:
+    global _DEFAULT_UNIT_OF_WORK
+    _DEFAULT_UNIT_OF_WORK = value
+
+
+def get_default_unit_of_work() -> Any:
+    return _DEFAULT_UNIT_OF_WORK

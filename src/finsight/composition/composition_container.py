@@ -59,6 +59,10 @@ class CompositionContainer:
         change_event_publisher: Any = None,
         event_publisher: Any = None,
         object_storage: Any = None,
+        unit_of_work: Any = None,
+        uow: Any = None,
+        transaction: Any = None,
+        tx: Any = None,
         answer_cache: Any = None,
         queue: Any = None,
         metering: Any = None,
@@ -94,6 +98,24 @@ class CompositionContainer:
         self.object_storage = (
             object_storage if object_storage is not None else deps.get('object_storage')
         )
+        resolved_unit_of_work = (
+            unit_of_work
+            if unit_of_work is not None
+            else uow
+            if uow is not None
+            else transaction
+            if transaction is not None
+            else tx
+            if tx is not None
+            else deps.get('unit_of_work')
+            or deps.get('uow')
+            or deps.get('transaction')
+            or deps.get('tx')
+        )
+        self.unit_of_work = resolved_unit_of_work
+        self.uow = self.unit_of_work
+        self.transaction = self.unit_of_work
+        self.tx = self.unit_of_work
         self.answer_cache = answer_cache if answer_cache is not None else deps.get('answer_cache')
         self.queue = queue if queue is not None else deps.get('queue')
         self.metering = (
@@ -366,6 +388,10 @@ class CompositionContainer:
             'job_progress_view': self.job_progress_view,
             'virus_scanner': self.virus_scanner,
             'object_storage': deps.get('object_storage') or upload_use_case,
+            'unit_of_work': self.unit_of_work,
+            'uow': self.unit_of_work,
+            'transaction': self.unit_of_work,
+            'tx': self.unit_of_work,
             'reader_registry': self.reader_registry,
             'scan_worker': self.scan_worker,
             'document_repository': self.document_repository,
@@ -395,6 +421,8 @@ class CompositionContainer:
             'document_table': self.document_table_repository,
             'document_tables': self.document_table_repository,
             'chunk': self.chunk_repository,
+            'unit_of_work': self.unit_of_work,
+            'uow': self.unit_of_work,
             'vector_store': self.vector_store,
             'vector_write': self.vector_write,
         }
@@ -442,6 +470,10 @@ class CompositionContainer:
             'event_publisher': self.event_publisher,
             'publisher': self.publisher,
             'object_storage': self.object_storage,
+            'unit_of_work': self.unit_of_work,
+            'uow': self.unit_of_work,
+            'transaction': self.unit_of_work,
+            'tx': self.unit_of_work,
             'answer_cache': self.answer_cache,
             'queue': self.queue,
             'metering': self.metering,

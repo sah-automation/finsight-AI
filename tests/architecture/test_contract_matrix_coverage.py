@@ -29,6 +29,10 @@ PORT_CONTRACT_FILES = {
     'MeteringPort': 'test_metering_port_contract.py',
     'LLMGateway': 'test_llm_gateway_contract.py',
     'EmbeddingProvider': 'test_embedding_provider_contract.py',
+    'ObjectStorage': 'test_object_storage_contract.py',
+    'QueuePort': 'test_queue_port_contract.py',
+    'PartitionGateway': 'test_partition_gateway_contract.py',
+    'UnitOfWork': 'test_unit_of_work_contract.py',
 }
 
 # Primary adapter exercised by each shared suite.
@@ -48,6 +52,10 @@ PORT_ADAPTER_CLASSES = {
     'MeteringPort': 'DynamoMetering',
     'LLMGateway': 'LiteLLMGateway',
     'EmbeddingProvider': 'LiteLLMEmbedding',
+    'ObjectStorage': 'S3Storage',
+    'QueuePort': 'SqsQueue',
+    'PartitionGateway': 'PartitionManager',
+    'UnitOfWork': 'PostgresUnitOfWork',
 }
 
 

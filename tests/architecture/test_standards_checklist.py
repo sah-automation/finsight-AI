@@ -239,7 +239,7 @@ def _collect_check_results() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
         'QueuePort': 'sqs_queue',
         'PartitionGateway': 'partition_manager',
         'ObjectStorage': 's3_storage',
-        'UnitOfWork': 'postgres_document_repository',  # via repository
+        'UnitOfWork': 'postgres_unit_of_work',
         'TracingPort': 'tracing_adapter',
         'Span': 'span_tracer',
     }

@@ -108,6 +108,12 @@ ignore = [
 # one argument per dependency. Do not contort them to application lint limits.
 "infra/cdk/**/*.py" = ["ANN003", "PLR0913", "PLR0917", "TC002"]
 # Storage adapter exposes flexible constructor/input surfaces by design.
+# UnitOfWork adapter exposes flexible constructor/input surfaces by design.
+"src/finsight/adapters/repositories/postgres_unit_of_work.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204",
+    "ANN401", "BLE001", "C416", "E501", "N803", "PLC0415", "S110",
+    "SIM105", "TRY300",
+]
 "src/finsight/adapters/storage/s3.py" = ["N814"]
 "src/finsight/adapters/storage/*.py" = [
     "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "ARG005",

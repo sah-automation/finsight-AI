@@ -37,15 +37,16 @@ tests/contract/
 | `WaitingLine` | `finsight.adapters.waiting_line.waiting_line_adapter.WaitingLineAdapter` | `tests/contract/test_waiting_line_contract.py` |
 | `LLMGateway` | `finsight.adapters.llm.lite_llm_gateway.LiteLLMGateway` | `tests/contract/test_llm_gateway_contract.py` |
 | `EmbeddingProvider` | `finsight.adapters.embedding.lite_llm_embedding.LiteLLMEmbedding` | `tests/contract/test_embedding_provider_contract.py` |
+| `ObjectStorage` | `finsight.adapters.storage.s3_storage.S3Storage` | `tests/contract/test_object_storage_contract.py` |
+| `QueuePort` | `finsight.adapters.queue.sqs_queue.SqsQueue` | `tests/contract/test_queue_port_contract.py` |
+| `PartitionGateway` | `finsight.adapters.partitions.partition_manager.PartitionManager` | `tests/contract/test_partition_gateway_contract.py` |
+| `UnitOfWork` | `finsight.adapters.repositories.postgres_unit_of_work.PostgresUnitOfWork` | `tests/contract/test_unit_of_work_contract.py` |
 
 **Integration-only contract coverage:** ports whose adapters require a database,
 AWS, or another external service do not have an in-memory unit path. Their
 shared suites run against real services in integration CI:
 `CompanyRepository`, `JobRepository`, `PartitionMetadataRepository`,
-`UserRepository`, `PartitionGateway`, `ObjectStorage`, `QueuePort`.
-
-**Not yet implemented:** `UnitOfWork` has no adapter yet;
-it gains a shared contract suite when its adapter lands.
+`UserRepository`.
 
 **Rules:**
 - Every new adapter must pass all contract tests for its port
