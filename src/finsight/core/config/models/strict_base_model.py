@@ -12,4 +12,5 @@ class StrictBaseModel(BaseModel):
         extra='forbid',
         validate_assignment=True,
         str_strip_whitespace=True,
+        populate_by_name=True,
     )

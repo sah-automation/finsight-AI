@@ -9,6 +9,9 @@ switches:
   prompt_cache_enabled: true
   answer_cache_enabled: true
 
+models:
+  region: "us-east-1"
+
 llm:
   primary_model:
     provider: "litellm"

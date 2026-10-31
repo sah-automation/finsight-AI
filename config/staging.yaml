@@ -9,26 +9,33 @@ switches:
   prompt_cache_enabled: true
   answer_cache_enabled: true
 
+models:
+  region: "us-east-1"
+
 llm:
   primary_model:
-    model_id: "anthropic/claude-3-5-sonnet-20241022"
-    max_tokens: 8192
-    timeout_seconds: 60
+    provider: "litellm"
+    model_id: "gemini/gemini-1.5-pro"
+    max_tokens: 4096
+    temperature: 0.0
+    timeout_seconds: 30
+    max_retries: 3
+    retry_base_delay_seconds: 1.0
   fallback_models:
     - provider: "litellm"
-      model_id: "anthropic/claude-3-5-haiku-20241022"
-      max_tokens: 8192
-      temperature: 0.0
-      timeout_seconds: 30
-      max_retries: 2
-      retry_base_delay_seconds: 1.0
-    - provider: "litellm"
-      model_id: "openai/gpt-4o-mini"
+      model_id: "nvidia_nim/meta/llama-3.1-70b-instruct"
       max_tokens: 4096
       temperature: 0.0
-      timeout_seconds: 30
+      timeout_seconds: 20
       max_retries: 2
       retry_base_delay_seconds: 1.0
+  embedding_model:
+    provider: "litellm"
+    model_id: "gemini/text-embedding-004"
+    dimensions: 1024
+    batch_size: 10
+    timeout_seconds: 30
+    max_retries: 3
 
 vector_store:
   host: "${VECTOR_DB_HOST}"

@@ -5,6 +5,7 @@ from .alert_config import AlertConfig
 from .answer_cache_config import AnswerCacheConfig
 from .answer_check_config import AnswerCheckConfig
 from .app_config import AppConfig
+from .approved_model_config import ApprovedModelConfig
 from .auth_config import AuthConfig
 from .cache_config import CacheConfig
 from .caches_config import CachesConfig
@@ -65,6 +66,10 @@ __all__ = [
     'AnswerCacheConfig',
     'AnswerCheckConfig',
     'AppConfig',
+    'ApprovedModel',
+    'ApprovedModelConfig',
+    'ApprovedModelEntry',
+    'ApprovedModelsConfig',
     'AuthConfig',
     'CacheConfig',
     'CachesConfig',
@@ -111,3 +116,7 @@ __all__ = [
     'TrafficConfig',
     'VectorStoreConfig',
 ]
+
+ApprovedModel = ApprovedModelConfig
+ApprovedModelEntry = ApprovedModelConfig
+ApprovedModelsConfig = ApprovedModelConfig

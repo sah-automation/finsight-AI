@@ -4,19 +4,19 @@ from .strict_base_model import StrictBaseModel
 
 
 class ModelsAnswerConfig(StrictBaseModel):
-    primary: str = 'provider_a/model_strong'
+    primary: str = 'gemini/gemini-1.5-pro'
     primary_fallbacks: list[str] = Field(
         default_factory=lambda: [
-            'provider_b/model_strong',
-            'provider_c/model_strong',
+            'nvidia_nim/meta/llama-3.1-70b-instruct',
+            'groq/llama-3.3-70b-versatile',
             'self_hosted/open_model_small',
         ]
     )
-    cheap: str = 'provider_a/model_small'
+    cheap: str = 'groq/llama-3.1-8b-instant'
     cheap_fallbacks: list[str] = Field(
         default_factory=lambda: [
-            'provider_b/model_small',
-            'provider_c/model_small',
+            'nvidia_nim/meta/llama-3.1-8b-instruct',
+            'gemini/gemini-1.5-flash',
             'self_hosted/open_model_small',
         ]
     )

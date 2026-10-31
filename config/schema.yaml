@@ -25,7 +25,7 @@ switches:
 llm:
   primary_model:
     provider: "litellm"
-    model_id: "anthropic/claude-3-5-sonnet-20241022"
+    model_id: "gemini/gemini-1.5-pro"
     max_tokens: 8192
     temperature: 0.0
     timeout_seconds: 60
@@ -33,22 +33,15 @@ llm:
     retry_base_delay_seconds: 1.0
   fallback_models:
     - provider: "litellm"
-      model_id: "anthropic/claude-3-5-haiku-20241022"
+      model_id: "nvidia_nim/meta/llama-3.1-70b-instruct"
       max_tokens: 8192
-      temperature: 0.0
-      timeout_seconds: 30
-      max_retries: 2
-      retry_base_delay_seconds: 1.0
-    - provider: "litellm"
-      model_id: "openai/gpt-4o-mini"
-      max_tokens: 4096
       temperature: 0.0
       timeout_seconds: 30
       max_retries: 2
       retry_base_delay_seconds: 1.0
   embedding_model:
     provider: "litellm"
-    model_id: "amazon/titan-embed-text-v2:0"
+    model_id: "gemini/text-embedding-004"
     dimensions: 1024
     batch_size: 100
     timeout_seconds: 30
@@ -59,9 +52,6 @@ llm:
     allowed_fails: 3
     cooldown_time: 300
 
-# ============================================================
-# Vector Store (Aurora pgvector)
-# ============================================================
 vector_store:
   host: "${VECTOR_DB_HOST}"
   port: 5432

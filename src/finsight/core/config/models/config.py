@@ -157,7 +157,7 @@ class Config(StrictBaseModel):
                 'question_provisioned_concurrency must not exceed lambda_reserved_concurrency'
             )
 
-    def _validate_model_rules(self) -> None:
+    def _validate_model_rules(self) -> None:  # noqa: PLR0912
         models = self.models
         if models is None:
             return
@@ -166,7 +166,50 @@ class Config(StrictBaseModel):
             fallbacks = getattr(answer_models, 'primary_fallbacks', None) or []
             if not fallbacks:
                 raise ValueError('backup_request_enabled needs fallback 1 of the chosen chain')
-        # Model timing and failover checks live in ModelsConfig.
+
+        model_ids: list[str] = []
+        llm = getattr(self, 'llm', None)
+        primary = getattr(llm, 'primary_model', None) if llm is not None else None
+        if primary is not None:
+            model_ids.append(str(getattr(primary, 'model_id', '')))
+        for fallback in getattr(llm, 'fallback_models', None) or []:
+            model_ids.append(str(getattr(fallback, 'model_id', '')))
+        embedding = getattr(llm, 'embedding_model', None) if llm is not None else None
+        if embedding is not None:
+            model_ids.append(str(getattr(embedding, 'model_id', '')))
+        reranker = getattr(self, 'reranker', None)
+        if reranker is not None:
+            provider = str(getattr(reranker, 'provider', '') or '')
+            model = str(getattr(reranker, 'model', '') or '')
+            if model:
+                model_ids.append(model if '/' in model or not provider else f'{provider}/{model}')
+        answer_cfg = getattr(models, 'answer', None)
+        if answer_cfg is not None:
+            for value in [getattr(answer_cfg, 'primary', None), getattr(answer_cfg, 'cheap', None)]:
+                if value is not None:
+                    model_ids.append(str(value))
+            for value in [
+                *list(getattr(answer_cfg, 'primary_fallbacks', None) or []),
+                *list(getattr(answer_cfg, 'cheap_fallbacks', None) or []),
+            ]:
+                if value is not None:
+                    model_ids.append(str(value))
+        embedding_cfg = getattr(models, 'embedding', None)
+        if embedding_cfg is not None and getattr(embedding_cfg, 'primary', None) is not None:
+            model_ids.append(str(embedding_cfg.primary))
+        rerank_cfg = getattr(models, 'rerank', None)
+        if rerank_cfg is not None and getattr(rerank_cfg, 'primary', None) is not None:
+            model_ids.append(str(rerank_cfg.primary))
+
+        model_ids = [item for item in model_ids if item]
+        if not model_ids:
+            return
+        try:
+            from finsight.core.config.price_table import PriceNotFoundError, load_price_table  # noqa: PLC0415
+
+            load_price_table().require_models(model_ids)
+        except (PriceNotFoundError, Exception) as exc:
+            raise ValueError(str(exc)) from exc
 
     def _validate_document_and_ingestion_rules(self) -> None:
         documents = self.documents

@@ -80,8 +80,33 @@ llm_models:
     input: 0.00
     output: 0.00
 
+  # D9 pilot models
+  "gemini/gemini-1.5-pro":
+    input: 1.25
+    output: 5.00
+  "gemini/gemini-1.5-flash":
+    input: 0.075
+    output: 0.30
+  "groq/llama-3.3-70b-versatile":
+    input: 0.59
+    output: 0.79
+  "groq/llama-3.1-8b-instant":
+    input: 0.05
+    output: 0.08
+  "nvidia_nim/meta/llama-3.1-70b-instruct":
+    input: 0.50
+    output: 1.50
+  "nvidia_nim/meta/llama-3.1-8b-instruct":
+    input: 0.10
+    output: 0.30
+  "self_hosted/open_model_small":
+    input: 0.00
+    output: 0.00
+
 # Embedding Models (per 1M tokens)
 embedding_models:
+  "gemini/text-embedding-004":
+    input: 0.00001
   "amazon/titan-embed-text-v2:0":
     input: 0.02
   "openai/text-embedding-3-large":
@@ -95,6 +120,10 @@ embedding_models:
 
 # Reranker (per 1K documents)
 reranker_models:
+  "nvidia_nim/llama-3.2-nv-rerankqa-1b-v2":
+    per_1k_docs: 0.00
+  "self_hosted/cross_encoder_small":
+    per_1k_docs: 0.00
   "cohere/rerank-english-v3.0":
     per_1k_docs: 1.00
   "cohere/rerank-multilingual-v3.0":
