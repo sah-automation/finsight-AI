@@ -13,6 +13,22 @@ from .base_repository import BaseRepository
 
 _TABLE = 'companies'
 
+_INSERT_COMPANY = f"""
+INSERT INTO {_TABLE} (id, name, slug)
+VALUES (:id, :name, :slug)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, updated_at = now()
+RETURNING id, name, slug, created_at, updated_at
+"""
+
+_UPDATE_COMPANY = f"""
+UPDATE {_TABLE}
+SET name = COALESCE(:name, name),
+    slug = COALESCE(:slug, slug),
+    updated_at = now()
+WHERE id = :id
+RETURNING id, name, slug, created_at, updated_at
+"""
+
 
 def _row_to_company(row: Any) -> Company | None:
     if row is None:
@@ -35,6 +51,45 @@ def _row_to_company(row: Any) -> Company | None:
     )
 
 
+def _create_company_memory(
+    store: dict[str, Company],
+    company_id: CompanyId,
+    name: str,
+    slug: str,
+) -> Company:
+    now = datetime.now(UTC)
+    existing = store.get(str(company_id))
+    company = Company(
+        id=company_id,
+        name=name,
+        slug=slug,
+        created_at=existing.created_at if existing is not None else now,
+        updated_at=now,
+    )
+    store[str(company_id)] = company
+    return company
+
+
+def _update_company_memory(
+    store: dict[str, Company],
+    company_id: CompanyId,
+    name: str | None,
+    slug: str | None,
+) -> Company | None:
+    existing = store.get(str(company_id))
+    if existing is None:
+        return None
+    updated = Company(
+        id=existing.id,
+        name=name if name is not None else existing.name,
+        slug=slug if slug is not None else existing.slug,
+        created_at=existing.created_at,
+        updated_at=datetime.now(UTC),
+    )
+    store[str(company_id)] = updated
+    return updated
+
+
 class CompanyRepository(CompanyRepositoryPort, BaseRepository):
     """Concrete company repository with RLS context enforcement."""
 
@@ -49,30 +104,14 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
         slug: str,
     ) -> Company:
         if self._session is None:
-            now = datetime.now(UTC)
             store = self._memory.setdefault(str(company_id), {})
-            existing = store.get(str(company_id))
-            company = Company(
-                id=company_id,
-                name=name,
-                slug=slug,
-                created_at=existing.created_at if existing is not None else now,
-                updated_at=now,
-            )
-            store[str(company_id)] = company
-            return company
+            return _create_company_memory(store, company_id, name, slug)
         await self._set_rls_context(company_id)
         result = await self._execute(
-            f"""
-            INSERT INTO {_TABLE} (id, name, slug)
-            VALUES (:id, :name, :slug)
-            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, updated_at = now()
-            RETURNING id, name, slug, created_at, updated_at
-            """,
+            _INSERT_COMPANY,
             {'id': str(company_id), 'name': name, 'slug': slug},
         )
-        row = await self._fetchone(result)
-        company_row: Company | None = _row_to_company(row)
+        company_row = _row_to_company(await self._fetchone(result))
         if company_row is None:
             return Company(id=company_id, name=name, slug=slug)
         return company_row
@@ -117,32 +156,13 @@ class CompanyRepository(CompanyRepositoryPort, BaseRepository):
     ) -> Company | None:
         if self._session is None:
             store = self._memory.get(str(company_id), {})
-            existing = store.get(str(company_id))
-            if existing is None:
-                return None
-            updated = Company(
-                id=existing.id,
-                name=name if name is not None else existing.name,
-                slug=slug if slug is not None else existing.slug,
-                created_at=existing.created_at,
-                updated_at=datetime.now(UTC),
-            )
-            store[str(company_id)] = updated
-            return updated
+            return _update_company_memory(store, company_id, name, slug)
         await self._set_rls_context(company_id)
         result = await self._execute(
-            f"""
-            UPDATE {_TABLE}
-            SET name = COALESCE(:name, name),
-                slug = COALESCE(:slug, slug),
-                updated_at = now()
-            WHERE id = :id
-            RETURNING id, name, slug, created_at, updated_at
-            """,
+            _UPDATE_COMPANY,
             {'id': str(company_id), 'name': name, 'slug': slug},
         )
-        row = await self._fetchone(result)
-        return _row_to_company(row)
+        return _row_to_company(await self._fetchone(result))
 
     async def delete_company(
         self,

@@ -13,6 +13,23 @@ from .base_repository import BaseRepository
 
 _TABLE = 'users'
 
+_INSERT_USER = f"""
+INSERT INTO {_TABLE} (id, company_id, email, role)
+VALUES (:id, :company_id, :email, :role)
+ON CONFLICT (company_id, email) DO UPDATE
+    SET role = EXCLUDED.role, updated_at = now()
+RETURNING id, company_id, email, role, created_at, updated_at
+"""
+
+_UPDATE_USER = f"""
+UPDATE {_TABLE}
+SET email = COALESCE(:email, email),
+    role = COALESCE(:role, role),
+    updated_at = now()
+WHERE company_id = :company_id AND id = :id
+RETURNING id, company_id, email, role, created_at, updated_at
+"""
+
 
 def _row_to_user(row: Any) -> User | None:
     if row is None:
@@ -37,6 +54,51 @@ def _row_to_user(row: Any) -> User | None:
     )
 
 
+def _create_user_memory(
+    store: dict[str, User],
+    company_id: CompanyId,
+    user_id: UserId,
+    email: str,
+    role: Role,
+) -> User:
+    now = datetime.now(UTC)
+    for existing_id, existing_user in list(store.items()):
+        if existing_user.email == email and existing_id != str(user_id):
+            del store[existing_id]
+    prior = store.get(str(user_id))
+    user = User(
+        id=user_id,
+        company_id=company_id,
+        email=email,
+        role=role,
+        created_at=prior.created_at if prior is not None else now,
+        updated_at=now,
+    )
+    store[str(user_id)] = user
+    return user
+
+
+def _update_user_memory(
+    store: dict[str, User],
+    user_id: UserId,
+    email: str | None,
+    role: Role | None,
+) -> User | None:
+    existing = store.get(str(user_id))
+    if existing is None:
+        return None
+    updated = User(
+        id=existing.id,
+        company_id=existing.company_id,
+        email=email if email is not None else existing.email,
+        role=role if role is not None else existing.role,
+        created_at=existing.created_at,
+        updated_at=datetime.now(UTC),
+    )
+    store[str(user_id)] = updated
+    return updated
+
+
 class UserRepository(UserRepositoryPort, BaseRepository):
     """Concrete user repository with RLS context enforcement."""
 
@@ -52,31 +114,11 @@ class UserRepository(UserRepositoryPort, BaseRepository):
         role: Role,
     ) -> User:
         if self._session is None:
-            now = datetime.now(UTC)
             store = self._memory.setdefault(str(company_id), {})
-            for existing_id, existing_user in list(store.items()):
-                if existing_user.email == email and existing_id != str(user_id):
-                    del store[existing_id]
-            prior = store.get(str(user_id))
-            user = User(
-                id=user_id,
-                company_id=company_id,
-                email=email,
-                role=role,
-                created_at=prior.created_at if prior is not None else now,
-                updated_at=now,
-            )
-            store[str(user_id)] = user
-            return user
+            return _create_user_memory(store, company_id, user_id, email, role)
         await self._set_rls_context(company_id)
         result = await self._execute(
-            f"""
-            INSERT INTO {_TABLE} (id, company_id, email, role)
-            VALUES (:id, :company_id, :email, :role)
-            ON CONFLICT (company_id, email) DO UPDATE
-                SET role = EXCLUDED.role, updated_at = now()
-            RETURNING id, company_id, email, role, created_at, updated_at
-            """,
+            _INSERT_USER,
             {
                 'id': str(user_id),
                 'company_id': str(company_id),
@@ -84,8 +126,7 @@ class UserRepository(UserRepositoryPort, BaseRepository):
                 'role': str(role),
             },
         )
-        row = await self._fetchone(result)
-        user_row: User | None = _row_to_user(row)
+        user_row = _row_to_user(await self._fetchone(result))
         if user_row is None:
             return User(id=user_id, company_id=company_id, email=email, role=role)
         return user_row
@@ -170,29 +211,10 @@ class UserRepository(UserRepositoryPort, BaseRepository):
     ) -> User | None:
         if self._session is None:
             store = self._memory.get(str(company_id), {})
-            existing = store.get(str(user_id))
-            if existing is None:
-                return None
-            updated = User(
-                id=existing.id,
-                company_id=existing.company_id,
-                email=email if email is not None else existing.email,
-                role=role if role is not None else existing.role,
-                created_at=existing.created_at,
-                updated_at=datetime.now(UTC),
-            )
-            store[str(user_id)] = updated
-            return updated
+            return _update_user_memory(store, user_id, email, role)
         await self._set_rls_context(company_id)
         result = await self._execute(
-            f"""
-                UPDATE {_TABLE}
-                SET email = COALESCE(:email, email),
-                    role = COALESCE(:role, role),
-                    updated_at = now()
-                WHERE company_id = :company_id AND id = :id
-                RETURNING id, company_id, email, role, created_at, updated_at
-                """,
+            _UPDATE_USER,
             {
                 'company_id': str(company_id),
                 'id': str(user_id),
@@ -200,8 +222,7 @@ class UserRepository(UserRepositoryPort, BaseRepository):
                 'role': (str(role) if role is not None else None),
             },
         )
-        row = await self._fetchone(result)
-        return _row_to_user(row)
+        return _row_to_user(await self._fetchone(result))
 
     async def delete_user(
         self,

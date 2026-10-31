@@ -15,6 +15,30 @@ from .base_repository import BaseRepository
 
 _TABLE = 'partition_metadata'
 
+_RECORD_PARTITION = f"""
+INSERT INTO {_TABLE} (company_id, partition_name, table_name, status)
+VALUES (:company_id, :partition_name, :table_name, :status)
+ON CONFLICT (company_id, table_name) DO UPDATE
+    SET partition_name = EXCLUDED.partition_name,
+        status = EXCLUDED.status,
+        updated_at = now()
+RETURNING company_id, partition_name, table_name, status, created_at, updated_at
+"""
+
+
+def _partition_fallback(
+    company_id: CompanyId,
+    partition_name: str,
+    table_name: str,
+    status: PartitionStatus,
+) -> PartitionMetadata:
+    return PartitionMetadata(
+        company_id=company_id,
+        partition_name=partition_name,
+        table_name=table_name,
+        status=status,
+    )
+
 
 def _row_to_metadata(row: Any) -> PartitionMetadata | None:
     if row is None:
@@ -54,15 +78,7 @@ class PartitionMetadataRepository(PartitionMetadataRepositoryPort, BaseRepositor
     ) -> PartitionMetadata:
         await self._set_rls_context(company_id)
         result = await self._execute(
-            f"""
-            INSERT INTO {_TABLE} (company_id, partition_name, table_name, status)
-            VALUES (:company_id, :partition_name, :table_name, :status)
-            ON CONFLICT (company_id, table_name) DO UPDATE
-                SET partition_name = EXCLUDED.partition_name,
-                    status = EXCLUDED.status,
-                    updated_at = now()
-            RETURNING company_id, partition_name, table_name, status, created_at, updated_at
-            """,
+            _RECORD_PARTITION,
             {
                 'company_id': str(company_id),
                 'partition_name': partition_name,
@@ -70,15 +86,9 @@ class PartitionMetadataRepository(PartitionMetadataRepositoryPort, BaseRepositor
                 'status': str(status),
             },
         )
-        row = await self._fetchone(result)
-        metadata = _row_to_metadata(row)
+        metadata = _row_to_metadata(await self._fetchone(result))
         if metadata is None:
-            return PartitionMetadata(
-                company_id=company_id,
-                partition_name=partition_name,
-                table_name=table_name,
-                status=status,
-            )
+            return _partition_fallback(company_id, partition_name, table_name, status)
         return metadata
 
     async def get_partition(
