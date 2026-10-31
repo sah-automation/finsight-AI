@@ -208,13 +208,17 @@ class PostgresUnitOfWork(UnitOfWorkPort):
 
     async def commit(self, transaction: object = None, **kwargs: object) -> None:
         for session in self._session_candidates(transaction):
-            await self._call_best_effort(session, 'commit')
+            if hasattr(session, 'commit') and callable(getattr(session, 'commit', None)):
+                result = session.commit()
+                await _await_maybe(result)
         self._committed_count += 1
         self.committed = True
 
     async def rollback(self, transaction: object = None, **kwargs: object) -> None:
         for session in self._session_candidates(transaction):
-            await self._call_best_effort(session, 'rollback')
+            if hasattr(session, 'rollback') and callable(getattr(session, 'rollback', None)):
+                result = session.rollback()
+                await _await_maybe(result)
         self._rollback_count += 1
         self.rolled_back = True
 
@@ -283,12 +287,8 @@ class PostgresUnitOfWork(UnitOfWorkPort):
         try:
             result = None
             if callable(func):
-                try:
-                    result = func(self)
-                    result = await _await_maybe(result)
-                except TypeError:
-                    result = func()
-                    result = await _await_maybe(result)
+                result = func(self)
+                result = await _await_maybe(result)
             await self.commit(self)
             return result
         except Exception:
