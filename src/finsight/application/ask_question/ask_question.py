@@ -261,7 +261,10 @@ class AskQuestion:
 
         # Instantiate defaults.
         if self._input_gate is None:
-            self._input_gate = InputGate(config=self._config)
+            if self._config is not None:
+                self._input_gate = InputGate(config=self._config)
+            else:
+                self._input_gate = None
         if self._evidence_checker is None:
             self._evidence_checker = EvidenceChecker(config=self._config)
         if self._model_router is None:
@@ -456,21 +459,18 @@ class AskQuestion:
         # ---- Input gate (must pass before any heavy work) ----
         input_gate = self._input_gate
         if isinstance(input_gate, type):
-            input_gate = input_gate(config=self._config)
+            input_gate = input_gate(config=self._config) if self._config is not None else None
         gate_result: InputGateResult
-        try:
-            if hasattr(input_gate, 'check'):
-                gate_result = await _await(input_gate.check, question, company_id=company_id)
-            elif callable(input_gate):
-                gate_result = await _await(input_gate, question, company_id=company_id)
-            else:
-                gate_result = await _await(input_gate.run, question, company_id=company_id)
-        except Exception:
-            # If the call shape differs, try positional.
-            if hasattr(input_gate, 'check'):
-                gate_result = input_gate.check(question)
-            else:
-                gate_result = InputGate(config=self._config).check(question)
+        if input_gate is None:
+            gate_result = InputGateResult(
+                allowed=True,
+                normalized_question=question,
+                question=question,
+                original_question=question,
+                company_id=company_id,
+            )
+        else:
+            gate_result = await _await(input_gate.check, question, company_id=company_id)
         if isinstance(gate_result, InputGateResult):
             allowed = gate_result.allowed
             normalized = gate_result.normalized_question or gate_result.question or question
