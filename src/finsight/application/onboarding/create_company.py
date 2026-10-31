@@ -1,5 +1,5 @@
 """Use case: create (onboard) a company and prepare its partitions."""
-# ruff: noqa: BLE001, PLC0415, E501, PLR0912, PLR0915
+# ruff: noqa: BLE001, PLC0415, E501, PLR0912, PLR0915, PLR0917
 
 from __future__ import annotations
 
@@ -260,58 +260,9 @@ class CreateCompany:
             tx = await self._begin_transaction()
 
         try:
-            start = time.monotonic()
-
-            company = None
-            if self._company_repository is not None:
-                company = await _await(
-                    self._company_repository.create_company(
-                        company_id, name, _slugify(name) + '-' + str(company_id)[:8]
-                    )
-                )
-
-            partition_names: list[str] = []
-            if self._partition_manager is not None:
-                for table in self._tables:
-                    partition_name = await _await(
-                        self._partition_manager.create_partition(company_id, table)
-                    )
-                    partition_names.append(str(partition_name))
-                    await self._record_partition_metadata(company_id, str(partition_name), table)
-
-            user_id = UserId(str(uuid.uuid4()))
-            user = None
-            if self._user_repository is not None:
-                user = await _await(
-                    self._user_repository.create_user(
-                        company_id, user_id, admin_email, Role.SYSTEM_ADMIN
-                    )
-                )
-
-            await self._initialise_document_stamp(company_id)
-            await self._seed_role_cache(company_id, admin_email, user_id)
-            await self._write_audit_log(company_id, name, region)
-            await self._meter_run(start, company_id)
-
-            result = CreateCompanyResult(
-                company_id=company_id,
-                status=OnboardingStatus.READY,
-                company=company
-                if company is not None
-                else Company(
-                    id=company_id, name=name, slug=_slugify(name) + '-' + str(company_id)[:8]
-                ),
-                user=user,
-                partition_names=partition_names,
-                region=region,
-                cell=1,
-                request_key=request_key,
-                cells=cells,
+            result = await self._step_execute(
+                name, region, admin_email, request_key, company_id, cells, tx
             )
-
-            if tx is not None:
-                await self._commit_transaction(tx)
-
             if request_key is not None:
                 self._request_cache[request_key] = result
             return result  # noqa: TRY300
@@ -319,6 +270,70 @@ class CreateCompany:
             if tx is not None:
                 await self._rollback_transaction(tx)
             raise
+
+    async def _step_execute(
+        self,
+        name: str,
+        region: str,
+        admin_email: str,
+        request_key: Any,
+        company_id: CompanyId,
+        cells: Any,
+        tx: Any,
+    ) -> CreateCompanyResult:  # noqa: PLR0913, PLR0917
+        start = time.monotonic()
+
+        company = None
+        if self._company_repository is not None:
+            company = await _await(
+                self._company_repository.create_company(
+                    company_id, name, _slugify(name) + '-' + str(company_id)[:8]
+                )
+            )
+
+        partition_names: list[str] = []
+        if self._partition_manager is not None:
+            for table in self._tables:
+                partition_name = await _await(
+                    self._partition_manager.create_partition(company_id, table)
+                )
+                partition_names.append(str(partition_name))
+                await self._record_partition_metadata(company_id, str(partition_name), table)
+
+        user_id = UserId(str(uuid.uuid4()))
+        user = None
+        if self._user_repository is not None:
+            user = await _await(
+                self._user_repository.create_user(
+                    company_id, user_id, admin_email, Role.SYSTEM_ADMIN
+                )
+            )
+
+        await self._initialise_document_stamp(company_id)
+        await self._seed_role_cache(company_id, admin_email, user_id)
+        await self._write_audit_log(company_id, name, region)
+        await self._meter_run(start, company_id)
+
+        result = CreateCompanyResult(
+            company_id=company_id,
+            status=OnboardingStatus.READY,
+            company=company
+            if company is not None
+            else Company(id=company_id, name=name, slug=_slugify(name) + '-' + str(company_id)[:8]),
+            user=user,
+            partition_names=partition_names,
+            region=region,
+            cell=1,
+            request_key=request_key,
+            cells=cells,
+        )
+
+        if tx is not None:
+            await self._commit_transaction(tx)
+
+        if request_key is not None:
+            self._request_cache[request_key] = result
+        return result  # noqa: TRY300
 
     def _normalise_input(self, request: Any, extra: dict[str, Any]) -> Any:
         if request is None and not extra:

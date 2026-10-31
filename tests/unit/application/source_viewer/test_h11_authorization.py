@@ -11,12 +11,16 @@ class _FakeDocRepo:
     async def get_document_version(self, company_id: object, version_id: object) -> object:
         return self.versions.get(str(version_id))
 
-    async def list_document_versions(self, company_id: object, document_id: object = None) -> list[object]:
+    async def list_document_versions(
+        self, company_id: object, document_id: object = None
+    ) -> list[object]:
         if document_id is None:
             return list(self.versions.values())
         return [v for v in self.versions.values() if str(v.get('document_id')) == str(document_id)]
 
-    async def get_latest_committed_version(self, company_id: object, document_id: object = None) -> object:
+    async def get_latest_committed_version(
+        self, company_id: object, document_id: object = None
+    ) -> object:
         cands = [
             v
             for v in self.versions.values()
@@ -27,7 +31,9 @@ class _FakeDocRepo:
 
 
 class _FakeChunkRepo:
-    async def list_chunks_by_version(self, company_id: object, version_id: object, include_inactive: bool = False) -> list[object]:
+    async def list_chunks_by_version(
+        self, company_id: object, version_id: object, include_inactive: bool = False
+    ) -> list[object]:
         return [
             {
                 'chunk_id': 'c1',

@@ -295,81 +295,7 @@ class DeleteDocument:
 
         # purge expired action
         if action in ('purge_expired', 'purge-expired', 'expired'):
-            purged_count = 0
-            if repo is not None:
-                for method_name in (
-                    'purge_expired_documents',
-                    'purge_expired',
-                    'purge_expired_for_company',
-                ):
-                    method = getattr(repo, method_name, None)
-                    if callable(method):
-                        try:
-                            purged_count = await _await(method(company_id, retention_days))
-                            break
-                        except TypeError:
-                            try:
-                                purged_count = await _await(
-                                    method(company_id=company_id, retention_days=retention_days)
-                                )
-                                break
-                            except Exception:
-                                continue
-                        except Exception:
-                            continue
-            # fallback manual scan
-            if purged_count == 0 and repo is not None:
-                try:
-                    docs = await _await(repo.list_documents(company_id, include_deleted=True)) or []
-                except TypeError:
-                    try:
-                        docs = (
-                            await _await(
-                                repo.list_documents(company_id=company_id, include_deleted=True)
-                            )
-                            or []
-                        )
-                    except Exception:
-                        docs = []
-                except Exception:
-                    docs = []
-                for doc in docs or []:
-                    doc_id = _get_attr(doc, 'id', 'document_id', 'doc_id')
-                    deleted_at = _get_attr(doc, 'deleted_at', 'deletedAt')
-                    if doc_id is None or not deleted_at:
-                        continue
-                    try:
-                        if isinstance(deleted_at, str):
-                            from datetime import datetime as _dt
-
-                            deleted_at_dt = _dt.fromisoformat(deleted_at.replace('Z', '+00:00'))
-                        else:
-                            deleted_at_dt = deleted_at
-                        age_days = (datetime.now(UTC) - deleted_at_dt).days
-                        if age_days < retention_days:
-                            continue
-                    except Exception:
-                        pass
-                    try:
-                        await _await(repo.purge_document(company_id, doc_id))
-                        purged_count += 1
-                    except Exception:
-                        continue
-            cache_cleared = False
-            try:
-                await self._clear_cache(company_id)
-                cache_cleared = True
-            except Exception:
-                cache_cleared = False
-            return DeleteResult(
-                company_id=company_id,
-                document_id=None,
-                purged=True,
-                permanent=True,
-                purged_count=purged_count,
-                cache_cleared=cache_cleared,
-                status='purged_expired',
-            )
+            return await self._step_purge_expired(company_id, retention_days)
 
         # determine already deleted
         already_deleted = False
@@ -393,135 +319,18 @@ class DeleteDocument:
                 already_deleted = getattr(doc, 'deleted_at', None) is not None
 
         if action in ('schedule',):
-            # just schedule purge
-            enqueued = await self._schedule_purge(company_id, document_id, retention_days)
-            cache_cleared = False
-            try:
-                await self._clear_cache(company_id)
-                cache_cleared = True
-            except Exception:
-                cache_cleared = False
-            return DeleteResult(
-                company_id=company_id,
-                document_id=document_id,
-                deleted=already_deleted,
-                scheduled=True,
-                purge_scheduled=True,
-                purge_after_days=retention_days,
-                retention_days=retention_days,
-                deleted_retention_days=retention_days,
-                cache_cleared=cache_cleared,
-                already_deleted=already_deleted,
-                status='scheduled',
+            return await self._step_schedule_purge(
+                company_id, document_id, retention_days, already_deleted
             )
 
         if action in ('restore',):
-            restored = False
-            if repo is not None:
-                for method_name in ('restore_document', 'restore', 'undelete'):
-                    method = getattr(repo, method_name, None)
-                    if not callable(method):
-                        continue
-                    for attempt in (
-                        lambda m=method: m(
-                            company_id,
-                            document_id,
-                            retention_days=retention_days,
-                            status='committed',
-                        ),
-                        lambda m=method: m(
-                            company_id, document_id, deleted_retention_days=retention_days
-                        ),
-                        lambda m=method: m(company_id, document_id, retention_days=retention_days),
-                        lambda m=method: m(company_id, document_id),
-                    ):
-                        try:
-                            result = await _await(attempt())  # type: ignore[no-untyped-call]
-                            restored = bool(result) if result is not None else True
-                            break
-                        except TypeError:
-                            continue
-                        except Exception:
-                            restored = False
-                            break
-                    if restored or method is not None:
-                        break
-            cache_cleared = False
-            try:
-                await self._clear_cache(company_id)
-                cache_cleared = True
-            except Exception:
-                cache_cleared = False
-            await self._audit(company_id, document_id, 'restored', deleted_by, reason)
-            return DeleteResult(
-                company_id=company_id,
-                document_id=document_id,
-                restored=restored,
-                deleted=False,
-                soft_deleted=False,
-                cache_cleared=cache_cleared,
-                already_deleted=already_deleted,
-                retention_days=retention_days,
-                status='restored' if restored else 'not_restored',
+            return await self._step_restore(
+                company_id, document_id, retention_days, already_deleted, deleted_by, reason
             )
 
         if action in ('purge', 'permanent', 'hard_delete', 'hard'):
-            purged = False
-            # attempt chunks/vectors cleanup first
-            await self._cleanup_chunks(company_id, document_id, None)
-            if repo is not None:
-                for method_name in (
-                    'purge_document',
-                    'purge',
-                    'hard_delete',
-                    'permanent_delete',
-                    'delete_document',
-                ):
-                    method = getattr(repo, method_name, None)
-                    if not callable(method):
-                        continue
-                    attempts = (
-                        lambda m=method: m(company_id, document_id, permanent=True, purge=True),
-                        lambda m=method: m(company_id, document_id, permanent=True),
-                        lambda m=method: m(company_id, document_id, purge=True),
-                        lambda m=method: m(company_id, document_id),
-                    )
-                    for attempt in attempts:
-                        try:
-                            # ensure permanent delete path (not soft)
-                            result = await _await(attempt())
-                            purged = (result is not False) and (result is not None or True)
-                            # repository may return False when not found; handle
-                            if result is False:
-                                purged = False
-                            break
-                        except TypeError:
-                            continue
-                        except Exception:
-                            purged = False
-                            break
-                    if purged or method is not None:
-                        break
-            cache_cleared = False
-            try:
-                await self._clear_cache(company_id)
-                cache_cleared = True
-            except Exception:
-                cache_cleared = False
-            await self._audit(company_id, document_id, 'purged', deleted_by, reason)
-            # change event
-            published = await self._publish(company_id, document_id, 'purged', deleted_by, None)
-            return DeleteResult(
-                company_id=company_id,
-                document_id=document_id,
-                purged=purged,
-                permanent=True,
-                deleted=True,
-                soft_deleted=False,
-                cache_cleared=cache_cleared,
-                audit_kept=True,
-                status='purged',
-                published=published,
+            return await self._step_purge(
+                company_id, document_id, retention_days, deleted_by, reason
             )
 
         # default soft delete action
@@ -532,7 +341,7 @@ class DeleteDocument:
                 method = getattr(repo, method_name, None)
                 if not callable(method):
                     continue
-                attempts = (  # type: ignore[assignment]
+                attempts = (
                     lambda m=method: m(
                         company_id,
                         document_id,
@@ -550,7 +359,7 @@ class DeleteDocument:
                 )
                 for attempt in attempts:
                     try:
-                        result = await _await(attempt())
+                        result = await _await(attempt())  # type: ignore[no-untyped-call]
                         if method_name == 'delete_document':
                             # delete_document may purge if permanent kw not set? adapter default soft delete
                             pass
@@ -646,6 +455,230 @@ class DeleteDocument:
             audit_kept=True,
             status='deleted',
             job_id=None if not enqueued else 'scheduled',
+            published=published,
+        )
+
+    async def _step_purge_expired(self, company_id: Any, retention_days: Any) -> DeleteResult:
+        repo = self._document_repository
+        purged_count = 0
+        if repo is not None:
+            for method_name in (
+                'purge_expired_documents',
+                'purge_expired',
+                'purge_expired_for_company',
+            ):
+                method = getattr(repo, method_name, None)
+                if callable(method):
+                    try:
+                        purged_count = await _await(method(company_id, retention_days))
+                        break
+                    except TypeError:
+                        try:
+                            purged_count = await _await(
+                                method(company_id=company_id, retention_days=retention_days)
+                            )
+                            break
+                        except Exception:
+                            continue
+                    except Exception:
+                        continue
+        # fallback manual scan
+        if purged_count == 0 and repo is not None:
+            try:
+                docs = await _await(repo.list_documents(company_id, include_deleted=True)) or []
+            except TypeError:
+                try:
+                    docs = (
+                        await _await(
+                            repo.list_documents(company_id=company_id, include_deleted=True)
+                        )
+                        or []
+                    )
+                except Exception:
+                    docs = []
+            except Exception:
+                docs = []
+            for doc in docs or []:
+                doc_id = _get_attr(doc, 'id', 'document_id', 'doc_id')
+                deleted_at = _get_attr(doc, 'deleted_at', 'deletedAt')
+                if doc_id is None or not deleted_at:
+                    continue
+                try:
+                    if isinstance(deleted_at, str):
+                        from datetime import datetime as _dt
+
+                        deleted_at_dt = _dt.fromisoformat(deleted_at.replace('Z', '+00:00'))
+                    else:
+                        deleted_at_dt = deleted_at
+                    age_days = (datetime.now(UTC) - deleted_at_dt).days
+                    if age_days < retention_days:
+                        continue
+                except Exception:
+                    pass
+                try:
+                    await _await(repo.purge_document(company_id, doc_id))
+                    purged_count += 1
+                except Exception:
+                    continue
+        cache_cleared = False
+        try:
+            await self._clear_cache(company_id)
+            cache_cleared = True
+        except Exception:
+            cache_cleared = False
+        return DeleteResult(
+            company_id=company_id,
+            document_id=None,
+            purged=True,
+            permanent=True,
+            purged_count=purged_count,
+            cache_cleared=cache_cleared,
+            status='purged_expired',
+        )
+
+    async def _step_schedule_purge(
+        self, company_id: Any, document_id: Any, retention_days: Any, already_deleted: Any
+    ) -> DeleteResult:
+        # just schedule purge
+        await self._schedule_purge(company_id, document_id, retention_days)
+        cache_cleared = False
+        try:
+            await self._clear_cache(company_id)
+            cache_cleared = True
+        except Exception:
+            cache_cleared = False
+        return DeleteResult(
+            company_id=company_id,
+            document_id=document_id,
+            deleted=already_deleted,
+            scheduled=True,
+            purge_scheduled=True,
+            purge_after_days=retention_days,
+            retention_days=retention_days,
+            deleted_retention_days=retention_days,
+            cache_cleared=cache_cleared,
+            already_deleted=already_deleted,
+            status='scheduled',
+        )
+
+    async def _step_restore(
+        self,
+        company_id: Any,
+        document_id: Any,
+        retention_days: Any,
+        already_deleted: Any,
+        deleted_by: Any,
+        reason: Any,
+    ) -> DeleteResult:
+        repo = self._document_repository
+        restored = False
+        if repo is not None:
+            for method_name in ('restore_document', 'restore', 'undelete'):
+                method = getattr(repo, method_name, None)
+                if not callable(method):
+                    continue
+                for attempt in (
+                    lambda m=method: m(
+                        company_id,
+                        document_id,
+                        retention_days=retention_days,
+                        status='committed',
+                    ),
+                    lambda m=method: m(
+                        company_id, document_id, deleted_retention_days=retention_days
+                    ),
+                    lambda m=method: m(company_id, document_id, retention_days=retention_days),
+                    lambda m=method: m(company_id, document_id),
+                ):
+                    try:
+                        result = await _await(attempt())  # type: ignore[no-untyped-call]
+                        restored = bool(result) if result is not None else True
+                        break
+                    except TypeError:
+                        continue
+                    except Exception:
+                        restored = False
+                        break
+                if restored or method is not None:
+                    break
+        cache_cleared = False
+        try:
+            await self._clear_cache(company_id)
+            cache_cleared = True
+        except Exception:
+            cache_cleared = False
+        await self._audit(company_id, document_id, 'restored', deleted_by, reason)
+        return DeleteResult(
+            company_id=company_id,
+            document_id=document_id,
+            restored=restored,
+            deleted=False,
+            soft_deleted=False,
+            cache_cleared=cache_cleared,
+            already_deleted=already_deleted,
+            retention_days=retention_days,
+            status='restored' if restored else 'not_restored',
+        )
+
+    async def _step_purge(
+        self, company_id: Any, document_id: Any, retention_days: Any, deleted_by: Any, reason: Any
+    ) -> DeleteResult:
+        repo = self._document_repository
+        purged = False
+        # attempt chunks/vectors cleanup first
+        await self._cleanup_chunks(company_id, document_id, None)
+        if repo is not None:
+            for method_name in (
+                'purge_document',
+                'purge',
+                'hard_delete',
+                'permanent_delete',
+                'delete_document',
+            ):
+                method = getattr(repo, method_name, None)
+                if not callable(method):
+                    continue
+                attempts = (
+                    lambda m=method: m(company_id, document_id, permanent=True, purge=True),
+                    lambda m=method: m(company_id, document_id, permanent=True),
+                    lambda m=method: m(company_id, document_id, purge=True),
+                    lambda m=method: m(company_id, document_id),
+                )
+                for attempt in attempts:
+                    try:
+                        # ensure permanent delete path (not soft)
+                        result = await _await(attempt())  # type: ignore[no-untyped-call]
+                        purged = (result is not False) and (result is not None or True)
+                        # repository may return False when not found; handle
+                        if result is False:
+                            purged = False
+                        break
+                    except TypeError:
+                        continue
+                    except Exception:
+                        purged = False
+                        break
+                if purged or method is not None:
+                    break
+        cache_cleared = False
+        try:
+            await self._clear_cache(company_id)
+            cache_cleared = True
+        except Exception:
+            cache_cleared = False
+        await self._audit(company_id, document_id, 'purged', deleted_by, reason)
+        # change event
+        published = await self._publish(company_id, document_id, 'purged', deleted_by, None)
+        return DeleteResult(
+            company_id=company_id,
+            document_id=document_id,
+            purged=purged,
+            permanent=True,
+            deleted=True,
+            soft_deleted=False,
+            cache_cleared=cache_cleared,
+            audit_kept=True,
+            status='purged',
             published=published,
         )
 
