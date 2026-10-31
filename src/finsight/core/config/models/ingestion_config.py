@@ -30,7 +30,7 @@ class IngestionConfig(StrictBaseModel):
     )
 
     @model_validator(mode='after')
-    def _validate_parent_tokens(self) -> 'IngestionConfig':
+    def _validate_ingestion_rules(self) -> 'IngestionConfig':
         if self.max_parent_tokens < self.child_chunk_tokens:
             raise ValueError('max_parent_tokens must be at least child_chunk_tokens')
         if not _REQUIRED_METADATA.issubset(set(self.required_metadata)):
