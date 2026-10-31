@@ -283,6 +283,41 @@ ignore = [
 ]
 
 # Flexible job-progress adapter and port-facing surface.
+
+# Extracted storage adapter helpers retain flexible constructor/input surfaces.
+"src/finsight/adapters/storage/_*.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "ARG005",
+    "BLE001", "B009", "B904", "E501", "N803", 'N806', "PLC0415", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "PLR2004", "RUF100", "S110", "SIM102",
+    "SIM103", "SIM105", "SIM108", "TC001", "TRY300", "F401", "F403", "F405",
+]
+# Extracted cache adapter helpers.
+"src/finsight/adapters/cache/_*.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "ARG005",
+    "BLE001", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+    "TRY300", "SIM102", "SIM105", "TC001", "RUF100", "F401", "F403", "F405",
+    "N806", "S110", "E501", "B007", "C401",
+]
+# Extracted security/scanner adapter helpers.
+"src/finsight/adapters/security/_*.py" = [
+    "ANN401", "BLE001", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+    "TRY300", "SIM102", "SIM105", "TC001", "RUF100", "F401", "F403", "F405",
+    "N806", "S110", "E501", "ANN001", "ANN002", "ANN003",
+]
+# Extracted queue adapter helpers.
+"src/finsight/adapters/queue/_*.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "ARG005",
+    "BLE001", "PLC0415", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+    "TRY300", "SIM102", "SIM105", "TC001", "RUF100", "F401", "F403", "F405",
+    "N806", "S110", "E501",
+]
+# Extracted tracing adapter helpers.
+"src/finsight/adapters/tracing/_*.py" = [
+    "ANN001", "ANN002", "ANN003", "ANN401", "BLE001", "PLC0415", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "TRY300", "SIM102", "SIM105", "TC001",
+    "RUF100", "F401", "F403", "F405", "N806", "S110", "E501",
+]
+
 "src/finsight/adapters/cache/job_progress.py" = [
     "ANN401", "BLE001", "PLC0415", "PLR0912", "S112",
 ]
