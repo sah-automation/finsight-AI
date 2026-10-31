@@ -1,9 +1,16 @@
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .models_answer_config import ModelsAnswerConfig
 from .models_embedding_config import ModelsEmbeddingConfig
 from .models_rerank_config import ModelsRerankConfig
 from .strict_base_model import StrictBaseModel
+
+_REQUIRED_FAILOVER_CONDITIONS = {
+    'timeout',
+    'first_word_timeout',
+    'rate_limit',
+    'server_error',
+}
 
 
 class ModelsConfig(StrictBaseModel):
@@ -20,9 +27,25 @@ class ModelsConfig(StrictBaseModel):
     embedding: ModelsEmbeddingConfig = Field(default_factory=ModelsEmbeddingConfig)
     rerank: ModelsRerankConfig = Field(default_factory=ModelsRerankConfig)
     timeout_seconds: int = Field(ge=1, default=20)
-    first_token_timeout_seconds: float = Field(ge=0.1, default=4.0)
+    first_token_timeout_seconds: float = Field(ge=0.1, le=5.0, default=4.0)
     backup_request_enabled: bool = True
     backup_request_after_seconds: float = Field(ge=0.0, default=2.5)
     prompt_cache_enabled: bool = True
     max_output_tokens: int = Field(ge=1, default=1000)
     monthly_budget_per_company: int = Field(ge=0, default=50)
+
+    @model_validator(mode='after')
+    def validate_models(self) -> 'ModelsConfig':
+        max_first_token_timeout = 5
+        if self.first_token_timeout_seconds >= self.timeout_seconds:
+            raise ValueError('first_token_timeout_seconds must be below timeout_seconds')
+        if self.first_token_timeout_seconds > max_first_token_timeout:
+            raise ValueError('first_token_timeout_seconds must be at most 5')
+        if self.backup_request_after_seconds >= self.first_token_timeout_seconds:
+            raise ValueError(
+                'backup_request_after_seconds must be below first_token_timeout_seconds'
+            )
+        missing_failover = _REQUIRED_FAILOVER_CONDITIONS - set(self.failover_on)
+        if missing_failover:
+            raise ValueError('failover_on must include ' + ', '.join(sorted(missing_failover)))
+        return self

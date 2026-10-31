@@ -2,9 +2,9 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from .strict_base_model import (
-    StrictBaseModel,
-)
+from .strict_base_model import StrictBaseModel
+
+_REQUIRED_METADATA = {'company', 'period', 'category', 'currency', 'units', 'page'}
 
 
 class IngestionConfig(StrictBaseModel):
@@ -33,4 +33,7 @@ class IngestionConfig(StrictBaseModel):
     def _validate_parent_tokens(self) -> 'IngestionConfig':
         if self.max_parent_tokens < self.child_chunk_tokens:
             raise ValueError('max_parent_tokens must be at least child_chunk_tokens')
+        if not _REQUIRED_METADATA.issubset(set(self.required_metadata)):
+            missing = sorted(_REQUIRED_METADATA - set(self.required_metadata))
+            raise ValueError('required_metadata must include ' + ', '.join(missing))
         return self

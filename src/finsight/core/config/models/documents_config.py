@@ -26,7 +26,7 @@ class DocumentsConfig(StrictBaseModel):
     upload_types: list[str] = Field(default_factory=lambda: ['new', 'update'])
     delta_tracking: bool = True
     duplicate_check: bool = True
-    version_retention_days: int = Field(ge=1, default=365)
+    version_retention_days: int = Field(ge=30, default=365)
     deleted_retention_days: int = Field(ge=1, default=30)
     source_original_link_ttl_seconds: int = Field(default=300, ge=60, le=900)
     source_viewer_signing_key: str = ''
