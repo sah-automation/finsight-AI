@@ -245,14 +245,4 @@ async def invoke_worker(self: Any, *args: Any, **kwargs: Any) -> Any:
     return handler
 
 
-# sync helpers
-def send_sync(self: Any, *args: Any, **kwargs: Any) -> Any:
-    import asyncio
-
-    return asyncio.get_event_loop().run_until_complete(self.send(*args, **kwargs))
-
-
-def receive_sync(self: Any, *args: Any, **kwargs: Any) -> Any:
-    import asyncio
-
-    return asyncio.get_event_loop().run_until_complete(self.receive(*args, **kwargs))
+# Sync/async mixing is intentionally avoided: callers await send()/receive() directly.

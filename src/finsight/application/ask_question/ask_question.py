@@ -6,7 +6,6 @@ domain services; no vendor imports are allowed here.
 
 from __future__ import annotations
 
-import asyncio
 import inspect
 import uuid
 from typing import Any
@@ -301,59 +300,42 @@ class AskQuestion:
     # Entry points
     # ------------------------------------------------------------------
 
-    def run(self, request: Any = None, **kwargs: Any) -> Any:
-        return self._run_coroutine(request, kwargs)
+    async def run(self, request: Any = None, **kwargs: Any) -> Any:
+        return await self._run(request, kwargs)
 
-    def execute(self, request: Any = None, **kwargs: Any) -> Any:
-        return self.run(request, **kwargs)
+    async def execute(self, request: Any = None, **kwargs: Any) -> Any:
+        return await self.run(request, **kwargs)
 
-    def ask(self, request: Any = None, **kwargs: Any) -> Any:
-        return self.run(request, **kwargs)
+    async def ask(self, request: Any = None, **kwargs: Any) -> Any:
+        return await self.run(request, **kwargs)
 
-    def answer(self, request: Any = None, **kwargs: Any) -> Any:
-        return self.run(request, **kwargs)
+    async def answer(self, request: Any = None, **kwargs: Any) -> Any:
+        return await self.run(request, **kwargs)
 
-    def handle(self, request: Any = None, **kwargs: Any) -> Any:
-        return self.run(request, **kwargs)
+    async def handle(self, request: Any = None, **kwargs: Any) -> Any:
+        return await self.run(request, **kwargs)
 
-    def process(self, request: Any = None, **kwargs: Any) -> Any:
-        return self.run(request, **kwargs)
+    async def process(self, request: Any = None, **kwargs: Any) -> Any:
+        return await self.run(request, **kwargs)
 
-    def __call__(self, request: Any = None, **kwargs: Any) -> Any:
-        return self.run(request, **kwargs)
+    async def __call__(self, request: Any = None, **kwargs: Any) -> Any:
+        return await self.run(request, **kwargs)
 
-    def stream(self, request: Any = None, **kwargs: Any) -> Any:
-        result = self.run(request, **kwargs)
+    async def stream(self, request: Any = None, **kwargs: Any) -> Any:
+        result = self._run(request, kwargs)
         if inspect.isawaitable(result):
+            val = await result
+            yield val
+            return
+        yield result
 
-            async def _gen() -> object:
-                val = await result
-                yield val
+    async def stream_ask(self, request: Any = None, **kwargs: Any) -> Any:
+        async for item in self.stream(request, **kwargs):
+            yield item
 
-            return _gen()
-
-        async def _gen2() -> object:
-            yield result
-
-        return _gen2()
-
-    def stream_ask(self, request: Any = None, **kwargs: Any) -> Any:
-        return self.stream(request, **kwargs)
-
-    def ask_stream(self, request: Any = None, **kwargs: Any) -> Any:
-        return self.stream(request, **kwargs)
-
-    def _run_coroutine(self, request: Any, extra: dict[str, Any]) -> Any:
-        coro = self._run(request, extra)
-        # If an event loop is already running, return the coroutine directly.
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                return coro
-        except RuntimeError:
-            pass
-        # Otherwise run synchronously.
-        return asyncio.run(coro)
+    async def ask_stream(self, request: Any = None, **kwargs: Any) -> Any:
+        async for item in self.stream(request, **kwargs):
+            yield item
 
     async def _trace(self, company_id: Any, operation: str) -> None:
         tracer = self._tracing

@@ -23,16 +23,14 @@ def _await_sync(value: Any) -> Any:
     import asyncio
 
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
     if loop is not None and loop.is_running():
         # Return the awaitable; caller must await. We only call this when
         # the surrounding method is async, so direct await is preferred.
         return value
-    if loop is None:
-        return asyncio.run(value)
-    return loop.run_until_complete(value)
+    return asyncio.run(value)
 
 
 async def _await_value(value: Any) -> Any:

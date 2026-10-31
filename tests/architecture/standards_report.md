@@ -30,9 +30,9 @@ Generated from tests/architecture/test_standards_checklist.py
   - application/source_viewer/source_viewer.py: 2089 lines
   - application/update_document/update_document.py: 1363 lines
   - application/ingest_document/upload_document.py: 886 lines
-  - application/ingest_document/scan_worker.py: 905 lines
+  - application/ingest_document/scan_worker.py: 853 lines
   - application/ingest_document/pipeline_step_worker.py: 1912 lines
-  - application/ask_question/ask_question.py: 1410 lines
+  - application/ask_question/ask_question.py: 1392 lines
   - application/onboarding/create_company.py: 634 lines
   - composition/reader_registry.py::build_reader_registry: 607 lines
   - composition/ask_question.py::get_ask_use_case: 79 lines

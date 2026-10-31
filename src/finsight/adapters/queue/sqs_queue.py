@@ -17,9 +17,7 @@ from ._sqs_queue_misc import (
     _SqsQueueMisc,
     get_worker,
     invoke_worker,
-    receive_sync,
     register_worker,
-    send_sync,
 )
 from ._sqs_queue_nack import _sqs_nack
 from ._sqs_queue_receive import _sqs_receive
@@ -237,9 +235,6 @@ SqsQueue.release = _sqs_release
 SqsQueue.register_worker = register_worker
 SqsQueue.get_worker = get_worker
 SqsQueue.invoke_worker = invoke_worker
-SqsQueue.send_sync = send_sync
-SqsQueue.receive_sync = receive_sync
-
 SqsAdapter = SqsQueue
 QueueAdapter = SqsQueue
 Queue = SqsQueue

@@ -190,16 +190,7 @@ class VirusScanner(_VirusScannerOperations, _VirusScannerScanning, VirusScannerP
         result = await self.scan(*args, **kwargs)
         return bool(result.infected)
 
-    def scan_sync(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        import asyncio
-
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = None
-        if loop is not None and loop.is_running():
-            raise RuntimeError('scan_sync cannot run in running event loop')
-        return asyncio.run(self.scan(*args, **kwargs))
+    # Sync/async mixing is intentionally avoided: callers await scan() directly.
 
 
 _virus_aliases = [

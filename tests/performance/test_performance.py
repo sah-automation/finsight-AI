@@ -45,7 +45,7 @@ def test_waiting_line_limits_concurrency() -> None:
         started: list[float] = []
 
         async def work() -> int:
-            started.append(asyncio.get_event_loop().time())
+            started.append(asyncio.get_running_loop().time())
             await asyncio.sleep(0.01)
             return 1
 

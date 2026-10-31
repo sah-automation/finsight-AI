@@ -170,14 +170,12 @@ def upload(*args: Any, **kwargs: Any) -> Any:
     import asyncio as _asyncio
 
     try:
-        loop = _asyncio.get_event_loop()
+        loop = _asyncio.get_running_loop()
     except RuntimeError:
         loop = None
     if loop is not None and loop.is_running():
         return _handle(*args, **kwargs)
-    if loop is None:
-        return _asyncio.run(_handle(*args, **kwargs))
-    return loop.run_until_complete(_handle(*args, **kwargs))
+    return _asyncio.run(_handle(*args, **kwargs))
 
 
 handle_upload = upload

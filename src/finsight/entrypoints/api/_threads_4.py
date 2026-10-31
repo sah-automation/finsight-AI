@@ -228,14 +228,12 @@ def threads(*args: Any, **kwargs: Any) -> Any:
     import asyncio
 
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
     if loop is not None and loop.is_running():
         return _handle(*args, **kwargs)
-    if loop is None:
-        return asyncio.run(_handle(*args, **kwargs))
-    return loop.run_until_complete(_handle(*args, **kwargs))
+    return asyncio.run(_handle(*args, **kwargs))
 
 
 list_threads = threads

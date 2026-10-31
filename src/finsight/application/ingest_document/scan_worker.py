@@ -152,60 +152,8 @@ def _extract_event(event: Any) -> dict[str, Any]:
     return out
 
 
-def _resolve_virus_result(
-    scanner: Any, company_id: Any, key: str, bucket: Any, object_storage: Any
-) -> VirusScanResult:
-    if scanner is None:
-        return VirusScanResult(clean=True, detail='scan disabled')
-    # disabled check
-    if hasattr(scanner, 'is_enabled') and not scanner.is_enabled():
-        return VirusScanResult(clean=True, detail='virus scan disabled')
-    if hasattr(scanner, 'enabled') and not bool(scanner.enabled):
-        return VirusScanResult(clean=True, detail='virus scan disabled')
-
-    # call scan with flexible shapes
-    async def _call() -> Any:
-        methods = ['scan', 'scan_object', 'scan_key']
-        for name in methods:
-            method = getattr(scanner, name, None)
-            if not callable(method):
-                continue
-            attempts = [
-                lambda m=method: m(company_id, key, bucket=bucket, object_storage=object_storage),
-                lambda m=method: m(
-                    company_id=company_id, key=key, bucket=bucket, object_storage=object_storage
-                ),
-                lambda m=method: m(company_id, key, bucket=bucket),
-                lambda m=method: m(company_id, key),
-            ]
-            for attempt in attempts:
-                try:
-                    return await _awaitv(attempt())  # type: ignore[no-untyped-call]
-                except TypeError:
-                    continue
-                except Exception as exc:
-                    return VirusScanResult(clean=False, detail=str(exc))
-        # maybe scanner callable
-        if callable(scanner):
-            try:
-                return await _awaitv(scanner(company_id, key))
-            except Exception as exc:
-                return VirusScanResult(clean=False, detail=str(exc))
-        return VirusScanResult(clean=True, detail='scan unavailable')
-
-    import asyncio
-
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # can't run; return coroutine? We'll handle by making scan async method separately.
-            pass
-    except RuntimeError:
-        pass
-    return _call()  # type: ignore[return-value]
-
-
-# The above sync helper isn't used directly; implement async method instead.
+# sync/async bridging helpers were removed; async scan paths use
+# ScanWorker._coerce_scan directly.
 
 
 class ScanWorker:
