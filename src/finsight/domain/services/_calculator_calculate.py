@@ -10,7 +10,10 @@ from .calculation_result import CalculationResult
 
 
 class _CalculatorCalculate:
-    def calculate(self: Any, *args: object, **kwargs: object) -> CalculationResult:
+    def calculate(self, *args: Any, **kwargs: Any) -> Any:
+        return self._calculate_impl(*args, **kwargs)
+
+    def _calculate_impl(self: Any, *args: Any, **kwargs: Any) -> CalculationResult:
         op, values, metric_ids, chunk_ids, meta = self._collect_inputs(*args, **kwargs)
 
         value: Decimal | None = None

@@ -211,7 +211,7 @@ async def _list_sql(
 
 
 async def _list(
-    self: PostgresDocumentTableRepository, company_id: object, *args: object, **kwargs: object
+    self: PostgresDocumentTableRepository, company_id: object, *args: Any, **kwargs: Any
 ) -> builtins.list[DocumentTable]:
     company = _company(company_id)
     if company_id is None and kwargs.get('company_id') is not None:

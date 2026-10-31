@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, PLR2004, TRY300
+# ruff: noqa: BLE001, PLR2004, TRY300
 """LLM gateway usage and chain helpers."""
 
 from __future__ import annotations

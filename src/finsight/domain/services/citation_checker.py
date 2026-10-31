@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from finsight.domain.services.evidence import is_citation_valid
 from finsight.domain.value_objects import Citation
 
 from .citation_validation_result import CitationValidationResult
 
 
-def _collect_citations(*args: object, **kwargs: object) -> list[object]:
+def _collect_citations(*args: Any, **kwargs: Any) -> list[object]:
     result: list[object] = []
     for key in ('citation', 'citations', 'source', 'sources', 'items', 'values'):
         val = kwargs.get(key)
@@ -35,7 +37,7 @@ def _collect_citations(*args: object, **kwargs: object) -> list[object]:
 class CitationChecker:
     """Validate citation presence and well-formed source locators."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.require_version = bool(kwargs.get('require_version', True))
         self.require_page = bool(kwargs.get('require_page', False))
 
@@ -64,7 +66,7 @@ class CitationChecker:
             return bool(citation.strip())
         return bool(citation)
 
-    def check(self, *args: object, **kwargs: object) -> CitationValidationResult:
+    def check(self, *args: Any, **kwargs: Any) -> CitationValidationResult:
         citations = _collect_citations(*args, **kwargs)
         invalid = [c for c in citations if not self._is_valid(c)]
         valid = len(citations) > 0 and not invalid
@@ -82,35 +84,35 @@ class CitationChecker:
             reason=errors[0] if errors else None,
         )
 
-    def is_valid(self, *args: object, **kwargs: object) -> object:
+    def is_valid(self, *args: Any, **kwargs: Any) -> Any:
         # Single-citation convenience: return bool if one citation given
         citations = _collect_citations(*args, **kwargs)
         if len(citations) == 1:
             return self._is_valid(citations[0])
         return self.check(*args, **kwargs)
 
-    def validate(self, *args: object, **kwargs: object) -> CitationValidationResult:
+    def validate(self, *args: Any, **kwargs: Any) -> CitationValidationResult:
         return self.check(*args, **kwargs)
 
-    def validate_citations(self, *args: object, **kwargs: object) -> CitationValidationResult:
+    def validate_citations(self, *args: Any, **kwargs: Any) -> CitationValidationResult:
         return self.check(*args, **kwargs)
 
-    def check_citations(self, *args: object, **kwargs: object) -> CitationValidationResult:
+    def check_citations(self, *args: Any, **kwargs: Any) -> CitationValidationResult:
         return self.check(*args, **kwargs)
 
-    def check_presence(self, *args: object, **kwargs: object) -> bool:
+    def check_presence(self, *args: Any, **kwargs: Any) -> bool:
         citations = _collect_citations(*args, **kwargs)
         return len(citations) > 0
 
-    def has_citation(self, *args: object, **kwargs: object) -> bool:
+    def has_citation(self, *args: Any, **kwargs: Any) -> bool:
         return self.check_presence(*args, **kwargs)
 
-    def __call__(self, *args: object, **kwargs: object) -> CitationValidationResult:
+    def __call__(self, *args: Any, **kwargs: Any) -> CitationValidationResult:
         return self.check(*args, **kwargs)
 
 
 # Functions
-def check_citation(*args: object, **kwargs: object) -> CitationValidationResult:
+def check_citation(*args: Any, **kwargs: Any) -> CitationValidationResult:
     return CitationChecker(
         *args, **{k: v for k, v in kwargs.items() if k in ('require_version', 'require_page')}
     ).check(
@@ -118,7 +120,7 @@ def check_citation(*args: object, **kwargs: object) -> CitationValidationResult:
     )
 
 
-def validate_citation(*args: object, **kwargs: object) -> CitationValidationResult:
+def validate_citation(*args: Any, **kwargs: Any) -> CitationValidationResult:
     return check_citation(*args, **kwargs)
 
 

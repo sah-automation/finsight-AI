@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from finsight.core.types import CompanyId
@@ -13,21 +13,21 @@ class EmbeddingProvider(ABC):
     """Interface for embedding text into vectors."""
 
     @abstractmethod
-    async def embed(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
+    async def embed(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> Any:
         """Embed input text(s) and return vectors."""
         raise NotImplementedError
 
     # Backwards-compatible aliases.
-    async def embed_texts(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
+    async def embed_texts(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> Any:
         return await self.embed(company_id, *args, **kwargs)
 
-    async def embed_text(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
+    async def embed_text(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> Any:
         return await self.embed(company_id, *args, **kwargs)
 
-    async def embed_batch(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
+    async def embed_batch(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> Any:
         return await self.embed(company_id, *args, **kwargs)
 
-    async def embed_many(self, company_id: CompanyId, *args: object, **kwargs: object) -> object:
+    async def embed_many(self, company_id: CompanyId, *args: Any, **kwargs: Any) -> Any:
         return await self.embed(company_id, *args, **kwargs)
 
 

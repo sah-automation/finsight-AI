@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from finsight.adapters.cache.answer_cache import AnswerCache
 from finsight.adapters.messaging.change_event_publisher import ChangeEventPublisher
 from finsight.adapters.repositories.postgres_chunk_repository import (
@@ -64,7 +66,7 @@ def test_provided_dependencies_are_not_replaced() -> None:
 
 
 class _FakeTable:
-    def put_item(self, *args: object, **kwargs: object) -> dict[str, object]:
+    def put_item(self, *args: Any, **kwargs: Any) -> dict[str, object]:
         return {}
 
 

@@ -171,6 +171,10 @@ def build_partition_metadata_repository(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_partition_manager(*args: Any, **kwargs: Any) -> Any:
+    return _build_partition_manager_impl(*args, **kwargs)
+
+
+def _build_partition_manager_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'partition_manager',
@@ -264,6 +268,10 @@ def get_default_container() -> CompositionContainer | None:
 
 
 def build_onboarding_use_case(*args: Any, **kwargs: Any) -> Any:
+    return _build_onboarding_use_case_impl(*args, **kwargs)
+
+
+def _build_onboarding_use_case_impl(*args: Any, **kwargs: Any) -> Any:
     provided_use_case = _existing(
         kwargs,
         'onboarding_use_case',
@@ -418,6 +426,10 @@ def build_onboarding_use_case(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_upload_use_case(*args: Any, **kwargs: Any) -> Any:
+    return _build_upload_use_case_impl(*args, **kwargs)
+
+
+def _build_upload_use_case_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'upload_use_case',
@@ -564,7 +576,11 @@ def build_upload_use_case(*args: Any, **kwargs: Any) -> Any:
         return None
 
 
-def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
+def build_container(*args: Any, **kwargs: Any) -> Any:
+    return _build_container_impl(*args, **kwargs)
+
+
+def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     config = resolve_config(*args, **kwargs)
     session = resolve_session(*args, **kwargs)
 
@@ -972,47 +988,47 @@ def build_container(*args: Any, **kwargs: Any) -> CompositionContainer:
 
 
 def build_composition_root(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_composition_container(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_app_container(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_root(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_context(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def create_container(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def assemble_container(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def wire_container(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_pilot_container(*args: Any, **kwargs: Any) -> CompositionContainer:
     kwargs = dict(kwargs)
     kwargs.setdefault('mode', 'pilot')
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_standard_container(*args: Any, **kwargs: Any) -> CompositionContainer:
     kwargs = dict(kwargs)
     kwargs.setdefault('mode', 'standard')
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_pilot_set(*args: Any, **kwargs: Any) -> CompositionContainer:
@@ -1032,25 +1048,25 @@ def build_standard(*args: Any, **kwargs: Any) -> CompositionContainer:
 
 
 def build_dependencies(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_wiring(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def get_container(*args: Any, **kwargs: Any) -> CompositionContainer | None:
     if args or kwargs:
-        return build_container(*args, **kwargs)
+        return build_container(*args, **kwargs)  # type: ignore[no-any-return]
     return get_default_container()
 
 
 def build_onboarding_container(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def build_upload_container(*args: Any, **kwargs: Any) -> CompositionContainer:
-    return build_container(*args, **kwargs)
+    return build_container(*args, **kwargs)  # type: ignore[no-any-return]
 
 
 def get_onboarding_use_case(*args: Any, **kwargs: Any) -> Any:
@@ -1099,6 +1115,10 @@ def build_onboarding_use_case_container_alias(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_object_storage(*args: Any, **kwargs: Any) -> Any:
+    return _build_object_storage_impl(*args, **kwargs)
+
+
+def _build_object_storage_impl(*args: Any, **kwargs: Any) -> Any:
     """Build an :class:`ObjectStorage` adapter (S3)."""
     provided = _existing(
         kwargs,
@@ -1273,6 +1293,10 @@ def _resolve_reader_names(config: Any) -> list[str]:
 
 
 def build_job_repository(*args: Any, **kwargs: Any) -> Any:
+    return _build_job_repository_impl(*args, **kwargs)
+
+
+def _build_job_repository_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'job_repository',
@@ -1315,6 +1339,10 @@ def build_job_repository(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_audit_log(*args: Any, **kwargs: Any) -> Any:
+    return _build_audit_log_impl(*args, **kwargs)
+
+
+def _build_audit_log_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'audit_log',
@@ -1370,6 +1398,10 @@ def build_audit_log(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_document_repository(*args: Any, **kwargs: Any) -> Any:
+    return _build_document_repository_impl(*args, **kwargs)
+
+
+def _build_document_repository_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'document_repository',
@@ -1414,6 +1446,10 @@ def build_document_repository(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_document_table_repository(*args: Any, **kwargs: Any) -> Any:
+    return _build_document_table_repository_impl(*args, **kwargs)
+
+
+def _build_document_table_repository_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'document_table_repository',
@@ -1464,6 +1500,10 @@ def build_document_table_repository(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_chunk_repository(*args: Any, **kwargs: Any) -> Any:
+    return _build_chunk_repository_impl(*args, **kwargs)
+
+
+def _build_chunk_repository_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'chunk_repository',
@@ -1502,6 +1542,10 @@ def build_chunk_repository(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_vector_write(*args: Any, **kwargs: Any) -> Any:
+    return _build_vector_write_impl(*args, **kwargs)
+
+
+def _build_vector_write_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(kwargs, 'vector_write', 'vector_store_write', 'vector_writer')
     if provided is None:
         candidate = kwargs.get('vector_store')
@@ -1538,6 +1582,10 @@ def build_vector_write(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_change_event_publisher(*args: Any, **kwargs: Any) -> Any:
+    return _build_change_event_publisher_impl(*args, **kwargs)
+
+
+def _build_change_event_publisher_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'change_event_publisher',
@@ -1576,6 +1624,10 @@ def build_change_event_publisher(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_metering(*args: Any, **kwargs: Any) -> Any:
+    return _build_metering_impl(*args, **kwargs)
+
+
+def _build_metering_impl(*args: Any, **kwargs: Any) -> Any:
     """Build the DynamoDB metering adapter and validate configured prices."""
     provided = _existing(
         kwargs,
@@ -1621,6 +1673,10 @@ def build_metering(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_tracing(*args: Any, **kwargs: Any) -> Any:
+    return _build_tracing_impl(*args, **kwargs)
+
+
+def _build_tracing_impl(*args: Any, **kwargs: Any) -> Any:
     """Build the tracing adapter."""
     provided = _existing(
         kwargs,
@@ -1720,6 +1776,10 @@ def build_answer_cache(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_virus_scanner(*args: Any, **kwargs: Any) -> Any:
+    return _build_virus_scanner_impl(*args, **kwargs)
+
+
+def _build_virus_scanner_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'virus_scanner',
@@ -1756,6 +1816,10 @@ def build_virus_scanner(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_job_progress(*args: Any, **kwargs: Any) -> Any:
+    return _build_job_progress_impl(*args, **kwargs)
+
+
+def _build_job_progress_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'job_progress',
@@ -1892,6 +1956,10 @@ _bind_reader_factory_builders()
 
 
 def build_page_router(*args: Any, **kwargs: Any) -> Any:
+    return _build_page_router_impl(*args, **kwargs)
+
+
+def _build_page_router_impl(*args: Any, **kwargs: Any) -> Any:
     config = resolve_config(*args, **kwargs)
     session = resolve_session(*args, **kwargs)
     registry = None
@@ -1992,6 +2060,10 @@ def build_scan_worker_object(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_scan_worker(*args: Any, **kwargs: Any) -> Any:
+    return _build_scan_worker_impl(*args, **kwargs)
+
+
+def _build_scan_worker_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'scan_worker',
@@ -2089,6 +2161,10 @@ def build_scan_worker(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_step_functions_worker_set(*args: Any, **kwargs: Any) -> Any:
+    return _build_step_functions_worker_set_impl(*args, **kwargs)
+
+
+def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     config = resolve_config(*args, **kwargs)
     session = resolve_session(*args, **kwargs)
     _extra0 = {
@@ -2345,6 +2421,10 @@ from .adapter_stacks import (  # noqa: E402
 
 
 def build_unit_of_work(*args: Any, **kwargs: Any) -> Any:
+    return _build_unit_of_work_impl(*args, **kwargs)
+
+
+def _build_unit_of_work_impl(*args: Any, **kwargs: Any) -> Any:
     """Build a :class:`UnitOfWork` adapter over the current DB session."""
     provided = _existing(
         kwargs,
@@ -2424,6 +2504,10 @@ def get_default_unit_of_work() -> Any:
 
 
 def build_queue(*args: Any, **kwargs: Any) -> Any:
+    return _build_queue_impl(*args, **kwargs)
+
+
+def _build_queue_impl(*args: Any, **kwargs: Any) -> Any:
     """Build a queue adapter (SQS)."""
     provided = _existing(
         kwargs,
@@ -2477,6 +2561,10 @@ def build_queue(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_reprocess_use_case(*args: Any, **kwargs: Any) -> Any:
+    return _build_reprocess_use_case_impl(*args, **kwargs)
+
+
+def _build_reprocess_use_case_impl(*args: Any, **kwargs: Any) -> Any:
     """Build a reprocess use case instance."""
     provided = _existing(
         kwargs,

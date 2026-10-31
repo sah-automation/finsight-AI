@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, PLR0911, PLR0912, S110
+# ruff: noqa: BLE001, PLR0911, PLR0912, S110
 """LLM gateway message/chunk helpers."""
 
 from __future__ import annotations

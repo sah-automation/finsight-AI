@@ -239,7 +239,11 @@ def _resolve_reader_names(config: Any) -> list[str]:
     return names
 
 
-def build_reader_registry(*args: Any, **kwargs: Any) -> ReaderRegistry:
+def build_reader_registry(*args: Any, **kwargs: Any) -> Any:
+    return _build_reader_registry_impl(*args, **kwargs)
+
+
+def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
     from .container import resolve_config, resolve_session
 
     config = resolve_config(*args, **kwargs)

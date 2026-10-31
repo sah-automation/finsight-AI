@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001
+# ruff: noqa: BLE001
 """Traced LLM decorator (outermost in the decorator stack)."""
 
 from __future__ import annotations

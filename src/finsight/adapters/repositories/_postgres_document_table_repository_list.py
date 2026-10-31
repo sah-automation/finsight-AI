@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
+    Any,
 )
 
 if TYPE_CHECKING:
@@ -19,6 +20,6 @@ if TYPE_CHECKING:
 
 
 async def _list(
-    self: PostgresDocumentTableRepository, company_id: object, *args: object, **kwargs: object
+    self: PostgresDocumentTableRepository, company_id: object, *args: Any, **kwargs: Any
 ) -> builtins.list[DocumentTable]:
     return await self.list_document_tables(company_id, *args, **kwargs)

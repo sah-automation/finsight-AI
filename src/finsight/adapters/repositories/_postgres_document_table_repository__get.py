@@ -144,7 +144,7 @@ async def _get_sql(
 
 
 async def _get(
-    self: PostgresDocumentTableRepository, company_id: object, *args: object, **kwargs: object
+    self: PostgresDocumentTableRepository, company_id: object, *args: Any, **kwargs: Any
 ) -> DocumentTable | None:
     company = _company(company_id if company_id is not None else kwargs.get('company_id'))
     target, table_id, row_id, version_id, page = _parse_get_args(args, kwargs)

@@ -1,5 +1,7 @@
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0913, PLR0915, PLR0917, PLR2004, RET504, SIM102, SIM110, TRY201, TRY300, TRY301, E501, S110, S112, N815, B004, B007, B023, B025, B904, PGH004, E402, F404, I001, ANN401, F403, F405, F821
 from __future__ import annotations
+
+from typing import Any
 from ._upload_0 import *
 from ._upload_1 import *
 from ._upload_2 import *

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from ._evidence_checker_math import (
     _attr,
     _coalesce,
@@ -11,7 +13,7 @@ from .evidence_result import EvidenceResult
 class _EvidenceCheckerOperations:
     """Decide whether retrieval produced enough evidence."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.min_score = kwargs.get('min_score')
         if self.min_score is None:
             self.min_score = kwargs.get('evidence_min_score')
@@ -124,7 +126,10 @@ class _EvidenceCheckerOperations:
             return not bool(kwargs['use_fallback'])
         return True
 
-    def check(self, *args: object, **kwargs: object) -> EvidenceResult:
+    def check(self, *args: Any, **kwargs: Any) -> Any:
+        return self._check_impl(*args, **kwargs)
+
+    def _check_impl(self, *args: Any, **kwargs: Any) -> EvidenceResult:
         reranker_available = self._reranker_available(kwargs)
 
         # Collect candidate objects
@@ -194,7 +199,7 @@ class _EvidenceCheckerOperations:
         reason: str | None = None
         if not score_lists:
             # Insufficient if we expected at least min_chunks and have none.
-            if chunk_count < int(self.min_chunks or 1):  # type: ignore[call-overload]
+            if chunk_count < int(self.min_chunks or 1):
                 sufficient = False
                 reason = 'no_evidence'
             else:
@@ -204,13 +209,13 @@ class _EvidenceCheckerOperations:
         elif best_score is None or best_score < threshold:
             sufficient = False
             reason = 'low_score'
-        elif chunk_count < int(self.min_chunks or 1):  # type: ignore[call-overload]
+        elif chunk_count < int(self.min_chunks or 1):
             sufficient = False
             reason = 'too_few_chunks'
         # Edge: if chunks provided count differs from scores, ensure min chunks by score count too.
-        if sufficient and len(score_lists) < int(self.min_chunks or 1):  # type: ignore[call-overload]
+        if sufficient and len(score_lists) < int(self.min_chunks or 1):
             # But chunk_count could be provided larger; trust chunk_count.
-            if chunk_count < int(self.min_chunks or 1):  # type: ignore[call-overload]
+            if chunk_count < int(self.min_chunks or 1):
                 sufficient = False
                 reason = 'too_few_chunks'
 
@@ -225,17 +230,17 @@ class _EvidenceCheckerOperations:
             reason=reason,
         )
 
-    def is_sufficient(self, *args: object, **kwargs: object) -> EvidenceResult:
-        return self.check(*args, **kwargs)
+    def is_sufficient(self, *args: Any, **kwargs: Any) -> EvidenceResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def sufficient(self, *args: object, **kwargs: object) -> EvidenceResult:
-        return self.check(*args, **kwargs)
+    def sufficient(self, *args: Any, **kwargs: Any) -> EvidenceResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def has_sufficient_evidence(self, *args: object, **kwargs: object) -> EvidenceResult:
-        return self.check(*args, **kwargs)
+    def has_sufficient_evidence(self, *args: Any, **kwargs: Any) -> EvidenceResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def evaluate(self, *args: object, **kwargs: object) -> EvidenceResult:
-        return self.check(*args, **kwargs)
+    def evaluate(self, *args: Any, **kwargs: Any) -> EvidenceResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def __call__(self, *args: object, **kwargs: object) -> EvidenceResult:
-        return self.check(*args, **kwargs)
+    def __call__(self, *args: Any, **kwargs: Any) -> EvidenceResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]

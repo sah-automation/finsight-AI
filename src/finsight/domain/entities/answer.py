@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from finsight.core.types import AnswerId, CompanyId, UserId
 from finsight.domain.services.evidence import is_citation_valid
@@ -40,7 +41,7 @@ class Answer:
     ``Answer`` cannot be constructed without at least one valid citation.
     """
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         positional = [
             'answer_id',
             'company_id',

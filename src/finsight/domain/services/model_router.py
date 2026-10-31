@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .route_decision import RouteDecision
 
 
@@ -28,7 +30,7 @@ def _to_int_size(value: object) -> int:
 class ModelRouter:
     """Deterministic cheap/primary router."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.cheap_model = _coalesce(
             kwargs, 'cheap_model', 'cheap', 'cheap_model_id', 'cheap_name', default=None
         )
@@ -118,7 +120,10 @@ class ModelRouter:
                     return _to_int_size(d[key])
         return 0
 
-    def route(self, *args: object, **kwargs: object) -> RouteDecision:
+    def route(self, *args: Any, **kwargs: Any) -> Any:
+        return self._route_impl(*args, **kwargs)
+
+    def _route_impl(self, *args: Any, **kwargs: Any) -> RouteDecision:
         data = dict(kwargs)
         calc = self._bool_from_kwargs(
             data,
@@ -181,23 +186,23 @@ class ModelRouter:
         return RouteDecision(tier, self.cheap_model, self.primary_model, reason)
 
     # Aliases
-    def select(self, *args: object, **kwargs: object) -> RouteDecision:
-        return self.route(*args, **kwargs)
+    def select(self, *args: Any, **kwargs: Any) -> RouteDecision:
+        return self.route(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def choose(self, *args: object, **kwargs: object) -> RouteDecision:
-        return self.route(*args, **kwargs)
+    def choose(self, *args: Any, **kwargs: Any) -> RouteDecision:
+        return self.route(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def decide(self, *args: object, **kwargs: object) -> RouteDecision:
-        return self.route(*args, **kwargs)
+    def decide(self, *args: Any, **kwargs: Any) -> RouteDecision:
+        return self.route(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def determine(self, *args: object, **kwargs: object) -> RouteDecision:
-        return self.route(*args, **kwargs)
+    def determine(self, *args: Any, **kwargs: Any) -> RouteDecision:
+        return self.route(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def __call__(self, *args: object, **kwargs: object) -> RouteDecision:
-        return self.route(*args, **kwargs)
+    def __call__(self, *args: Any, **kwargs: Any) -> RouteDecision:
+        return self.route(*args, **kwargs)  # type: ignore[no-any-return]
 
 
-def route_question(*args: object, **kwargs: object) -> RouteDecision:
+def route_question(*args: Any, **kwargs: Any) -> RouteDecision:
     data = dict(kwargs)
     checker_kwargs = {}
     for key in (
@@ -212,7 +217,7 @@ def route_question(*args: object, **kwargs: object) -> RouteDecision:
     ):
         if key in data:
             checker_kwargs[key] = data.pop(key)
-    return ModelRouter(**checker_kwargs).route(*args, **data)
+    return ModelRouter(**checker_kwargs).route(*args, **data)  # type: ignore[no-any-return]
 
 
 DeterministicRouter = ModelRouter

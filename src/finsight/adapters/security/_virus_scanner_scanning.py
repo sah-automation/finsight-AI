@@ -126,7 +126,10 @@ class _VirusScannerScanning:
                     return VirusScanResult(clean=False, detail=_coerce_str(signature))
         return VirusScanResult(clean=True, detail='clean')
 
-    async def scan(
+    async def scan(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._scan_impl(*args, **kwargs)
+
+    async def _scan_impl(
         self,
         *args: Any,
         **kwargs: Any,

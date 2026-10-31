@@ -43,7 +43,7 @@ class _CalculatorOperations:
         return True
 
     def _collect_inputs(
-        self: Any, *args: object, **kwargs: object
+        self: Any, *args: Any, **kwargs: Any
     ) -> tuple[str, list[Decimal], list[str], list[str], dict[str, object]]:
         data = dict(kwargs)
 

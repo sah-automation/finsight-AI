@@ -1,5 +1,3 @@
-# ruff: noqa: ANN401
-
 from __future__ import annotations
 
 import hashlib
@@ -14,7 +12,11 @@ from ._citation_locator_codec import (
 )
 
 
-def mint_citation_locator(
+def mint_citation_locator(*args: Any, **kwargs: Any) -> Any:
+    return _mint_citation_locator_impl(*args, **kwargs)
+
+
+def _mint_citation_locator_impl(
     secret: Any = None,
     *args: object,
     secret_key: Any = None,
@@ -83,21 +85,21 @@ def mint_citation_locator(
     return _CitationLocator(token, payload)
 
 
-def sign_citation_locator(*args: object, **kwargs: object) -> _CitationLocator:
-    return mint_citation_locator(*args, **kwargs)
+def sign_citation_locator(*args: Any, **kwargs: Any) -> _CitationLocator:
+    return mint_citation_locator(*args, **kwargs)  # type: ignore[no-any-return]
 
 
-def issue_citation_locator(*args: object, **kwargs: object) -> _CitationLocator:
-    return mint_citation_locator(*args, **kwargs)
+def issue_citation_locator(*args: Any, **kwargs: Any) -> _CitationLocator:
+    return mint_citation_locator(*args, **kwargs)  # type: ignore[no-any-return]
 
 
-def create_citation_locator(*args: object, **kwargs: object) -> _CitationLocator:
-    return mint_citation_locator(*args, **kwargs)
+def create_citation_locator(*args: Any, **kwargs: Any) -> _CitationLocator:
+    return mint_citation_locator(*args, **kwargs)  # type: ignore[no-any-return]
 
 
-def generate_citation_locator(*args: object, **kwargs: object) -> _CitationLocator:
-    return mint_citation_locator(*args, **kwargs)
+def generate_citation_locator(*args: Any, **kwargs: Any) -> _CitationLocator:
+    return mint_citation_locator(*args, **kwargs)  # type: ignore[no-any-return]
 
 
-def make_citation_locator(*args: object, **kwargs: object) -> _CitationLocator:
-    return mint_citation_locator(*args, **kwargs)
+def make_citation_locator(*args: Any, **kwargs: Any) -> _CitationLocator:
+    return mint_citation_locator(*args, **kwargs)  # type: ignore[no-any-return]

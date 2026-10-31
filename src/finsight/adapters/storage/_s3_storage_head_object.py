@@ -7,7 +7,11 @@ from ._s3_storage_helpers import *
 from ._s3_storage_supports import _supports
 
 
-async def head_object(
+async def head_object(*args: Any, **kwargs: Any) -> Any:
+    return await _head_object_impl(*args, **kwargs)
+
+
+async def _head_object_impl(
     self: Any,
     company_id: Any,
     key: Any,

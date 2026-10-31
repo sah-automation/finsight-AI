@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 from finsight.domain.value_objects.span import (
     Span,
@@ -55,41 +56,41 @@ class TracingPort(ABC):
         )
         raise NotImplementedError
 
-    async def span(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def span(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def emit_span(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def emit_span(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def record_span(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def record_span(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def trace(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def trace(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def trace_operation(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def trace_operation(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def start(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def start(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def begin_span(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def begin_span(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def open_span(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def open_span(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def create_span(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def create_span(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def emit(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def emit(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def record(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def record(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
-    async def put(self, company_id: object, *args: object, **kwargs: object) -> object:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def put(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
+        return await self.start_span(company_id, *args, **kwargs)
 
     async def make_span(
         self,

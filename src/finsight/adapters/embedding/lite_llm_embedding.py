@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, S110, PLC0415
+# ruff: noqa: BLE001, S110, PLC0415
 """LiteLLM-backed embedding adapter with retries and dimension validation."""
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def _resolve_aembedding() -> Any:
     sync_fn = getattr(_litellm_module, 'embedding', None) if _litellm_module is not None else None
     if sync_fn is not None:
 
-        async def _wrapped(*args: Any, **kwargs: Any) -> Any:
+        async def _wrapped(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
             return sync_fn(*args, **kwargs)
 
         return _wrapped

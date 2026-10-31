@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
+    Any,
 )
 
 # Host module-level definitions (injected at runtime of this helper)
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 
 async def _upsert_document_table(
-    self: PostgresDocumentTableRepository, company_id: object, *args: object, **kwargs: object
+    self: PostgresDocumentTableRepository, company_id: object, *args: Any, **kwargs: Any
 ) -> DocumentTable:
     company_id = kwargs.pop('company_id', company_id)
     values = list(args)

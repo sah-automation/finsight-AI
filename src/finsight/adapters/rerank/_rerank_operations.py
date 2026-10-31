@@ -85,7 +85,7 @@ def _init_reranker(self: Any, *args: Any, **kwargs: Any) -> None:
     )
 
 
-async def _rerank(self: Any, company_id: object, *args: object, **kwargs: object) -> Any:
+async def _rerank(self: Any, company_id: object, *args: Any, **kwargs: Any) -> Any:
     company = _company(company_id)
     values: dict[str, Any] = dict(kwargs)
     question, candidates = _parse(args, values)

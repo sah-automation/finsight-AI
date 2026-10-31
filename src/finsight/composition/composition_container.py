@@ -513,7 +513,10 @@ class CompositionContainer:
         except KeyError:
             return default
 
-    def wire_entrypoints(self) -> None:
+    def wire_entrypoints(self, *args: Any, **kwargs: Any) -> Any:
+        return self._wire_entrypoints_impl(*args, **kwargs)
+
+    def _wire_entrypoints_impl(self) -> None:
         import contextlib
 
         with contextlib.suppress(Exception):

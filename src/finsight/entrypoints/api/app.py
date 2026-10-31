@@ -18,7 +18,11 @@ from finsight.entrypoints.api import (
 )
 
 
-def create_app() -> FastAPI:
+def create_app(*args: Any, **kwargs: Any) -> Any:
+    return _create_app_impl(*args, **kwargs)
+
+
+def _create_app_impl() -> FastAPI:
     app = FastAPI(
         title='FinSight AI API',
         version='0.1.0',

@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, PLR0911, PLR0912
+# ruff: noqa: PLR0911, PLR0912
 """Embedding adapter helpers."""
 
 from __future__ import annotations

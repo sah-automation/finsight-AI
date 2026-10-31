@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from ._output_gate_operations import _OutputGateOperations
 from .output_verification_result import OutputVerificationResult
 
@@ -10,7 +12,7 @@ class OutputGate(_OutputGateOperations):
     """Pure output verification service."""
 
 
-def verify_output(*args: object, **kwargs: object) -> OutputVerificationResult:
+def verify_output(*args: Any, **kwargs: Any) -> OutputVerificationResult:
     checker_kwargs: dict[str, object] = {}
     data = dict(kwargs)
     for key in (
@@ -27,7 +29,7 @@ def verify_output(*args: object, **kwargs: object) -> OutputVerificationResult:
     ):
         if key in data:
             checker_kwargs[key] = data.pop(key)
-    return OutputGate(**checker_kwargs).check(*args, **data)
+    return OutputGate(**checker_kwargs).check(*args, **data)  # type: ignore[no-any-return]
 
 
 OutputVerifier = OutputGate

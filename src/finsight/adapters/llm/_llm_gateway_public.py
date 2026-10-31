@@ -1,4 +1,3 @@
-# ruff: noqa: ANN401
 """LLM gateway public method helpers."""
 
 from __future__ import annotations

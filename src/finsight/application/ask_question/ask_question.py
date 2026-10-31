@@ -523,6 +523,9 @@ class AskQuestion:
 
         # ---- Heavy work wrapper ----
         async def heavy() -> Any:
+            return await _heavy_impl()
+
+        async def _heavy_impl() -> Any:
             await self._trace(company_id, 'waiting_line')
             # Understanding.
             understand_result = await self._understand(q, company_id, parallel=parallel)

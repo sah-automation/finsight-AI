@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from finsight.core.types import ChunkId, CompanyId, DocumentId
 
@@ -34,7 +34,11 @@ def compute_chunk_hash(text: str, *, context_header: str = '') -> str:
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 
-def build_stable_chunk_id(  # noqa: PLR0913 - identity inputs are explicit policy inputs
+def build_stable_chunk_id(*args: Any, **kwargs: Any) -> Any:
+    return _build_stable_chunk_id_impl(*args, **kwargs)
+
+
+def _build_stable_chunk_id_impl(  # noqa: PLR0913 - identity inputs are explicit policy inputs
     company_id: CompanyId,
     document_id: DocumentId,
     *,

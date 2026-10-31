@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, ANN401, S110, ARG004, PLC0415
+# ruff: noqa: BLE001, S110, ARG004, PLC0415
 # mypy: disable-error-code="misc,method-assign,no-untyped-def,arg-type,attr-defined"
 """LiteLLM-backed model gateway with failover, backup requests, and metering."""
 
@@ -97,7 +97,7 @@ def _resolve_acompletion() -> Callable[..., Any]:
     completion_fn = getattr(_litellm_module, 'completion', None) if _litellm_module else None
     if completion_fn is not None:
 
-        async def _wrapped(*args: Any, **kwargs: Any) -> Any:
+        async def _wrapped(self, *args: Any, **kwargs: Any) -> Any:
             return completion_fn(*args, **kwargs)
 
         return _wrapped
@@ -118,7 +118,7 @@ class LiteLLMGateway(LLMGatewayPort):
     _attempt_step = _attempt_step
     _stream_chain_helper = staticmethod(_stream_chain)
 
-    async def stream(self, company_id: object = None, *args: object, **kwargs: object) -> object:
+    async def stream(self, company_id: object = None, *args: Any, **kwargs: Any) -> Any:
 
         async def gen() -> Any:
             async for item in _stream(self, company_id, args, kwargs, _GatewayStreamChunk):
@@ -126,28 +126,22 @@ class LiteLLMGateway(LLMGatewayPort):
 
         return gen()
 
-    async def complete(self, company_id: object = None, *args: object, **kwargs: object) -> object:
+    async def complete(self, company_id: object = None, *args: Any, **kwargs: Any) -> Any:
         return await _complete(self, company_id, args, kwargs, _GatewayStreamChunk)
 
-    async def generate(self, company_id: object = None, *args: object, **kwargs: object) -> object:
+    async def generate(self, company_id: object = None, *args: Any, **kwargs: Any) -> Any:
         return await self.complete(company_id, *args, **kwargs)
 
-    async def chat(self, company_id: object = None, *args: object, **kwargs: object) -> object:
+    async def chat(self, company_id: object = None, *args: Any, **kwargs: Any) -> Any:
         return await self.complete(company_id, *args, **kwargs)
 
-    async def generate_text(
-        self, company_id: object = None, *args: object, **kwargs: object
-    ) -> object:
+    async def generate_text(self, company_id: object = None, *args: Any, **kwargs: Any) -> object:
         return await self.complete(company_id, *args, **kwargs)
 
-    async def stream_complete(
-        self, company_id: object = None, *args: object, **kwargs: object
-    ) -> object:
+    async def stream_complete(self, company_id: object = None, *args: Any, **kwargs: Any) -> object:
         return self.stream(company_id, *args, **kwargs)
 
-    async def stream_text(
-        self, company_id: object = None, *args: object, **kwargs: object
-    ) -> object:
+    async def stream_text(self, company_id: object = None, *args: Any, **kwargs: Any) -> object:
         return self.stream(company_id, *args, **kwargs)
 
     @staticmethod

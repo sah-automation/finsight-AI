@@ -159,28 +159,28 @@ class VirusScanner(_VirusScannerOperations, _VirusScannerScanning, VirusScannerP
     # ------------------------------------------------------------------ helpers
 
     async def scan_object(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        return await self.scan(*args, **kwargs)
+        return await self.scan(*args, **kwargs)  # type: ignore[no-any-return]
 
     async def scan_key(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        return await self.scan(*args, **kwargs)
+        return await self.scan(*args, **kwargs)  # type: ignore[no-any-return]
 
     async def scan_file(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        return await self.scan(*args, **kwargs)
+        return await self.scan(*args, **kwargs)  # type: ignore[no-any-return]
 
     async def scan_bytes(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        return await self.scan(*args, **kwargs)
+        return await self.scan(*args, **kwargs)  # type: ignore[no-any-return]
 
     async def scan_content(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        return await self.scan(*args, **kwargs)
+        return await self.scan(*args, **kwargs)  # type: ignore[no-any-return]
 
     async def scan_document(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        return await self.scan(*args, **kwargs)
+        return await self.scan(*args, **kwargs)  # type: ignore[no-any-return]
 
     async def check(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        return await self.scan(*args, **kwargs)
+        return await self.scan(*args, **kwargs)  # type: ignore[no-any-return]
 
     async def analyze(self, *args: Any, **kwargs: Any) -> VirusScanResult:
-        return await self.scan(*args, **kwargs)
+        return await self.scan(*args, **kwargs)  # type: ignore[no-any-return]
 
     async def is_clean(self, *args: Any, **kwargs: Any) -> bool:
         result = await self.scan(*args, **kwargs)

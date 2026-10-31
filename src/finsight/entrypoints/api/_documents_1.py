@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, PLR0911, PLR0912, RET504, TRY300, S112, B023, I001, ANN401, F403, F405
+# ruff: noqa: BLE001, PLR0911, PLR0912, RET504, TRY300, S112, B023, I001, F403, F405
 from __future__ import annotations
 import contextlib
 import inspect

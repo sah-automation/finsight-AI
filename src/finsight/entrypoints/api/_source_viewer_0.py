@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, B004, I001, ANN401
+# ruff: noqa: BLE001, B004, I001
 """API entrypoint for source viewer backend (Slice 6.7).
 
 Exposes two canonical authenticated endpoints:

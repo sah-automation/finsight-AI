@@ -1,4 +1,3 @@
-# ruff: noqa: ANN401
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -73,7 +72,10 @@ class SourceViewerResult:
     def get(self, key: str, default: Any = None) -> Any:
         return self.to_dict().get(key, default)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, *args: Any, **kwargs: Any) -> Any:
+        return self._to_dict_impl(*args, **kwargs)
+
+    def _to_dict_impl(self) -> dict[str, Any]:
         return {
             'status': self.status,
             'document_id': self.document_id,

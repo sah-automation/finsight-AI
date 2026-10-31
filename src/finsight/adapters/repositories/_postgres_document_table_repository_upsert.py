@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 async def _upsert(
-    self: PostgresDocumentTableRepository, company_id: object, *args: object, **kwargs: object
+    self: PostgresDocumentTableRepository, company_id: object, *args: Any, **kwargs: Any
 ) -> Any:
     if kwargs.get('tables') is not None or any(isinstance(v, (list, tuple, set)) for v in args):
         return await self.upsert_document_tables(company_id, *args, **kwargs)

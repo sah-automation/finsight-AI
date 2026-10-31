@@ -8,6 +8,10 @@ from finsight.application.ask_question import AskQuestion
 
 
 def get_ask_use_case(*args: Any, **kwargs: Any) -> Any:
+    return _get_ask_use_case_impl(*args, **kwargs)
+
+
+def _get_ask_use_case_impl(*args: Any, **kwargs: Any) -> Any:
     """Return the wired ask-question use case."""
     provided = (
         kwargs.get('ask_question_use_case') or kwargs.get('ask_use_case') or kwargs.get('use_case')

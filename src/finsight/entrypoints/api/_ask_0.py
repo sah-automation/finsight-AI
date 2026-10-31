@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, E501, I001, ANN401
+# ruff: noqa: BLE001, E501, I001
 """API entrypoint for Q&A ask functionality with typed SSE streaming."""
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ try:
         get_ask_use_case as _get_ask_use_case_raw,
     )
 
-    def _get_ask_use_case(*args: Any, **kwargs: Any) -> Any:
+    def _get_ask_use_case(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
         if args or kwargs:
             return _get_ask_use_case_raw(*args, **kwargs)
         try:

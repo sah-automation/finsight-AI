@@ -1,5 +1,3 @@
-# ruff: noqa: ANN401
-
 """Port for append-only audit logging."""
 
 from __future__ import annotations

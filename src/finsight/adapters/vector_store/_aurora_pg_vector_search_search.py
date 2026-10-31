@@ -50,7 +50,7 @@ def _search_options(
 
 
 async def _search(
-    self: AuroraPgVectorSearch, company_id: object, *args: object, **kwargs: object
+    self: AuroraPgVectorSearch, company_id: object, *args: Any, **kwargs: Any
 ) -> list[SearchResult]:
     company = _company(company_id)
     values: dict[str, Any] = dict(kwargs)

@@ -1,4 +1,3 @@
-# ruff: noqa: ANN401
 from typing import Any
 
 from .lite_llm_gateway import LiteLLMGateway

@@ -28,7 +28,10 @@ _switch_values: ContextVar[dict[str, Any] | None] = ContextVar('switch_values', 
 class TraceFormatter(JsonFormatter):
     """JSON formatter that includes trace context."""
 
-    def add_fields(
+    def add_fields(self, *args: Any, **kwargs: Any) -> Any:
+        return self._add_fields_impl(*args, **kwargs)
+
+    def _add_fields_impl(
         self,
         log_record: dict[str, Any],
         record: logging.LogRecord,
@@ -93,7 +96,11 @@ class TextFormatter(logging.Formatter):
         return base
 
 
-def configure_logging(
+def configure_logging(*args: Any, **kwargs: Any) -> Any:
+    return _configure_logging_impl(*args, **kwargs)
+
+
+def _configure_logging_impl(
     level: str = 'INFO',
     format_type: str = 'json',
     service_name: str = 'finsight-ai',

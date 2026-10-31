@@ -6,6 +6,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
 
 def _coalesce(
@@ -41,7 +42,7 @@ def _as_decimal(value: object) -> object:
 class UsageRecord:
     """Typed usage/cost record produced by metering."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__setattr__('_initialized', False)
         positional = [
             'company_id',

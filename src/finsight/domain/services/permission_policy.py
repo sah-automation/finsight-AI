@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from finsight.core.types import Action, DocumentCategory, Role
@@ -11,7 +11,11 @@ if TYPE_CHECKING:
 PermissionMatrix = Mapping[str, Mapping[str, Sequence[str]]]
 
 
-def is_permission_allowed(
+def is_permission_allowed(*args: Any, **kwargs: Any) -> Any:
+    return _is_permission_allowed_impl(*args, **kwargs)
+
+
+def _is_permission_allowed_impl(
     permissions: PermissionMatrix,
     role: Role | str,
     category: DocumentCategory | str,

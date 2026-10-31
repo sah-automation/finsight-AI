@@ -1,4 +1,4 @@
-# ruff: noqa: PLR0911, SIM102, SIM110, B007, I001, ANN401
+# ruff: noqa: PLR0911, SIM102, SIM110, B007, I001
 """API entrypoint returning the authenticated user's context."""
 
 from __future__ import annotations

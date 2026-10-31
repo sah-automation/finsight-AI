@@ -1,4 +1,4 @@
-# ruff: noqa: PLR0912, I001, ANN401
+# ruff: noqa: PLR0912, I001
 """API entrypoint for document uploads (with partition-existence gate)."""
 
 from __future__ import annotations

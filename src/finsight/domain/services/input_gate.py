@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from typing import Any
 
 from finsight.core.errors import PolicyBlocked
 
@@ -147,7 +148,10 @@ class InputGate:
         text = _INVISIBLE_RE.sub('', text)
         return _normalise_whitespace(text)
 
-    def check(
+    def check(self, *args: Any, **kwargs: Any) -> Any:
+        return self._check_impl(*args, **kwargs)
+
+    def _check_impl(
         self,
         question: object = None,
         *,
@@ -207,7 +211,7 @@ class InputGate:
         result = self.check(question, company_id=company_id)
         if not result.allowed:
             raise PolicyBlocked(result.reason or 'input_blocked')
-        return result
+        return result  # type: ignore[no-any-return]
 
     def __call__(
         self,
@@ -215,7 +219,7 @@ class InputGate:
         *,
         company_id: object = None,
     ) -> InputGateResult:
-        return self.check(question, company_id=company_id)
+        return self.check(question, company_id=company_id)  # type: ignore[no-any-return]
 
 
 __all__ = ['InputGate', 'InputGateResult', 'detect_pii', 'detect_prompt_injection', 'mask_pii']

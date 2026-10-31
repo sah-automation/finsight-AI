@@ -1,4 +1,4 @@
-# ruff: noqa: PLC0415, PLR0912, PLR0915, PLR2004, SIM102, TRY300, B007, I001, ANN401, F403, F405
+# ruff: noqa: PLC0415, PLR0912, PLR0915, PLR2004, SIM102, TRY300, B007, I001, F403, F405
 from __future__ import annotations
 from typing import Any
 from fastapi import HTTPException

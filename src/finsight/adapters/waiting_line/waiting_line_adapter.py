@@ -79,7 +79,10 @@ class WaitingLineAdapter(WaitingLinePort):
         """Number of jobs currently running."""
         return self._active_total
 
-    async def run(self, company_id: object, *args: object, **kwargs: object) -> object:
+    async def run(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._run_impl(*args, **kwargs)
+
+    async def _run_impl(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
         company = _company(company_id)
         values: dict[str, Any] = dict(kwargs)
         work, work_args, work_kwargs = self._parse_work(args, values)

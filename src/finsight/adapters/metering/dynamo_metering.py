@@ -20,7 +20,10 @@ class DynamoMetering(MeteringPort):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _init_metering(self, *args, **kwargs)
 
-    async def record_usage(
+    async def record_usage(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._record_usage_impl(*args, **kwargs)
+
+    async def _record_usage_impl(
         self,
         company_id: object,
         *,

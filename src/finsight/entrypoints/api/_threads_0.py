@@ -1,4 +1,4 @@
-# ruff: noqa: PLR0911, I001, ANN401
+# ruff: noqa: PLR0911, I001
 """API entrypoint for chat thread persistence and read access (Slice 7.2)."""
 
 from __future__ import annotations

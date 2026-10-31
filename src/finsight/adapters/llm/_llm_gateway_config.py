@@ -1,4 +1,3 @@
-# ruff: noqa: ANN401
 """LLM gateway configuration helpers."""
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, TRY301, B904, I001, ANN401, F403, F405
+# ruff: noqa: BLE001, TRY301, B904, I001, F403, F405
 from __future__ import annotations
 from typing import Any
 from finsight.application.source_viewer import SourceViewerResult

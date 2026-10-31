@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, PLR0912, PLR0913, PLR0917, PLR2004, TRY300, S110, RUF059, PLC0415
+# ruff: noqa: BLE001, PLR0912, PLR0913, PLR0917, PLR2004, TRY300, S110, RUF059, PLC0415
 """LLM gateway streaming helpers."""
 
 from __future__ import annotations

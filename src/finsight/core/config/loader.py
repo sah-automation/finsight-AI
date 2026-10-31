@@ -106,7 +106,10 @@ class ConfigLoader:
                 result[key] = value
         return result
 
-    def load(self, environment: Environment | str | None = None) -> Config:  # noqa: PLR0912, PLR0915
+    def load(self, *args: Any, **kwargs: Any) -> Any:
+        return self._load_impl(*args, **kwargs)
+
+    def _load_impl(self, environment: Environment | str | None = None) -> Config:  # noqa: PLR0912, PLR0915
         if environment is None:
             env_str = os.environ.get('ENVIRONMENT', 'development')
             try:
@@ -195,7 +198,7 @@ _loader = ConfigLoader()
 
 
 def load_config(environment: Environment | str | None = None) -> Config:
-    return _loader.load(environment)
+    return _loader.load(environment)  # type: ignore[no-any-return]
 
 
 def get_config() -> Config:

@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, PLR0912, PLR0915
+# ruff: noqa: PLR0912, PLR0915
 """LLM gateway init helper."""
 
 from __future__ import annotations

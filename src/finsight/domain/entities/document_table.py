@@ -6,6 +6,7 @@ import json
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from typing import Any
 
 from finsight.core.types import CompanyId, DocumentId
 
@@ -41,7 +42,7 @@ def _as_bool(value: object, default: bool = False) -> bool:
 class DocumentTable:
     """A normalised table extracted from a document version."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:  # noqa: PLR0915
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: PLR0915
         positional = [
             'id',
             'company_id',

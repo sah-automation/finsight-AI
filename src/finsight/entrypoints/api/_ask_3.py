@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, PLR0912, PLR0915, TRY300, I001, ANN401, F403, F405
+# ruff: noqa: BLE001, PLR0912, PLR0915, TRY300, I001, F403, F405
 from __future__ import annotations
 import inspect
 from typing import Any

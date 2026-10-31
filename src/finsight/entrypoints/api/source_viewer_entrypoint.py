@@ -1,6 +1,5 @@
 """Compatibility entrypoint alias for source viewer."""
 
-# ruff: noqa: ANN401
 from __future__ import annotations
 
 from typing import Any

@@ -1,5 +1,3 @@
-# ruff: noqa: ANN401
-
 """Port for object (blob) storage operations."""
 
 from __future__ import annotations

@@ -172,7 +172,7 @@ async def _mark_inactive_sql(
 
 
 async def _mark_inactive(
-    self: PostgresDocumentTableRepository, company_id: object, *args: object, **kwargs: object
+    self: PostgresDocumentTableRepository, company_id: object, *args: Any, **kwargs: Any
 ) -> int:
     company, version_id, document_id, table_ids, exclude_ids = _parse_mark_inactive_args(
         company_id, args, kwargs

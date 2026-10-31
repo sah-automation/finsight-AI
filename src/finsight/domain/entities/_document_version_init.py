@@ -33,7 +33,7 @@ def _normalize_review_scope(value: object) -> str | None:
     return text
 
 
-def _init_document_version(instance: Any, *args: object, **kwargs: object) -> None:  # noqa: ANN401, PLR0912, PLR0915
+def _init_document_version(instance: Any, *args: Any, **kwargs: Any) -> None:  # noqa: PLR0912, PLR0915
     positional_order = [
         'id',
         'company_id',

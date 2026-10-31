@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, PLR0912, PLR0915, TRY300, TRY301, PLC0415
+# ruff: noqa: BLE001, PLR0912, PLR0915, TRY300, TRY301, PLC0415
 """Embedding adapter operation helpers."""
 
 from __future__ import annotations

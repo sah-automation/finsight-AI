@@ -39,7 +39,10 @@ from finsight.domain.services.document_table_payload import (
 class DocumentTableNormalizer:
     """Convert raw reader tables into :class:`DocumentTable` entities."""
 
-    def normalize(
+    def normalize(self, *args: Any, **kwargs: Any) -> Any:
+        return self._normalize_impl(*args, **kwargs)
+
+    def _normalize_impl(
         self,
         tables: Any = None,
         company_id: Any = None,
@@ -80,7 +83,10 @@ class DocumentTableNormalizer:
             normalised.append(table)
         return normalised
 
-    def normalize_table(
+    def normalize_table(self, *args: Any, **kwargs: Any) -> Any:
+        return self._normalize_table_impl(*args, **kwargs)
+
+    def _normalize_table_impl(
         self,
         table: Any = None,
         company_id: Any = None,
@@ -124,7 +130,7 @@ class DocumentTableNormalizer:
         document_id: Any = None,
         version_id: Any = None,
     ) -> list[DocumentTable]:
-        return self.normalize(
+        return self.normalize(  # type: ignore[no-any-return]
             first_value(result, 'tables', default=[]),
             company_id=company_id,
             document_id=document_id,

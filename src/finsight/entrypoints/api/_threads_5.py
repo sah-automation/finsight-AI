@@ -1,4 +1,4 @@
-# ruff: noqa: RET504, E402, I001, ANN401, F403, F405
+# ruff: noqa: RET504, E402, I001, F403, F405
 from __future__ import annotations
 from typing import Any
 from fastapi import APIRouter

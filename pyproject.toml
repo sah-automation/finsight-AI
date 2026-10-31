@@ -94,6 +94,7 @@ ignore = [
     "TRY003",  # Avoid specifying long messages outside the exception class - allowed
     "ERA001",  # Commented-out code - sometimes useful for debugging
     "PERF401", # List comprehension suggestion - not required
+    "ANN401",  # Dynamic *args/**kwargs in compatibility shims
 ]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["S101", "S106", "PTH118", "ARG001", "ARG002", "E501", "E402", "PLR2004", "S311", "ANN401", "PLR0913", "PLR0917", "RET504"]

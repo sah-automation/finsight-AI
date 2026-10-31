@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal, InvalidOperation
+from typing import Any
 
 _NUMBER_RE = re.compile(r'(?<![\w.])(-?\d[\d,]*(?:\.\d+)?)(?!\d)')
 
@@ -58,7 +59,7 @@ def _value_from_metric(metric: object) -> object:
     return metric
 
 
-def _collect_citations(*args: object, **kwargs: object) -> list[object]:
+def _collect_citations(*args: Any, **kwargs: Any) -> list[object]:
     result: list[object] = []
     for key in ('citation', 'citations', 'sources', 'source'):
         val = kwargs.get(key)

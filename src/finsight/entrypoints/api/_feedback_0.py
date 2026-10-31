@@ -1,4 +1,4 @@
-# ruff: noqa: PLR0911, I001, ANN401
+# ruff: noqa: PLR0911, I001
 """API entrypoint for feedback and report-wrong-source submissions (Slice 7.3)."""
 
 from __future__ import annotations

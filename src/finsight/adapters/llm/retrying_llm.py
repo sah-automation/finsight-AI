@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, S110, SIM105
+# ruff: noqa: BLE001, S110, SIM105
 """Retrying LLM decorator."""
 
 from __future__ import annotations

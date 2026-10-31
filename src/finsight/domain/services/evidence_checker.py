@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from ._evidence_checker_math import (
     answer_has_evidence,
     is_citation_valid,
@@ -14,7 +16,7 @@ class EvidenceChecker(_EvidenceCheckerOperations):
     """Decide whether retrieval produced enough evidence."""
 
 
-def has_sufficient_evidence(*args: object, **kwargs: object) -> EvidenceResult:
+def has_sufficient_evidence(*args: Any, **kwargs: Any) -> EvidenceResult:
     data = dict(kwargs)
     checker_kwargs: dict[str, object] = {}
     for key in (
@@ -34,7 +36,7 @@ def has_sufficient_evidence(*args: object, **kwargs: object) -> EvidenceResult:
         checker_kwargs['config'] = cfg_args[0]
         args = tuple(a for a in args if a is not cfg_args[0])
     checker = EvidenceChecker(**checker_kwargs)
-    return checker.check(*args, **data)
+    return checker.check(*args, **data)  # type: ignore[no-any-return]
 
 
 # Aliases

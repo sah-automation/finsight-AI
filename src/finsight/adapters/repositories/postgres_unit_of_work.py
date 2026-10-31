@@ -34,7 +34,7 @@ __all__ = [
 class PostgresUnitOfWork(UnitOfWorkPort):
     """Unit of work wrapping an (optionally async) database session."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.config = kwargs.get('config')
         self._session = _resolve_session(*args, **kwargs)
         self._session_factory = kwargs.get('session_factory') or kwargs.get('factory')

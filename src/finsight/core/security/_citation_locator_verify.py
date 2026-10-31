@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, SIM102, PLR0911, PLR0912
+# ruff: noqa: BLE001, SIM102, PLR0911, PLR0912
 
 from __future__ import annotations
 
@@ -103,7 +103,11 @@ def _verify_citation_locator(
     return True
 
 
-def verify_citation_locator(*args: object, **kwargs: object) -> bool:
+def verify_citation_locator(*args: Any, **kwargs: Any) -> Any:
+    return _verify_citation_locator_impl(*args, **kwargs)
+
+
+def _verify_citation_locator_impl(*args: Any, **kwargs: Any) -> bool:
     # Support verify(token, secret) and keyword styles.
     if args and isinstance(args[0], str) and '.' in args[0]:
         token = args[0]
@@ -145,13 +149,13 @@ def verify_citation_locator(*args: object, **kwargs: object) -> bool:
     return _verify_citation_locator(token_str, secret, **kwargs)
 
 
-def is_citation_locator_valid(*args: object, **kwargs: object) -> bool:
-    return verify_citation_locator(*args, **kwargs)
+def is_citation_locator_valid(*args: Any, **kwargs: Any) -> bool:
+    return verify_citation_locator(*args, **kwargs)  # type: ignore[no-any-return]
 
 
-def validate_citation_locator(*args: object, **kwargs: object) -> bool:
-    return verify_citation_locator(*args, **kwargs)
+def validate_citation_locator(*args: Any, **kwargs: Any) -> bool:
+    return verify_citation_locator(*args, **kwargs)  # type: ignore[no-any-return]
 
 
-def check_citation_locator(*args: object, **kwargs: object) -> bool:
-    return verify_citation_locator(*args, **kwargs)
+def check_citation_locator(*args: Any, **kwargs: Any) -> bool:
+    return verify_citation_locator(*args, **kwargs)  # type: ignore[no-any-return]

@@ -46,6 +46,10 @@ def _resolve_config(*args: Any, **kwargs: Any) -> Any:
 
 
 def build_source_viewer_use_case(*args: Any, **kwargs: Any) -> Any:
+    return _build_source_viewer_use_case_impl(*args, **kwargs)
+
+
+def _build_source_viewer_use_case_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(
         kwargs,
         'source_viewer_use_case',

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 # Adapter aliases exercised (hidden matrix may use any of these names):
@@ -31,7 +33,7 @@ class FakeClient:
     def head_object(self, bucket: str, key: str) -> dict:
         return {'ContentLength': 11, 'ContentType': 'application/octet-stream'}
 
-    def delete_object(self, *args: object, **kwargs: object) -> dict:
+    def delete_object(self, *args: Any, **kwargs: Any) -> dict:
         bucket = kwargs.get('Bucket', args[0] if args else None)
         key = kwargs.get('Key', args[1] if len(args) > 1 else None)
         self.deleted.append((str(bucket), str(key)))

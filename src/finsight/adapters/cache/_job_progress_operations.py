@@ -242,7 +242,10 @@ class _JobProgressOperations:
                 results.append(_ProgressRecord(dict(item)))
         return results
 
-    async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    async def delete_progress(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._delete_progress_impl(*args, **kwargs)
+
+    async def _delete_progress_impl(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
         kwargs_copy = dict(kwargs)
         if (
             company_id is not None

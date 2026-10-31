@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 # Host module-level definitions (injected at runtime of this helper)
 from ._postgres_unit_of_work_shared import _await_maybe
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 async def _call_best_effort(
-    self: PostgresUnitOfWork, obj: object, method_name: str, *args: object, **kwargs: object
+    self: PostgresUnitOfWork, obj: object, method_name: str, *args: Any, **kwargs: Any
 ) -> object:
     method = getattr(obj, method_name, None)
     if not callable(method):

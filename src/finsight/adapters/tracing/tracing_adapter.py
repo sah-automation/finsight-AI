@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, PLR0912, PLR0913
+# ruff: noqa: BLE001, PLR0912, PLR0913
 """Tracing adapter for structured, redacted span emission."""
 
 from __future__ import annotations
@@ -87,7 +87,10 @@ class TracingAdapter(TracingPort):
     # Port implementation
     # ------------------------------------------------------------------
 
-    async def start_span(
+    async def start_span(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._start_span_impl(*args, **kwargs)
+
+    async def _start_span_impl(
         self,
         company_id: object,
         operation: str | None = None,
@@ -219,41 +222,41 @@ class TracingAdapter(TracingPort):
             kwargs['active'] = self.enabled
         return Span(company_id=company_id, **kwargs)
 
-    async def span(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def span(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def emit_span(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def emit_span(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def record_span(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def record_span(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def trace(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def trace(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def trace_operation(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def trace_operation(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def start(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def start(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def begin_span(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def begin_span(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def open_span(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def open_span(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def create_span(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def create_span(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def emit(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def emit(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def record(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def record(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
-    async def put(self, company_id: object, *args: object, **kwargs: object) -> Span:
-        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[arg-type]
+    async def put(self, company_id: object, *args: Any, **kwargs: Any) -> Span:
+        return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
 
 _alias_names = [

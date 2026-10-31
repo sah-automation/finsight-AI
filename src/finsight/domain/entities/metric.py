@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from finsight.core.types import CompanyId, MetricId
 from finsight.domain.value_objects.currency import Currency
@@ -24,7 +25,7 @@ class Metric:
     """A financial metric carrying value, unit, currency, period, document and
     source location."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:  # noqa: PLR0912, PLR0915
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: PLR0912, PLR0915
         positional = [
             'metric_id',
             'company_id',

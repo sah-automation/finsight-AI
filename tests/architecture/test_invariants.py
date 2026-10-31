@@ -80,9 +80,125 @@ VENDOR_BRANCHING_PATTERNS = [
 # Functions/classes that should only be instantiated in composition/adapters
 # are defined in tests/support/ast_inspection.py.
 
-# Maximum lines per file/function (warn level)
+# Maximum lines per file/function
 MAX_FILE_LINES = 300
 MAX_FUNCTION_LINES = 30
+
+# Reviewed exceptions for module size. Each entry must include a reason, an
+# owner, and a removal condition. Adding an entry without these fields makes
+# the size gate fail.
+OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
+    'core/errors/__init__.py': {
+        'reason': 'Central error class registry for Phase 1.',
+        'owner': 'core platform',
+        'removal_condition': 'Split into per-domain error modules when registry exceeds 450 lines.',
+    },
+    'adapters/readers/textract_reader.py': {
+        'reason': 'Textract adapter bundles sync/async polling and response parsing.',
+        'owner': 'adapters',
+        'removal_condition': 'Extract polling and parsing helpers once contract tests guard behavior.',
+    },
+    'application/ask_question/ask_question.py': {
+        'reason': 'Q&A orchestration retains legacy heavy execution path.',
+        'owner': 'application',
+        'removal_condition': 'Finish named-step extraction started in H11.',
+    },
+    'application/delete_document/delete_document.py': {
+        'reason': 'Delete orchestration includes compatibility aliases.',
+        'owner': 'application',
+        'removal_condition': 'Remove aliases after H20 compatibility window.',
+    },
+    'application/ingest_document/pipeline_step_worker.py': {
+        'reason': 'Ingestion worker keeps generic property proxy helpers.',
+        'owner': 'application',
+        'removal_condition': 'Replace __getattr__ fallbacks with explicit inputs.',
+    },
+    'application/ingest_document/scan_worker.py': {
+        'reason': 'Scan worker keeps provider-specific payload helpers.',
+        'owner': 'application',
+        'removal_condition': 'Move payload helpers into readers adapters.',
+    },
+    'application/ingest_document/upload_document.py': {
+        'reason': 'Upload orchestration keeps broad constructor resolution.',
+        'owner': 'application',
+        'removal_condition': 'Narrow constructor resolution into typed dependencies.',
+    },
+    'application/onboarding/create_company.py': {
+        'reason': 'Onboarding retains alias and normalization helpers.',
+        'owner': 'application',
+        'removal_condition': 'Collapse alias helpers after H20.',
+    },
+    'application/reprocess/reprocess.py': {
+        'reason': 'Reprocess orchestration retains helper duplicates.',
+        'owner': 'application',
+        'removal_condition': 'Share helpers via the ingest application module.',
+    },
+    'application/source_viewer/source_viewer.py': {
+        'reason': 'Source viewer combines reader decoding and authorization helpers.',
+        'owner': 'application',
+        'removal_condition': 'Split decoded lokator handling from viewer orchestration.',
+    },
+    'application/update_document/update_document.py': {
+        'reason': 'Update orchestration retains compatibility aliases.',
+        'owner': 'application',
+        'removal_condition': 'Remove aliases after H20 compatibility window.',
+    },
+    'composition/composition_container.py': {
+        'reason': 'Composition container preserves compatibility exports.',
+        'owner': 'composition',
+        'removal_condition': 'Collapse exports to canonical builders.',
+    },
+    'composition/container.py': {
+        'reason': 'Composition root is the aggregate resolver and alias surface.',
+        'owner': 'composition',
+        'removal_condition': 'Move alias block behind explicit compatibility module.',
+    },
+    'composition/reader_registry.py': {
+        'reason': 'Reader registry combines built-in and custom registration paths.',
+        'owner': 'composition',
+        'removal_condition': 'Extract custom registration strategy.',
+    },
+}
+
+# Reviewed exceptions for oversized public functions whose signatures/contracts
+# make the documented 30-line guidance impractical today.
+OVERSIZED_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
+    'composition/reader_factory.py::create': {
+        'reason': 'Factory constructor retains full diagnostic signature.',
+        'owner': 'composition',
+        'removal_condition': 'Split signature into a typed request object.',
+    },
+    'adapters/waiting_line/waiting_line_settings.py::from_kwargs': {
+        'reason': 'Legacy kwargs adapter signature.',
+        'owner': 'adapters',
+        'removal_condition': 'Collapse to typed settings model.',
+    },
+    'domain/ports/audit_log.py::append': {
+        'reason': 'Append port is the single aggregate audit entry contract.',
+        'owner': 'domain',
+        'removal_condition': 'Split into focused audit event types.',
+    },
+    'domain/entities/chunk.py::create': {
+        'reason': 'Chunk factory keeps backward-compatible signature.',
+        'owner': 'domain',
+        'removal_condition': 'Introduce typed chunk construction input.',
+    },
+    'core/config/models/documents_config.py::validate_per_company_reader_overrides': {
+        'reason': 'Pydantic validators require a single method.',
+        'owner': 'core config',
+        'removal_condition': 'Extract validation helpers behind a thin validator.',
+    },
+    'domain/ports/tracing_port.py::start_span': {
+        'reason': 'Tracing port aggregate signature.',
+        'owner': 'domain',
+        'removal_condition': 'Split span configuration object.',
+    },
+    'domain/ports/metering_port.py::record_usage': {
+        'reason': 'Metering port aggregate signature.',
+        'owner': 'domain',
+        'removal_condition': 'Split usage payload object.',
+    },
+}
 
 
 # ============================================================
@@ -382,47 +498,65 @@ class TestFolderReadmes:
 
 
 # ============================================================
-# Test: File and function size limits (warning only for now)
+# Test: File and function size limits
 # ============================================================
 
 
 @pytest.mark.architecture
 class TestSizeLimits:
-    """Warn on oversized files/functions."""
+    """Files under 300 lines and public functions under 30 lines."""
 
     def test_file_line_count(self) -> None:
-        """Files should be under ~300 lines."""
+        """Files should be under ~300 lines unless a reviewed exception applies."""
         oversized = []
         for filepath in SRC_ROOT.rglob('*.py'):
             if '__pycache__' in filepath.parts:
                 continue
             lines = filepath.read_text().count('\n')
-            if lines > MAX_FILE_LINES:
-                oversized.append((str(filepath.relative_to(SRC_ROOT)), lines))
+            if lines <= MAX_FILE_LINES:
+                continue
+            relative = str(filepath.relative_to(SRC_ROOT))
+            exception = OVERSIZED_FILE_EXCEPTIONS.get(relative)
+            if exception is None:
+                oversized.append(f'{relative}: {lines} lines')
+                continue
+            for required in ('reason', 'owner', 'removal_condition'):
+                if not exception.get(required):
+                    oversized.append(f'{relative}: missing exception field {required}')
 
-        if oversized:
-            # Warn for now - can be upgraded to error later
-            print('\n⚠️  Files exceeding 300 lines:')
-            for path, lines in oversized:
-                print(f'  {path}: {lines} lines')
+        assert not oversized, 'Oversized files without a valid exception:\n' + '\n'.join(
+            f'  {item}' for item in oversized
+        )
 
     def test_function_line_count(self) -> None:
-        """Functions should be under ~30 lines."""
+        """Public functions should be under ~30 lines."""
         oversized = []
         for filepath in SRC_ROOT.rglob('*.py'):
             if '__pycache__' in filepath.parts:
                 continue
+            relative = str(filepath.relative_to(SRC_ROOT))
             tree = parse_python_file(filepath)
             for name, start, end in find_function_defs(tree):
-                if not name.startswith('_'):
-                    lines = end - start + 1
-                    if lines > MAX_FUNCTION_LINES:
-                        oversized.append((str(filepath.relative_to(SRC_ROOT)), name, lines))
+                if name.startswith('_'):
+                    continue
+                lines = end - start + 1
+                if lines <= MAX_FUNCTION_LINES:
+                    continue
+                key = f'{relative}::{name}'
+                oversized.append(f'{key}: {lines} lines')
 
-        if oversized:
-            print('\n⚠️  Functions exceeding 30 lines:')
-            for path, name, lines in oversized[:20]:  # Limit output
-                print(f'  {path}::{name}: {lines} lines')
+        # Function exceptions, kept separate so a new oversized function fails.
+        for key in list(oversized):
+            exception_name = key.split(': ', 1)[0]
+            if exception_name in OVERSIZED_FUNCTION_EXCEPTIONS and all(
+                OVERSIZED_FUNCTION_EXCEPTIONS[exception_name].get(field)
+                for field in ('reason', 'owner', 'removal_condition')
+            ):
+                oversized.remove(key)
+
+        assert not oversized, 'Oversized functions:\n' + '\n'.join(
+            f'  {item}' for item in oversized
+        )
 
 
 # ============================================================

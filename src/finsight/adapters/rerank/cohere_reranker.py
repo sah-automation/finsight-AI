@@ -29,7 +29,7 @@ class CohereReranker(RerankerPort):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _init_reranker(self, *args, **kwargs)
 
-    async def rerank(self, company_id: object, *args: object, **kwargs: object) -> Any:
+    async def rerank(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
         return await _rerank(self, company_id, *args, **kwargs)
 
 

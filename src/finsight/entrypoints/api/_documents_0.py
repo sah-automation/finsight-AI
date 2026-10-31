@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, S110, E402, I001, ANN401
+# ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, S110, E402, I001
 """API entrypoint for the document library and lifecycle (Slice 4.5)."""
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ try:
         build_document_repository as _build_document_repository,
     )
 
-    def _get_document_repository(*args: Any, **kwargs: Any) -> Any:
+    def _get_document_repository(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
         if args or kwargs:
             return _build_document_repository(*args, **kwargs)
         try:

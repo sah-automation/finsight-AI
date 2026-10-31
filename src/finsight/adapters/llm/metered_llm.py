@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001, PLC0415
+# ruff: noqa: BLE001, PLC0415
 """Metered LLM decorator (records usage around an inner LLM gateway)."""
 
 from __future__ import annotations

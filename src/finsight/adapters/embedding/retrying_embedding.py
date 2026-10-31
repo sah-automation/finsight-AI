@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, BLE001
+# ruff: noqa: BLE001
 from __future__ import annotations
 
 import asyncio

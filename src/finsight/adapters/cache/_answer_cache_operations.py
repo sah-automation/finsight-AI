@@ -111,7 +111,10 @@ class _AnswerCacheOperations:
             return None
         return _decode_value(item.get('value'), item.get('encoding'))
 
-    async def set(
+    async def set(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._set_impl(*args, **kwargs)
+
+    async def _set_impl(
         self,
         company_id: object,
         value: object,

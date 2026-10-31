@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from typing import Any
 
 try:
     from finsight.adapters.repositories.base_repository import set_rls_context as _set_rls_context
@@ -25,7 +26,7 @@ async def _await_maybe(value: object) -> object:
     return value
 
 
-def _resolve_session(*args: object, **kwargs: object) -> object:
+def _resolve_session(*args: Any, **kwargs: Any) -> Any:
     for arg in args:
         if arg is None or isinstance(arg, (dict, str, int, float, bool)):
             continue

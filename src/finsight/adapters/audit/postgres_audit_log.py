@@ -37,7 +37,10 @@ class PostgresAuditLog(BaseRepository, AuditLogPort):
         self._events: list[_AuditRecord] = []
         self.events = self._events
 
-    async def append(
+    async def append(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._append_impl(*args, **kwargs)
+
+    async def _append_impl(
         self,
         company_id: Any = None,
         *,

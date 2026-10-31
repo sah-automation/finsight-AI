@@ -15,6 +15,6 @@ if TYPE_CHECKING:
 
 
 async def _upsert_table(
-    self: PostgresDocumentTableRepository, company_id: object, *args: object, **kwargs: object
+    self: PostgresDocumentTableRepository, company_id: object, *args: Any, **kwargs: Any
 ) -> Any:
     return await self.upsert_document_table(company_id, *args, **kwargs)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
+from typing import Any
 
 
 def _coalesce(
@@ -22,7 +23,7 @@ def _coalesce(
 class Span:
     """Minimal structured span emitted by tracing ports/adapters."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__setattr__('_initialized', False)
         positional = [
             'name',

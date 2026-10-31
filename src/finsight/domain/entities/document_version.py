@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -82,7 +82,7 @@ class DocumentVersion:
     metadata: dict[str, object] | None = None
     extras: dict[str, object] = field(default_factory=dict)
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         _init_document_version(self, *args, **kwargs)
 
     def can_transition_to(self, target: object) -> bool:
@@ -142,31 +142,31 @@ class DocumentVersion:
         return self.transition_to(DocumentVersionState.SUPERSEDED)
 
     # Aliases for the transition method.
-    def transition(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def transition(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
-    def move_to(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def move_to(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
-    def advance_to(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def advance_to(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
-    def change_state(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def change_state(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
-    def set_state(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def set_state(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
-    def set_status(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def set_status(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
-    def update_state(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def update_state(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
-    def to_state(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def to_state(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
-    def goto(self, target: object, *args: object, **kwargs: object) -> DocumentVersion:
+    def goto(self, target: object, *args: Any, **kwargs: Any) -> DocumentVersion:
         return self.transition_to(target, *args, **kwargs)
 
 

@@ -1807,8 +1807,8 @@ def verify_signed_locator(token: Any, secret: Any) -> bool:
         from finsight.core.security.citation_locator import verify_citation_locator
 
         if secret is None:
-            return verify_citation_locator(token)
-        return verify_citation_locator(token, secret)
+            return verify_citation_locator(token)  # type: ignore[no-any-return]
+        return verify_citation_locator(token, secret)  # type: ignore[no-any-return]
     except Exception:
         return False
 

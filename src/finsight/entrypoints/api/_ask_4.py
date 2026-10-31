@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, PLR0912, PLR0915, TRY301, N815, I001, ANN401, F403, F405
+# ruff: noqa: BLE001, PLR0912, PLR0915, TRY301, N815, I001, F403, F405
 from __future__ import annotations
 import inspect
 from typing import Any
@@ -32,7 +32,7 @@ async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
         *args, **kwargs
     )
 
-    async def generator() -> Any:
+    async def _generator() -> Any:
         emitted_complete = False
         try:
             # Permission best-effort.
@@ -193,7 +193,7 @@ async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
             yield _sse('complete', {'done': True, 'error': True})
 
     return StreamingResponse(
-        generator(),
+        _generator(),
         media_type='text/event-stream',
         headers={
             'Cache-Control': 'no-cache',

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
+    Any,
 )
 
 if TYPE_CHECKING:
@@ -17,6 +18,6 @@ if TYPE_CHECKING:
 
 
 async def _get(
-    self: PostgresDocumentTableRepository, company_id: object, *args: object, **kwargs: object
+    self: PostgresDocumentTableRepository, company_id: object, *args: Any, **kwargs: Any
 ) -> DocumentTable | None:
     return await self.get_document_table(company_id, *args, **kwargs)

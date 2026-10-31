@@ -1,4 +1,3 @@
-# ruff: noqa: ANN401
 """Embedding embed method helpers."""
 
 from __future__ import annotations

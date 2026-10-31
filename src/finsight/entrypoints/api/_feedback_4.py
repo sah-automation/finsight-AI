@@ -1,4 +1,4 @@
-# ruff: noqa: PLC0415, PLR0912, PLR0915, RET504, SIM102, I001, ANN401, F403, F405
+# ruff: noqa: PLC0415, PLR0912, PLR0915, RET504, SIM102, I001, F403, F405
 from __future__ import annotations
 import uuid
 from datetime import UTC, datetime

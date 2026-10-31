@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from finsight.domain.services.input_gate import detect_pii
 
@@ -16,7 +17,7 @@ from .output_verification_result import OutputVerificationResult
 class _OutputGateOperations:
     """Pure output verification service."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.mode = (
             kwargs.get('mode')
             or kwargs.get('output_check_mode')
@@ -89,7 +90,10 @@ class _OutputGateOperations:
                 allowed.add(val)
         return allowed
 
-    def check(
+    def check(self, *args: Any, **kwargs: Any) -> Any:
+        return self._check_impl(*args, **kwargs)
+
+    def _check_impl(
         self,
         *args: object,
         **kwargs: object,
@@ -199,30 +203,30 @@ class _OutputGateOperations:
             reason=reasons[0] if reasons else None,
         )
 
-    def verify(self, *args: object, **kwargs: object) -> OutputVerificationResult:
-        return self.check(*args, **kwargs)
+    def verify(self, *args: Any, **kwargs: Any) -> OutputVerificationResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def validate(self, *args: object, **kwargs: object) -> OutputVerificationResult:
-        return self.check(*args, **kwargs)
+    def validate(self, *args: Any, **kwargs: Any) -> OutputVerificationResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def check_output(self, *args: object, **kwargs: object) -> OutputVerificationResult:
-        return self.check(*args, **kwargs)
+    def check_output(self, *args: Any, **kwargs: Any) -> OutputVerificationResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def verify_output(self, *args: object, **kwargs: object) -> OutputVerificationResult:
-        return self.check(*args, **kwargs)
+    def verify_output(self, *args: Any, **kwargs: Any) -> OutputVerificationResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def output_check(self, *args: object, **kwargs: object) -> OutputVerificationResult:
-        return self.check(*args, **kwargs)
+    def output_check(self, *args: Any, **kwargs: Any) -> OutputVerificationResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def check_sentence(self, *args: object, **kwargs: object) -> OutputVerificationResult:
+    def check_sentence(self, *args: Any, **kwargs: Any) -> OutputVerificationResult:
         kwargs = dict(kwargs)
         kwargs.setdefault('mode', 'per_sentence')
-        return self.check(*args, **kwargs)
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def check_answer(self, *args: object, **kwargs: object) -> OutputVerificationResult:
+    def check_answer(self, *args: Any, **kwargs: Any) -> OutputVerificationResult:
         kwargs = dict(kwargs)
         kwargs.setdefault('mode', 'full_answer')
-        return self.check(*args, **kwargs)
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def __call__(self, *args: object, **kwargs: object) -> OutputVerificationResult:
-        return self.check(*args, **kwargs)
+    def __call__(self, *args: Any, **kwargs: Any) -> OutputVerificationResult:
+        return self.check(*args, **kwargs)  # type: ignore[no-any-return]

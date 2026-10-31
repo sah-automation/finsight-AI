@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import getcontext
+from typing import Any
 
 from ._calculator_calculate import _CalculatorCalculate
 from ._calculator_operations import _CalculatorOperations
@@ -16,47 +17,47 @@ class Calculator(_CalculatorCalculate, _CalculatorOperations):
 
     _ALLOWED = {'sum', 'average', 'avg', 'mean', 'ratio', 'margin', 'variance', 'var'}
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         # Configuration-like limits are accepted but unused.
         self.allowed_operations = {'sum', 'average', 'ratio', 'margin', 'variance'}
 
     # Convenience
-    def sum(self, *args: object, **kwargs: object) -> CalculationResult:
+    def sum(self, *args: Any, **kwargs: Any) -> CalculationResult:
         kwargs = dict(kwargs)
         kwargs.setdefault('operation', 'sum')
-        return self.calculate(*args, **kwargs)
+        return self.calculate(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def average(self, *args: object, **kwargs: object) -> CalculationResult:
+    def average(self, *args: Any, **kwargs: Any) -> CalculationResult:
         kwargs = dict(kwargs)
         kwargs.setdefault('operation', 'average')
-        return self.calculate(*args, **kwargs)
+        return self.calculate(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def avg(self, *args: object, **kwargs: object) -> CalculationResult:
+    def avg(self, *args: Any, **kwargs: Any) -> CalculationResult:
         return self.average(*args, **kwargs)
 
-    def mean(self, *args: object, **kwargs: object) -> CalculationResult:
+    def mean(self, *args: Any, **kwargs: Any) -> CalculationResult:
         return self.average(*args, **kwargs)
 
-    def ratio(self, *args: object, **kwargs: object) -> CalculationResult:
+    def ratio(self, *args: Any, **kwargs: Any) -> CalculationResult:
         kwargs = dict(kwargs)
         kwargs.setdefault('operation', 'ratio')
-        return self.calculate(*args, **kwargs)
+        return self.calculate(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def margin(self, *args: object, **kwargs: object) -> CalculationResult:
+    def margin(self, *args: Any, **kwargs: Any) -> CalculationResult:
         kwargs = dict(kwargs)
         kwargs.setdefault('operation', 'margin')
-        return self.calculate(*args, **kwargs)
+        return self.calculate(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def variance(self, *args: object, **kwargs: object) -> CalculationResult:
+    def variance(self, *args: Any, **kwargs: Any) -> CalculationResult:
         kwargs = dict(kwargs)
         kwargs.setdefault('operation', 'variance')
-        return self.calculate(*args, **kwargs)
+        return self.calculate(*args, **kwargs)  # type: ignore[no-any-return]
 
-    def __call__(self, *args: object, **kwargs: object) -> CalculationResult:
-        return self.calculate(*args, **kwargs)
+    def __call__(self, *args: Any, **kwargs: Any) -> CalculationResult:
+        return self.calculate(*args, **kwargs)  # type: ignore[no-any-return]
 
 
-def calculate(*args: object, **kwargs: object) -> CalculationResult:
+def calculate(*args: Any, **kwargs: Any) -> CalculationResult:
     data = dict(kwargs)
     calc_kwargs = {}
     for key in ('company_id', 'period', 'category', 'document_id', 'version'):
@@ -66,7 +67,7 @@ def calculate(*args: object, **kwargs: object) -> CalculationResult:
     merged.update(data)
     for _k, _v in calc_kwargs.items():
         merged[_k] = _v
-    return Calculator().calculate(*args, **merged)
+    return Calculator().calculate(*args, **merged)  # type: ignore[no-any-return]
 
 
 # Aliases
