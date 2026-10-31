@@ -53,29 +53,6 @@ def _text(value: Any) -> str:
     return '' if value is None else str(value)
 
 
-def _switch(config: Any, name: str, default: Any = None) -> Any:
-    if config is None:
-        return default
-    val = None
-    if isinstance(config, dict):
-        switches = config.get('switches', {})
-        if isinstance(switches, dict):
-            val = switches.get(name)
-        if val is None:
-            val = config.get(name)
-    else:
-        switches = getattr(config, 'switches', None)
-        if switches is not None:
-            val = (
-                switches.get(name) if isinstance(switches, dict) else getattr(switches, name, None)
-            )
-        if val is None:
-            val = getattr(config, name, None)
-    if val is None:
-        return default
-    return val
-
-
 class UpdateDocument:
     """Orchestrate an update request: validate, create version, enqueue."""
 
@@ -314,7 +291,7 @@ class UpdateDocument:
             ):
                 raise ValidationError('replaces_document_id is required for update uploads.')
 
-        await self._step_ensure_partition(company_id)
+        await self._ensure_partition(company_id)
 
         if upload_type_text == 'update':
             if replaces_raw is not None and str(replaces_raw).strip() != '':
@@ -643,9 +620,6 @@ class UpdateDocument:
         )
         return stamp_value, cache_cleared, affected, metrics_recomputed, published
 
-    async def _step_ensure_partition(self, company_id: Any) -> None:
-        await self._ensure_partition(company_id)
-
     def _normalise_input(self, request: Any, extra: dict[str, Any]) -> Any:
         if request is None and not extra:
             return {}
@@ -831,19 +805,15 @@ class UpdateDocument:
     def _resolve_delta_tracking(self) -> bool:
         value = self._delta_tracking
         if value is None:
-            switched = _switch(self._config, 'delta_tracking', None)
-            if switched is not None:
-                value = switched
+            docs_cfg = None
+            if isinstance(self._config, dict):
+                docs_cfg = self._config.get('documents', self._config.get('ingestion'))
             else:
-                docs_cfg = None
-                if isinstance(self._config, dict):
-                    docs_cfg = self._config.get('documents', self._config.get('ingestion'))
-                else:
-                    docs_cfg = _get_attr(self._config, 'documents', 'ingestion')
-                if isinstance(docs_cfg, dict):
-                    value = docs_cfg.get('delta_tracking')
-                elif docs_cfg is not None:
-                    value = _get_attr(docs_cfg, 'delta_tracking')
+                docs_cfg = _get_attr(self._config, 'documents', 'ingestion')
+            if isinstance(docs_cfg, dict):
+                value = docs_cfg.get('delta_tracking')
+            elif docs_cfg is not None:
+                value = _get_attr(docs_cfg, 'delta_tracking')
         if value is None:
             value = True
         try:

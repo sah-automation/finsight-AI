@@ -331,8 +331,6 @@ class CreateCompany:
         if tx is not None:
             await self._commit_transaction(tx)
 
-        if request_key is not None:
-            self._request_cache[request_key] = result
         return result  # noqa: TRY300
 
     def _normalise_input(self, request: Any, extra: dict[str, Any]) -> Any:
