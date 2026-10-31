@@ -11,6 +11,25 @@ from ._postgres_unit_of_work_shared import (
     _resolve_session,
 )
 
+__all__ = [
+    'DatabaseTransaction',
+    'DatabaseUnitOfWork',
+    'DbTransaction',
+    'DbUnitOfWork',
+    'PgUnitOfWork',
+    'PostgresUnitOfWork',
+    'SessionTransaction',
+    'SessionUnitOfWork',
+    'SqlAlchemyTransaction',
+    'SqlAlchemyUnitOfWork',
+    'SqlUnitOfWork',
+    'TransactionManager',
+    'UnitOfWork',
+    'UnitOfWorkAdapter',
+    'UnitOfWorkImpl',
+    'UnitOfWorkManager',
+]
+
 
 class PostgresUnitOfWork(UnitOfWorkPort):
     """Unit of work wrapping an (optionally async) database session."""

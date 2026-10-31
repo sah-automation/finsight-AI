@@ -63,6 +63,7 @@ class AuroraPgVectorSearch(HybridSearchPort, BaseVectorStore):
         self._chunks: dict[str, dict[str, dict[str, Any]]] = {}
 
     async def index_chunks(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        """Seed the in-memory store used when no database session is wired."""
         from ._aurora_pg_vector_search_index_chunks import _index_chunks as _adapter_method
 
         return await _adapter_method(self, company_id, *args, **kwargs)

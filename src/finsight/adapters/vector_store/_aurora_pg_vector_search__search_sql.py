@@ -20,6 +20,12 @@ if TYPE_CHECKING:
     from .aurora_pg_vector_search import AuroraPgVectorSearch
 
 
+async def _set_search_context(self: AuroraPgVectorSearch, company: str) -> None:
+    await self._execute(
+        "SELECT set_config('app.company_id', :company_id, true)", {'company_id': company}
+    )
+
+
 async def _search_sql(
     self: AuroraPgVectorSearch,
     company: str,
@@ -34,9 +40,7 @@ async def _search_sql(
     include_inactive: bool,
     values: dict[str, Any],
 ) -> list[SearchResult]:
-    await self._execute(
-        "SELECT set_config('app.company_id', :company_id, true)", {'company_id': company}
-    )
+    await _set_search_context(self, company)
     params: dict[str, Any] = {'company_id': company, 'top_k': max(1, top_k)}
     sql = self._sql(
         query,

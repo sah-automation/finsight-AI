@@ -24,6 +24,29 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     from .aurora_pg_vector_write import AuroraPgVectorWrite
 
+_MARK_VERSION_INACTIVE_SQL = (
+    f'UPDATE {_TABLE} SET is_active = FALSE, updated_at = now() '
+    'WHERE company_id = :company_id AND version_id = :version_id AND is_active = TRUE '
+    'AND (cardinality(:exclude_ids) = 0 OR NOT (chunk_id = ANY(:exclude_ids)))'
+)
+
+
+def _mark_version_inactive_memory(
+    self: AuroraPgVectorWrite,
+    company: str,
+    version: str,
+    excluded: set[str],
+) -> int:
+    records = self._memory.get(company, {})
+    changed = 0
+    for chunk_id, record in records.items():
+        if record.get('version_id') != version or chunk_id in excluded:
+            continue
+        if record.get('is_active'):
+            record['is_active'] = False
+            changed += 1
+    return changed
+
 
 async def _mark_version_inactive(
     self: AuroraPgVectorWrite,
@@ -37,20 +60,10 @@ async def _mark_version_inactive(
     version = _text(version_id)
     excluded = {_text(chunk_id) for chunk_id in exclude_chunk_ids}
     if self._session is None:
-        records = self._memory.get(company, {})
-        changed = 0
-        for chunk_id, record in records.items():
-            if record.get('version_id') != version or chunk_id in excluded:
-                continue
-            if record.get('is_active'):
-                record['is_active'] = False
-                changed += 1
-        return changed
+        return _mark_version_inactive_memory(self, company, version, excluded)
     await self._set_rls_context(company_id)
     result = await self._execute(
-        f'UPDATE {_TABLE} SET is_active = FALSE, updated_at = now() '
-        'WHERE company_id = :company_id AND version_id = :version_id AND is_active = TRUE '
-        'AND (cardinality(:exclude_ids) = 0 OR NOT (chunk_id = ANY(:exclude_ids)))',
+        _MARK_VERSION_INACTIVE_SQL,
         {
             'company_id': company,
             'version_id': version,

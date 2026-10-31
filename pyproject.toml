@@ -252,17 +252,24 @@ ignore = [
 "src/finsight/adapters/vector_store/*.py" = ["ANN401", "BLE001", "S608"]
 "src/finsight/adapters/vector_store/aurora_pg_vector_search.py" = ["PLC0415"]
 "src/finsight/adapters/vector_store/aurora_pg_vector_write.py" = ["PLC0415"]
-# Extracted helper modules preserve the original adapter's flexible surfaces.
-"src/finsight/adapters/vector_store/_*.py" = [
+# Extracted helper modules retain the original adapter's documented exemptions.
+"src/finsight/adapters/vector_store/_aurora_pg_vector_search_*.py" = [
     "ANN401", "BLE001", "PLC0415", "S608", "E501", "S110", "PLR0912", "PLR0915",
     "TRY300", "SIM102", "PLR0913", "PLR0917", "TRY203", "SIM105",
 ]
-# Extracted helper modules preserve the original adapter's flexible surfaces.
-"src/finsight/adapters/repositories/_*.py" = [
+"src/finsight/adapters/vector_store/_aurora_pg_vector_write_*.py" = [
+    "ANN401", "BLE001", "PLC0415", "S608", "E501", "S110", "PLR0912", "PLR0915",
+    "TRY300", "SIM102", "PLR0913", "PLR0917", "TRY203", "SIM105",
+]
+"src/finsight/adapters/repositories/_job_*.py" = [
+    "ANN401", "BLE001", "PLC0415", "E501", "S608", "S110", "PLR0911", "PLR0912", "PLR0915",
+    "TRY300", "SIM102", "PLR0913", "PLR0917", "TRY203", "SIM105",
+]
+"src/finsight/adapters/repositories/_postgres_*.py" = [
     "ANN401", "BLE001", "PLC0415", "S608", "E501", "S110", "PLR0911", "PLR0912", "PLR0915",
     "TRY300", "SIM102", "PLR0913", "PLR0917", "TRY203", "SIM105",
 ]
-"src/finsight/adapters/partitions/_*.py" = [
+"src/finsight/adapters/partitions/_partition_manager_*.py" = [
     "ANN401", "BLE001", "PLC0415", "S608", "E501", "S110", "PLR0912", "PLR0915",
     "TRY300", "SIM102", "PLR0913", "PLR0917", "TRY203", "SIM105",
 ]

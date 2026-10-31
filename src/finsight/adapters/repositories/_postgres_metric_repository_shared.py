@@ -111,7 +111,7 @@ def _row_to_metric(row: object | None) -> Metric | None:
         try:
             source_location = json.loads(source_location)
         except (TypeError, ValueError):
-            pass
+            source_location = None
     return Metric(
         metric_id=_row_value(row, 'id', 'metric_id'),
         company_id=_row_value(row, 'company_id'),

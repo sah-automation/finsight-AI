@@ -24,12 +24,10 @@ if TYPE_CHECKING:
     from .aurora_pg_vector_search import AuroraPgVectorSearch
 
 
-async def _search(
-    self: AuroraPgVectorSearch, company_id: object, *args: object, **kwargs: object
-) -> list[SearchResult]:
-    company = _company(company_id)
-    values: dict[str, Any] = dict(kwargs)
-    query, embedding = self._parse_args(args, values)
+def _search_options(
+    self: AuroraPgVectorSearch,
+    values: dict[str, Any],
+) -> tuple[list[str] | None, list[str], list[str], int, float, float, bool]:
     access_scope = self._scope(values)
     document_ids = [_text(item) for item in _as_list(_first(values, 'document_ids', 'documents'))]
     version_ids = [_text(item) for item in _as_list(_first(values, 'version_ids', 'versions'))]
@@ -40,23 +38,7 @@ async def _search(
     hybrid = bool(_first(values, 'hybrid_search_enabled', default=self.hybrid_search_enabled))
     if not hybrid:
         keyword_weight = 0.0
-    if self._session is None:
-        return self._search_memory(
-            company,
-            query,
-            embedding,
-            access_scope,
-            document_ids,
-            version_ids,
-            top_k,
-            vector_weight,
-            keyword_weight,
-            include_inactive,
-        )
-    return await self._search_sql(
-        company,
-        query,
-        embedding,
+    return (
         access_scope,
         document_ids,
         version_ids,
@@ -64,5 +46,16 @@ async def _search(
         vector_weight,
         keyword_weight,
         include_inactive,
-        values,
     )
+
+
+async def _search(
+    self: AuroraPgVectorSearch, company_id: object, *args: object, **kwargs: object
+) -> list[SearchResult]:
+    company = _company(company_id)
+    values: dict[str, Any] = dict(kwargs)
+    query, embedding = self._parse_args(args, values)
+    options = _search_options(self, values)
+    if self._session is None:
+        return self._search_memory(company, query, embedding, *options)
+    return await self._search_sql(company, query, embedding, *options, values)

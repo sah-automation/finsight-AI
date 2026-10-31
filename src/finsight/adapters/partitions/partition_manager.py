@@ -42,11 +42,13 @@ class PartitionManager(PartitionGateway):
         return await _adapter_method(self, sql, params)
 
     async def create_partition(self, company_id: CompanyId, table_name: str) -> str:
+        """Create a partition for a company on the given table."""
         from ._partition_manager_create_partition import _create_partition as _adapter_method
 
         return await _adapter_method(self, company_id, table_name)
 
     async def ensure_partition_exists(self, company_id: CompanyId, table_name: str) -> bool:
+        """Ensure partition exists (idempotent)."""
         from ._partition_manager_ensure_partition_exists import (
             _ensure_partition_exists as _adapter_method,
         )
@@ -54,11 +56,13 @@ class PartitionManager(PartitionGateway):
         return await _adapter_method(self, company_id, table_name)
 
     async def drop_partition(self, company_id: CompanyId, table_name: str) -> bool:
+        """Drop a partition for a company."""
         from ._partition_manager_drop_partition import _drop_partition as _adapter_method
 
         return await _adapter_method(self, company_id, table_name)
 
     async def list_partitions(self, company_id: CompanyId) -> list[str]:
+        """List all partitions for a company."""
         from ._partition_manager_list_partitions import _list_partitions as _adapter_method
 
         return await _adapter_method(self, company_id)
@@ -69,6 +73,7 @@ class PartitionManager(PartitionGateway):
         partition_name: str,
         table_name: str,
     ) -> None:
+        """Record partition metadata."""
         from ._partition_manager_record_partition_metadata import (
             _record_partition_metadata as _adapter_method,
         )

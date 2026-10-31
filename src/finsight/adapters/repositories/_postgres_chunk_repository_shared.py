@@ -60,9 +60,7 @@ def _row_value(row: object, *names: str) -> object:
     return None
 
 
-def _row_to_chunk(row: object | None) -> Chunk | None:
-    if row is None:
-        return None
+def _parse_structure_path(row: object) -> tuple[str, ...]:
     structure_path = _row_value(row, 'structure_path') or ()
     if isinstance(structure_path, str):
         try:
@@ -71,12 +69,24 @@ def _row_to_chunk(row: object | None) -> Chunk | None:
             structure_path = ()
     if not isinstance(structure_path, (list, tuple)):
         structure_path = ()
+    return tuple(str(part) for part in structure_path or ())
+
+
+def _parse_metadata(row: object) -> dict[str, object]:
     metadata = _row_value(row, 'metadata') or {}
     if isinstance(metadata, str):
         try:
             metadata = json.loads(metadata)
         except (TypeError, ValueError):
             metadata = {}
+    return dict(metadata) if isinstance(metadata, dict) else {}
+
+
+def _row_to_chunk(row: object | None) -> Chunk | None:
+    if row is None:
+        return None
+    structure_path = _parse_structure_path(row)
+    metadata = _parse_metadata(row)
     is_active = _row_value(row, 'is_active')
     needs_review = _row_value(row, _NEEDS_REVIEW_COLUMN)
     return Chunk(
@@ -88,14 +98,14 @@ def _row_to_chunk(row: object | None) -> Chunk | None:
         context_header=str(_row_value(row, 'context_header') or ''),
         parent_chunk_id=_optional_chunk_id(_row_value(row, 'parent_chunk_id', 'parent_id')),
         page_number=_optional_int(_row_value(row, 'page_number', 'page_from')),
-        structure_path=tuple(str(part) for part in structure_path or ()),
+        structure_path=structure_path,
         ordinal=_optional_int(_row_value(row, 'ordinal', 'chunk_index')) or 0,
         is_parent=bool(_row_value(row, 'is_parent')),
         is_active=True if is_active is None else bool(is_active),
         needs_review=bool(needs_review),
         token_count=_optional_int(_row_value(row, 'token_count')),
         embedding_model_version=_text(_row_value(row, 'embedding_model_version')),
-        metadata=dict(metadata) if isinstance(metadata, dict) else {},
+        metadata=metadata,
     )
 
 

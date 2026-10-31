@@ -143,7 +143,7 @@ def _table_params(company: str, table: DocumentTable) -> dict[str, Any]:
     }
 
 
-def _matches(row: DocumentTable, filters: dict[str, Any]) -> bool:
+def _matches_ids(row: DocumentTable, filters: dict[str, Any]) -> bool:
     if filters.get('version_ids'):
         if str(row.version_id) not in {str(x) for x in filters['version_ids']}:
             return False
@@ -156,28 +156,44 @@ def _matches(row: DocumentTable, filters: dict[str, Any]) -> bool:
     if filters.get('document_id') is not None:
         if str(row.document_id) != str(filters['document_id']):
             return False
-    if filters.get('page') is not None:
-        if str(row.page if row.page is not None else row.page_number) != str(filters['page']):
-            return False
-    if filters.get('pages'):
-        if str(row.page if row.page is not None else row.page_number) not in {
-            str(x) for x in filters['pages']
-        }:
-            return False
-    if filters.get('table_id') is not None:
-        if str(row.table_id) != str(filters['table_id']):
-            return False
+    return True
+
+
+def _matches_page(row: DocumentTable, filters: dict[str, Any]) -> bool:
+    page = row.page if row.page is not None else row.page_number
+    if filters.get('page') is not None and str(page) != str(filters['page']):
+        return False
+    return not (filters.get('pages') and str(page) not in {str(x) for x in filters['pages']})
+
+
+def _matches_table(row: DocumentTable, filters: dict[str, Any]) -> bool:
+    if filters.get('table_id') is not None and str(row.table_id) != str(filters['table_id']):
+        return False
     if filters.get('table_ids'):
-        if str(row.table_id) not in {str(x) for x in filters['table_ids']} and str(row.id) not in {
-            str(x) for x in filters['table_ids']
-        }:
+        table_ids = {str(x) for x in filters['table_ids']}
+        if str(row.table_id) not in table_ids and str(row.id) not in table_ids:
             return False
+    return True
+
+
+def _matches_flags(row: DocumentTable, filters: dict[str, Any]) -> bool:
     if filters.get('needs_review') is not None:
         if bool(row.needs_review) != bool(filters['needs_review']):
             return False
     if filters.get('is_active') is not None:
         if bool(row.is_active) != bool(filters['is_active']):
             return False
+    return True
+
+
+def _matches(row: DocumentTable, filters: dict[str, Any]) -> bool:
+    if not (
+        _matches_ids(row, filters)
+        and _matches_page(row, filters)
+        and _matches_table(row, filters)
+        and _matches_flags(row, filters)
+    ):
+        return False
     return not (
         filters.get('is_active') is None
         and filters.get('include_inactive') is False

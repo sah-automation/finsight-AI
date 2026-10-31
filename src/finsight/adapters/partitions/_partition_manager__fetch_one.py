@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import contextlib
+import inspect
 from typing import (
     TYPE_CHECKING,
     Any,
 )
 
 from sqlalchemy import text
+
+from ._partition_manager__execute import _commit_if_present
 
 # Host module-level definitions (injected at runtime of this helper)
 
@@ -16,40 +20,40 @@ if TYPE_CHECKING:
     from .partition_manager import PartitionManager
 
 
-async def _fetch_one(self: PartitionManager, sql: str, params: dict[str, Any] | None = None) -> Any:
-    import inspect
+async def _await_fetch(fetch: Any) -> Any:
+    row = fetch()
+    if inspect.isawaitable(row):
+        row = await row
+    return row
 
-    session = self._session_or_engine
-    if hasattr(session, 'execute'):
-        result = session.execute(text(sql), params or {})
+
+async def _fetch_from_session(session: Any, sql: str, params: dict[str, Any]) -> Any:
+    result = session.execute(text(sql), params)
+    if inspect.isawaitable(result):
+        result = await result
+    fetch = getattr(result, 'fetchone', None)
+    row = await _await_fetch(fetch) if callable(fetch) else result
+    with contextlib.suppress(Exception):
+        await _commit_if_present(session)
+    return row
+
+
+async def _fetch_from_begin(session: Any, sql: str, params: dict[str, Any]) -> Any:
+    async with session.begin() as conn:
+        result = conn.execute(text(sql), params)
         if inspect.isawaitable(result):
             result = await result
         fetch = getattr(result, 'fetchone', None)
         if callable(fetch):
-            row = fetch()
-            if inspect.isawaitable(row):
-                row = await row
-        else:
-            row = result
-        if hasattr(session, 'commit'):
-            try:
-                commit_result = session.commit()
-                if inspect.isawaitable(commit_result):
-                    await commit_result
-            except Exception:
-                pass
-        return row
+            return await _await_fetch(fetch)
+        return result.fetchone() if hasattr(result, 'fetchone') else result
+
+
+async def _fetch_one(self: PartitionManager, sql: str, params: dict[str, Any] | None = None) -> Any:
+    session = self._session_or_engine
+    params = params or {}
+    if hasattr(session, 'execute'):
+        return await _fetch_from_session(session, sql, params)
     if hasattr(session, 'begin'):
-        async_cm = session.begin()
-        async with async_cm as conn:
-            result = conn.execute(text(sql), params or {})
-            if inspect.isawaitable(result):
-                result = await result
-            fetch = getattr(result, 'fetchone', None)
-            if callable(fetch):
-                row = fetch()
-                if inspect.isawaitable(row):
-                    row = await row
-                return row
-            return result.fetchone() if hasattr(result, 'fetchone') else result
+        return await _fetch_from_begin(session, sql, params)
     raise TypeError('Unsupported session/engine type')

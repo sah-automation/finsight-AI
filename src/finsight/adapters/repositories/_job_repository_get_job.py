@@ -19,24 +19,28 @@ if TYPE_CHECKING:
     from finsight.core.types import CompanyId
 
 
-async def _get_job(
+def _get_job_memory(
     self: Any,
     company_id: CompanyId,
     job_id: object,
-    **kwargs: object,
+    kwargs: dict[str, object],
 ) -> object:
-    if self._session is None:
-        store = self._memory.get(str(company_id), {})
-        key = _as_str_or_none(job_id)
-        record = store.get(str(key)) if key is not None and str(key) in store else None
-        if record is not None:
-            status_filter = kwargs.get('status', kwargs.get('job_status'))
-            if status_filter is not None and _normalise_status(status_filter) != record.get(
-                'status'
-            ):
-                return None
-        return record
-    await self._set_rls_context(company_id)
+    store = self._memory.get(str(company_id), {})
+    key = _as_str_or_none(job_id)
+    record = store.get(str(key)) if key is not None and str(key) in store else None
+    if record is not None:
+        status_filter = kwargs.get('status', kwargs.get('job_status'))
+        if status_filter is not None and _normalise_status(status_filter) != record.get('status'):
+            return None
+    return record
+
+
+async def _get_job_sql(
+    self: Any,
+    company_id: CompanyId,
+    job_id: object,
+    kwargs: dict[str, object],
+) -> object:
     sql = f'SELECT * FROM {_TABLE} WHERE company_id = :company_id AND job_id = :job_id'
     params: dict[str, Any] = {
         'company_id': str(company_id),
@@ -53,3 +57,15 @@ async def _get_job(
     result = await self._execute(sql, params)
     row = await self._fetchone(result)
     return _row_to_record(row)
+
+
+async def _get_job(
+    self: Any,
+    company_id: CompanyId,
+    job_id: object,
+    **kwargs: object,
+) -> object:
+    if self._session is None:
+        return _get_job_memory(self, company_id, job_id, kwargs)
+    await self._set_rls_context(company_id)
+    return await _get_job_sql(self, company_id, job_id, kwargs)

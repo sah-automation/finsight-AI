@@ -24,25 +24,30 @@ if TYPE_CHECKING:
     from .postgres_chunk_repository import PostgresChunkRepository
 
 
-async def _list_chunks_by_document(
+def _list_chunks_memory(
     self: PostgresChunkRepository,
     company_id: CompanyId,
     document_id: DocumentId,
-    *,
-    version_id: str | None = None,
-    include_inactive: bool = False,
-    **kwargs: object,
+    version_id: str | None,
+    include_inactive: bool,
 ) -> list[Chunk]:
-    if self._session is None:
-        rows = self._memory.get(str(company_id), {}).values()
-        return [
-            chunk
-            for chunk in rows
-            if chunk.document_id == str(document_id)
-            and (version_id is None or chunk.version_id == str(version_id))
-            and (include_inactive or chunk.is_active)
-        ]
-    await self._set_rls_context(company_id)
+    rows = self._memory.get(str(company_id), {}).values()
+    return [
+        chunk
+        for chunk in rows
+        if chunk.document_id == str(document_id)
+        and (version_id is None or chunk.version_id == str(version_id))
+        and (include_inactive or chunk.is_active)
+    ]
+
+
+async def _list_chunks_document_sql(
+    self: PostgresChunkRepository,
+    company_id: CompanyId,
+    document_id: DocumentId,
+    version_id: str | None,
+    include_inactive: bool,
+) -> list[Chunk]:
     params: dict[str, Any] = {
         'company_id': str(company_id),
         'document_id': str(document_id),
@@ -58,3 +63,20 @@ async def _list_chunks_by_document(
         sql += f' AND {_ACTIVE_COLUMN} = TRUE'
     result = await self._execute(sql + ' ORDER BY ordinal ASC', params)
     return _rows_to_chunks(await self._fetchall(result))
+
+
+async def _list_chunks_by_document(
+    self: PostgresChunkRepository,
+    company_id: CompanyId,
+    document_id: DocumentId,
+    *,
+    version_id: str | None = None,
+    include_inactive: bool = False,
+    **kwargs: object,
+) -> list[Chunk]:
+    if self._session is None:
+        return _list_chunks_memory(self, company_id, document_id, version_id, include_inactive)
+    await self._set_rls_context(company_id)
+    return await _list_chunks_document_sql(
+        self, company_id, document_id, version_id, include_inactive
+    )

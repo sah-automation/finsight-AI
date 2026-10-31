@@ -8,9 +8,12 @@ from typing import (
 )
 
 # Host module-level definitions (injected at runtime of this helper)
-from finsight.adapters.repositories.base_repository import (
-    set_rls_context as _set_rls_context,
-)
+try:
+    from finsight.adapters.repositories.base_repository import (
+        set_rls_context as _set_rls_context,
+    )
+except ImportError:  # pragma: no cover
+    _set_rls_context = None  # type: ignore[assignment]
 
 from ._postgres_unit_of_work_shared import _await_maybe
 

@@ -20,6 +20,61 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     from .aurora_pg_vector_write import AuroraPgVectorWrite
 
+_UPSERT_CHUNK_SQL = (
+    f'INSERT INTO {_TABLE} '
+    '(company_id, chunk_id, document_id, version_id, content_hash, '
+    'embedding_model_version, embedding, is_active, updated_at) '
+    'VALUES (:company_id, :chunk_id, :document_id, :version_id, :content_hash, '
+    ':embedding_model_version, CAST(:embedding AS vector), FALSE, now()) '
+    'ON CONFLICT (company_id, chunk_id) DO UPDATE SET '
+    'document_id = EXCLUDED.document_id, '
+    'version_id = EXCLUDED.version_id, '
+    'content_hash = EXCLUDED.content_hash, '
+    'embedding_model_version = EXCLUDED.embedding_model_version, '
+    'embedding = EXCLUDED.embedding, '
+    'is_active = FALSE, '
+    'updated_at = now()'
+)
+
+
+def _write_memory(
+    self: AuroraPgVectorWrite,
+    company_id: str,
+    version_id: str,
+    chunk: Chunk,
+    vector: object,
+    model: str,
+) -> None:
+    records = self._memory.setdefault(company_id, {})
+    records[_text(chunk.chunk_id)] = {
+        'chunk_id': _text(chunk.chunk_id),
+        'document_id': _text(chunk.document_id),
+        'version_id': version_id,
+        'content_hash': chunk.content_hash,
+        'embedding_model_version': model,
+        'embedding': vector,
+        'has_embedding': vector is not None,
+        'is_active': False,
+    }
+
+
+def _write_params(
+    company_id: str,
+    version_id: str,
+    chunk: Chunk,
+    vector: object,
+    model: str,
+) -> dict[str, object]:
+    return {
+        'company_id': company_id,
+        'chunk_id': _text(chunk.chunk_id),
+        'document_id': _text(chunk.document_id),
+        'version_id': version_id,
+        'content_hash': chunk.content_hash,
+        'embedding_model_version': model,
+        'embedding': _vector_literal(vector),
+    }
+
 
 async def _write(
     self: AuroraPgVectorWrite,
@@ -30,39 +85,8 @@ async def _write(
     model: str,
 ) -> None:
     if self._session is None:
-        records = self._memory.setdefault(company_id, {})
-        records[_text(chunk.chunk_id)] = {
-            'chunk_id': _text(chunk.chunk_id),
-            'document_id': _text(chunk.document_id),
-            'version_id': version_id,
-            'content_hash': chunk.content_hash,
-            'embedding_model_version': model,
-            'embedding': vector,
-            'has_embedding': vector is not None,
-            'is_active': False,
-        }
+        _write_memory(self, company_id, version_id, chunk, vector, model)
         return
     await self._execute(
-        f'INSERT INTO {_TABLE} '
-        '(company_id, chunk_id, document_id, version_id, content_hash, '
-        'embedding_model_version, embedding, is_active, updated_at) '
-        'VALUES (:company_id, :chunk_id, :document_id, :version_id, :content_hash, '
-        ':embedding_model_version, CAST(:embedding AS vector), FALSE, now()) '
-        'ON CONFLICT (company_id, chunk_id) DO UPDATE SET '
-        'document_id = EXCLUDED.document_id, '
-        'version_id = EXCLUDED.version_id, '
-        'content_hash = EXCLUDED.content_hash, '
-        'embedding_model_version = EXCLUDED.embedding_model_version, '
-        'embedding = EXCLUDED.embedding, '
-        'is_active = FALSE, '
-        'updated_at = now()',
-        {
-            'company_id': company_id,
-            'chunk_id': _text(chunk.chunk_id),
-            'document_id': _text(chunk.document_id),
-            'version_id': version_id,
-            'content_hash': chunk.content_hash,
-            'embedding_model_version': model,
-            'embedding': _vector_literal(vector),
-        },
+        _UPSERT_CHUNK_SQL, _write_params(company_id, version_id, chunk, vector, model)
     )

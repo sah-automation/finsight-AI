@@ -83,6 +83,7 @@ class PostgresDocumentRepository(DocumentRepositoryPort, BaseRepository):
     async def document_version_markers(
         self, company_id: Any, *args: Any, **kwargs: Any
     ) -> dict[str, str]:
+        """Return ``document_id -> marker`` for committed, non-deleted documents."""
         from ._postgres_document_repository_document_version_markers import (
             _document_version_markers as helper,
         )

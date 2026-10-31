@@ -143,6 +143,10 @@ class AuroraPgVectorWrite(VectorWritePort, BaseVectorStore):
     # ------------------------------------------------------------------
 
     async def upsert(self, company_id: Any, *args: Any, **kwargs: Any) -> int:
+        """
+        Alias that accepts either ``(company, version, chunks=..., vectors=...)``
+        or ``(company, chunks, vectors)`` so callers can use either shape.
+        """
         from ._aurora_pg_vector_write_upsert import _upsert as _adapter_method
 
         return await _adapter_method(self, company_id, *args, **kwargs)
@@ -201,6 +205,7 @@ class AuroraPgVectorWrite(VectorWritePort, BaseVectorStore):
         return await _adapter_method(self, company_id, *args, **kwargs)
 
     async def _touch(self, company_id: Any, *args: Any, **kwargs: Any) -> None:
+        """Relink an unchanged vector to the new version without re-embedding."""
         from ._aurora_pg_vector_write__touch import _touch as _adapter_method
 
         await _adapter_method(self, company_id, *args, **kwargs)
