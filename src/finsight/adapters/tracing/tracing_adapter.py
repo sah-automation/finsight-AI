@@ -80,20 +80,8 @@ class TracingAdapter(TracingPort):
     def records(self, company_id: Any = None) -> list[dict[str, Any]]:
         return [span.to_dict() for span in self._filtered(company_id)]
 
-    def events(self, company_id: Any = None) -> list[dict[str, Any]]:
-        return self.records(company_id)
-
-    def traces(self, company_id: Any = None) -> list[dict[str, Any]]:
-        return self.records(company_id)
-
     def emitted_spans(self, company_id: Any = None) -> list[Span]:
         return self._filtered(company_id)
-
-    def exported_spans(self, company_id: Any = None) -> list[Span]:
-        return self._filtered(company_id)
-
-    def span_records(self, company_id: Any = None) -> list[dict[str, Any]]:
-        return self.records(company_id)
 
     # ------------------------------------------------------------------
     # Port implementation
@@ -296,6 +284,11 @@ _alias_names = [
     'TracingGateway',
     'TracePortAdapter',
 ]
+for _n in ('events', 'traces', 'span_records'):
+    setattr(TracingAdapter, _n, TracingAdapter.records)
+for _n in ('exported_spans',):
+    setattr(TracingAdapter, _n, TracingAdapter.emitted_spans)
+
 for _name in _alias_names:
     globals()[_name] = TracingAdapter
 __all__ = [*_alias_names, 'TracingAdapter']  # noqa: PLE0604

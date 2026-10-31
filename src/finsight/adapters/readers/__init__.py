@@ -1,4 +1,3 @@
-# ruff: noqa: F403
 """Document readers and routing helpers."""
 
 from __future__ import annotations
@@ -6,7 +5,7 @@ from __future__ import annotations
 from .base_reader import BaseReader
 
 # Compatibility alias modules (imported for hidden tests that use short names).
-from .csv import *
+from .csv import *  # noqa: F403
 from .csv_reader import (
     CSV,
     Csv,
@@ -22,15 +21,15 @@ from .csv_reader import (
     TSVReader,
     TsvReader,
 )
-from .delimited import *
-from .docx import *
+from .delimited import *  # noqa: F403
+from .docx import *  # noqa: F403
 from .docx_reader import (
     DOCX,
     Docx,
     DocxDocumentReader,
     DocxReader,
 )
-from .excel import *
+from .excel import *  # noqa: F403
 from .excel_reader import Excel, ExcelReader
 from .format_reader_selector import (
     FormatReader,
@@ -39,13 +38,13 @@ from .format_reader_selector import (
     ReaderFactorySelector,
     ReaderSelector,
 )
-from .layout import *
+from .layout import *  # noqa: F403
 from .page_router import PageRouter
-from .pdf_plumber_reader import *
+from .pdf_plumber_reader import *  # noqa: F403
 from .pdf_plumber_reader import PdfPlumberReader
-from .pdfplumber import *
-from .self_hosted import *
-from .self_hosted_layout import *
+from .pdfplumber import *  # noqa: F403
+from .self_hosted import *  # noqa: F403
+from .self_hosted_layout import *  # noqa: F403
 from .self_hosted_layout import (
     Layout,
     LayoutReader,
@@ -53,17 +52,17 @@ from .self_hosted_layout import (
     SelfHostedLayout,
 )
 from .self_hosted_layout_reader import SelfHostedLayoutReader
-from .self_hosted_reader import *
-from .table import *
+from .self_hosted_reader import *  # noqa: F403
+from .table import *  # noqa: F403
 from .table import LayoutTableReader, Table, TableDocumentReader, TableLayoutReader
-from .table_layout import *
+from .table_layout import *  # noqa: F403
 from .table_reader import TableReader
-from .table_reader_alias import *
+from .table_reader_alias import *  # noqa: F403
 from .tesseract_reader import Tesseract, TesseractReader
 from .textract_reader import Textract, TextractReader
-from .tsv import *
-from .xls import *
-from .xlsx import *
+from .tsv import *  # noqa: F403
+from .xls import *  # noqa: F403
+from .xlsx import *  # noqa: F403
 
 __all__ = [
     'CSV',
@@ -110,6 +109,6 @@ __all__ = [
 ]
 
 # Decorator wrappers for extraction paid calls.
-from .metered_extraction import *
-from .retrying_extraction import *
-from .traced_extraction import *
+from .metered_extraction import *  # noqa: F403
+from .retrying_extraction import *  # noqa: F403
+from .traced_extraction import *  # noqa: F403

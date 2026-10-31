@@ -26,7 +26,6 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/container.py: 2665 lines
   - composition/composition_container.py: 563 lines
   - core/security/citation_locator.py: 495 lines
-  - adapters/tracing/tracing_adapter.py: 301 lines
   - adapters/llm/lite_llm_gateway.py: 820 lines
   - adapters/embedding/lite_llm_embedding.py: 432 lines
   - adapters/metering/dynamo_metering.py: 397 lines
@@ -41,6 +40,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - entrypoints/api/threads.py: 1183 lines
   - entrypoints/api/source_viewer.py: 771 lines
   - application/reprocess/reprocess.py: 716 lines
+  - application/delete_document/delete_document.py: 999 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
