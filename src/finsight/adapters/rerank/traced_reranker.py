@@ -100,7 +100,7 @@ class TracedReranker:
         self._inner = value
 
 
-def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:  # noqa: PLR0912
+def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:
     # Local copy to avoid cross-adapter imports (import-linter).
     switches = getattr(switches_or_config, 'switches', None)
     if switches is None and isinstance(switches_or_config, dict):
@@ -126,13 +126,6 @@ def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:  # noqa: P
             result[str(field)] = getattr(switches, field, None)
     except Exception:  # noqa: S110
         pass
-    if not result:
-        try:
-            for field in vars(switches):
-                if not field.startswith('_'):
-                    result[str(field)] = getattr(switches, field)
-        except Exception:  # noqa: S110
-            pass
     return result
 
 
