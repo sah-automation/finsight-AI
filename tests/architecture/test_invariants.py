@@ -106,7 +106,7 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
     'application/ask_question/ask_question.py': {
         'reason': 'Q&A orchestration retains legacy heavy execution path.',
         'owner': 'application',
-        'removal_condition': 'Finish named-step extraction started in H11.',
+        'removal_condition': 'Alias surface removed; split when named-step extraction completes',
     },
     'application/delete_document/delete_document.py': {
         'reason': 'Delete orchestration includes compatibility aliases.',
