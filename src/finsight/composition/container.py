@@ -626,6 +626,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             'audit_log',
             'metering',
             'tracing',
+            'hybrid_search',
         ):
             value = getattr(container_arg, attr, None)
             if value is not None:
@@ -809,6 +810,14 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     if waiting_line is None:
         waiting_line = build_waiting_line(config=config, session=session, **_extra)
 
+    hybrid_search = provided_deps.get('hybrid_search')
+    if hybrid_search is None:
+        hybrid_search = _existing(
+            kwargs, 'hybrid_search', 'search', 'hybrid_search_port', 'vector_search'
+        )
+    if hybrid_search is None:
+        hybrid_search = build_hybrid_search(config=config, session=session, **_extra)
+
     ask_question_use_case = _existing(
         kwargs,
         'ask_question_use_case',
@@ -827,6 +836,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             config=config,
             answer_cache=answer_cache,
             waiting_line=waiting_line,
+            hybrid_search=hybrid_search,
             **{
                 k: v
                 for k, v in (_extra or {}).items()
@@ -841,8 +851,6 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
                     'model_gateway',
                     'embedding_provider',
                     'embedding',
-                    'hybrid_search',
-                    'search',
                     'reranker',
                     'metric_repository',
                     'metrics',
@@ -974,6 +982,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         unit_of_work=unit_of_work,
         queue=queue,
         waiting_line=waiting_line,
+        hybrid_search=hybrid_search,
         reprocess_use_case=reprocess_use_case,
         metering=metering,
         tracing=tracing,
@@ -1838,6 +1847,46 @@ def _build_waiting_line_impl(*args: Any, **kwargs: Any) -> Any:
     if cls is None:
         raise ImportError('PassthroughWaitingLine adapter is unavailable')
     return cls(config=config, session=session, **_extra)
+
+
+def build_hybrid_search(*args: Any, **kwargs: Any) -> Any:
+    return _build_hybrid_search_impl(*args, **kwargs)
+
+
+def _build_hybrid_search_impl(*args: Any, **kwargs: Any) -> Any:
+    """Build the hybrid (vector + keyword) search adapter."""
+    provided = _existing(
+        kwargs,
+        'hybrid_search',
+        'search',
+        'hybrid_search_port',
+        'hybrid_search_adapter',
+        'vector_search',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'hybrid_search',
+            'search',
+            'hybrid_search_port',
+            'hybrid_search_adapter',
+            'vector_search',
+        }
+    }
+    Cls = _import_adapter(
+        'finsight.adapters.vector_store.aurora_pg_vector_search', 'AuroraPgVectorSearch'
+    )
+    if Cls is None:
+        raise ImportError('AuroraPgVectorSearch adapter is unavailable')
+    return Cls(session=session, config=config, **_extra)
 
 
 def _configured_price_path(config: Any) -> Any:

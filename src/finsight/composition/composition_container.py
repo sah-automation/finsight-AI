@@ -68,6 +68,9 @@ class CompositionContainer:
         answer_cache: Any = None,
         queue: Any = None,
         waiting_line: Any = None,
+        hybrid_search: Any = None,
+        search: Any = None,
+        vector_search: Any = None,
         metering: Any = None,
         meter: Any = None,
         metering_port: Any = None,
@@ -130,6 +133,20 @@ class CompositionContainer:
             or deps.get('queue_line')
         )
         self.waiting = self.waiting_line
+        self.hybrid_search = (
+            hybrid_search
+            if hybrid_search is not None
+            else search
+            if search is not None
+            else vector_search
+            if vector_search is not None
+            else deps.get('hybrid_search')
+            or deps.get('search')
+            or deps.get('hybrid_search_port')
+            or deps.get('vector_search')
+        )
+        self.search = self.hybrid_search
+        self.vector_search = self.hybrid_search
         self.metering = (
             metering
             if metering is not None
@@ -426,6 +443,9 @@ class CompositionContainer:
             'queue': self.queue,
             'waiting_line': self.waiting_line,
             'waiting': self.waiting_line,
+            'hybrid_search': self.hybrid_search,
+            'search': self.hybrid_search,
+            'vector_search': self.hybrid_search,
             'metering': self.metering,
             'meter': self.metering,
             'metering_port': self.metering,
@@ -500,6 +520,9 @@ class CompositionContainer:
             'queue': self.queue,
             'waiting_line': self.waiting_line,
             'waiting': self.waiting_line,
+            'hybrid_search': self.hybrid_search,
+            'search': self.hybrid_search,
+            'vector_search': self.hybrid_search,
             'metering': self.metering,
             'meter': self.metering,
             'metering_port': self.metering,

@@ -245,3 +245,6 @@ build_extraction = _build_extraction_stack
 build_extractor = _build_extraction_stack
 build_textract = _build_extraction_stack
 build_extraction_stack = _build_extraction_stack
+
+# Compatibility re-export of the hybrid-search composition builder.
+from .container import build_hybrid_search  # noqa: E402
