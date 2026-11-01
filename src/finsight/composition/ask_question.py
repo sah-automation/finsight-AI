@@ -71,10 +71,48 @@ def _get_ask_use_case_impl(*args: Any, **kwargs: Any) -> Any:
     metrics = kwargs.get('metric_repository') or kwargs.get('metrics')
     cache = kwargs.get('answer_cache') or kwargs.get('cache')
     waiting = kwargs.get('waiting_line') or kwargs.get('waiting')
+    tracing = kwargs.get('tracing') or kwargs.get('tracer') or kwargs.get('tracing_port')
 
-    sess = resolve_session(*args, **kwargs)
+    if llm is None:
+        from .container import build_llm_gateway
+
+        llm = build_llm_gateway(config=config)
+    if embedding is None:
+        from .container import build_embedding_provider
+
+        embedding = build_embedding_provider(config=config)
+    if search is None:
+        from .container import build_hybrid_search
+
+        search = build_hybrid_search(config=config)
+    if reranker is None:
+        from .container import build_reranker
+
+        reranker = build_reranker(config=config)
+    if metrics is None:
+        from .container import build_metric_repository
+
+        metrics = build_metric_repository(config=config)
+    if cache is None:
+        from .container import build_answer_cache
+
+        cache = build_answer_cache(config=config)
+    if waiting is None:
+        from .container import build_waiting_line
+
+        waiting = build_waiting_line(config=config)
+    if tracing is None:
+        from .container import build_tracing
+
+        tracing = build_tracing(config=config)
+
+    try:
+        signing_key = config.signing_key if config is not None else kwargs.get('signing_key')
+    except Exception:
+        signing_key = kwargs.get('signing_key')
 
     return AskQuestion(
+        config=(config if config is not None else kwargs.get('config')),
         llm_gateway=llm,
         embedding_provider=embedding,
         hybrid_search=search,
@@ -82,12 +120,21 @@ def _get_ask_use_case_impl(*args: Any, **kwargs: Any) -> Any:
         metric_repository=metrics,
         answer_cache=cache,
         waiting_line=waiting,
-        config=config if config is not None else kwargs.get('config'),
-        session=sess,
+        tracing=tracing,
+        signing_key=signing_key if signing_key is not None else kwargs.get('signing_key', ''),
         **{
             k: v
             for k, v in kwargs.items()
-            if k not in {'config', 'session'} and not k.endswith('_use_case')
+            if k
+            not in {
+                'config',
+                'session',
+                'signing_key',
+                'tracing',
+                'tracer',
+                'tracing_port',
+            }
+            and not k.endswith('_use_case')
         },
     )
 

@@ -77,13 +77,15 @@ async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
                     question = str(question)
                     data['question'] = question
 
+            frozen_context = _build_frozen_request_context(data, context)
+
             # Input status.
             yield _sse('status', {'status': 'received', 'question': question})
 
             use_case = await _resolve_use_case(use_case_candidate, data, context)
 
             # Try streaming first.
-            stream_obj = await _call_stream(use_case, data, context)
+            stream_obj = await _call_stream(use_case, data, context, frozen_context=frozen_context)
             agen = await _collect_iterable(stream_obj) if stream_obj is not None else None
 
             if agen is not None:
@@ -103,16 +105,18 @@ async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
                 return
 
             # Non-streaming path.
-            method = None
-            for name in ('execute', 'run', 'ask', 'answer', 'handle'):
-                candidate_method = getattr(use_case, name, None)
-                if callable(candidate_method):
-                    method = candidate_method
-                    break
+            method = getattr(use_case, 'run', None)
+            if not callable(method):
+                method = getattr(use_case, 'execute', None)
             if method is None:
                 raise RuntimeError('ask use case is not callable')
 
             def _invoke(kwargs_with: dict[str, Any]) -> Any:
+                if callable(method) and frozen_context is not None:
+                    try:
+                        return method(frozen_context, kwargs_with.get('question'))
+                    except TypeError:
+                        pass
                 for args_tuple in ((data,), (data, context), (context, data)):
                     try:
                         return method(*args_tuple)

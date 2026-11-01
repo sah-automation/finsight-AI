@@ -14,12 +14,21 @@ from finsight.core.errors import PolicyBlocked
 from finsight.core.types import CompanyId, UserId
 from finsight.domain.entities.answer import Answer
 from finsight.domain.entities.insufficient_data import InsufficientData as InsufficientDataResult
+from finsight.domain.ports.answer_cache import AnswerCache
+from finsight.domain.ports.embedding_provider import EmbeddingProvider
+from finsight.domain.ports.hybrid_search import HybridSearch
+from finsight.domain.ports.llm_gateway import LLMGateway
+from finsight.domain.ports.metric_repository import MetricRepository
+from finsight.domain.ports.reranker import Reranker
+from finsight.domain.ports.tracing_port import TracingPort
+from finsight.domain.ports.waiting_line import WaitingLine
 from finsight.domain.services.calculator import Calculator
 from finsight.domain.services.citation_checker import CitationChecker
 from finsight.domain.services.evidence_checker import EvidenceChecker
 from finsight.domain.services.input_gate import InputGate
 from finsight.domain.services.input_gate_result import InputGateResult
 from finsight.domain.services.model_router import ModelRouter
+from finsight.domain.services.output_gate import OutputGate
 from finsight.domain.value_objects.citation import Citation as _CitationVO
 
 from .models import AskResult, UnavailableResult
@@ -156,129 +165,39 @@ def _resolve_signing_key(config: Any) -> Any:
 class AskQuestion:
     """Orchestrate the ask-question flow through fakeable ports."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._config = _resolve_config(*args, **kwargs)
-        self._llm = _get_attr(
-            kwargs,
-            'llm_gateway',
-            'llm',
-            'gateway',
-            'model_gateway',
-            'model',
-            'llm_port',
-            default=None,
-        )
-        self._embedding = _get_attr(
-            kwargs,
-            'embedding_provider',
-            'embedding',
-            'embeddings',
-            'embedder',
-            'embedding_port',
-            default=None,
-        )
-        self._search = _get_attr(
-            kwargs, 'hybrid_search', 'search', 'search_port', 'retriever', 'retrieval', default=None
-        )
-        self._reranker = _get_attr(kwargs, 'reranker', 'ranker', 'reranker_port', default=None)
-        self._metrics = _get_attr(
-            kwargs,
-            'metric_repository',
-            'metrics',
-            'metric_repo',
-            'metrics_repository',
-            default=None,
-        )
-        self._cache = _get_attr(kwargs, 'answer_cache', 'cache', 'answer_cache_port', default=None)
-        self._waiting = _get_attr(
-            kwargs, 'waiting_line', 'waiting', 'waiting_line_port', 'queue_line', default=None
-        )
-        self._request_context_factory = _get_attr(kwargs, 'request_context', default=None)
-        self._signing_key = _get_attr(
-            kwargs,
-            'signing_key',
-            'secret',
-            'secret_key',
-            'source_viewer_signing_key',
-            'source_viewer_secret',
-            'citation_signing_key',
-            default=None,
-        )
-        self._thread_history = _get_attr(
-            kwargs,
-            'chat_history',
-            'thread_history',
-            'thread_repository',
-            'threads_repository',
-            'threads',
-            'thread_store',
-            'thread_store_adapter',
-            'history',
-            'history_store',
-            'conversation_repository',
-            'conversations',
-            default=None,
-        )
-        self._tracing = _get_attr(
-            kwargs,
-            'tracing',
-            'tracer',
-            'tracing_port',
-            'span_tracer',
-            'span_tracing',
-            'trace',
-            'tracing_adapter',
-            default=None,
-        )
+    def __init__(
+        self,
+        *,
+        config: Any,
+        llm_gateway: LLMGateway,
+        embedding_provider: EmbeddingProvider,
+        hybrid_search: HybridSearch,
+        reranker: Reranker,
+        metric_repository: MetricRepository,
+        answer_cache: AnswerCache,
+        waiting_line: WaitingLine,
+        tracing: TracingPort,
+        signing_key: str,
+    ) -> None:
+        self._config = config
+        self._llm = llm_gateway
+        self._embedding = embedding_provider
+        self._search = hybrid_search
+        self._reranker = reranker
+        self._metrics = metric_repository
+        self._cache = answer_cache
+        self._waiting = waiting_line
+        self._tracing = tracing
+        self._signing_key = signing_key
 
-        # Domain services (lazy-created if missing).
-        self._input_gate = _get_attr(kwargs, 'input_gate', 'input_gater', 'gate', default=None)
-        self._evidence_checker = _get_attr(
-            kwargs, 'evidence_checker', 'evidence', 'evidence_gate', default=None
-        )
-        self._model_router = _get_attr(kwargs, 'model_router', 'router', default=None)
-        self._calculator = _get_attr(kwargs, 'calculator', 'calculation', default=None)
-        self._citation_checker = _get_attr(kwargs, 'citation_checker', 'citation', default=None)
-        self._output_verifier = _get_attr(
-            kwargs, 'output_verifier', 'output_gate', 'output', default=None
-        )
-
-        positional_names = [
-            '_llm',
-            '_embedding',
-            '_search',
-            '_reranker',
-            '_metrics',
-            '_cache',
-            '_waiting',
-            '_config',
-        ]
-        for index, value in enumerate(args):
-            if index < len(positional_names):
-                if getattr(self, positional_names[index], None) is None:
-                    setattr(self, positional_names[index], value)
-
-        # Instantiate defaults.
-        if self._input_gate is None:
-            if self._config is not None:
-                self._input_gate = InputGate(config=self._config)
-            else:
-                self._input_gate = None
-        if self._evidence_checker is None:
-            self._evidence_checker = EvidenceChecker(config=self._config)
-        if self._model_router is None:
-            self._model_router = ModelRouter(config=self._config)
-        if self._calculator is None:
-            self._calculator = Calculator()
-        if self._citation_checker is None:
-            self._citation_checker = CitationChecker(require_version=True)
-        if self._output_verifier is None:
-            try:
-                self._output_verifier = __import__(
-                    'finsight.domain.services.output_gate', fromlist=['OutputGate']
-                ).OutputGate(config=self._config)
-            except Exception:
-                self._output_verifier = None
+        # Domain services (internal implementation detail).
+        self._input_gate = InputGate(config=self._config)
+        self._evidence_checker = EvidenceChecker(config=self._config)
+        self._model_router = ModelRouter(config=self._config)
+        self._calculator = Calculator()
+        self._citation_checker = CitationChecker(require_version=True)
+        # Answer check construction must fail loudly if it cannot be built.
+        self._output_verifier = OutputGate(config=self._config)
 
         # Document stamp support.
         self._document_stamp_cls = None
@@ -290,52 +209,21 @@ class AskQuestion:
             self._document_stamp_cls = None
 
         self.parallel_steps: bool = _switch(self._config, 'parallel_steps', True)
-        self._company_id: Any = None
-        self._question: str = ''
-        self._role: Any = None
-        self._access_scope: Any = None
-        self._thread_id: Any = None
 
     # ------------------------------------------------------------------
     # Entry points
     # ------------------------------------------------------------------
 
-    async def run(self, request: Any = None, **kwargs: Any) -> Any:
-        return await self._run(request, kwargs)
+    async def run(self, request_context: Any, question: Any = None) -> Any:
+        return await self._run(request_context, {'question': question})
 
-    async def execute(self, request: Any = None, **kwargs: Any) -> Any:
-        return await self.run(request, **kwargs)
-
-    async def ask(self, request: Any = None, **kwargs: Any) -> Any:
-        return await self.run(request, **kwargs)
-
-    async def answer(self, request: Any = None, **kwargs: Any) -> Any:
-        return await self.run(request, **kwargs)
-
-    async def handle(self, request: Any = None, **kwargs: Any) -> Any:
-        return await self.run(request, **kwargs)
-
-    async def process(self, request: Any = None, **kwargs: Any) -> Any:
-        return await self.run(request, **kwargs)
-
-    async def __call__(self, request: Any = None, **kwargs: Any) -> Any:
-        return await self.run(request, **kwargs)
-
-    async def stream(self, request: Any = None, **kwargs: Any) -> Any:
-        result = self._run(request, kwargs)
+    async def stream(self, request_context: Any, question: Any = None) -> Any:
+        result = self._run(request_context, {'question': question})
         if inspect.isawaitable(result):
             val = await result
             yield val
             return
         yield result
-
-    async def stream_ask(self, request: Any = None, **kwargs: Any) -> Any:
-        async for item in self.stream(request, **kwargs):
-            yield item
-
-    async def ask_stream(self, request: Any = None, **kwargs: Any) -> Any:
-        async for item in self.stream(request, **kwargs):
-            yield item
 
     async def _trace(self, company_id: Any, operation: str) -> None:
         tracer = self._tracing
@@ -372,8 +260,6 @@ class AskQuestion:
         await self._trace(company_id, 'input_gate')
         # ---- Input gate (must pass before any heavy work) ----
         input_gate = self._input_gate
-        if isinstance(input_gate, type):
-            input_gate = input_gate(config=self._config) if self._config is not None else None
         gate_result: InputGateResult
         if input_gate is None:
             gate_result = InputGateResult(
@@ -500,12 +386,8 @@ class AskQuestion:
             thread_id_raw = _first(
                 ctx, 'thread_id', 'ThreadId', 'threadId', 'thread', 'chat_id', 'conversation_id'
             )
-        self._thread_id = None if thread_id_raw is None else str(thread_id_raw).strip() or None
+        thread_id = None if thread_id_raw is None else str(thread_id_raw).strip() or None
         document_stamp = _first(merged, 'document_stamp', 'documentStamp', 'stamp', 'doc_stamp')
-        self._company_id = company_id
-        self._question = question
-        self._role = role
-        self._access_scope = access_scope
 
         parallel = _switch(self._config, 'parallel_steps', True)
         self.parallel_steps = parallel
@@ -590,7 +472,12 @@ class AskQuestion:
             candidates: list[Any] = []
             if self._search is not None:
                 try:
-                    candidates = await self._call_search(company_id, q, embedding) or []
+                    candidates = (
+                        await self._call_search(
+                            company_id, q, embedding, access_scope=access_scope, role=role
+                        )
+                        or []
+                    )
                 except Exception:
                     candidates = []
             candidates = _as_list(candidates)
@@ -828,10 +715,9 @@ class AskQuestion:
 
             # Persist the Q&A thread (reuse existing chat history shape) when a
             # thread history adapter is available. Stored under company/thread ids.
-            resolved_thread_id = self._thread_id
+            resolved_thread_id = thread_id
             if resolved_thread_id in (None, ''):
                 resolved_thread_id = str(uuid.uuid4())
-            self._thread_id = resolved_thread_id
             try:
                 answer.thread_id = resolved_thread_id  # type: ignore[attr-defined]
             except Exception:
@@ -840,55 +726,6 @@ class AskQuestion:
                 answer.extras['thread_id'] = resolved_thread_id
             except Exception:
                 pass
-
-            repo = self._thread_history
-            if repo is not None:
-                payload = {
-                    'company_id': company_id,
-                    'thread_id': resolved_thread_id,
-                    'user_id': user_id,
-                    'role': role,
-                    'question': q,
-                    'answer': text,
-                    'answer_id': getattr(answer, 'answer_id', None),
-                    'citations': citations,
-                    'model': final_model_text,
-                    'access_scope': access_scope,
-                }
-                persisted = False
-                for method_name in (
-                    'persist_thread',
-                    'save_thread',
-                    'store_thread',
-                    'put_thread',
-                    'upsert_thread',
-                    'record_thread',
-                    'create_thread',
-                    'append_thread',
-                    'save',
-                    'store',
-                    'put',
-                    'record',
-                ):
-                    method = getattr(repo, method_name, None)
-                    if not callable(method):
-                        continue
-                    try:
-                        await _await(method(company_id, **payload))
-                        persisted = True
-                        break
-                    except TypeError:
-                        try:
-                            result = method(company_id, **payload)
-                            await _await(result)
-                            persisted = True
-                            break
-                        except Exception:
-                            continue
-                    except Exception:
-                        continue
-                # no-op when nothing matches; adapter unavailable
-                _ = persisted
             return answer
 
         # ---- Waiting line handling ----
@@ -1043,7 +880,15 @@ class AskQuestion:
         except Exception:
             return None
 
-    async def _call_search(self, company_id: Any, question: str, embedding: Any) -> Any:
+    async def _call_search(
+        self,
+        company_id: Any,
+        question: str,
+        embedding: Any,
+        *,
+        access_scope: Any = None,
+        role: Any = None,
+    ) -> Any:
         if self._search is None:
             return []
         kw_options = [
@@ -1059,11 +904,11 @@ class AskQuestion:
         scope_variants = []
         for base in kw_options:
             variant = dict(base)
-            if self._access_scope is not None:
-                variant['access_scope'] = self._access_scope
-                variant['scope'] = self._access_scope
-            if self._role is not None:
-                variant['role'] = self._role
+            if access_scope is not None:
+                variant['access_scope'] = access_scope
+                variant['scope'] = access_scope
+            if role is not None:
+                variant['role'] = role
             scope_variants.append(variant)
         kw_options = scope_variants + kw_options
         # try method names

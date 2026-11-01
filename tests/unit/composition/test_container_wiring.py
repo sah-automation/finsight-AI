@@ -25,6 +25,7 @@ from finsight.composition import (
     build_document_table_repository,
     build_vector_write,
 )
+from finsight.core.config.loader import load_config
 
 
 def test_individual_builders_select_the_adapters() -> None:
@@ -37,7 +38,7 @@ def test_individual_builders_select_the_adapters() -> None:
 
 
 def test_container_exposes_the_same_adapter_instances() -> None:
-    container = build_container()
+    container = build_container(config=load_config('test'))
 
     assert isinstance(container.chunk_repository, PostgresChunkRepository)
     assert isinstance(container.document_repository, PostgresDocumentRepository)
@@ -59,7 +60,11 @@ def test_container_exposes_the_same_adapter_instances() -> None:
 
 def test_provided_dependencies_are_not_replaced() -> None:
     cache = AnswerCache(table_name='injected-cache')
-    container = build_container(answer_cache=cache, change_event_publisher=ChangeEventPublisher())
+    container = build_container(
+        config=load_config('test'),
+        answer_cache=cache,
+        change_event_publisher=ChangeEventPublisher(),
+    )
 
     assert container.answer_cache is cache
     assert container.vector_write is not None

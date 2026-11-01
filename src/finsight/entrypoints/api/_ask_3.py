@@ -17,6 +17,17 @@ from ._ask_0 import *
 from ._ask_1 import *
 from ._ask_2 import *
 
+try:
+    from finsight.core.types import CompanyId as _CompanyId
+    from finsight.core.types import RequestContext as _RequestContext
+    from finsight.core.types import TraceId as _TraceId
+    from finsight.core.types import UserId as _UserId
+except Exception:  # pragma: no cover
+    _CompanyId = None  # type: ignore[assignment,misc]
+    _RequestContext = None  # type: ignore[assignment,misc]
+    _TraceId = None  # type: ignore[assignment,misc]
+    _UserId = None  # type: ignore[assignment,misc]
+
 
 def _events_from_outcome(outcome: Any, data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     events: list[tuple[str, dict[str, Any]]] = []
@@ -184,17 +195,19 @@ def _events_from_outcome(outcome: Any, data: dict[str, Any]) -> list[tuple[str, 
     return events
 
 
-async def _call_stream(use_case: Any, data: dict[str, Any], context: Any) -> Any:
+async def _call_stream(
+    use_case: Any, data: dict[str, Any], context: Any, frozen_context: Any = None
+) -> Any:
     """Return an async iterable of raw events from the use case if supported."""
+    question = data.get('question')
     for attr in ('stream', 'stream_ask', 'ask_stream', 'run_stream', 'events'):
         method = getattr(use_case, attr, None)
         if callable(method):
-            # Try common call shapes.
-            for call_args in (
-                (data,),
-                (data, context),
-                (context, data),
-            ):
+            call_shapes: list[tuple[Any, ...]] = []
+            if frozen_context is not None:
+                call_shapes.append((frozen_context, question))
+            call_shapes.extend([(data,), (data, context), (context, data)])
+            for call_args in call_shapes:
                 try:
                     result = method(*call_args)
                     if inspect.isawaitable(result):
@@ -205,15 +218,24 @@ async def _call_stream(use_case: Any, data: dict[str, Any], context: Any) -> Any
             # Try with kwargs.
             try:
                 result = method(
-                    question=data.get('question'),
-                    context=context,
-                    company_id=data.get('company_id'),
+                    request_context=frozen_context if frozen_context is not None else context,
+                    question=question,
                 )
                 if inspect.isawaitable(result):
                     result = await result
                 return result
             except TypeError:
-                pass
+                try:
+                    result = method(
+                        question=question,
+                        context=context,
+                        company_id=data.get('company_id'),
+                    )
+                    if inspect.isawaitable(result):
+                        result = await result
+                    return result
+                except TypeError:
+                    pass
     return None
 
 
@@ -236,4 +258,55 @@ def _wrap_sync_callable(use_case: Any, data: dict[str, Any]) -> Any:
     return None
 
 
-__all__ = ['_call_stream', '_collect_iterable', '_events_from_outcome', '_wrap_sync_callable']
+__all__ = [
+    '_build_frozen_request_context',
+    '_call_stream',
+    '_collect_iterable',
+    '_events_from_outcome',
+    '_wrap_sync_callable',
+]
+
+
+def _build_frozen_request_context(data: dict[str, Any], context: Any) -> Any:
+    try:
+        company_id = data.get('company_id')
+        if company_id is None and context is not None:
+            company_id = _context_lookup(context, 'company_id', 'companyId', 'company')
+        if company_id is None:
+            return context
+        role = data.get('_role') or data.get('role')
+        if role is None and context is not None:
+            role = _context_lookup(context, 'role', 'user_role', 'roleId')
+        if role is None:
+            return context
+        user_id = data.get('user_id')
+        if user_id is None and context is not None:
+            user_id = _context_lookup(context, 'user_id', 'userId', 'user', 'uid')
+        access_scope = data.get('access_scope') or data.get('scope')
+        if access_scope is None and context is not None:
+            access_scope = _context_lookup(context, 'access_scope', 'accessScope', 'scope')
+        if context is not None:
+            trace_id = _context_lookup(context, 'trace_id', 'traceId', 'trace')
+        else:
+            trace_id = None
+        permissions = {}
+        if context is not None:
+            perms = _context_lookup(context, 'permissions')
+            if isinstance(perms, dict):
+                permissions = perms
+        if isinstance(access_scope, list):
+            scopes = access_scope
+        elif access_scope is None:
+            scopes = []
+        else:
+            scopes = [access_scope]
+        return _RequestContext(
+            company_id=_CompanyId(str(company_id)),
+            user_id=_UserId(str(user_id)) if user_id is not None else _UserId('unknown'),
+            role=role,
+            trace_id=_TraceId(str(trace_id)) if trace_id is not None else _TraceId('trace'),
+            permissions=permissions,
+            access_scope=scopes,
+        )
+    except Exception:
+        return context

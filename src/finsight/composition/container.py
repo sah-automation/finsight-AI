@@ -840,32 +840,46 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         ask_question_use_case = provided_deps.get('ask_question_use_case')
     if ask_question_use_case is None:
         from finsight.application.ask_question import AskQuestion
+        from .adapter_stacks import (
+            build_llm_gateway as _build_llm_gateway,
+            build_embedding_provider as _build_embedding_provider,
+            build_reranker as _build_reranker,
+        )
+
+        llm_gateway = _existing(kwargs, 'llm_gateway', 'llm', 'gateway', 'model_gateway', 'model')
+        if llm_gateway is None:
+            llm_gateway = _build_llm_gateway(config=config)
+
+        embedding_provider = _existing(
+            kwargs, 'embedding_provider', 'embedding', 'embeddings', 'embedder'
+        )
+        if embedding_provider is None:
+            embedding_provider = _build_embedding_provider(config=config)
+
+        reranker = _existing(kwargs, 'reranker', 'ranker', 'reranker_port')
+        if reranker is None:
+            reranker = _build_reranker(config=config)
+
+        signing_key = _existing(kwargs, 'signing_key', 'secret', 'secret_key')
+        if signing_key is None:
+            try:
+                signing_key = config.signing_key
+            except Exception:
+                signing_key = None
+        if signing_key is None:
+            raise ValueError('signing_key must be configured')
 
         ask_question_use_case = AskQuestion(
             config=config,
+            llm_gateway=llm_gateway,
+            embedding_provider=embedding_provider,
+            hybrid_search=hybrid_search,
+            reranker=reranker,
+            metric_repository=metric_repository,
             answer_cache=answer_cache,
             waiting_line=waiting_line,
-            hybrid_search=hybrid_search,
-            metric_repository=metric_repository,
-            **{
-                k: v
-                for k, v in (_extra or {}).items()
-                if k
-                in {
-                    'input_gate',
-                    'input_gater',
-                    'gate',
-                    'llm_gateway',
-                    'llm',
-                    'gateway',
-                    'model_gateway',
-                    'embedding_provider',
-                    'embedding',
-                    'reranker',
-                    'waiting_line',
-                    'waiting',
-                }
-            },
+            tracing=tracing,
+            signing_key=signing_key,
         )
 
     source_viewer_use_case = _existing(

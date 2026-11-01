@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from finsight.adapters.metering.dynamo_metering import DynamoMetering
 from finsight.composition import build_container, build_metering
-from finsight.core.config import load_config
+from finsight.core.config.loader import load_config
 
 
 def test_build_metering_selects_the_dynamo_adapter() -> None:
@@ -28,7 +28,7 @@ def test_metering_adapter_uses_the_configured_table_and_prices() -> None:
 
 
 def test_container_exposes_the_metering_adapter() -> None:
-    container = build_container()
+    container = build_container(config=load_config('test'))
 
     assert isinstance(container.metering, DynamoMetering)
     assert container.meter is container.metering
@@ -40,6 +40,6 @@ def test_container_exposes_the_metering_adapter() -> None:
 def test_injected_metering_adapter_is_preserved() -> None:
     metering = DynamoMetering(table_name='injected-metering')
 
-    container = build_container(metering=metering)
+    container = build_container(config=load_config('test'), metering=metering)
 
     assert container.metering is metering

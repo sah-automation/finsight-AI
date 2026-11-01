@@ -98,6 +98,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'adapters',
         'removal_condition': 'Extract polling and parsing helpers once contract tests guard behavior.',
     },
+    'entrypoints/api/_ask_3.py': {
+        'reason': 'Web ask path builds frozen request context and event normalization helpers.',
+        'owner': 'entrypoints',
+        'removal_condition': 'Move frozen-context construction into the typed entrypoint after the SSE rewrite.',
+    },
     'application/ask_question/ask_question.py': {
         'reason': 'Q&A orchestration retains legacy heavy execution path.',
         'owner': 'application',
