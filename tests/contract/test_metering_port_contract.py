@@ -100,7 +100,10 @@ class TestMeteringPortContract:
         )
 
         records = metering.records()  # type: ignore[attr-defined]
-        assert {record['pk'] for record in records} == {COMPANY, OTHER_COMPANY}
+        assert {record['pk'] for record in records} == {
+            f'COMPANY#{COMPANY}',
+            f'COMPANY#{OTHER_COMPANY}',
+        }
 
     async def test_backend_failure_never_reaches_the_caller(self) -> None:
         metering = DynamoMetering(table=_FailingTable(), table_name='metering-contract-fail')

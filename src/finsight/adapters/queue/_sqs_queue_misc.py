@@ -174,8 +174,25 @@ class _SqsQueueMisc:
                     )
             except Exception:
                 pass
+        parsed_body = None
+        if isinstance(body, str):
+            try:
+                parsed = json.loads(body)
+                if isinstance(parsed, dict):
+                    parsed_body = parsed
+                    company = (
+                        parsed.get('company_id')
+                        or parsed.get('companyId')
+                        or parsed.get('tenant_id')
+                        or company
+                    )
+            except Exception:
+                pass
         if company is not None:
             msg.setdefault('company_id', _coerce_str(company))
+        if parsed_body:
+            for key, value in parsed_body.items():
+                msg.setdefault(key, value)
         return msg
 
     def _track_receive_count(self, msg: dict[str, Any]) -> Any:

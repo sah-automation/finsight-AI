@@ -135,6 +135,9 @@ async def _sqs_send(self: Any, *args: Any, **kwargs: Any) -> Any:
         }
     )
 
+    # Keep a local in-memory queue so receive works even without a wired client.
+    self._queue_state.setdefault(queue_url, []).append(dict(envelope))
+
     # optionally start Step Functions execution
     # Auto-start policy: explicit flag wins; otherwise start when a Step Functions
     # client/ARN is available so every queued job gets an execution per the spec.

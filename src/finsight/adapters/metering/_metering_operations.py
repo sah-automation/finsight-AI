@@ -164,8 +164,11 @@ async def _record_usage(
 
 def _records(self: Any, company_id: object = None) -> list[dict[str, Any]]:
     company = None if company_id is None else _text(company_id)
+    expected_pk = None if company is None else f'COMPANY#{company}'
     return [
-        dict(item) for (pk, _sk), item in self._memory.items() if company is None or pk == company
+        dict(item)
+        for (pk, _sk), item in self._memory.items()
+        if expected_pk is None or pk == expected_pk
     ]
 
 
@@ -240,7 +243,7 @@ def _to_item(self: Any, record: Any) -> dict[str, Any]:
     if not isinstance(created_at, datetime):
         created_at = datetime.now(UTC)
     item: dict[str, Any] = {
-        'pk': _text(record.company_id),
+        'pk': f'COMPANY#{_text(record.company_id)}',
         'sk': str(record.record_id),
         'record_id': str(record.record_id),
         'company_id': _text(record.company_id),

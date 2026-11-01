@@ -136,7 +136,10 @@ class TestDynamoMeteringWrites:
         await adapter.record_usage(OTHER_COMPANY, trace_id='trace-a', **common)
 
         assert len(table.unique_items()) == 5
-        assert {item['pk'] for item in table.items} == {COMPANY, OTHER_COMPANY}
+        assert {item['pk'] for item in table.items} == {
+            f'COMPANY#{COMPANY}',
+            f'COMPANY#{OTHER_COMPANY}',
+        }
 
 
 class TestDynamoMeteringFailureHandling:

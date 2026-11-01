@@ -134,10 +134,13 @@ async def _sqs_receive(self: Any, *args: Any, **kwargs: Any) -> list[dict[str, A
         if company_filter is not None:
             msg_company = msg.get('company_id') or ''
             if msg_company and _coerce_str(company_filter) != msg_company:
-                # requeue and skip
-                self._queue_state.setdefault(queue_url, []).append(
-                    raw if isinstance(raw, dict) else msg
-                )
+                # requeue and skip (cross-adapter/shared-client safe)
+                requeued = raw if isinstance(raw, dict) else msg
+                client_queues = getattr(client, 'queues', None)
+                if isinstance(client_queues, dict):
+                    client_queues.setdefault(queue_url, []).append(requeued)
+                else:
+                    self._queue_state.setdefault(queue_url, []).append(requeued)
                 continue
         # store receipt for ack
         receipt_key = _coerce_str(msg.get('ReceiptHandle') or msg.get('receipt_handle') or '')

@@ -25,6 +25,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/container.py: 2753 lines
   - composition/composition_container.py: 566 lines
   - core/errors/__init__.py: 338 lines
+  - adapters/tracing/tracing_adapter.py: 342 lines
   - adapters/readers/textract_reader.py: 356 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
@@ -40,7 +41,6 @@ Generated from tests/architecture/test_standards_checklist.py
   - adapters/waiting_line/waiting_line_settings.py::from_kwargs: 69 lines
   - domain/ports/tracing_port.py::start_span: 32 lines
   - domain/ports/metering_port.py::record_usage: 32 lines
-  - domain/ports/audit_log.py::append: 55 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
