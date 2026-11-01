@@ -217,8 +217,8 @@ coverage-html:
 
 # Ratchets for high-risk packages and changed lines.
 DIFF_COVERAGE_BASE ?= origin/main
-DOMAIN_COVERAGE_MIN ?= 60
-APPLICATION_COVERAGE_MIN ?= 10
+DOMAIN_COVERAGE_MIN ?= 65
+APPLICATION_COVERAGE_MIN ?= 29
 
 coverage-domain:
 	uv run pytest tests/unit tests/contract tests/architecture tests/security \

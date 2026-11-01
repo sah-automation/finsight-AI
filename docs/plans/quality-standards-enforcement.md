@@ -16,10 +16,12 @@ are not excluded to inflate the number.
 Domain and application aim for 85% coverage. Until they reach that baseline,
 package-specific ratchets are enforced separately:
 
-- `src/finsight/domain`: `DOMAIN_COVERAGE_MIN ?= 60` (`make coverage-domain`)
-- `src/finsight/application`: `APPLICATION_COVERAGE_MIN ?= 10` (`make coverage-application`)
+- `src/finsight/domain`: `DOMAIN_COVERAGE_MIN ?= 65` (`make coverage-domain`)
+- `src/finsight/application`: `APPLICATION_COVERAGE_MIN ?= 29` (`make coverage-application`)
 
 Raise these floors as the suite grows; do not lower them without a recorded reason.
+
+Ratcheted in #140 (H25): domain 60 -> 65; application 10 -> 29, using targeted behavioral tests for Q&A orchestration, source viewer, metering, and tracing.
 
 ## Changed-line coverage
 
