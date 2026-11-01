@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _resolve_wrapped(kwargs: dict[str, Any], args: list[Any]) -> Any:
@@ -42,6 +45,7 @@ class MeteredExtraction:
 
     async def _record_usage(self, company_id: Any, trace_id: Any = None) -> None:
         metering = self.metering
+        import inspect
         import uuid
 
         if trace_id is None:
@@ -70,15 +74,25 @@ class MeteredExtraction:
                         company_id,
                         service='extraction',
                         model='extraction',
+                        model_name='extraction',
                         units=1,
                         estimated_cost=None,
+                        cost=None,
+                        trace_id=trace_id,
+                        trace=trace_id,
+                        trace_identifier=trace_id,
                     )
                 except TypeError:
-                    result = method(company_id, service='extraction', units=1)
+                    try:
+                        result = method(
+                            company_id, service='extraction', units=1, trace_id=trace_id
+                        )
+                    except TypeError:
+                        result = method(company_id, service='extraction', units=1)
                 if inspect.isawaitable(result):
                     await result
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOGGER.debug('metered extraction usage recording failed: %s', exc)
 
     async def _delegate(self, method_name: str, company_id: Any, *args: Any, **kwargs: Any) -> Any:
         target = self._inner if self._inner is not None else self
@@ -91,9 +105,12 @@ class MeteredExtraction:
                 result = await result
             return result
         finally:
-            await self._record_usage(
-                company_id, trace_id=kwargs.get('trace_id', kwargs.get('trace'))
-            )
+            try:
+                await self._record_usage(
+                    company_id, trace_id=kwargs.get('trace_id', kwargs.get('trace'))
+                )
+            except Exception:
+                pass
 
     async def read(self, *args: Any, company_id: Any = None, **kwargs: Any) -> Any:
         company_id = (

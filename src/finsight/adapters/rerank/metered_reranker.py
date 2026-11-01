@@ -1,8 +1,11 @@
-# ruff: noqa: PLC0415, S110
+# ruff: noqa: PLC0415
 from __future__ import annotations
 
 import inspect
+import logging
 from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _resolve_wrapped(kwargs: dict[str, Any], args: list[Any]) -> Any:
@@ -73,23 +76,41 @@ class MeteredReranker:
             if method is not None:
                 try:
                     result = method(
-                        company_id, service='rerank', model='rerank', units=1, estimated_cost=None
+                        company_id,
+                        service='rerank',
+                        model='rerank',
+                        model_name='rerank',
+                        units=1,
+                        estimated_cost=None,
+                        cost=None,
+                        trace_id=trace_id,
+                        trace=trace_id,
+                        trace_identifier=trace_id,
                     )
                 except TypeError:
-                    result = method(company_id, service='rerank', units=1)
+                    try:
+                        result = method(company_id, service='rerank', units=1, trace_id=trace_id)
+                    except TypeError:
+                        result = method(company_id, service='rerank', units=1)
                 if inspect.isawaitable(result):
                     await result
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOGGER.debug('metered rerank usage recording failed: %s', exc)
 
     async def rerank(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         target = self._inner if self._inner is not None else self
         try:
             return await target.rerank(company_id, *args, **kwargs)
         finally:
-            await self._record_usage(
-                company_id if company_id is not None else kwargs.get('company_id')
-            )
+            try:
+                await self._record_usage(
+                    company_id if company_id is not None else kwargs.get('company_id'),
+                    trace_id=kwargs.get('trace_id', kwargs.get('trace'))
+                    if isinstance(kwargs, dict)
+                    else None,
+                )
+            except Exception as exc:
+                _LOGGER.debug('metered rerank usage recording failed: %s', exc)
 
     def __getattr__(self, name: str) -> Any:
         target = self._inner

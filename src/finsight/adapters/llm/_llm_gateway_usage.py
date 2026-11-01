@@ -19,10 +19,12 @@ async def _record_usage(
         'service': 'llm',
         'units': units,
         'estimated_cost': None,
+        'cost': None,
         'model': model_id,
         'model_name': model_id,
         'trace_id': trace_id,
         'trace': trace_id,
+        'trace_identifier': trace_id,
     }
     async with self._usage_lock:
         self.usage_rows.append(row)
@@ -66,8 +68,10 @@ async def _invoke_metering(self: Any, row: dict[str, Any]) -> None:
             model_name=r['model'],
             units=r['units'],
             estimated_cost=r['estimated_cost'],
+            cost=r['cost'],
             trace_id=r['trace_id'],
             trace=r['trace_id'],
+            trace_identifier=r['trace_identifier'],
             usage=r,
             row=r,
         ),

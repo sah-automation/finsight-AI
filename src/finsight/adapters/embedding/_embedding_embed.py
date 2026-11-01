@@ -56,7 +56,13 @@ async def _embed(self: Any, company_id: Any = None, *args: Any, **kwargs: Any) -
             raise ValueError('Embedding dimension mismatch')
         all_vectors.extend(vectors)
 
-    await _record_usage(self, self.model_id, company_id, len(texts))
+    await _record_usage(
+        self,
+        self.model_id,
+        company_id,
+        len(texts),
+        trace_id=kwargs.get('trace_id', kwargs.get('trace')),
+    )
 
     if single_input and len(texts) == 1:
         return all_vectors[0]

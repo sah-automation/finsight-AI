@@ -69,6 +69,9 @@ class MeteredLLM(LiteLLMGateway):
         if self._inner_metering() is metering:
             return
         target: Any = metering
+        model = (
+            getattr(self._inner, 'model_id', None) or getattr(self._inner, 'model', None) or 'llm'
+        )
         try:
             method = None
             for name in (
@@ -90,18 +93,26 @@ class MeteredLLM(LiteLLMGateway):
                     result = method(
                         company_id,
                         service='llm',
-                        model='llm',
+                        model=model,
+                        model_name=model,
                         units=1,
                         estimated_cost=None,
+                        cost=None,
                         trace_id=trace_id,
                         trace=trace_id,
+                        trace_identifier=trace_id,
                     )
                 except TypeError:
-                    result = method(company_id, service='llm', units=1)
+                    try:
+                        result = method(company_id, service='llm', units=1, trace_id=trace_id)
+                    except TypeError:
+                        result = method(company_id, service='llm', units=1)
                 if inspect.isawaitable(result):
                     await result
             elif callable(target):
-                result = target({'company_id': company_id, 'service': 'llm', 'units': 1})
+                result = target(
+                    {'company_id': company_id, 'service': 'llm', 'units': 1, 'trace_id': trace_id}
+                )
                 if inspect.isawaitable(result):
                     await result
         except Exception as exc:
@@ -115,10 +126,13 @@ class MeteredLLM(LiteLLMGateway):
         finally:
             if not recorded:
                 recorded = True
-                await self._record_metering(
-                    company_id if company_id is not None else kwargs.get('company_id'),
-                    trace_id=kwargs.get('trace_id', kwargs.get('trace')),
-                )
+                try:
+                    await self._record_metering(
+                        company_id if company_id is not None else kwargs.get('company_id'),
+                        trace_id=kwargs.get('trace_id', kwargs.get('trace')),
+                    )
+                except Exception as exc:
+                    _LOGGER.debug('metered llm usage recording failed: %s', exc)
 
     async def stream(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         target = self._inner if self._inner is not None else self

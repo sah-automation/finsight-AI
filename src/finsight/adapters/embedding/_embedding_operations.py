@@ -147,14 +147,24 @@ async def _embed_batch(self: Any, texts: list[str]) -> list[list[float]]:
     raise last_error if last_error is not None else RuntimeError('embedding failed')
 
 
-async def _record_usage(self: Any, model_id: str, company_id: Any, units: int) -> None:
+async def _record_usage(
+    self: Any, model_id: str, company_id: Any, units: int, trace_id: Any = None
+) -> None:
+    import uuid
+
+    if trace_id is None:
+        trace_id = str(uuid.uuid4())
     row = {
         'company_id': company_id,
         'service': 'embedding',
         'units': units,
         'estimated_cost': None,
+        'cost': None,
         'model': model_id,
         'model_name': model_id,
+        'trace_id': trace_id,
+        'trace': trace_id,
+        'trace_identifier': trace_id,
     }
     async with self._usage_lock:
         self.usage_rows.append(row)
@@ -198,11 +208,17 @@ async def _invoke_metering(self: Any, row: dict[str, Any]) -> None:
             model_name=r['model'],
             units=r['units'],
             estimated_cost=r['estimated_cost'],
+            cost=r['cost'],
+            trace_id=r['trace_id'],
+            trace=r['trace'],
+            trace_identifier=r['trace_identifier'],
             usage=r,
             row=r,
         ),
         lambda m=method, r=row: m(r),
-        lambda m=method, r=row: m(r['company_id'], 'embedding', r['units'], None, r['model']),
+        lambda m=method, r=row: m(
+            r['company_id'], 'embedding', r['units'], None, r['model'], r['trace_id']
+        ),
     ]
     for attempt in attempts:
         try:
