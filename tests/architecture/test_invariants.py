@@ -198,6 +198,11 @@ OVERSIZED_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'domain',
         'removal_condition': 'Split usage payload object.',
     },
+    'adapters/tracing/disabled_tracer.py::start_span': {
+        'reason': 'Disabled tracer mirrors port signature exactly.',
+        'owner': 'adapters',
+        'removal_condition': 'Split span configuration object in port.',
+    },
 }
 
 

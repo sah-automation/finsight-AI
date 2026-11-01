@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 import importlib
@@ -1703,10 +1704,29 @@ def _build_tracing_impl(*args: Any, **kwargs: Any) -> Any:
             'span_tracing',
         }
     }
-    # Switch may mark tracing disabled, but the adapter still emits minimal spans.
-    Cls = _import_adapter('finsight.adapters.tracing.tracing_adapter', 'TracingAdapter')
+    # Check detailed_tracing_enabled switch
+    switches = None
+    if config is not None:
+        if isinstance(config, Mapping):
+            switches = config.get('switches')
+        else:
+            switches = getattr(config, 'switches', None)
+    detailed_tracing_enabled = True
+    if switches is not None:
+        if isinstance(switches, Mapping):
+            detailed_tracing_enabled = switches.get('detailed_tracing_enabled', True)
+        else:
+            detailed_tracing_enabled = getattr(switches, 'detailed_tracing_enabled', True)
+
+    if detailed_tracing_enabled:
+        Cls = _import_adapter('finsight.adapters.tracing.tracing_adapter', 'TracingAdapter')
+        if Cls is None:
+            raise ImportError('TracingAdapter adapter is unavailable')
+        return Cls(config=config, **_extra)
+
+    Cls = _import_adapter('finsight.adapters.tracing.disabled_tracer', 'DisabledTracer')
     if Cls is None:
-        raise ImportError('TracingAdapter adapter is unavailable')
+        raise ImportError('DisabledTracer adapter is unavailable')
     return Cls(config=config, **_extra)
 
 
