@@ -71,6 +71,11 @@ class CompositionContainer:
         hybrid_search: Any = None,
         search: Any = None,
         vector_search: Any = None,
+        metric_repository: Any = None,
+        metrics: Any = None,
+        metrics_repository: Any = None,
+        metric_repo: Any = None,
+        metric: Any = None,
         metering: Any = None,
         meter: Any = None,
         metering_port: Any = None,
@@ -147,6 +152,27 @@ class CompositionContainer:
         )
         self.search = self.hybrid_search
         self.vector_search = self.hybrid_search
+        self.metric_repository = (
+            metric_repository
+            if metric_repository is not None
+            else metrics
+            if metrics is not None
+            else metrics_repository
+            if metrics_repository is not None
+            else metric_repo
+            if metric_repo is not None
+            else metric
+            if metric is not None
+            else deps.get('metric_repository')
+            or deps.get('metrics')
+            or deps.get('metrics_repository')
+            or deps.get('metric_repo')
+            or deps.get('metric')
+        )
+        self.metrics = self.metric_repository
+        self.metrics_repository = self.metric_repository
+        self.metric_repo = self.metric_repository
+        self.metric = self.metric_repository
         self.metering = (
             metering
             if metering is not None
@@ -446,6 +472,11 @@ class CompositionContainer:
             'hybrid_search': self.hybrid_search,
             'search': self.hybrid_search,
             'vector_search': self.hybrid_search,
+            'metric_repository': self.metric_repository,
+            'metrics': self.metric_repository,
+            'metrics_repository': self.metric_repository,
+            'metric': self.metric_repository,
+            'metric_repo': self.metric_repository,
             'metering': self.metering,
             'meter': self.metering,
             'metering_port': self.metering,
@@ -463,6 +494,9 @@ class CompositionContainer:
             'document_table': self.document_table_repository,
             'document_tables': self.document_table_repository,
             'chunk': self.chunk_repository,
+            'metric': self.metric_repository,
+            'metrics': self.metric_repository,
+            'metric_repository': self.metric_repository,
             'unit_of_work': self.unit_of_work,
             'uow': self.unit_of_work,
             'vector_store': self.vector_store,
@@ -523,6 +557,11 @@ class CompositionContainer:
             'hybrid_search': self.hybrid_search,
             'search': self.hybrid_search,
             'vector_search': self.hybrid_search,
+            'metric_repository': self.metric_repository,
+            'metrics': self.metric_repository,
+            'metrics_repository': self.metric_repository,
+            'metric_repo': self.metric_repository,
+            'metric': self.metric_repository,
             'metering': self.metering,
             'meter': self.metering,
             'metering_port': self.metering,

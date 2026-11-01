@@ -627,6 +627,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             'metering',
             'tracing',
             'hybrid_search',
+            'metric_repository',
         ):
             value = getattr(container_arg, attr, None)
             if value is not None:
@@ -818,6 +819,14 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     if hybrid_search is None:
         hybrid_search = build_hybrid_search(config=config, session=session, **_extra)
 
+    metric_repository = provided_deps.get('metric_repository')
+    if metric_repository is None:
+        metric_repository = _existing(
+            kwargs, 'metric_repository', 'metrics', 'metrics_repository', 'metric_repo', 'metric'
+        )
+    if metric_repository is None:
+        metric_repository = build_metric_repository(config=config, session=session, **_extra)
+
     ask_question_use_case = _existing(
         kwargs,
         'ask_question_use_case',
@@ -837,6 +846,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             answer_cache=answer_cache,
             waiting_line=waiting_line,
             hybrid_search=hybrid_search,
+            metric_repository=metric_repository,
             **{
                 k: v
                 for k, v in (_extra or {}).items()
@@ -852,8 +862,6 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
                     'embedding_provider',
                     'embedding',
                     'reranker',
-                    'metric_repository',
-                    'metrics',
                     'waiting_line',
                     'waiting',
                 }
@@ -983,6 +991,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         queue=queue,
         waiting_line=waiting_line,
         hybrid_search=hybrid_search,
+        metric_repository=metric_repository,
         reprocess_use_case=reprocess_use_case,
         metering=metering,
         tracing=tracing,
@@ -1889,6 +1898,53 @@ def _build_hybrid_search_impl(*args: Any, **kwargs: Any) -> Any:
     return Cls(session=session, config=config, **_extra)
 
 
+def build_metric_repository(*args: Any, **kwargs: Any) -> Any:
+    return _build_metric_repository_impl(*args, **kwargs)
+
+
+def _build_metric_repository_impl(*args: Any, **kwargs: Any) -> Any:
+    """Build the metric repository adapter (in-memory when no session)."""
+    provided = _existing(
+        kwargs,
+        'metric_repository',
+        'metrics',
+        'metrics_repository',
+        'metric_repo',
+        'metric_repository_adapter',
+        'metric',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'metric_repository',
+            'metrics',
+            'metrics_repository',
+            'metric_repo',
+            'metric_repository_adapter',
+            'metric',
+        }
+    }
+    Cls = _import_adapter(
+        'finsight.adapters.repositories.postgres_metric_repository',
+        'PostgresMetricRepository',
+        'AuroraMetricRepository',
+        'MetricRepositoryAdapter',
+        'PostgresMetricRepo',
+        'RLSMetricRepository',
+    )
+    if Cls is None:
+        raise ImportError('PostgresMetricRepository adapter is unavailable')
+    return Cls(session=session, config=config, **_extra)
+
+
 def _configured_price_path(config: Any) -> Any:
     if config is None:
         return None
@@ -2437,7 +2493,11 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         )
     if vector_store is None:
         vector_store = vector_write
-    metric_repository = _existing(kwargs, 'metric_repository', 'metrics', 'metrics_repository')
+    metric_repository = _existing(
+        kwargs, 'metric_repository', 'metrics', 'metrics_repository', 'metric_repo', 'metric'
+    )
+    if metric_repository is None:
+        metric_repository = build_metric_repository(config=config, session=session, **_extra0)
     queue = _existing(kwargs, 'queue', 'queue_port', 'sqs')
     job_repository = _existing(kwargs, 'job_repository', 'job_repo', 'jobs')
     if job_repository is None:
