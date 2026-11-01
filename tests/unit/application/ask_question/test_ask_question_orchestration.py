@@ -35,7 +35,7 @@ class _LLM:
 
 
 class _Search:
-    async def search(self, query: Any = None, embedding: Any = None, **kwargs: Any) -> Any:
+    async def search(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         return [{'document_id': 'doc1', 'document_version': 'v1', 'page_number': 4, 'score': 0.9}]
 
 

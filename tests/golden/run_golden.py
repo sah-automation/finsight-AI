@@ -207,15 +207,26 @@ def _make_real_ask(
 
         set_current_context(question=q_text, role=record.get('role'), company=company)
         try:
-            result = _call_use_case(
-                ask_use_case,
-                {
-                    'company_id': company,
-                    'question': q_text or str(question),
-                    'role': record.get('role'),
-                    'access_scope': record.get('access_scope'),
-                },
+            from finsight.core.types import CompanyId, RequestContext, Role, TraceId, UserId
+
+            role_value = record.get('role')
+            try:
+                role = (
+                    Role(str(role_value)) if role_value is not None else Role.EXECUTIVE_LEADERSHIP
+                )
+            except ValueError:
+                role = Role.EXECUTIVE_LEADERSHIP
+            scope = record.get('access_scope')
+            access_scope = scope if isinstance(scope, list) else ([] if scope is None else [scope])
+            ctx = RequestContext(
+                company_id=CompanyId(str(company)),
+                user_id=UserId(str(record.get('user_id') or 'golden-user')),
+                role=role,
+                trace_id=TraceId('golden-trace'),
+                permissions={},
+                access_scope=access_scope,
             )
+            result = _run_maybe_awaitable(ask_use_case.run(ctx, q_text or str(question)))
         except Exception as exc:
             if 'access' in str(exc).lower() or 'denied' in str(exc).lower():
                 from types import SimpleNamespace

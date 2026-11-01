@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from finsight.application.ask_question.ask_question import AskQuestionUseCase
+from finsight.application.ask_question.ask_question import AskQuestion
 from finsight.core.config.models import SwitchesConfig
 
 
@@ -27,7 +27,7 @@ class TestParallelStepsSwitch:
     def test_parallel_steps_on(self) -> None:
         """Test behavior when switch is ENABLED."""
         config = _TestConfig(switches=SwitchesConfig(parallel_steps=True))
-        use_case = AskQuestionUseCase(
+        use_case = AskQuestion(
             config=config,
             llm_gateway=_Null(),
             embedding_provider=_Null(),
@@ -45,7 +45,7 @@ class TestParallelStepsSwitch:
     def test_parallel_steps_off(self) -> None:
         """Test behavior when switch is DISABLED."""
         config = _TestConfig(switches=SwitchesConfig(parallel_steps=False))
-        use_case = AskQuestionUseCase(
+        use_case = AskQuestion(
             config=config,
             llm_gateway=_Null(),
             embedding_provider=_Null(),

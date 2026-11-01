@@ -609,9 +609,11 @@ class CompositionContainer:
             )
 
         with contextlib.suppress(Exception):
+            import finsight.entrypoints.api._ask_4 as _ask_4_module
             import finsight.entrypoints.api.ask as ask_entrypoint
 
-            ask_entrypoint._get_ask_use_case = lambda *_a, **_k: self.ask_question_use_case
+            ask_entrypoint._get_ask_use_case = lambda *_a, **_k: self.ask_question_use_case  # type: ignore[attr-defined]
+            _ask_4_module._get_ask_use_case_raw = lambda *_a, **_k: self.ask_question_use_case  # type: ignore[attr-defined]
 
         with contextlib.suppress(Exception):
             import finsight.entrypoints.api.onboarding as onboarding_entrypoint

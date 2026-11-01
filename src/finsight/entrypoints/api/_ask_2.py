@@ -1,247 +1,193 @@
-# ruff: noqa: BLE001, PLR0911, PLR0912, PLR0915, S110, I001, F403, F405
+# ruff: noqa: PLR0912, PLR0915
+"""Outcome to event normalization helpers for the ask entrypoint."""
+
 from __future__ import annotations
+
 from typing import Any
 
-try:
-    from finsight.core.errors import InsufficientData as _InsufficientDataError
-except Exception:
-    _InsufficientDataError = None  # type: ignore[assignment,misc]
-try:
-    from finsight.domain.entities.insufficient_data import (
-        InsufficientData as _InsufficientDataResult,
-    )
-except Exception:
-    _InsufficientDataResult = None  # type: ignore[assignment,misc]
-from ._ask_0 import *
-from ._ask_1 import *
+from ._ask_0 import _get
 
 
-async def _resolve_context_and_data(
-    *args: Any, **kwargs: Any
-) -> tuple[Any, dict[str, Any], Any, Any]:
-    working_kwargs = dict(kwargs)
-    context = None
-    use_case_candidate = None
-    data: dict[str, Any] = {}
+def _events_from_outcome(outcome: Any, data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    events: list[tuple[str, dict[str, Any]]] = []
 
-    for key in list(working_kwargs):
-        value = working_kwargs.pop(key)
-        key_l = key.lower()
-        if key_l in _CONTEXT_KEYS:
-            if context is None:
-                context = value
-            else:
-                data.update(_flatten(value))
-        elif (
-            key_l in _USE_CASE_KEYS
-            or key_l.endswith('use_case')
-            or key_l in ('service', 'factory', 'container', 'composition', 'app')
-        ):
-            if use_case_candidate is None:
-                use_case_candidate = value
-            else:
-                data.update(_flatten(value))
-        elif key_l in _PAYLOAD_KEYS:
-            if isinstance(value, dict):
-                data.update(value)
-            else:
-                data.update(_flatten(value))
-        elif key_l in ('role',):
-            data['_role'] = value
-        else:
-            data[key] = value
-
-    for value in args:
-        if _is_context(value):
-            if context is None:
-                context = value
-            else:
-                data.update(_flatten(value))
-        elif _is_use_case(value):
-            if use_case_candidate is None:
-                use_case_candidate = value
-            else:
-                data.update(_flatten(value))
-        elif isinstance(value, dict):
-            data.update(value)
-        else:
-            flattened = _flatten(value)
-            if flattened:
-                data.update(flattened)
-            else:
-                data.setdefault('_raw', value)
-
-    # Lift context/use-case/role out of a flattened payload if present.
-    if isinstance(data, dict):
-        for key in _CONTEXT_KEYS:
-            if key in data and context is None:
-                context = data.pop(key)
-        for key in _USE_CASE_KEYS:
-            if key in data and use_case_candidate is None:
-                use_case_candidate = data.pop(key)
-        if 'role' in data and '_role' not in data:
-            data['_role'] = data.pop('role')
-
-    _role_value = data.get('_role', data.get('role'))
-    canonical_data = dict(data)
-    canonical_data.update(_flatten(canonical_data))
-    data = canonical_data
-    for key in ('_role',):
-        data.pop(key, None)
-    if _role_value is not None and 'role' not in data:
-        data['role'] = _role_value
-
-    role_candidate = None
-    if context is not None:
-        role_candidate = _context_lookup(context, 'role', 'user_role', 'role_id', 'roleId')
-    if role_candidate is None and '_role' in data:
-        role_candidate = data.pop('_role', None)
-    if role_candidate is None and 'role' in data:
-        role_candidate = data.pop('role', None)
-
-    # Propagate scoping attributes from the request context into the payload.
-    access_scope_candidate = None
-    if context is not None:
-        access_scope_candidate = _context_lookup(
-            context,
-            'access_scope',
-            'accessScope',
-            'scope',
-            'access',
-            'permission_scope',
-            'categories',
-            'access_scopes',
+    is_insufficient = False
+    reason = 'insufficient data'
+    class_name = type(outcome).__name__.lower()
+    if (
+        getattr(outcome, 'unavailable', False)
+        if not isinstance(outcome, dict)
+        else outcome.get('unavailable', False)
+    ):
+        text = (
+            outcome.get('message')
+            if isinstance(outcome, dict)
+            else getattr(outcome, 'message', None)
         )
-    if access_scope_candidate is None:
-        access_scope_candidate = _get(
-            data,
-            'access_scope',
-            'accessScope',
-            'scope',
-            'access',
-            'permission_scope',
-            'categories',
+        events.append(('status', {'status': 'answering'}))
+        if text:
+            # Continue to normal delta emission below by clearing marker? Keep simple.
+            pass
+    if isinstance(outcome, dict) and (
+        outcome.get('insufficient_data') or outcome.get('insufficient')
+    ):
+        is_insufficient = True
+        reason = outcome.get('reason') or outcome.get('message') or reason
+    elif getattr(outcome, 'insufficient_data', False):
+        is_insufficient = True
+        reason = getattr(outcome, 'reason', reason) or reason
+    elif isinstance(outcome, Exception):
+        if 'insufficient' in class_name or 'insufficient' in str(outcome).lower():
+            is_insufficient = True
+            reason = str(outcome) or reason
+    # InsufficientDataResult check by name.
+    if (
+        type(outcome).__name__ in ('InsufficientData',)
+        or (
+            getattr(outcome, 'insufficient_data', False) is True
+            and not getattr(outcome, 'answer', None)
         )
-    if access_scope_candidate is not None and 'access_scope' not in data:
-        data['access_scope'] = access_scope_candidate
+    ) and (not isinstance(outcome, dict) or outcome.get('insufficient_data')):
+        is_insufficient = True
+        reason = getattr(outcome, 'reason', reason) or reason
 
-    company_candidate = None
-    if context is not None:
-        company_candidate = _context_lookup(
-            context,
-            'company_id',
-            'companyId',
-            'company',
-            'tenant_id',
-            'tenantId',
-            'tenant',
+    if is_insufficient:
+        events.append(('status', {'status': 'checking_evidence'}))
+        events.append(('insufficient_data', {'reason': reason, 'question': data.get('question')}))
+        events.append(('complete', {'done': True, 'insufficient_data': True}))
+        return events
+
+    answer_text = None
+    citations: list[Any] = []
+    model_name = None
+    cached = None
+
+    if isinstance(outcome, dict):
+        for key in ('answer', 'text', 'response', 'output', 'result', 'message'):
+            if outcome.get(key) is not None:
+                candidate_val = outcome.get(key)
+                if isinstance(candidate_val, str):
+                    answer_text = candidate_val
+                    break
+                if isinstance(candidate_val, dict) and candidate_val.get('text') is not None:
+                    answer_text = str(candidate_val.get('text'))
+                    break
+        citations = (
+            outcome.get('citations') or outcome.get('sources') or outcome.get('references') or []
         )
-    if company_candidate is not None and 'company_id' not in data:
-        data['company_id'] = company_candidate
-
-    # expose role candidate back if needed
-    if role_candidate is not None and 'role' not in data:
-        data['role'] = role_candidate
-
-    return context, data, use_case_candidate, role_candidate
-
-
-def _normalize_event(raw: Any) -> tuple[str, dict[str, Any]] | None:
-    """Normalize a candidate event into (event_type, payload)."""
-    if raw is None:
-        return None
-
-    # Already (type, data) tuple/list.
-    if isinstance(raw, (tuple, list)) and len(raw) >= 1:
-        etype = str(raw[0])
-        payload = raw[1] if len(raw) > 1 else {}
-        etype = _EVENT_ALIASES.get(etype.lower().replace('-', '_'), etype)
-        if not isinstance(payload, dict):
-            payload = {'value': payload}
-        return etype, payload
-
-    # dict event.
-    if isinstance(raw, dict):
-        etype: Any = None  # type: ignore[no-redef]
-        for key in ('event', 'type', 'event_type', 'kind', 'name'):
-            if key in raw and raw.get(key) is not None:
-                etype = str(raw.get(key))
+        model_name = outcome.get('model') or outcome.get('model_name') or outcome.get('model_id')
+        cached = outcome.get('cached') or outcome.get('cache_hit')
+    elif isinstance(outcome, str):
+        answer_text = outcome
+    else:
+        for attr in ('answer', 'text', 'response', 'output', 'content', 'result'):
+            val = getattr(outcome, attr, None)
+            if isinstance(val, str):
+                answer_text = val
                 break
-        if etype is None:
-            # Infer from content.
-            if 'delta' in raw or 'token' in raw or 'text' in raw or 'answer' in raw:
-                etype = 'delta'
-            elif 'citation' in raw or 'source' in raw:
-                etype = 'citation'
-            elif 'insufficient' in raw:
-                etype = 'insufficient_data'
-            elif 'error' in raw or ('message' in raw and 'status' not in raw):
-                # Ambiguous; default to status if status present.
-                etype = 'status'
-            else:
-                etype = 'status'
-        etype = _EVENT_ALIASES.get(str(etype).lower().replace('-', '_'), str(etype))
-
-        payload = dict(raw)
-        # Remove redundant type keys.
-        for key in ('event', 'type', 'event_type', 'kind', 'name'):
-            payload.pop(key, None)
-        return etype, payload
-
-    # Object with attributes.
-    if hasattr(raw, 'event') or hasattr(raw, 'type') or hasattr(raw, 'kind'):
-        attr_type = (
-            getattr(raw, 'event', None) or getattr(raw, 'type', None) or getattr(raw, 'kind', None)
+        citations = (
+            getattr(outcome, 'citations', None)
+            or getattr(outcome, 'sources', None)
+            or getattr(outcome, 'references', None)
+            or []
         )
-        etype = (
-            _EVENT_ALIASES.get(str(attr_type).lower().replace('-', '_'), str(attr_type))
-            if attr_type
-            else 'status'
+        model_name = (
+            getattr(outcome, 'model', None)
+            or getattr(outcome, 'model_name', None)
+            or getattr(outcome, 'model_id', None)
         )
-        payload_obj: dict[str, Any] = {}
-        for name in ('data', 'payload', 'details', 'meta', 'metadata'):
-            val = getattr(raw, name, None)
-            if val is not None:
-                if isinstance(val, dict):
-                    payload_obj.update(val)
-                else:
-                    payload_obj[name] = val
-        for name in (
-            'delta',
-            'token',
-            'text',
-            'content',
-            'answer',
-            'message',
-            'reason',
-            'citation',
-            'source',
-            'status',
-            'done',
-            'complete',
-            'error',
-            'busy',
-        ):
-            val = getattr(raw, name, None)
-            if val is not None:
-                payload_obj[name] = val
-        if not payload_obj:
-            payload_obj = {'value': str(raw)}
-        return etype, payload_obj
+        cached = getattr(outcome, 'cached', None) or getattr(outcome, 'cache_hit', None)
 
-    # Pydantic-like model.
-    if hasattr(raw, 'model_dump'):
-        try:
-            return _normalize_event(raw.model_dump())
-        except Exception:
-            pass
-    if hasattr(raw, 'dict'):
-        try:
-            return _normalize_event(raw.dict())
-        except Exception:
-            pass
+    if citations is None:
+        citations = []
 
-    return 'status', {'value': str(raw)}
+    events.append(('status', {'status': 'answering'}))
+
+    if answer_text is not None:
+        events.append(('delta', {'delta': answer_text, 'text': answer_text}))
+
+    for cit in citations:
+        if isinstance(cit, dict):
+            events.append(('citation', {'citation': cit}))
+        else:
+            payload: dict[str, Any] = {}
+            for name in (
+                'document',
+                'document_id',
+                'document_name',
+                'document_title',
+                'title',
+                'document_version',
+                'version',
+                'page',
+                'page_number',
+                'table',
+                'table_id',
+                'section',
+                'chunk_id',
+                'chunk',
+                'score',
+                'snippet',
+                'start_char',
+                'end_char',
+                'char_start',
+                'char_end',
+                'citation_locator',
+                'locator',
+                'citation_id',
+                'citation_token',
+                'citation_locator_token',
+                'signed_locator',
+                'signed_citation_locator',
+                'token',
+                'locator_token',
+                'citation_locator_id',
+            ):
+                val = getattr(cit, name, None)
+                if val is not None:
+                    payload[name] = val
+            if not payload:
+                payload = {'value': str(cit)}
+            events.append(('citation', {'citation': payload}))
+
+    complete_payload: dict[str, Any] = {'done': True}
+    if model_name is not None:
+        complete_payload['model'] = model_name
+    if cached is not None:
+        complete_payload['cached'] = bool(cached)
+    if answer_text is None and not citations:
+        complete_payload['insufficient_data'] = True
+
+    thread_id = None
+    answer_id = None
+    if isinstance(outcome, dict):
+        thread_id = _get(outcome, 'thread_id', 'threadId', 'thread', 'chat_id', 'conversation_id')
+        answer_id = _get(outcome, 'answer_id', 'answerId', 'answer', 'response_id', 'id')
+        nested_thread = outcome.get('thread')
+        if isinstance(nested_thread, dict):
+            thread_id = thread_id or _get(nested_thread, 'thread_id', 'threadId', 'id', 'thread')
+        nested_answer = outcome.get('answer')
+        if isinstance(nested_answer, dict):
+            answer_id = answer_id or _get(nested_answer, 'answer_id', 'answerId', 'id')
+    else:
+        thread_id = _get(outcome, 'thread_id', 'threadId', 'thread', 'chat_id', 'conversation_id')
+        answer_id = _get(outcome, 'answer_id', 'answerId', 'answer', 'response_id', 'result_id')
+        nested_thread = getattr(outcome, 'thread', None)
+        if isinstance(nested_thread, dict):
+            thread_id = thread_id or _get(nested_thread, 'thread_id', 'threadId', 'id', 'thread')
+        nested_answer = getattr(outcome, 'answer', None)
+        if isinstance(nested_answer, dict):
+            answer_id = answer_id or _get(nested_answer, 'answer_id', 'answerId', 'id')
+    if isinstance(answer_id, str) and answer_id == answer_text:
+        answer_id = _get(outcome, 'answer_id', 'answerId', 'response_id', 'result_id')
+    if thread_id is not None:
+        complete_payload['thread_id'] = thread_id
+        complete_payload['threadId'] = thread_id
+    if answer_id is not None:
+        complete_payload['answer_id'] = answer_id
+        complete_payload['answerId'] = answer_id
+    events.append(('complete', complete_payload))
+    return events
 
 
-__all__ = ['_normalize_event', '_resolve_context_and_data']
+__all__ = ['_events_from_outcome']

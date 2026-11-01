@@ -862,10 +862,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
 
         signing_key = _existing(kwargs, 'signing_key', 'secret', 'secret_key')
         if signing_key is None:
-            try:
-                signing_key = config.signing_key
-            except Exception:
-                signing_key = None
+            signing_key = config.signing_key
         if signing_key is None:
             raise ValueError('signing_key must be configured')
 
@@ -1746,30 +1743,41 @@ def _build_tracing_impl(*args: Any, **kwargs: Any) -> Any:
             'span_tracing',
         }
     }
-    # Check detailed_tracing_enabled switch
     switches = None
     if config is not None:
         if isinstance(config, Mapping):
             switches = config.get('switches')
         else:
             switches = getattr(config, 'switches', None)
-    detailed_tracing_enabled = True
-    if switches is not None:
-        if isinstance(switches, Mapping):
-            detailed_tracing_enabled = switches.get('detailed_tracing_enabled', True)
-        else:
-            detailed_tracing_enabled = getattr(switches, 'detailed_tracing_enabled', True)
+    if isinstance(switches, Mapping):
+        detailed_tracing_enabled = switches.get('detailed_tracing_enabled', True)
+    elif switches is not None:
+        detailed_tracing_enabled = getattr(switches, 'detailed_tracing_enabled', True)
+    else:
+        detailed_tracing_enabled = True
+    if isinstance(detailed_tracing_enabled, str):
+        detailed_tracing_enabled = detailed_tracing_enabled.strip().lower() in {
+            'true',
+            'yes',
+            '1',
+            'on',
+            'enabled',
+        }
+    else:
+        detailed_tracing_enabled = bool(detailed_tracing_enabled)
 
     if detailed_tracing_enabled:
-        Cls = _import_adapter('finsight.adapters.tracing.tracing_adapter', 'TracingAdapter')
-        if Cls is None:
+        tracer_class = _import_adapter(
+            'finsight.adapters.tracing.tracing_adapter', 'TracingAdapter'
+        )
+        if tracer_class is None:
             raise ImportError('TracingAdapter adapter is unavailable')
-        return Cls(config=config, **_extra)
+        return tracer_class(config=config, **_extra)
 
-    Cls = _import_adapter('finsight.adapters.tracing.disabled_tracer', 'DisabledTracer')
-    if Cls is None:
+    tracer_class = _import_adapter('finsight.adapters.tracing.disabled_tracer', 'DisabledTracer')
+    if tracer_class is None:
         raise ImportError('DisabledTracer adapter is unavailable')
-    return Cls(config=config, **_extra)
+    return tracer_class(config=config, **_extra)
 
 
 def build_waiting_line(*args: Any, **kwargs: Any) -> Any:
@@ -1800,6 +1808,8 @@ def _build_waiting_line_impl(*args: Any, **kwargs: Any) -> Any:
             'waiting',
             'waiting_line_port',
             'queue_line',
+            'mode',
+            'profile',
         }
     }
 
@@ -1946,7 +1956,7 @@ def _build_metric_repository_impl(*args: Any, **kwargs: Any) -> Any:
             'metric',
         }
     }
-    Cls = _import_adapter(
+    adapter_class = _import_adapter(
         'finsight.adapters.repositories.postgres_metric_repository',
         'PostgresMetricRepository',
         'AuroraMetricRepository',
@@ -1954,9 +1964,9 @@ def _build_metric_repository_impl(*args: Any, **kwargs: Any) -> Any:
         'PostgresMetricRepo',
         'RLSMetricRepository',
     )
-    if Cls is None:
+    if adapter_class is None:
         raise ImportError('PostgresMetricRepository adapter is unavailable')
-    return Cls(session=session, config=config, **_extra)
+    return adapter_class(session=session, config=config, **_extra)
 
 
 def _configured_price_path(config: Any) -> Any:

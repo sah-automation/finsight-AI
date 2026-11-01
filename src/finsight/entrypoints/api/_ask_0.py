@@ -1,15 +1,17 @@
-# ruff: noqa: BLE001, E501, I001
-"""API entrypoint for Q&A ask functionality with typed SSE streaming."""
+# ruff: noqa: BLE001, E501, S110, PLR0911
+"""Shared helpers for the ask entrypoint."""
 
 from __future__ import annotations
+
 import contextlib
 import inspect
 import json
 from typing import Any
-from typing import Any as _Any
+
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+
 from finsight.core.errors import (
     AuthorizationError,
     ValidationError,
@@ -27,21 +29,7 @@ try:
     )
 except Exception:
     _InsufficientDataResult = None  # type: ignore[assignment,misc]
-_get_ask_use_case: _Any = None
-try:
-    from finsight.composition.ask_question import (
-        get_ask_use_case as _get_ask_use_case_raw,
-    )
 
-    def _get_ask_use_case(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
-        if args or kwargs:
-            return _get_ask_use_case_raw(*args, **kwargs)
-        try:
-            return _get_ask_use_case_raw()
-        except TypeError:
-            return _get_ask_use_case_raw(None)
-except ImportError:  # pragma: no cover - composition may not expose ask yet
-    _get_ask_use_case = None
 router = APIRouter(prefix='/ask', tags=['ask'])
 router_qa = APIRouter(prefix='/qa', tags=['qa'])
 router_question = APIRouter(prefix='/question', tags=['question'])
@@ -72,77 +60,9 @@ class _ServerError(HTTPException):
         self.code = 'AskError'
 
 
-_CONTEXT_KEYS = (
-    'request_context',
-    'context',
-    'ctx',
-    'user_context',
-    'auth_context',
-    'security_context',
-    'current_user',
-    'principal',
-    'identity',
-    'user',
-)
-_USE_CASE_KEYS = (
-    'use_case',
-    'ask_use_case',
-    'qa_use_case',
-    'service',
-    'orchestrator',
-    'handler',
-    'ask',
-    'handler_service',
-    'container',
-    'composition',
-    'app',
-    'factory',
-)
-_PAYLOAD_KEYS = (
-    'request',
-    'payload',
-    'body',
-    'data',
-    'command',
-    'input',
-    'question_input',
-    'query',
-)
-_REPOSITORY_KEYS = ('repository', 'repo')
-_EVENT_ALIASES = {
-    'status': 'status',
-    'progress': 'status',
-    'state': 'status',
-    'info': 'status',
-    'delta': 'delta',
-    'token': 'delta',
-    'answer_delta': 'delta',
-    'chunk': 'delta',
-    'text': 'delta',
-    'content': 'delta',
-    'citation': 'citation',
-    'source': 'citation',
-    'reference': 'citation',
-    'insufficient_data': 'insufficient_data',
-    'insufficient': 'insufficient_data',
-    'no_answer': 'insufficient_data',
-    'complete': 'complete',
-    'done': 'complete',
-    'finished': 'complete',
-    'end': 'complete',
-    'completion': 'complete',
-    'error': 'error',
-    'failure': 'error',
-    'failed': 'error',
-    'busy': 'busy',
-}
-_FRIENDLY = {
-    'busy': 'The system is busy right now. Please try again in a moment.',
-    'config': 'This question could not be processed due to a configuration issue. Please contact support.',
-    'provider': 'The answer service is temporarily unavailable. Please try again shortly.',
-    'insufficient': 'I do not have enough data to answer that question reliably.',
-    'generic': 'Unable to answer this question right now. Please try again.',
-}
+_CONTEXT_KEYS = ('request_context', 'context', 'ctx')
+_USE_CASE_KEYS = ('use_case', 'ask_use_case', 'qa_use_case', 'service', 'orchestrator', 'handler')
+_PAYLOAD_KEYS = ('request', 'payload', 'body', 'data', 'command', 'input', 'query')
 
 
 def _get(obj: Any, *names: str, default: Any = None) -> Any:
@@ -158,13 +78,12 @@ def _get(obj: Any, *names: str, default: Any = None) -> Any:
 
 
 def _context_lookup(context: Any, *names: str) -> Any:
-    """Best-effort extraction of a named attribute from a context object or dict."""
     if context is None:
         return None
     direct = _get(context, *names)
     if direct is not None:
         return direct
-    nested_keys = (
+    for nested_key in (
         'user',
         'principal',
         'identity',
@@ -172,18 +91,12 @@ def _context_lookup(context: Any, *names: str) -> Any:
         'context',
         'request_context',
         'auth_context',
-        'security_context',
-    )
-    if isinstance(context, dict):
-        for nested_key in nested_keys:
+    ):
+        nested = None
+        if isinstance(context, dict):
             nested = context.get(nested_key)
-            if nested is not None:
-                found = _context_lookup(nested, *names)
-                if found is not None:
-                    return found
-        return None
-    for nested_key in nested_keys:
-        nested = getattr(context, nested_key, None)
+        else:
+            nested = getattr(context, nested_key, None)
         if nested is not None:
             found = _context_lookup(nested, *names)
             if found is not None:
@@ -192,27 +105,17 @@ def _context_lookup(context: Any, *names: str) -> Any:
 
 
 def _is_context(value: Any) -> bool:
-    return value is not None and (
-        hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
-    )
+    return value is not None and hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
 
 
 def _is_use_case(value: Any) -> bool:
     if value is None or isinstance(value, (str, dict, Role)):
         return False
-    if (
-        callable(value)
-        and not hasattr(value, 'execute')
-        and not hasattr(value, 'run')
-        and not hasattr(value, 'ask')
-        and not hasattr(value, 'stream')
-    ):
-        # Factories resolved later.
-        return False
-    for attr in ('execute', 'run', 'ask', 'answer', 'handle', 'stream', 'stream_ask', 'ask_stream'):
-        if hasattr(value, attr) and callable(getattr(value, attr, None)):
-            return True
-    return callable(value) and not _is_context(value)
+    return (
+        (hasattr(value, 'run') and callable(value.run))
+        or (hasattr(value, 'execute') and callable(value.execute))
+        or (hasattr(value, 'stream') and callable(value.stream))
+    )
 
 
 def _flatten(obj: Any) -> dict[str, Any]:
@@ -223,9 +126,6 @@ def _flatten(obj: Any) -> dict[str, Any]:
         'role': ('role', 'user_role', 'roleId'),
         'access_scope': ('access_scope', 'accessScope', 'scope', 'access', 'permission_scope'),
         'user_id': ('user_id', 'userId', 'user', 'uid'),
-        'session_id': ('session_id', 'sessionId', 'session'),
-        'cache': ('cache', 'answer_cache', 'cache_enabled'),
-        'stream': ('stream', 'streaming', 'sse'),
     }
     for canonical, names in aliases.items():
         value = _get(obj, *names)
@@ -246,19 +146,81 @@ def _sse(event: str, data: Any) -> str:
     return f'event: {event}\ndata: {payload}\n\n'
 
 
+_FRIENDLY = {
+    'busy': 'The system is busy right now. Please try again in a moment.',
+    'config': 'This question could not be processed due to a configuration issue. Please contact support.',
+    'provider': 'The answer service is temporarily unavailable. Please try again shortly.',
+    'insufficient': 'I do not have enough data to answer that question reliably.',
+    'generic': 'Unable to answer this question right now. Please try again.',
+}
+
+
+def _has_ask_permission(role: Any) -> bool:
+    return True
+
+
 async def _await(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
     return value
 
 
+def _friendly_error(exc: BaseException) -> str:
+    lowered = str(exc).lower()
+    exc_type = type(exc).__name__.lower()
+    combined = lowered + ' ' + exc_type
+    if any(
+        token in combined
+        for token in ('busy', 'timeout', 'queue', 'waiting', 'rate_limit', 'ratelimit', 'throttl')
+    ):
+        return 'The system is busy right now. Please try again in a moment.'
+    if any(
+        token in combined
+        for token in ('config', 'validation', 'permission', 'forbidden', 'unauthorized', 'auth')
+    ):
+        if any(token in combined for token in ('permission', 'forbidden', 'unauthorized', 'auth')):
+            return 'You do not have permission to perform this action.'
+        return 'This question could not be processed due to a configuration issue. Please contact support.'
+    if any(
+        token in combined
+        for token in (
+            'provider',
+            'model',
+            'llm',
+            'openai',
+            'anthropic',
+            'litellm',
+            'gateway',
+            'unavailable',
+            'connection',
+            'network',
+        )
+    ):
+        return 'The answer service is temporarily unavailable. Please try again shortly.'
+    if any(token in combined for token in ('insufficient', 'no_data', 'no relevant', 'not enough')):
+        return 'I do not have enough data to answer that question reliably.'
+    try:
+        msg = (
+            to_user_message(exc)
+            if isinstance(exc, Exception)
+            else 'Unable to answer this question right now. Please try again.'
+        )
+        if (
+            msg
+            and msg != 'An unexpected error occurred. Please try again later.'
+            and 'traceback' not in msg.lower()
+            and len(msg) <= 200  # noqa: PLR2004
+        ):
+            return msg
+    except Exception:
+        pass
+    return 'Unable to answer this question right now. Please try again.'
+
+
 __all__ = [
     'EXTRA_ROUTERS',
     '_CONTEXT_KEYS',
-    '_EVENT_ALIASES',
-    '_FRIENDLY',
     '_PAYLOAD_KEYS',
-    '_REPOSITORY_KEYS',
     '_USE_CASE_KEYS',
     'APIRouter',
     'Any',
@@ -271,17 +233,15 @@ __all__ = [
     'Role',
     'StreamingResponse',
     'ValidationError',
-    '_Any',
     '_BadRequestError',
     '_ForbiddenError',
     '_ServerError',
     '_await',
     '_context_lookup',
     '_flatten',
+    '_friendly_error',
     '_get',
-    '_get_ask_use_case',
-    '_is_context',
-    '_is_use_case',
+    '_has_ask_permission',
     '_sse',
     'annotations',
     'contextlib',

@@ -24,14 +24,12 @@ _LOGGER = logging.getLogger(__name__)
 class PassthroughWaitingLine(WaitingLinePort):
     """Run heavy work directly, without queueing or concurrency caps."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        # Accept configuration/kwargs for interface compatibility, but do not
-        # gate execution on them.
-        self._config = kwargs.get('config')
+    def __init__(self, *, config: Any = None, **kwargs: Any) -> None:
+        self._config = config if config is not None else kwargs.get('config')
         if self._config is None:
-            for arg in args:
-                if isinstance(arg, Mapping) or hasattr(arg, 'switches'):
-                    self._config = arg
+            for value in kwargs.values():
+                if isinstance(value, Mapping) or hasattr(value, 'switches'):
+                    self._config = value
                     break
         self.settings = None
 
@@ -63,7 +61,4 @@ class PassthroughWaitingLine(WaitingLinePort):
         return _parse_work_common(args, values)
 
 
-NoOpWaitingLine = PassthroughWaitingLine
-PassThroughWaitingLine = PassthroughWaitingLine
-
-__all__ = ['NoOpWaitingLine', 'PassThroughWaitingLine', 'PassthroughWaitingLine']
+__all__ = ['PassthroughWaitingLine']

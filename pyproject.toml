@@ -577,6 +577,7 @@ source_modules = ["finsight.application"]
 ignore_imports = [
     "finsight.application.** -> finsight.core.types",
     "finsight.application.** -> finsight.domain.**",
+    "finsight.application.** -> finsight.core.config",
 ]
 forbidden_modules = [
     "boto3",

@@ -1,12 +1,6 @@
 """Composition root package."""
 
-from .ask_question import (
-    build_ask_question,
-    build_ask_question_use_case,
-    build_ask_use_case,
-    get_ask_use_case,
-    resolve_ask_use_case,
-)
+from .ask_question import get_ask_use_case
 from .composition_container import CompositionContainer
 from .container import (
     ReaderFactory,
@@ -114,9 +108,6 @@ __all__ = [
     'ReaderRegistry',
     'build_answer_cache',
     'build_app_container',
-    'build_ask_question',
-    'build_ask_question_use_case',
-    'build_ask_use_case',
     'build_audit_log',
     'build_change_event_publisher',
     'build_chunk_repository',
@@ -191,6 +182,7 @@ __all__ = [
     'create_reprocess_use_case',
     'create_source_viewer_use_case',
     'create_upload_use_case',
+    'get_ask_use_case',
     'get_container',
     'get_document_use_case',
     'get_onboarding_use_case',

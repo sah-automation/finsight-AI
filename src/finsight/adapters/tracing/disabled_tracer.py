@@ -21,17 +21,11 @@ class DisabledTracer(TracingPort):
     environments where detailed tracing is disabled.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the disabled tracer.
-
-        Args:
-            *args: Positional arguments (config, etc.) - accepted for compatibility
-            **kwargs: Keyword arguments (config, service_name, etc.) - accepted for compatibility
-        """
-        # Accept config and other kwargs for interface compatibility,
-        # but don't use them for any backend operations.
-        self._config = kwargs.get('config') if isinstance(kwargs.get('config'), Mapping) else None
-        self._service_name = kwargs.get('service_name', 'finsight-ai')
+    def __init__(
+        self, *, config: Any = None, service_name: str = 'finsight-ai', **kwargs: Any
+    ) -> None:
+        self._config = config if config is not None else kwargs.get('config')
+        self._service_name = service_name
         self._spans: list[Span] = []
 
     async def _start_span_impl(  # noqa: PLR0913
@@ -178,14 +172,4 @@ class DisabledTracer(TracingPort):
         return span
 
 
-# Aliases for compatibility
-InactiveTracer = DisabledTracer
-MinimalTracer = DisabledTracer
-NoOpTracer = DisabledTracer
-
-__all__ = [
-    'DisabledTracer',
-    'InactiveTracer',
-    'MinimalTracer',
-    'NoOpTracer',
-]
+__all__ = ['DisabledTracer']

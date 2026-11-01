@@ -18,7 +18,7 @@ async def _collect(response: object) -> str:
 
 def test_ask_streams_typed_sse_events_end_to_end() -> None:
     class FakeAsk:
-        async def execute(self, data: object) -> object:
+        async def run(self, context: object, question: object) -> object:
             return {
                 'answer': 'Margins fell because costs rose.',
                 'citations': [{'document': 'q3.pdf', 'page': 4}],
@@ -43,11 +43,11 @@ def test_ask_streams_typed_sse_events_end_to_end() -> None:
 
 def test_ask_streams_insufficient_data_without_sentence() -> None:
     class FakeAsk:
-        async def execute(self, data: object) -> object:
+        async def run(self, context: object, question: object) -> object:
             return InsufficientData(
                 reason='no relevant documents',
                 company_id='company-1',
-                question=data.get('question'),
+                question=question,
             )
 
     async def run() -> str:
@@ -64,7 +64,7 @@ def test_ask_streams_insufficient_data_without_sentence() -> None:
 
 def test_ask_maps_busy_errors_to_friendly_message() -> None:
     class FakeAsk:
-        async def execute(self, data) -> Never:
+        async def run(self, context, question) -> Never:
             raise TimeoutError('provider raw timeout')
 
     async def run() -> str:
@@ -83,7 +83,7 @@ def test_ask_does_not_leak_sensitive_document_text() -> None:
     raw_error_text = 'raw backend explosion details'
 
     class FakeAsk:
-        async def execute(self, data) -> Never:
+        async def run(self, context, question) -> Never:
             raise RuntimeError(raw_error_text)
 
     async def run() -> str:
