@@ -29,6 +29,7 @@ STANDARD_SPAN_ATTRIBUTES: tuple[str, ...] = (
     'retry_count',
     'cache_hit',
     'queue_wait',
+    'company_hash',
 )
 
 
