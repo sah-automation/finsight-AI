@@ -184,7 +184,7 @@ class S3Storage(ObjectStorage):
         )
 
     async def get_object(self, company_id: Any, key: Any, **kwargs: Any) -> bytes:
-        from ._s3_storage_get_object import get_object as _m
+        from ._s3_storage_get_object import _get_object as _m
 
         return await _m(self, company_id, key, **kwargs)  # type: ignore[no-any-return]
 

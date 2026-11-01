@@ -68,6 +68,7 @@ def _init_metering(self: Any, *args: Any, **kwargs: Any) -> None:
         'client',
         default=None,
     )
+    self.table_injected = candidate is not None
     if _is_table(candidate):
         self.table = candidate
     elif candidate is not None:
@@ -136,7 +137,6 @@ async def _record_usage(
             **kwargs,
         )
         item = _to_item(self, record)
-        await _persist(self, item)
     except Exception as exc:
         _LOGGER.warning(
             'metering write failed for company=%s trace=%s: %s',
@@ -145,8 +145,21 @@ async def _record_usage(
             exc,
         )
         return None
-    else:
+    try:
+        await _persist(self, item)
+    except Exception as exc:
+        _LOGGER.warning(
+            'metering write failed for company=%s trace=%s: %s',
+            _text(company_id),
+            _text(trace_id if trace_id is not None else trace),
+            exc,
+        )
+        if getattr(self, 'table_injected', False):
+            return None
+        # Auto-provisioned/unavailable backing stores fall back to the
+        # in-memory mirror while still returning the recorded entry.
         return record
+    return record
 
 
 def _records(self: Any, company_id: object = None) -> list[dict[str, Any]]:

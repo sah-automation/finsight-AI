@@ -429,7 +429,7 @@ show_missing = true
 skip_covered = false
 # Ratchet: raise this floor as the suite grows. See
 # docs/plans/quality-standards-enforcement.md.
-fail_under = 24
+fail_under = 50
 [tool.mutmut]
 paths_to_mutate = ["src/finsight/domain", "src/finsight/application"]
 tests_dir = ["tests/unit", "tests/contract", "tests/architecture"]

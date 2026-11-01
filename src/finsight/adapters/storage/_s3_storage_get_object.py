@@ -7,7 +7,7 @@ from ._s3_storage_helpers import *
 from ._s3_storage_supports import _supports
 
 
-async def get_object(*args: Any, **kwargs: Any) -> Any:
+async def _get_object(*args: Any, **kwargs: Any) -> Any:
     return await _get_object_impl(*args, **kwargs)
 
 

@@ -4,9 +4,9 @@ Coverage is measured for `src/finsight` with branch coverage enabled.
 
 ## Global floor
 
-- `pyproject.toml`: `fail_under = 24`
-- `Makefile`: `COVERAGE_MIN ?= 24`
-- Measured baseline: 24.81% (current working tree).
+- `pyproject.toml`: `fail_under = 50`
+- `Makefile`: `COVERAGE_MIN ?= 50`
+- Measured baseline: 50% (ratcheted in #139).
 
 Migrations, `conftest.py`, and generated code are the only exclusions. Adapters
 are not excluded to inflate the number.
