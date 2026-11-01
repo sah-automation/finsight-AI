@@ -11,6 +11,41 @@ switches:
 
 models:
   region: "us-east-1"
+  approved_models:
+    - model_id: "gemini/gemini-1.5-pro"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/gemini-1.5-flash"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/text-embedding-004"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/llama-3.3-70b-versatile"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/llama-3.1-8b-instant"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/meta/llama-3.1-70b-instruct"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/meta/llama-3.1-8b-instruct"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/llama-3.2-nv-rerankqa-1b-v2"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "self_hosted/open_model_small"
+      regions: ["us-east-1", "us-west-2", "us", "in-region"]
+    - model_id: "self_hosted/cross_encoder_small"
+      regions: ["us-east-1", "us-west-2", "us", "in-region"]
+    - model_id: "cohere/rerank-english-v3.0"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "cohere/rerank-multilingual-v3.0"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "test/primary"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "test/fallback-1"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "test/fallback-2"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "test/embedding"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "cohere/test"
+      regions: ["us-east-1", "us-west-2", "us"]
 
 llm:
   primary_model:

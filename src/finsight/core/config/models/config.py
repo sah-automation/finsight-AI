@@ -203,24 +203,20 @@ class Config(StrictBaseModel):
         if not model_ids:
             return
 
-        if models is not None:
+        if models is not None and model_ids:
             approved_models = getattr(models, 'approved_models', None) or []
             approved_ids = {
                 str(item.model_id) for item in approved_models if getattr(item, 'approved', True)
             }
-            if approved_ids:
-                region = getattr(models, 'region', None)
-                for model_id in model_ids:
-                    if model_id not in approved_ids:
-                        raise ValueError(f'model {model_id!r} is not approved')
-                    if region is not None:
-                        matching = [
-                            item for item in approved_models if str(item.model_id) == model_id
-                        ]
-                        if matching and not any(item.is_approved_for(region) for item in matching):
-                            raise ValueError(
-                                f'model {model_id!r} is not approved for region {region!r}'
-                            )
+            if not approved_ids:
+                raise ValueError('approved_models must not be empty when models are configured')
+            region = getattr(models, 'region', None)
+            for model_id in model_ids:
+                if model_id not in approved_ids:
+                    raise ValueError(f'model {model_id!r} is not approved')
+                matching = [item for item in approved_models if str(item.model_id) == model_id]
+                if matching and not any(item.is_approved_for(region) for item in matching):
+                    raise ValueError(f'model {model_id!r} is not approved for region {region!r}')
 
         from finsight.core.config.price_table import load_price_table  # noqa: PLC0415
 
