@@ -113,6 +113,88 @@ def _resolve_switch_enabled(config: Any, raw_enabled: Any) -> bool:
     return bool(value)
 
 
+def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:
+    """Return a plain dict of active switch values (best-effort)."""
+
+    switches = _config_switches(switches_or_config)
+    if switches is None and hasattr(switches_or_config, 'config'):
+        switches = _config_switches(getattr(switches_or_config, 'config', None))
+    if switches is None:
+        switches = switches_or_config
+    if isinstance(switches, Mapping):
+        try:
+            return {str(k): v for k, v in switches.items()}
+        except Exception:
+            return {}
+    if switches is None:
+        return {}
+    result: dict[str, Any] = {}
+    try:
+        for field in getattr(switches, 'model_fields', {}) or {}:
+            value = getattr(switches, field, None)
+            result[str(field)] = value
+    except Exception:
+        pass
+    if not result:
+        try:
+            for field in vars(switches):
+                if not field.startswith('_'):
+                    result[str(field)] = getattr(switches, field)
+        except Exception:
+            pass
+    return result
+
+
+TRACING_ALIAS_NAMES: tuple[str, ...] = (
+    'Tracing',
+    'Tracer',
+    'TracingService',
+    'SpanTracer',
+    'TraceAdapter',
+    'TracerAdapter',
+    'TracingPortAdapter',
+    'OpenTelemetryTracing',
+    'OTelTracing',
+    'OtelTracing',
+    'OpenTelemetryTracer',
+    'OtelTracer',
+    'CloudWatchTracing',
+    'StructuredTracing',
+    'StructuredLogTracing',
+    'LoggingTracing',
+    'ConsoleTracing',
+    'InMemoryTracing',
+    'NoOpTracing',
+    'DisabledTracing',
+    'ActiveTracing',
+    'TracingProvider',
+    'SpanEmitter',
+    'TraceEmitter',
+    'TracingGateway',
+    'TracePortAdapter',
+)
+
+
+def _ensure_standard_span_attributes(
+    merged: dict[str, Any],
+    passed_name: Any,
+    operation: Any,
+    config: Any,
+) -> None:
+    if passed_name is not None or operation is not None:
+        merged.setdefault('step', passed_name if passed_name is not None else operation)
+    merged.setdefault('operation_name', merged.get('step'))
+    switches = _active_switch_values(config)
+    if switches:
+        merged.setdefault('active_switch_values', switches)
+        merged.setdefault('active_switches', switches)
+        merged.setdefault('switches', switches)
+    merged.setdefault('duration', merged.get('duration_ms'))
+    merged.setdefault('cache_hit', merged.get('cache_hit', False))
+    merged.setdefault('retry_count', merged.get('retries', 0))
+    merged.setdefault('queue_wait', merged.get('queue_wait_ms'))
+
+
 def _name_from_kwargs(kwargs: dict[str, Any]) -> Any:
     for key in ('name', 'span_name', 'operation', 'operation_name', 'label'):
         if kwargs.get(key) is not None:

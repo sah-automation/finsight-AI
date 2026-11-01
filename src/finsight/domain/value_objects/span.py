@@ -20,6 +20,18 @@ def _coalesce(
     return default
 
 
+STANDARD_SPAN_ATTRIBUTES: tuple[str, ...] = (
+    'step',
+    'company',
+    'duration',
+    'active_switch_values',
+    'model_name',
+    'retry_count',
+    'cache_hit',
+    'queue_wait',
+)
+
+
 class Span:
     """Minimal structured span emitted by tracing ports/adapters."""
 
@@ -162,6 +174,7 @@ TracingEvent = Span
 MinimalSpan = Span
 
 __all__ = [
+    'STANDARD_SPAN_ATTRIBUTES',
     'MinimalSpan',
     'Span',
     'SpanRecord',

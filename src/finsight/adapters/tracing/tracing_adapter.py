@@ -11,7 +11,9 @@ from finsight.domain.ports.tracing_port import TracingPort
 from finsight.domain.value_objects.span import Span, company_to_trace_attribute
 
 from ._tracing_config import (
+    TRACING_ALIAS_NAMES,
     _config_switches,
+    _ensure_standard_span_attributes,
     _first,
     _name_from_kwargs,
     _observability,
@@ -24,6 +26,25 @@ from ._tracing_redaction import (
 from ._tracing_span_collection import _SpanCollection
 
 _LOGGER = logging.getLogger(__name__)
+
+STANDARD_SPAN_ATTRIBUTES: tuple[str, ...] = (
+    'step',
+    'company',
+    'duration',
+    'active_switch_values',
+    'model_name',
+    'retry_count',
+    'cache_hit',
+    'queue_wait',
+)
+SENSITIVE_SPAN_FIELDS: tuple[str, ...] = (
+    'question',
+    'chunk_text',
+    'answer',
+    'pii',
+    'credentials',
+    'signed_url',
+)
 
 
 class TracingAdapter(TracingPort):
@@ -165,6 +186,9 @@ class TracingAdapter(TracingPort):
                 continue
             merged_attributes[key] = value
 
+        # Standard span attributes (step/company/duration/switches/model/etc.).
+        _ensure_standard_span_attributes(merged_attributes, passed_name, operation, self.config)
+
         sanitized = _sanitize_attributes(merged_attributes) if effective_active else {}
 
         span = Span(
@@ -259,39 +283,16 @@ class TracingAdapter(TracingPort):
         return await self.start_span(company_id, *args, **kwargs)  # type: ignore[no-any-return]
 
 
-_alias_names = [
-    'Tracing',
-    'Tracer',
-    'TracingService',
-    'SpanTracer',
-    'TraceAdapter',
-    'TracerAdapter',
-    'TracingPortAdapter',
-    'OpenTelemetryTracing',
-    'OTelTracing',
-    'OtelTracing',
-    'OpenTelemetryTracer',
-    'OtelTracer',
-    'CloudWatchTracing',
-    'StructuredTracing',
-    'StructuredLogTracing',
-    'LoggingTracing',
-    'ConsoleTracing',
-    'InMemoryTracing',
-    'NoOpTracing',
-    'DisabledTracing',
-    'ActiveTracing',
-    'TracingProvider',
-    'SpanEmitter',
-    'TraceEmitter',
-    'TracingGateway',
-    'TracePortAdapter',
-]
 for _n in ('events', 'traces', 'span_records'):
     setattr(TracingAdapter, _n, TracingAdapter.records)
 for _n in ('exported_spans',):
     setattr(TracingAdapter, _n, TracingAdapter.emitted_spans)
 
-for _name in _alias_names:
+for _name in TRACING_ALIAS_NAMES:
     globals()[_name] = TracingAdapter
-__all__ = [*_alias_names, 'TracingAdapter']  # noqa: PLE0604
+__all__ = [  # noqa: PLE0604
+    *TRACING_ALIAS_NAMES,
+    'TracingAdapter',
+    'STANDARD_SPAN_ATTRIBUTES',
+    'SENSITIVE_SPAN_FIELDS',
+]

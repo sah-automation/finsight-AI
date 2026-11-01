@@ -107,3 +107,14 @@ def _sanitize_attributes(attributes: Any) -> dict[str, Any]:
         if keep:
             cleaned[str(key)] = sanitized
     return cleaned
+
+
+STANDARD_REDACTED_FIELDS = _SENSITIVE_NAME_TOKENS
+REDACTED_SPAN_FIELDS = _SENSITIVE_NAME_TOKENS
+
+__all__ = [
+    'REDACTED_SPAN_FIELDS',
+    'STANDARD_REDACTED_FIELDS',
+    '_SENSITIVE_NAME_TOKENS',
+    '_sanitize_attributes',
+]
