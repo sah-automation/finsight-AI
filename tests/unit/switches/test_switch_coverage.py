@@ -29,6 +29,7 @@ SWITCH_TO_TEST_FILE = {
     'ocr_fallback_enabled': 'test_ocr_fallback_switch.py',
     'role_cache_enabled': 'test_role_cache_switch.py',
     'detailed_tracing_enabled': 'test_tracing_switch.py',
+    'waiting_line_enabled': 'test_waiting_line_switch.py',
     'usage_metering_enabled': 'test_metering_switch.py',
 }
 

@@ -67,6 +67,7 @@ class CompositionContainer:
         tx: Any = None,
         answer_cache: Any = None,
         queue: Any = None,
+        waiting_line: Any = None,
         metering: Any = None,
         meter: Any = None,
         metering_port: Any = None,
@@ -120,6 +121,15 @@ class CompositionContainer:
         self.tx = self.unit_of_work
         self.answer_cache = answer_cache if answer_cache is not None else deps.get('answer_cache')
         self.queue = queue if queue is not None else deps.get('queue')
+        self.waiting_line = (
+            waiting_line
+            if waiting_line is not None
+            else deps.get('waiting_line')
+            or deps.get('waiting')
+            or deps.get('waiting_line_port')
+            or deps.get('queue_line')
+        )
+        self.waiting = self.waiting_line
         self.metering = (
             metering
             if metering is not None
@@ -414,6 +424,8 @@ class CompositionContainer:
             'publisher': self.publisher,
             'answer_cache': self.answer_cache,
             'queue': self.queue,
+            'waiting_line': self.waiting_line,
+            'waiting': self.waiting_line,
             'metering': self.metering,
             'meter': self.metering,
             'metering_port': self.metering,
@@ -486,6 +498,8 @@ class CompositionContainer:
             'tx': self.unit_of_work,
             'answer_cache': self.answer_cache,
             'queue': self.queue,
+            'waiting_line': self.waiting_line,
+            'waiting': self.waiting_line,
             'metering': self.metering,
             'meter': self.metering,
             'metering_port': self.metering,

@@ -9,7 +9,6 @@ when a request waits longer than the configured limit.
 from __future__ import annotations
 
 import asyncio
-import inspect
 import logging
 from typing import Any
 
@@ -17,30 +16,19 @@ from finsight.core.logging import get_trace_id
 from finsight.domain.ports.waiting_line import WaitingLine as WaitingLinePort
 
 from .busy_result import BusyResult
+from .waiting_line_common import (
+    company as _company,
+)
+from .waiting_line_common import (
+    invoke as _invoke,
+)
+from .waiting_line_common import (
+    parse_work as _parse_work_common,
+)
 from .waiting_line_job import WaitingLineJob
 from .waiting_line_settings import WaitingLineSettings, priority_rank
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _company(company_id: object) -> str:
-    company = '' if company_id is None else str(company_id).strip()
-    if not company:
-        raise ValueError('company_id is required for the waiting line')
-    return company
-
-
-async def _invoke(work: object, args: tuple[object, ...], kwargs: dict[str, object]) -> object:
-    if work is None:
-        return None
-    if inspect.isawaitable(work):
-        return await work
-    if callable(work):
-        result = work(*args, **kwargs)
-        if inspect.isawaitable(result):
-            return await result
-        return result
-    return work
 
 
 class WaitingLineAdapter(WaitingLinePort):
@@ -132,16 +120,7 @@ class WaitingLineAdapter(WaitingLinePort):
     def _parse_work(
         args: tuple[object, ...], values: dict[str, Any]
     ) -> tuple[object, tuple[object, ...], dict[str, object]]:
-        work = values.pop('work', None)
-        for key in ('operation', 'fn', 'func', 'callable'):
-            if work is None:
-                work = values.pop(key, None)
-        work_args = tuple(values.pop('args', ()) or ())
-        work_kwargs = dict(values.pop('kwargs', {}) or {})
-        if work is None and args:
-            work = args[0]
-            work_args = tuple(args[1:]) or work_args
-        return work, work_args, work_kwargs
+        return _parse_work_common(args, values)
 
     def _ensure_dispatcher(self) -> None:
         if self._dispatcher is None or self._dispatcher.done():

@@ -801,6 +801,14 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
 
     _pip = worker_set.get('pipeline') if hasattr(worker_set, 'get') else None
 
+    waiting_line = provided_deps.get('waiting_line')
+    if waiting_line is None:
+        waiting_line = _existing(
+            kwargs, 'waiting_line', 'waiting', 'waiting_line_port', 'queue_line'
+        )
+    if waiting_line is None:
+        waiting_line = build_waiting_line(config=config, session=session, **_extra)
+
     ask_question_use_case = _existing(
         kwargs,
         'ask_question_use_case',
@@ -818,6 +826,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         ask_question_use_case = AskQuestion(
             config=config,
             answer_cache=answer_cache,
+            waiting_line=waiting_line,
             **{
                 k: v
                 for k, v in (_extra or {}).items()
@@ -964,6 +973,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         audit_log=audit_log,
         unit_of_work=unit_of_work,
         queue=queue,
+        waiting_line=waiting_line,
         reprocess_use_case=reprocess_use_case,
         metering=metering,
         tracing=tracing,
@@ -1728,6 +1738,106 @@ def _build_tracing_impl(*args: Any, **kwargs: Any) -> Any:
     if Cls is None:
         raise ImportError('DisabledTracer adapter is unavailable')
     return Cls(config=config, **_extra)
+
+
+def build_waiting_line(*args: Any, **kwargs: Any) -> Any:
+    return _build_waiting_line_impl(*args, **kwargs)
+
+
+def _build_waiting_line_impl(*args: Any, **kwargs: Any) -> Any:
+    """Build the waiting-line adapter (real or pass-through based on switch)."""
+    provided = _existing(
+        kwargs,
+        'waiting_line',
+        'waiting',
+        'waiting_line_port',
+        'queue_line',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k
+        not in {
+            'waiting_line',
+            'waiting',
+            'waiting_line_port',
+            'queue_line',
+        }
+    }
+
+    # Determine the waiting-line switch (default: enabled -> real adapter).
+    candidate_names = (
+        'waiting_line_enabled',
+        'waiting_lines_enabled',
+        'waiting_enabled',
+        'spike_queue_enabled',
+        'queue_line_enabled',
+    )
+    enabled: Any = None
+    # Direct kwargs override.
+    for name in candidate_names:
+        if name in kwargs:
+            enabled = kwargs[name]
+            break
+    # switches block.
+    if enabled is None:
+        switches = None
+        if config is not None:
+            if isinstance(config, Mapping):
+                switches = config.get('switches') if hasattr(config, 'get') else None
+            else:
+                switches = getattr(config, 'switches', None)
+        if switches is not None:
+            for name in candidate_names:
+                val = None
+                found = False
+                if isinstance(switches, Mapping):
+                    if name in switches:
+                        val = switches.get(name)
+                        found = True
+                elif hasattr(switches, name):
+                    val = getattr(switches, name)
+                    found = True
+                if found:
+                    enabled = val
+                    break
+    # config-level attributes.
+    if enabled is None and config is not None:
+        for name in candidate_names:
+            if isinstance(config, Mapping):
+                if name in config:
+                    enabled = config.get(name)
+                    break
+            elif hasattr(config, name):
+                enabled = getattr(config, name)
+                break
+    if enabled is None:
+        enabled = True
+    if isinstance(enabled, str):
+        enabled = enabled.strip().lower() in {'true', 'yes', '1', 'on', 'enabled'}
+    else:
+        enabled = bool(enabled)
+
+    if enabled:
+        cls = _import_adapter(
+            'finsight.adapters.waiting_line.waiting_line_adapter', 'WaitingLineAdapter'
+        )
+        if cls is None:
+            raise ImportError('WaitingLineAdapter adapter is unavailable')
+        return cls(config=config, session=session, **_extra)
+
+    cls = _import_adapter(
+        'finsight.adapters.waiting_line.passthrough_waiting_line', 'PassthroughWaitingLine'
+    )
+    if cls is None:
+        raise ImportError('PassthroughWaitingLine adapter is unavailable')
+    return cls(config=config, session=session, **_extra)
 
 
 def _configured_price_path(config: Any) -> Any:

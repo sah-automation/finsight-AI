@@ -15,6 +15,7 @@ class SwitchesConfig(StrictBaseModel):
     ocr_fallback_enabled: bool = True
     role_cache_enabled: bool = True
     detailed_tracing_enabled: bool = True
+    waiting_line_enabled: bool = True
     usage_metering_enabled: bool = True
     per_sentence_citation_check: bool = True
     parallel_retrieval_enabled: bool = True
