@@ -9,9 +9,11 @@ Real adapters against real services (LocalStack, test Aurora, etc.).
 - Queue enqueue/dequeue with real SQS
 - Auth with real Cognito (or LocalStack)
 
-**Placeholder status:** this suite is currently placeholder-only
-(all tests skipped). Tracked until the first real adapter integration test lands
-(issue #74). It fails rather than passes while it has no non-skipped tests.
+**Status:** the migration round-trip integration test
+(`test_migration_roundtrip.py`) is landed (issue #141) and runs against a real
+PostgreSQL instance. Adapter end-to-end flows remain pending the first real
+adapter integration test (issue #74). The suite fails rather than passes when it
+has no non-skipped tests.
 
 **Rules:**
 - Run in CI with LocalStack/test containers

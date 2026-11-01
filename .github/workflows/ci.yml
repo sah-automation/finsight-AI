@@ -298,6 +298,9 @@ jobs:
           ENVIRONMENT=test uv run alembic downgrade base
           ENVIRONMENT=test uv run alembic upgrade head
 
+      - name: Run migration round-trip test
+        run: ENVIRONMENT=test uv run pytest tests/integration/test_migration_roundtrip.py -v --tb=short -m "integration"
+
       - name: Stop Postgres
         if: always()
         run: docker compose -f docker-compose.test.yml down -v
