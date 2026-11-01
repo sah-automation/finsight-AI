@@ -112,11 +112,13 @@ async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
                 raise RuntimeError('ask use case is not callable')
 
             def _invoke(kwargs_with: dict[str, Any]) -> Any:
+                # Prefer the typed run entry with the frozen request context.
                 if callable(method) and frozen_context is not None:
                     try:
                         return method(frozen_context, kwargs_with.get('question'))
                     except TypeError:
                         pass
+                # Backwards-compatible shapes for delegate-style use cases.
                 for args_tuple in ((data,), (data, context), (context, data)):
                     try:
                         return method(*args_tuple)

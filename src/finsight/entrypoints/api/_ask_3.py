@@ -200,22 +200,17 @@ async def _call_stream(
 ) -> Any:
     """Return an async iterable of raw events from the use case if supported."""
     question = data.get('question')
-    for attr in ('stream', 'stream_ask', 'ask_stream', 'run_stream', 'events'):
-        method = getattr(use_case, attr, None)
-        if callable(method):
-            call_shapes: list[tuple[Any, ...]] = []
-            if frozen_context is not None:
-                call_shapes.append((frozen_context, question))
-            call_shapes.extend([(data,), (data, context), (context, data)])
-            for call_args in call_shapes:
-                try:
-                    result = method(*call_args)
-                    if inspect.isawaitable(result):
-                        result = await result
-                    return result
-                except TypeError:
-                    continue
-            # Try with kwargs.
+    method = getattr(use_case, 'stream', None)
+    if callable(method):
+        call_args: tuple[Any, ...] = (
+            (frozen_context, question) if frozen_context is not None else (data, context)
+        )
+        try:
+            result = method(*call_args)
+            if inspect.isawaitable(result):
+                result = await result
+            return result
+        except TypeError:
             try:
                 result = method(
                     request_context=frozen_context if frozen_context is not None else context,
@@ -225,17 +220,7 @@ async def _call_stream(
                     result = await result
                 return result
             except TypeError:
-                try:
-                    result = method(
-                        question=question,
-                        context=context,
-                        company_id=data.get('company_id'),
-                    )
-                    if inspect.isawaitable(result):
-                        result = await result
-                    return result
-                except TypeError:
-                    pass
+                pass
     return None
 
 
