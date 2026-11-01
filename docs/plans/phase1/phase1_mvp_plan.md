@@ -1,5 +1,6 @@
 # FinSight AI - MVP (Phase 1) Plan: Ingestion + RAG Q&A + Chat UI + Source Viewer
 
+> **Reconciliation:** See `phase1_reconciliation.md` in this directory for a comprehensive mapping of plan checkboxes, recorded decisions, and config-switch references to the actual implementation status as of the Phase 1 hardening effort (#115). No existing checkboxes have been closed by this reconciliation; they remain open for the maintainer to close.
 **Parent Plan:** This is a child plan derived from `docs/plans/project_requirement/finsightAI.md` and `docs/plans/architecture/phase1/finsight_mvp_hld.svg` (Phase 1 HLD). Both must be treated as the source of truth. Do not deviate from their scope, architecture, flows, or requirements — only make child-level decisions and concrete implementation details here. If any proposal would conflict with the parent plan, the parent plan is authoritative. Stop and escalate instead of deviating.
 
 ## Architectural Design (Phase 1)
