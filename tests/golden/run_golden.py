@@ -246,7 +246,18 @@ def _run_maybe_awaitable(value: object) -> object:
     if not inspect.isawaitable(value):
         return value
 
-    coroutine = value
+    import inspect
+
+    # ``asyncio.run`` only accepts a coroutine object, so normalise any other
+    # awaitable (e.g. a task or awaitable iterator) into one first.
+    if not inspect.iscoroutine(value):
+
+        async def _resolve() -> object:
+            return await value  # type: ignore[misc]
+
+        coroutine = _resolve()
+    else:
+        coroutine = value
 
     try:
         asyncio.get_running_loop()
