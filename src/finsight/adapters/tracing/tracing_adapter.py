@@ -10,6 +10,7 @@ from typing import Any
 from finsight.domain.ports.tracing_port import TracingPort
 from finsight.domain.value_objects.span import Span, company_to_trace_attribute
 
+from ._tracing_backend import record_tracing_backend_span, resolve_tracing_backend
 from ._tracing_config import (
     TRACING_ALIAS_NAMES,
     _config_switches,
@@ -83,38 +84,9 @@ class TracingAdapter(TracingPort):
         tracing_name = _first(kwargs, 'table_name', 'name', default=None)
         self.name = tracing_name or self.service_name
 
-        self._backend = None
-        for _arg in args:
-            if (
-                hasattr(_arg, 'add_span')
-                or hasattr(_arg, 'get_spans')
-                or hasattr(_arg, 'record_span')
-            ):
-                self._backend = _arg
-                break
-        _backend_candidate = _first(
-            kwargs,
-            'backend',
-            'tracing_backend',
-            'tracer',
-            'span_backend',
-            'span_store',
-            'store',
-            'collector',
-            'storage',
-            default=None,
-        )
-        if _backend_candidate is not None:
-            self._backend = _backend_candidate
-
-        self.backend = self._backend
-        self.tracing_backend = self._backend
+        self._backend = resolve_tracing_backend(args, kwargs)
 
         self._spans: list[Span] = []
-
-    # ------------------------------------------------------------------
-    # Storage helpers
-    # ------------------------------------------------------------------
 
     def _filtered(self, company_id: Any = None) -> list[Span]:
         if company_id is None:
@@ -131,24 +103,6 @@ class TracingAdapter(TracingPort):
 
     def emitted_spans(self, company_id: Any = None) -> list[Span]:
         return self._filtered(company_id)
-
-    # ------------------------------------------------------------------
-    # Port implementation
-    # ------------------------------------------------------------------
-
-    async def _record_in_backend(self, span: Span) -> None:
-        backend = self._backend
-        if backend is None:
-            return
-        add_span = getattr(backend, 'add_span', None)
-        if not callable(add_span):
-            return
-        try:
-            result = add_span(span)
-            if __import__('inspect').isawaitable(result):
-                await result
-        except Exception as exc:  # pragma: no cover - best effort
-            _LOGGER.debug('tracing backend add_span failed: %s', exc)
 
     async def start_span(self, *args: Any, **kwargs: Any) -> Any:
         return await self._start_span_impl(*args, **kwargs)
@@ -262,7 +216,7 @@ class TracingAdapter(TracingPort):
 
         self._spans.append(span)
 
-        await self._record_in_backend(span)
+        await record_tracing_backend_span(self._backend, span, _LOGGER)
 
         try:
             _LOGGER.info(

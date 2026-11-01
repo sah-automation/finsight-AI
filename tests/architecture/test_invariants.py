@@ -153,11 +153,6 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'composition',
         'removal_condition': 'Move alias block behind explicit compatibility module.',
     },
-    'adapters/tracing/tracing_adapter.py': {
-        'reason': 'Tracing adapter adds backend-aware span recording for isolation coverage.',
-        'owner': 'adapters',
-        'removal_condition': 'Move backend handling into tracing helpers after isolation gates stabilize.',
-    },
     'composition/reader_registry.py': {
         'reason': 'Reader registry combines built-in and custom registration paths.',
         'owner': 'composition',

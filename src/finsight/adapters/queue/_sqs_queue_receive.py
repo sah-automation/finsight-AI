@@ -133,7 +133,7 @@ async def _sqs_receive(self: Any, *args: Any, **kwargs: Any) -> list[dict[str, A
         # company filter
         if company_filter is not None:
             msg_company = msg.get('company_id') or ''
-            if msg_company and _coerce_str(company_filter) != msg_company:
+            if not msg_company or _coerce_str(company_filter) != msg_company:
                 # requeue and skip (cross-adapter/shared-client safe)
                 requeued = raw if isinstance(raw, dict) else msg
                 client_queues = getattr(client, 'queues', None)
