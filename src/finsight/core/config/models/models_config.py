@@ -45,11 +45,6 @@ _DEFAULT_APPROVED_MODELS = [
     },
     {'model_id': 'cohere/rerank-english-v3.0', 'regions': ['us-east-1', 'us-west-2', 'us']},
     {'model_id': 'cohere/rerank-multilingual-v3.0', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'cohere/test', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'test/primary', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'test/fallback-1', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'test/fallback-2', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'test/embedding', 'regions': ['us-east-1', 'us-west-2', 'us']},
 ]
 
 
