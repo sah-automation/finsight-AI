@@ -20,3 +20,28 @@ has no non-skipped tests.
 - Clean up resources after each test
 - Tag as `@integration` for selective runs
 - Not run on every commit (slow)
+
+## Real sample document ingestion (issue #143 / H28)
+
+The anonymized sample documents in ``tests/fixtures/documents/`` (see that
+folder's ``README.md`` and ``manifest.yaml``) cover all five supported input
+formats: born-digital PDF, scanned PDF (OCR, including one low-confidence page),
+Excel (``.xlsx``), semicolon-delimited CSV, and DOCX.  Reader-level
+verification of these documents runs through the unit/switch suites and the
+reader contract suites; no database or object storage is required.
+
+The **staging-only** portions of the acceptance criteria are:
+
+- End-to-end ingestion of the sample documents through the full pipeline (S3
+  upload, virus scan, OCR via Textract/Tesseract, Aurora persistence, vector
+  writes, metric extraction).  This requires LocalStack/the test Aurora stack
+  and is exercised by integration tests tagged ``@integration``.
+- The golden question set against the real ask flow on the ``standard``
+  (staging) configuration.  The unit-testable harness lives in
+  ``tests/golden``; the live (non-deterministic) variant is governed by the
+  ``golden-live`` workflow (``.github/workflows/golden-live.yml``).
+
+The golden score baselines in ``tests/golden/baselines/`` remain the release
+gate: a drop against ``numeric_accuracy`` (>= 0.95) or ``citation_accuracy``
+(>= 1.0) blocks the release, enforced by ``compare_to_baseline`` and the
+``golden-tests`` CI job.

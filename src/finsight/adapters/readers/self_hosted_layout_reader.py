@@ -92,10 +92,10 @@ class SelfHostedLayoutReader(BaseReader):
             out.setdefault('content_type', content_type)
         return out
 
-    def _extract_layout(self, *args: Any, **kwargs: Any) -> None:
+    def _extract_layout(self, *args: Any, **kwargs: Any) -> Any:
         from ._self_hosted_layout_reader_extract_layout import _extract_layout as _adapter_method
 
-        _adapter_method(self, *args, **kwargs)
+        return _adapter_method(self, *args, **kwargs)
 
     @staticmethod
     def _meaningful_tables(tables: Any, settings: Any) -> bool:

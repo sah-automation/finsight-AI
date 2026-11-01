@@ -233,20 +233,51 @@ def _make_real_ask(
     return _ask
 
 
+def _run_maybe_awaitable(value: object) -> object:
+    """Resolve a possibly-awaitable value into its concrete result.
+
+    Ask-question use cases are asynchronous, but the golden runner drives them
+    synchronously.  A coroutine (or any awaitable) is driven to completion here
+    so that the real ask flow can be exercised end-to-end.
+    """
+    import asyncio
+    import inspect
+
+    if not inspect.isawaitable(value):
+        return value
+
+    coroutine = value
+
+    try:
+        asyncio.get_running_loop()
+        running = True
+    except RuntimeError:
+        running = False
+
+    if running:
+        # Avoid "cannot be called when another loop is running" by offloading.
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(asyncio.run, coroutine)
+            return future.result()
+    return asyncio.run(coroutine)
+
+
 def _call_use_case(use_case: object, payload: dict[str, object]) -> object:
     for method_name in ('run', 'execute', 'ask', 'answer', 'handle', 'process', '__call__'):
         method = getattr(use_case, method_name, None)
         if not callable(method):
             continue
         try:
-            return method(payload)
+            return _run_maybe_awaitable(method(payload))
         except TypeError:
             try:
-                return method(**payload)
+                return _run_maybe_awaitable(method(**payload))
             except TypeError:
                 continue
     if callable(use_case):
-        return use_case(payload)
+        return _run_maybe_awaitable(use_case(payload))
     raise RuntimeError('Ask use case is not callable.')
 
 

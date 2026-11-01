@@ -218,15 +218,15 @@ class TesseractReader(BaseReader):
         data = self._as_bytes(source)
         return bool(isinstance(data, (bytes, bytearray)) and len(data) >= 4 and data[:4] == b'%PDF')
 
-    def _load_images(self, *args: Any, **kwargs: Any) -> None:
+    def _load_images(self, *args: Any, **kwargs: Any) -> Any:
         from ._tesseract_reader_load_images import _load_images as _adapter_method
 
-        _adapter_method(self, *args, **kwargs)
+        return _adapter_method(self, *args, **kwargs)
 
-    def _ocr_image(self, *args: Any, **kwargs: Any) -> None:
+    def _ocr_image(self, *args: Any, **kwargs: Any) -> Any:
         from ._tesseract_reader_ocr_image import _ocr_image as _adapter_method
 
-        _adapter_method(self, *args, **kwargs)
+        return _adapter_method(self, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # Read entry point
