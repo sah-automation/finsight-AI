@@ -23,6 +23,19 @@ has no non-skipped tests.
 
 ## Real sample document ingestion (issue #143 / H28)
 
+Sample documents by supported format (all present in
+``tests/fixtures/documents/`` and listed in ``manifest.yaml``):
+
+| Format | Example | Reader path exercised |
+|---|---|---|
+| PDF (born digital) | ``pdf__company-a__2025-FY__annual-report.pdf`` | ``PdfPlumberReader`` |
+| PDF (scanned) | ``scan__company-a__2026-Q3__bank-statement.pdf`` | ``PageRouter`` + ``TesseractReader`` (OCR) |
+| Excel | ``xlsx__company-a__2025-FY__budget-vs-actual.xlsx`` | ``ExcelReader`` |
+| CSV / TSV | ``csv__company-a__2025-FY__q4-ledger.csv`` | ``CsvReader`` |
+| DOCX | ``docx__company-a__2025-FY__board-notes.docx`` | ``DocxReader`` |
+| Image (PNG) | ``image__company-a__2025-FY__vendor-invoice.png`` | ``TesseractReader`` (OCR) |
+
+
 The anonymized sample documents in ``tests/fixtures/documents/`` (see that
 folder's ``README.md`` and ``manifest.yaml``) cover all five supported input
 formats: born-digital PDF, scanned PDF (OCR, including one low-confidence page),
