@@ -2745,6 +2745,48 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     except Exception:  # noqa: S110
         pass
 
+    # Instantiate the deep ChunkStep module for chunk/chunking/parse_chunks routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.chunk_step')
+        _ChunkStep = getattr(_mod, 'ChunkStep')
+        _known_chunk = {
+            'reader',
+            'document_reader',
+            'primary_reader',
+            'page_router',
+            'router',
+            'document_repository',
+            'document_repo',
+            'documents',
+            'chunk_repository',
+            'chunks',
+            'chunk_store',
+            'document_chunks',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'object_storage',
+            'storage',
+            's3',
+            'page_router_enabled',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+        }
+        _instance = _ChunkStep(**{k: v for k, v in common.items() if k in _known_chunk})
+        mapping['chunk'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
+    # Alias collapse: chunk/chunking/parse_chunks share one instance.
+    if 'chunk' in mapping:
+        for _alias in ('chunking', 'parse_chunks'):
+            mapping.setdefault(_alias, mapping['chunk'])
+
     # Alias collapse: read/parse/extract share one instance.
     if 'read' in mapping:
         for _alias in ('parse', 'extract'):
