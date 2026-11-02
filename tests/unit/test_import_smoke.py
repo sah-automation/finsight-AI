@@ -57,13 +57,5 @@ def test_package_imports(package: str) -> None:
     assert not failures, failures[:5]
 
 
-@pytest.mark.parametrize('package', _all_source_packages())
-def test_package_import_smoke(package: str) -> None:
-    failures = _package_smoke(package)
-    assert not failures, failures[:5]
-
-
-@pytest.mark.parametrize('package', _all_source_packages())
-def test_per_package_import_smoke(package: str) -> None:
-    failures = _package_smoke(package)
-    assert not failures, failures[:5]
+test_package_import_smoke = test_package_imports
+test_per_package_import_smoke = test_package_imports
