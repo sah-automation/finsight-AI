@@ -26,8 +26,9 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **no_sensitive_data_in_logs**: No sensitive data in logs
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
-  - composition/reader_registry.py: 875 lines
-  - composition/container.py: 3451 lines
+  - composition/reader_registry.py: 792 lines
+  - composition/container.py: 3057 lines
+  - composition/step_deps.py: 328 lines
   - composition/composition_container.py: 644 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
@@ -37,7 +38,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - application/update_document/update_document.py: 1363 lines
   - application/ingest_document/upload_document.py: 886 lines
   - application/ingest_document/scan_worker.py: 853 lines
-  - application/ingest_document/pipeline_step_worker.py: 2178 lines
+  - application/ingest_document/pipeline_step_worker.py: 2183 lines
   - application/ask_question/ask_question.py: 731 lines
   - application/onboarding/create_company.py: 634 lines
   - composition/reader_factory.py::create: 92 lines
@@ -45,11 +46,10 @@ Generated from tests/architecture/test_standards_checklist.py
   - adapters/tracing/disabled_tracer.py::start_span: 31 lines
   - adapters/waiting_line/waiting_line_settings.py::from_kwargs: 69 lines
   - domain/ports/tracing_port.py::start_span: 32 lines
-  - domain/ports/metering_port.py::record_usage: 32 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 60
+  - Unit: 65
   - Contract: 25
   - Switch: 16
 

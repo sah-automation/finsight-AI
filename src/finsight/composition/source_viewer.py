@@ -141,9 +141,9 @@ def _build_source_viewer_use_case_impl(*args: Any, **kwargs: Any) -> Any:
             import importlib
 
             Module = importlib.import_module(
-                'finsight.adapters.repositories.document_table_repository'
+                'finsight.adapters.repositories.postgres_document_table_repository'
             )
-            TableRepository = getattr(Module, 'DocumentTableRepository', None)
+            TableRepository = getattr(Module, 'PostgresDocumentTableRepository', None)
             if TableRepository is not None:
                 table_repository = TableRepository(session=session)
     except Exception:

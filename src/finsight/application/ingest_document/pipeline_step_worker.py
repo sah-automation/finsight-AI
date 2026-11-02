@@ -1881,12 +1881,17 @@ class PipelineStepWorker:
                 return self._reader_tables(reader_result.get('reader_result'))
             if 'tables' in reader_result:
                 return list(reader_result.get('tables') or [])
+            if 'document_tables' in reader_result:
+                return list(reader_result.get('document_tables') or [])
             if any(key in reader_result for key in ('rows', 'data', 'cells', 'table', 'values')):
                 return [reader_result]
             return []
         tables = _get(reader_result, 'tables', default=None)
         if tables is not None:
             return list(tables or [])
+        doc_tables = _get(reader_result, 'document_tables', default=None)
+        if doc_tables is not None:
+            return list(doc_tables or [])
         if isinstance(reader_result, (list, tuple)):
             return list(reader_result)
         return []

@@ -24,6 +24,9 @@ RecommendationId = NewType('RecommendationId', str)
 ReportId = NewType('ReportId', str)
 TraceId = NewType('TraceId', str)
 SessionId = NewType('SessionId', str)
+RunId = NewType('RunId', str)
+StateKey = NewType('StateKey', str)
+StepId = NewType('StepId', str)
 
 
 # ============================================================
@@ -126,7 +129,10 @@ __all__ = [
     'ReportId',
     'RequestContext',
     'Role',
+    'RunId',
     'SessionId',
+    'StateKey',
+    'StepId',
     'TraceId',
     'UploadType',
     'UserId',

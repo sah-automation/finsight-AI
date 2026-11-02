@@ -14,17 +14,6 @@ Reviewed compatibility shim modules and canonical module choices.
 | `finsight/adapters/queue/step_function.py` | `finsight.adapters.queue.sqs_queue` | Retained documented shim; remove after migration. |
 | `finsight/adapters/queue/step_functions.py` | `finsight.adapters.queue.sqs_queue` | Retained documented shim; remove after migration. |
 | `finsight/adapters/queue/stepfunctions.py` | `finsight.adapters.queue.sqs_queue` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/database_transaction.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/database_unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/db_unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/pg_unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/session_unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/sql_unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/sqlalchemy_unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/transaction_manager.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/unit_of_work_adapter.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/repositories/uow.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
 | `finsight/adapters/security/adapter.py` | `finsight.adapters.security.virus_scanner` | Retained documented shim; remove after migration. |
 | `finsight/adapters/security/aws_scanner.py` | `finsight.adapters.security.virus_scanner` | Retained documented shim; remove after migration. |
 | `finsight/adapters/security/aws_virus_scanner.py` | `finsight.adapters.security.virus_scanner` | Retained documented shim; remove after migration. |
@@ -51,9 +40,6 @@ Reviewed compatibility shim modules and canonical module choices.
 | `finsight/adapters/tracing/tracer.py` | `finsight.adapters.tracing.tracing_adapter` | Retained documented shim; remove after migration. |
 | `finsight/adapters/tracing/tracing.py` | `finsight.adapters.tracing.tracing_adapter` | Retained documented shim; remove after migration. |
 | `finsight/adapters/tracing/tracing_provider.py` | `finsight.adapters.tracing.tracing_adapter` | Retained documented shim; remove after migration. |
-| `finsight/adapters/transaction.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/adapters/uow.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
 | `finsight/entrypoints/api/me.py` | `finsight.entrypoints.api, finsight.entrypoints.api.current_user` | Retained documented shim; remove after migration. |
 | `finsight/entrypoints/api/user.py` | `finsight.entrypoints.api, finsight.entrypoints.api.current_user` | Retained documented shim; remove after migration. |
 | `finsight/entrypoints/api/users.py` | `finsight.entrypoints.api, finsight.entrypoints.api.current_user` | Retained documented shim; remove after migration. |

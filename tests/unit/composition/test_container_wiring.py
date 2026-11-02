@@ -58,6 +58,71 @@ def test_container_exposes_the_same_adapter_instances() -> None:
     assert save_worker.document_table_repository is container.document_table_repository
 
 
+def test_worker_set_alias_collapse_twenty_names_to_ten_instances() -> None:
+    """Verify that the worker set maps 20 alias names to 10 unique step instances."""
+    container = build_container(config=load_config('test'))
+    worker_set = container.step_functions_worker_set
+
+    # Primary step names (10 unique instances expected)
+    primary_names = [
+        'read',
+        'delta',
+        'chunk',
+        'embed',
+        'save',
+        'cascade',
+        'cache',
+        'metric',
+        'delta_tracking_check',
+        'processing',
+    ]
+
+    # Aliases that should map to the same instances
+    alias_groups = {
+        'read': ['parse', 'extract'],
+        'chunk': ['chunking', 'parse_chunks'],
+        'embed': ['embedding'],
+        'save': ['commit', 'persist', 'transaction', 'transactional', 'transactional_save'],
+        'cascade': ['post_process', 'finalize', 'after_commit'],
+        'cache': ['cache_clear', 'clear_cache', 'answer_cache'],
+        'metric': ['metrics', 'extract_metrics', 'save_metrics'],
+        'delta': [],
+        'delta_tracking_check': [],
+        'processing': [],
+    }
+
+    # Verify each primary name has a worker
+    for name in primary_names:
+        worker = worker_set.get(name)
+        assert worker is not None, f'Missing worker for primary name: {name}'
+
+    # Verify aliases map to the SAME instance (identity check)
+    for primary, aliases in alias_groups.items():
+        primary_worker = worker_set.get(primary)
+        assert primary_worker is not None
+        for alias in aliases:
+            alias_worker = worker_set.get(alias)
+            assert alias_worker is not None, f'Missing worker for alias: {alias}'
+            assert alias_worker is primary_worker, (
+                f'Alias {alias} does not share instance with {primary}: '
+                f'{id(alias_worker)} != {id(primary_worker)}'
+            )
+
+    # Count unique instances among all 20 names
+    all_names = primary_names + [a for aliases in alias_groups.values() for a in aliases]
+    unique_instances = set()
+    for name in all_names:
+        worker = worker_set.get(name)
+        if worker is not None:
+            unique_instances.add(id(worker))
+
+    # Should have exactly 10 unique instances (one per behavior)
+    assert len(unique_instances) == 10, (
+        f'Expected 10 unique step instances, got {len(unique_instances)}. '
+        f'Names checked: {all_names}'
+    )
+
+
 def test_provided_dependencies_are_not_replaced() -> None:
     cache = AnswerCache(table_name='injected-cache')
     container = build_container(

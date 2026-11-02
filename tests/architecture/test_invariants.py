@@ -133,6 +133,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'application',
         'removal_condition': 'Share helpers via the ingest application module.',
     },
+    'composition/step_deps.py': {
+        'reason': 'Declarative step dependency specifications (data, not logic).',
+        'owner': 'composition',
+        'removal_condition': 'Split when step count exceeds 15.',
+    },
     'application/source_viewer/source_viewer.py': {
         'reason': 'Source viewer combines reader decoding and authorization helpers.',
         'owner': 'application',

@@ -1438,26 +1438,6 @@ def _build_audit_log_impl(*args: Any, **kwargs: Any) -> Any:
             'finsight.adapters.audit.postgres_audit_log',
             ('PostgresAuditLog', 'AuditLog'),
         ),
-        (
-            'finsight.adapters.audit.audit_log',
-            ('PostgresAuditLog', 'AuditLog'),
-        ),
-        (
-            'finsight.adapters.repositories.postgres_audit_log',
-            ('PostgresAuditLog', 'AuditLog'),
-        ),
-        (
-            'finsight.adapters.repositories.postgres_audit_log_repository',
-            ('PostgresAuditLog', 'AuditLog'),
-        ),
-        (
-            'finsight.adapters.repositories.audit_log_repository',
-            ('PostgresAuditLog', 'AuditLog'),
-        ),
-        (
-            'finsight.adapters.repositories.audit_log',
-            ('PostgresAuditLog', 'AuditLog'),
-        ),
     ):
         try:
             Cls = _import_adapter(module_path, *names)
@@ -1555,10 +1535,6 @@ def _build_document_table_repository_impl(*args: Any, **kwargs: Any) -> Any:
         (
             'finsight.adapters.repositories.postgres_document_table_repository',
             ('PostgresDocumentTableRepository', 'AuroraDocumentTableRepository'),
-        ),
-        (
-            'finsight.adapters.repositories.aurora_document_table_repository',
-            ('AuroraDocumentTableRepository', 'PostgresDocumentTableRepository'),
         ),
     ):
         try:
@@ -2795,14 +2771,7 @@ def _build_unit_of_work_impl(*args: Any, **kwargs: Any) -> Any:
         }
     }
 
-    aliases = (
-        'finsight.adapters.repositories.postgres_unit_of_work',
-        'finsight.adapters.repositories.sqlalchemy_unit_of_work',
-        'finsight.adapters.repositories.database_unit_of_work',
-        'finsight.adapters.repositories.unit_of_work',
-        'finsight.adapters.unit_of_work',
-        'finsight.adapters.database.unit_of_work',
-    )
+    aliases = ('finsight.adapters.repositories.postgres_unit_of_work',)
     for module_name in aliases:
         try:
             module = importlib.import_module(module_name)
