@@ -27,7 +27,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
   - composition/reader_registry.py: 875 lines
-  - composition/container.py: 3319 lines
+  - composition/container.py: 3462 lines
   - composition/composition_container.py: 644 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
@@ -49,7 +49,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 55
+  - Unit: 60
   - Contract: 25
   - Switch: 16
 

@@ -2951,6 +2951,149 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         ):
             mapping[_alias] = mapping['save']
 
+    # Instantiate the deep CacheStep module for cache/clear-cache routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.cache_step')
+        _CacheStep = getattr(_mod, 'CacheStep')
+        _known_cache = {
+            'answer_cache',
+            'cache',
+            'answer_cache_port',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+            'container',
+            'composition',
+            'root',
+            'app',
+            'context',
+            'delta_tracking',
+        }
+        _instance = _CacheStep(**{k: v for k, v in common.items() if k in _known_cache})
+        mapping['cache'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
+    # Instantiate the deep MetricStep module for metric/metrics routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.metric_step')
+        _MetricStep = getattr(_mod, 'MetricStep')
+        _known_metric = {
+            'metric_repository',
+            'metrics',
+            'metrics_repository',
+            'figures',
+            'extracted_metrics',
+            'document_repository',
+            'document_repo',
+            'documents',
+            'document_store',
+            'reader',
+            'document_reader',
+            'primary_reader',
+            'page_router',
+            'router',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'object_storage',
+            'storage',
+            's3',
+            'page_router_enabled',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+            'container',
+            'composition',
+            'root',
+            'app',
+            'context',
+            'delta_tracking',
+        }
+        _instance = _MetricStep(**{k: v for k, v in common.items() if k in _known_metric})
+        mapping['metric'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
+    # Instantiate the deep DeltaTrackingCheckStep module.
+    try:
+        import importlib
+
+        _mod = importlib.import_module(
+            'finsight.application.ingest_document.delta_tracking_check_step'
+        )
+        _DeltaTrackingCheckStep = getattr(_mod, 'DeltaTrackingCheckStep')
+        _known_delta_tracking_check = {
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'delta_tracking',
+            'container',
+            'composition',
+            'root',
+            'app',
+            'context',
+        }
+        _instance = _DeltaTrackingCheckStep(
+            **{k: v for k, v in common.items() if k in _known_delta_tracking_check}
+        )
+        mapping['delta_tracking_check'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
+    # Instantiate the deep ProcessingStep module for default processing routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.processing_step')
+        _ProcessingStep = getattr(_mod, 'ProcessingStep')
+        _known_processing = {
+            'document_repository',
+            'document_repo',
+            'documents',
+            'document_store',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+            'container',
+            'composition',
+            'root',
+            'app',
+            'context',
+            'delta_tracking',
+        }
+        _instance = _ProcessingStep(**{k: v for k, v in common.items() if k in _known_processing})
+        mapping['processing'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
+    # Alias collapse: cache/clear_cache/answer_cache share one instance.
+    if 'cache' in mapping:
+        for _alias in ('cache_clear', 'clear_cache', 'answer_cache'):
+            mapping[_alias] = mapping['cache']
+
+    # Alias collapse: metric/metrics/extract_metrics/save_metrics share one instance.
+    if 'metric' in mapping:
+        for _alias in ('metrics', 'extract_metrics', 'save_metrics'):
+            mapping[_alias] = mapping['metric']
+
     return _WorkerSet(mapping)
 
 
