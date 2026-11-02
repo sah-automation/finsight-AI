@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from .chunk_step_operations import ChunkStepOperations
-
-if TYPE_CHECKING:
-    from finsight.core.config.models import Config
-    from finsight.domain.ports.chunk_repository import ChunkRepository
 from .pipeline_step_worker import (
     PipelineStepWorker,
     _awaitv,
@@ -63,11 +59,11 @@ class ChunkStep(ChunkStepOperations, PipelineStepWorker):
         document_repository: Any = None,
         document_repo: Any = None,
         documents: Any = None,
-        chunk_repository: ChunkRepository | None = None,
+        chunk_repository: Any = None,
         chunks: Any = None,
         chunk_store: Any = None,
         document_chunks: Any = None,
-        config: Config | None = None,
+        config: Any = None,
         settings: Any = None,
         configuration: Any = None,
         app_config: Any = None,

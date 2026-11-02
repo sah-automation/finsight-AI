@@ -2782,6 +2782,49 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     except Exception:  # noqa: S110
         pass
 
+    # Instantiate the deep EmbedStep module for embed/embedding routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.embed_step')
+        _EmbedStep = getattr(_mod, 'EmbedStep')
+        _known_embed = {
+            'embedding',
+            'embedding_adapter',
+            'embedder',
+            'embeddings',
+            'embedding_provider',
+            'provider',
+            'chunk_repository',
+            'chunks',
+            'chunk_store',
+            'document_chunks',
+            'document_repository',
+            'document_repo',
+            'documents',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'object_storage',
+            'storage',
+            's3',
+            'page_router_enabled',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+        }
+        _instance = _EmbedStep(**{k: v for k, v in common.items() if k in _known_embed})
+        mapping['embed'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
+    # Alias collapse: embed/embedding share one instance.
+    if 'embed' in mapping:
+        for _alias in ('embedding',):
+            mapping.setdefault(_alias, mapping['embed'])
+
     # Alias collapse: chunk/chunking/parse_chunks share one instance.
     if 'chunk' in mapping:
         for _alias in ('chunking', 'parse_chunks'):

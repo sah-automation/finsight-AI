@@ -1,9 +1,6 @@
-"""Named ingestion step: embedding."""
+"""Alias."""
 
 from __future__ import annotations
 
-from .pipeline_step_worker import PipelineStepWorker
-
-
-class EmbeddingStep(PipelineStepWorker):
-    step_name = 'embedding'
+from .embed_step import *  # noqa: F401,F403
+from .step_context import *  # noqa: F401,F403
