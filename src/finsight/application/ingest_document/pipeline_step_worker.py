@@ -419,6 +419,7 @@ class PipelineStepWorker:
             method = getattr(reader, name, None)
             if callable(method):
                 for attempt in (
+                    lambda m=method: m(company_id, key),
                     lambda m=method: m(company_id, key, **kwargs),
                     lambda m=method: (
                         m(company_id, source, **kwargs)
