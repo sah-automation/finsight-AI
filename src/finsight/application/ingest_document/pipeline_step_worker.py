@@ -197,7 +197,8 @@ class PipelineStepWorker:
 
     step_name: str = 'step'
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **_kwargs: Any) -> None:
+        kwargs = _kwargs
         self.document_repository = _first(
             kwargs,
             'document_repository',

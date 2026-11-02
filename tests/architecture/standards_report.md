@@ -37,7 +37,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - application/update_document/update_document.py: 1363 lines
   - application/ingest_document/upload_document.py: 886 lines
   - application/ingest_document/scan_worker.py: 853 lines
-  - application/ingest_document/pipeline_step_worker.py: 2177 lines
+  - application/ingest_document/pipeline_step_worker.py: 2178 lines
   - application/ask_question/ask_question.py: 731 lines
   - application/onboarding/create_company.py: 634 lines
   - composition/reader_factory.py::create: 92 lines

@@ -109,7 +109,7 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'removal_condition': 'Remove aliases after H20 compatibility window.',
     },
     'application/ingest_document/pipeline_step_worker.py': {
-        'reason': 'Ingestion worker retains legacy dispatcher and step helpers.',
+        'reason': 'Pipeline dispatcher shrinks to idempotence gate, state transitions, and routing only.',
         'owner': 'application',
         'removal_condition': 'Delete once all steps are individually reachable via composition.',
     },

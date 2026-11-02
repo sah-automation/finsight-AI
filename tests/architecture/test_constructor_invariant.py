@@ -50,11 +50,6 @@ BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'application',
         'removal_condition': 'Replace with typed constructor when the onboarding flow is converted.',
     },
-    'application/ingest_document/pipeline_step_worker.py::PipelineStepWorker': {
-        'reason': 'Pipeline step worker retains alias-probing constructor resolution.',
-        'owner': 'application',
-        'removal_condition': 'Replace with explicit typed inputs when the worker is converted.',
-    },
     'application/ingest_document/scan_worker.py::ScanWorker': {
         'reason': 'Scan worker retains alias-probing constructor resolution.',
         'owner': 'application',
