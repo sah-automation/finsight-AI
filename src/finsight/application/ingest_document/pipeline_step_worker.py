@@ -393,6 +393,14 @@ class PipelineStepWorker:
         if reader is None:
             # try construct from config? return empty
             return ReaderResult(text='', tables=[], page_numbers=[], confidence=None)
+        # Support plain callable ports (deep-module fakes) by adapting them.
+        if callable(reader) and not any(
+            hasattr(reader, name)
+            for name in ('read', 'read_document', 'extract', 'parse', 'extract_text')
+        ):
+            import types
+
+            reader = types.SimpleNamespace(read=reader)
         source = None
         try:
             source = (

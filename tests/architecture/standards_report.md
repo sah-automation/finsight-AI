@@ -16,13 +16,18 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **switch_both_paths_tested**: All config switches have ON and OFF tests implemented
 ✅ **constructor_injection**: No hidden os.getenv/environ access in business code
 ⏭️ **company_id_on_all_data_calls**: All data access methods require company_id
+  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:13 get
+  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:20 load
+  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:23 save
+  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:29 fetch
+  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:32 delete
 ✅ **no_model_math**: No float math on monetary values in domain
 ✅ **no_raw_errors_to_user**: No bare Exception raised in entrypoints (specific exceptions OK - caught by middleware)
 ✅ **no_sensitive_data_in_logs**: No sensitive data in logs
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
   - composition/reader_registry.py: 875 lines
-  - composition/container.py: 3016 lines
+  - composition/container.py: 3052 lines
   - composition/composition_container.py: 644 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
@@ -32,7 +37,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - application/update_document/update_document.py: 1363 lines
   - application/ingest_document/upload_document.py: 886 lines
   - application/ingest_document/scan_worker.py: 853 lines
-  - application/ingest_document/pipeline_step_worker.py: 1912 lines
+  - application/ingest_document/pipeline_step_worker.py: 1920 lines
   - application/ask_question/ask_question.py: 731 lines
   - application/onboarding/create_company.py: 634 lines
   - composition/reader_factory.py::create: 92 lines

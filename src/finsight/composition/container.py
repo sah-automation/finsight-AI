@@ -966,6 +966,20 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             },
         )
 
+    state_store = _existing(
+        kwargs,
+        'state_store',
+        'step_state_store',
+        'pipeline_state_store',
+        'context_store',
+        'run_state_store',
+        'store',
+    )
+    if state_store is None:
+        from finsight.composition.state_store import build_state_store as _build_state_store
+
+        state_store = _build_state_store(config=config, session=session, **_extra)
+
     container = CompositionContainer(
         config=config,
         session=session,
@@ -1019,7 +1033,24 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         ask_use_case=ask_question_use_case,
         source_viewer_use_case=source_viewer_use_case,
         source_viewer=source_viewer_use_case,
+        state_store=state_store,
+        step_state_store=state_store,
+        pipeline_state_store=state_store,
+        context_store=state_store,
+        run_state_store=state_store,
     )
+    try:
+        for _attr in (
+            'state_store',
+            'step_state_store',
+            'pipeline_state_store',
+            'context_store',
+            'run_state_store',
+            'store',
+        ):
+            setattr(container, _attr, state_store)
+    except Exception:  # noqa: S110
+        pass
     set_default_container(container)
     set_default_onboarding_use_case(onboarding_use_case)
     set_default_upload_use_case(upload_use_case)
@@ -2647,6 +2678,11 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     # Map scan worker step name.
     if 'scan' not in mapping and scan_worker is not None:
         mapping['scan'] = scan_worker
+
+    # Alias collapse: read/parse/extract share one instance.
+    if 'read' in mapping:
+        for _alias in ('parse', 'extract'):
+            mapping.setdefault(_alias, mapping['read'])
 
     return _WorkerSet(mapping)
 

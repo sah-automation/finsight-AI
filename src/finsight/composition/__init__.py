@@ -1,5 +1,6 @@
 """Composition root package."""
 
+from . import state_store as state_store_module
 from .ask_question import get_ask_use_case
 from .composition_container import CompositionContainer
 from .container import (
@@ -96,6 +97,11 @@ from .source_viewer import (
     build_source_viewer_use_case,
     create_source_viewer_use_case,
     get_source_viewer_use_case,
+)
+from .state_store import (
+    build_in_memory_state_store,
+    build_state_store,
+    get_state_store,
 )
 from .upload import (
     create_upload_use_case,
