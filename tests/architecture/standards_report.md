@@ -27,7 +27,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
   - composition/reader_registry.py: 875 lines
-  - composition/container.py: 3085 lines
+  - composition/container.py: 3118 lines
   - composition/composition_container.py: 644 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
@@ -37,7 +37,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - application/update_document/update_document.py: 1363 lines
   - application/ingest_document/upload_document.py: 886 lines
   - application/ingest_document/scan_worker.py: 853 lines
-  - application/ingest_document/pipeline_step_worker.py: 1920 lines
+  - application/ingest_document/pipeline_step_worker.py: 1921 lines
   - application/ask_question/ask_question.py: 731 lines
   - application/onboarding/create_company.py: 634 lines
   - composition/reader_factory.py::create: 92 lines

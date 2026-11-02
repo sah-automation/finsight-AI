@@ -2712,6 +2712,39 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     except Exception:  # noqa: S110
         pass
 
+    # Instantiate the deep DeltaStep module for delta routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.delta_step')
+        _DeltaStep = getattr(_mod, 'DeltaStep')
+        _known_delta = {
+            'reader',
+            'document_reader',
+            'primary_reader',
+            'page_router',
+            'router',
+            'document_repository',
+            'document_repo',
+            'documents',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'object_storage',
+            'storage',
+            's3',
+            'page_router_enabled',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+        }
+        _instance = _DeltaStep(**{k: v for k, v in common.items() if k in _known_delta})
+        mapping['delta'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
     # Alias collapse: read/parse/extract share one instance.
     if 'read' in mapping:
         for _alias in ('parse', 'extract'):
