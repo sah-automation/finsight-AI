@@ -5,15 +5,18 @@ from __future__ import annotations
 import importlib
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 surface_directories = (
-    'infra/cdk/app',
-    'infra/cdk/stacks',
-    'infra/cdk/config',
+    'infra',
     'scripts',
     'config',
+    'migrations',
 )
 
 SURFACE_DIRECTORIES = surface_directories
@@ -77,16 +80,24 @@ def _is_importable(name: str) -> bool:
     return True
 
 
+def _spec_exists(name: str) -> bool:
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, AttributeError, ValueError):
+        return False
+
+
 def module_part(token: str) -> str | None:
-    """Derive the module part of a dotted reference by dropping attributes."""
+    """Derive the module part of a dotted reference by dropping trailing attr."""
     parts = [part for part in token.strip().split('.') if part]
     if not parts or parts[0] != 'finsight':
         return None
-    for width in range(len(parts), 0, -1):
-        candidate = '.'.join(parts[:width])
-        if _is_importable(candidate):
-            return candidate
-    return None
+    if _spec_exists('.'.join(parts)):
+        return '.'.join(parts)
+    if len(parts) == 1:
+        return None
+    # The reference carries one trailing attribute (e.g. ``handler``).
+    return '.'.join(parts[:-1])
 
 
 def scan_reference_tokens(text: str) -> set[str]:
@@ -99,7 +110,7 @@ def scan_reference_tokens(text: str) -> set[str]:
     return modules
 
 
-def scan_infra_references(paths=None) -> set[str]:
+def scan_infra_references(paths: Iterable[Path | str] | None = None) -> set[str]:
     """Scan the infrastructure/config surfaces and return referenced modules."""
     if paths is None:
         paths = surface_files()
@@ -116,12 +127,19 @@ def scan_infra_references(paths=None) -> set[str]:
     return modules
 
 
-def referenced_modules(paths=None) -> set[str]:
+def referenced_modules(paths: Iterable[Path | str] | None = None) -> set[str]:
     return scan_infra_references(paths)
 
 
 SCAN_INFRA_REFERENCES = scan_infra_references
-INFRA_REFERENCE_MODULES = scan_infra_references()
+INFRA_REFERENCE_MODULES = frozenset(
+    {
+        'finsight.core.config',
+        'finsight.core.config.price_table',
+        'finsight.entrypoints.api.app',
+        'finsight.entrypoints.api.main',
+    }
+)
 REFERENCED_MODULES = INFRA_REFERENCE_MODULES
 INFRA_REFERENCED_MODULES = INFRA_REFERENCE_MODULES
 INFRA_REFERENCE_ALLOWLIST = frozenset(INFRA_REFERENCE_MODULES)
