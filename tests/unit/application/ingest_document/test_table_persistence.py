@@ -6,7 +6,6 @@ from typing import Any
 
 import pytest
 
-from finsight.application.ingest_document import pipeline_step_worker as step_module
 from finsight.application.ingest_document.save_worker import SaveWorker
 from finsight.core.errors import DatabaseError
 from finsight.core.types import CompanyId
@@ -57,28 +56,24 @@ class _DocumentRepository:
 
 
 def _seed(version_id: str, result: ReaderResult) -> None:
-    step_module._IN_MEMORY_CHUNKS.clear()
-    step_module._IN_MEMORY_CHUNKS[version_id] = {'reader_result': result, 'chunks': ['text']}
+    return None
 
 
 async def test_save_persists_normalised_tables_and_deactivates_previous_version() -> None:
     tables = _TableRepository()
     documents = _DocumentRepository()
-    _seed(
-        'version-2',
-        ReaderResult(
-            text='Revenue was 100.',
-            tables=[
-                {
-                    'page_number': 4,
-                    'table_id': 'table-9',
-                    'index': 2,
-                    'headers': ['Item', 'Total'],
-                    'rows': [['Revenue', '100']],
-                    'needs_review': True,
-                }
-            ],
-        ),
+    reader_result = ReaderResult(
+        text='Revenue was 100.',
+        tables=[
+            {
+                'page_number': 4,
+                'table_id': 'table-9',
+                'index': 2,
+                'headers': ['Item', 'Total'],
+                'rows': [['Revenue', '100']],
+                'needs_review': True,
+            }
+        ],
     )
     worker = SaveWorker(
         document_repository=documents,
@@ -89,6 +84,8 @@ async def test_save_persists_normalised_tables_and_deactivates_previous_version(
         company_id=COMPANY,
         version_id='version-2',
         document_id='document-a',
+        reader_result=reader_result,
+        chunks=['text'],
     )
 
     assert result['committed'] is True
@@ -111,7 +108,7 @@ async def test_save_persists_normalised_tables_and_deactivates_previous_version(
 async def test_save_without_reader_tables_still_commits() -> None:
     tables = _TableRepository()
     documents = _DocumentRepository()
-    _seed('version-2', ReaderResult(text='Text only.', tables=[]))
+    reader_result = ReaderResult(text='Text only.', tables=[])
     worker = SaveWorker(
         document_repository=documents,
         document_table_repository=tables,
@@ -121,6 +118,8 @@ async def test_save_without_reader_tables_still_commits() -> None:
         company_id=COMPANY,
         version_id='version-2',
         document_id='document-a',
+        reader_result=reader_result,
+        chunks=['text'],
     )
 
     assert result['committed'] is True
@@ -130,10 +129,7 @@ async def test_save_without_reader_tables_still_commits() -> None:
 
 async def test_save_fails_loudly_when_tables_exist_without_a_repository() -> None:
     documents = _DocumentRepository()
-    _seed(
-        'version-2',
-        ReaderResult(text='Revenue was 100.', tables=[{'rows': [['Revenue', '100']]}]),
-    )
+    reader_result = ReaderResult(text='Revenue was 100.', tables=[{'rows': [['Revenue', '100']]}])
     worker = SaveWorker(document_repository=documents)
 
     with pytest.raises(DatabaseError, match='document_table_repository'):
@@ -141,16 +137,15 @@ async def test_save_fails_loudly_when_tables_exist_without_a_repository() -> Non
             company_id=COMPANY,
             version_id='version-2',
             document_id='document-a',
+            reader_result=reader_result,
+            chunks=['text'],
         )
 
 
 async def test_table_repository_failure_aborts_the_save_commit() -> None:
     tables = _FailingTableRepository()
     documents = _DocumentRepository()
-    _seed(
-        'version-2',
-        ReaderResult(text='Revenue was 100.', tables=[{'rows': [['Revenue', '100']]}]),
-    )
+    reader_result = ReaderResult(text='Revenue was 100.', tables=[{'rows': [['Revenue', '100']]}])
     worker = SaveWorker(
         document_repository=documents,
         document_table_repository=tables,
@@ -161,6 +156,8 @@ async def test_table_repository_failure_aborts_the_save_commit() -> None:
             company_id=COMPANY,
             version_id='version-2',
             document_id='document-a',
+            reader_result=reader_result,
+            chunks=['text'],
         )
 
 
@@ -168,10 +165,7 @@ async def test_empty_repository_result_is_not_reported_as_persisted() -> None:
     tables = _TableRepository()
     tables.returned = []
     documents = _DocumentRepository()
-    _seed(
-        'version-2',
-        ReaderResult(text='Revenue was 100.', tables=[{'rows': [['Revenue', '100']]}]),
-    )
+    reader_result = ReaderResult(text='Revenue was 100.', tables=[{'rows': [['Revenue', '100']]}])
     worker = SaveWorker(
         document_repository=documents,
         document_table_repository=tables,
@@ -181,6 +175,8 @@ async def test_empty_repository_result_is_not_reported_as_persisted() -> None:
         company_id=COMPANY,
         version_id='version-2',
         document_id='document-a',
+        reader_result=reader_result,
+        chunks=['text'],
     )
 
     assert result['committed'] is True

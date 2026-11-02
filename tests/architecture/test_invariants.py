@@ -109,9 +109,9 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'removal_condition': 'Remove aliases after H20 compatibility window.',
     },
     'application/ingest_document/pipeline_step_worker.py': {
-        'reason': 'Ingestion worker keeps generic property proxy helpers.',
+        'reason': 'Ingestion worker retains legacy dispatcher and step helpers.',
         'owner': 'application',
-        'removal_condition': 'Replace __getattr__ fallbacks with explicit inputs.',
+        'removal_condition': 'Delete once all steps are individually reachable via composition.',
     },
     'application/ingest_document/scan_worker.py': {
         'reason': 'Scan worker keeps provider-specific payload helpers.',

@@ -132,8 +132,64 @@ def _config_answer_cache(config: Any) -> bool:
     return True
 
 
-_IN_MEMORY_CHUNKS: dict[str, Any] = {}
-_IN_MEMORY_METRICS: dict[str, Any] = {}
+_READER_DATA_FIELDS: tuple[str, ...] = (
+    'reader_result',
+    'metrics',
+    'chunks',
+    'chunk_entities',
+    'changed_chunk_entities',
+    'changed_chunks',
+    'embed_chunks',
+    'vectors',
+    'embedded_count',
+    'vector_count',
+    'removed_chunk_ids',
+    'previous_version_id',
+    'page_hashes',
+    'page_diff',
+    'delta_tracking',
+    'branch',
+    'document_tables',
+)
+
+
+def _value_from_source(source: Any, name: str) -> Any:
+    if source is None:
+        return None
+    if isinstance(source, dict):
+        if name in source:
+            return source.get(name)
+        nested = source.get('reader_data')
+        if isinstance(nested, dict):
+            return nested.get(name)
+        return None
+    return getattr(source, name, None)
+
+
+def _context_to_reader_data(source: Any) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    if source is None:
+        return result
+    if isinstance(source, dict) and isinstance(source.get('reader_data'), dict):
+        result.update(source.get('reader_data') or {})
+    for name in _READER_DATA_FIELDS:
+        value = _value_from_source(source, name)
+        if value is not None:
+            result.setdefault(name, value)
+    return result
+
+
+def _merge_sources_into_reader_data(reader_data: dict[str, Any], *sources: Any) -> dict[str, Any]:
+    for source in sources:
+        for name in _READER_DATA_FIELDS:
+            value = _value_from_source(source, name)
+            if value is not None:
+                reader_data.setdefault(name, value)
+        if isinstance(source, dict) and isinstance(source.get('reader_data'), dict):
+            for key, value in (source.get('reader_data') or {}).items():
+                if value is not None:
+                    reader_data.setdefault(key, value)
+    return reader_data
 
 
 class PipelineStepWorker:
@@ -273,6 +329,35 @@ class PipelineStepWorker:
                     self.job_repository = getattr(c, 'job_repository', self.job_repository)
 
         # page router enabled
+        self.state_store = _first(
+            kwargs,
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+            'pipeline_state_store',
+            'run_state_store',
+            default=None,
+        )
+        if self.state_store is None:
+            for ck in ('container', 'composition', 'root', 'app', 'context'):
+                c = kwargs.get(ck)
+                if c is not None and not isinstance(c, (str, bytes, dict)):
+                    for attr in (
+                        'state_store',
+                        'step_state_store',
+                        'pipeline_state_store',
+                        'context_store',
+                        'run_state_store',
+                        'store',
+                    ):
+                        value = getattr(c, attr, None)
+                        if value is not None:
+                            self.state_store = value
+                            break
+                if self.state_store is not None:
+                    break
+
         self.page_router_enabled = True
         if self.config is not None:
             try:
@@ -380,6 +465,51 @@ class PipelineStepWorker:
             .strip()
             .lower()
         )
+
+    async def _load_reader_data(
+        self, version_id: Any, *sources: Any, context: Any = None
+    ) -> dict[str, Any]:
+        reader_data: dict[str, Any] = {}
+        if getattr(self, 'state_store', None) is not None:
+            for key in (version_id, str(version_id)):
+                try:
+                    stored = await _awaitv(self.state_store.get(key))
+                except Exception:  # noqa: BLE001
+                    stored = None
+                if stored is not None:
+                    reader_data.update(_context_to_reader_data(stored))
+                    if isinstance(stored, dict) and isinstance(stored.get('reader_data'), dict):
+                        reader_data.update(stored.get('reader_data') or {})
+                    break
+        if context is not None:
+            _merge_sources_into_reader_data(reader_data, context)
+        for source in sources:
+            _merge_sources_into_reader_data(reader_data, source)
+        return reader_data
+
+    async def _save_reader_data(
+        self, version_id: Any, reader_data: dict[str, Any], *contexts: Any
+    ) -> None:
+        if not isinstance(reader_data, dict):
+            return
+        if getattr(self, 'state_store', None) is not None:
+            try:
+                await _awaitv(self.state_store.set(version_id, dict(reader_data)))
+            except Exception:  # noqa: BLE001
+                try:
+                    await _awaitv(self.state_store.set(str(version_id), dict(reader_data)))
+                except Exception:  # noqa: BLE001
+                    pass
+        for context in contexts:
+            if context is None:
+                continue
+            for name in _READER_DATA_FIELDS:
+                if name in reader_data and reader_data.get(name) is not None:
+                    try:
+                        setattr(context, name, reader_data.get(name))
+                    except Exception:  # noqa: BLE001
+                        if isinstance(context, dict):
+                            context[name] = reader_data.get(name)
 
     def _reader(self) -> Any:
         if self.page_router is not None:
@@ -613,7 +743,118 @@ class PipelineStepWorker:
         cid = _coerce_company(company_id)
         version = await self._get_version(cid, version_id, document_id)
 
-        result = await self._run_step(cid, version, version_id, document_id, key, request, kwargs)
+        # Thread inter-step state through an explicit context value instead of a
+        # module-level dictionary.
+        context = None
+        if isinstance(request, dict):
+            context = (
+                request.get('context')
+                or request.get('ctx')
+                or request.get('step_context')
+                or request.get('run_context')
+            )
+        if context is None and isinstance(kwargs, dict):
+            context = (
+                kwargs.get('context')
+                or kwargs.get('ctx')
+                or kwargs.get('step_context')
+                or kwargs.get('run_context')
+            )
+        if context is None:
+            try:
+                from .step_context import StepContext
+
+                context = StepContext(
+                    company_id=cid,
+                    version_id=version_id,
+                    document_id=document_id,
+                    key=key,
+                    version=version,
+                )
+            except Exception:  # noqa: BLE001
+                context = {}
+        # Merge any state previously committed to the state-store seam.
+        if getattr(self, 'state_store', None) is not None:
+            try:
+                stored = await _awaitv(self.state_store.get(version_id))
+            except Exception:  # noqa: BLE001
+                try:
+                    stored = await _awaitv(self.state_store.get(str(version_id)))
+                except Exception:  # noqa: BLE001
+                    stored = None
+            if stored is not None:
+                for name in (
+                    'reader_result',
+                    'metrics',
+                    'chunks',
+                    'chunk_entities',
+                    'changed_chunk_entities',
+                    'removed_chunk_ids',
+                    'vectors',
+                    'embedded_count',
+                    'vector_count',
+                    'delta_tracking',
+                    'branch',
+                    'page_hashes',
+                    'page_diff',
+                    'status',
+                    'committed',
+                ):
+                    value = None
+                    if isinstance(stored, dict):
+                        value = stored.get(name)
+                    else:
+                        value = getattr(stored, name, None)
+                    if value is not None:
+                        try:
+                            current = getattr(context, name, None)
+                        except Exception:  # noqa: BLE001
+                            current = None
+                        if current is None:
+                            try:
+                                setattr(context, name, value)
+                            except Exception:  # noqa: BLE001
+                                if isinstance(context, dict):
+                                    context[name] = value
+        # Allow request fields to seed the context without global state.
+        if isinstance(request, dict):
+            for name in (
+                'reader_result',
+                'metrics',
+                'chunks',
+                'chunk_entities',
+                'changed_chunk_entities',
+                'removed_chunk_ids',
+                'vectors',
+                'embedded_count',
+                'vector_count',
+                'delta_tracking',
+                'branch',
+                'page_hashes',
+                'page_diff',
+                'reader_data',
+            ):
+                if name in request and request.get(name) is not None:
+                    value = request.get(name)
+                    try:
+                        current = getattr(context, name, None)
+                    except Exception:  # noqa: BLE001
+                        current = None
+                    if current is None:
+                        try:
+                            setattr(context, name, value)
+                        except Exception:  # noqa: BLE001
+                            if isinstance(context, dict):
+                                context[name] = value
+
+        result = await self._run_step(
+            cid, version, version_id, document_id, key, request, kwargs, context=context
+        )
+        try:
+            if isinstance(result, dict) and 'context' not in result:
+                result['context'] = context
+        except Exception:  # noqa: BLE001
+            pass
         return result
 
     async def _run_step(
@@ -625,6 +866,7 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
         state = self._version_state(version)
@@ -642,7 +884,7 @@ class PipelineStepWorker:
             'embed',
             'embedding',
         ):
-            reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+            reader_data = await self._load_reader_data(version_id, request, kwargs, context)
             return {
                 'step': step,
                 'status': 'committed',
@@ -664,35 +906,35 @@ class PipelineStepWorker:
 
         if step in ('read', 'parse', 'extract'):
             return await self._step_read(
-                company_id, version, version_id, document_id, key, request, kwargs
+                company_id, version, version_id, document_id, key, request, kwargs, context=context
             )
         if step == 'delta':
             return await self._step_delta(
-                company_id, version, version_id, document_id, key, request, kwargs
+                company_id, version, version_id, document_id, key, request, kwargs, context=context
             )
         if step in ('chunk', 'chunking', 'parse_chunks'):
             return await self._step_chunk(
-                company_id, version, version_id, document_id, key, request, kwargs
+                company_id, version, version_id, document_id, key, request, kwargs, context=context
             )
         if step in ('embed', 'embedding'):
             return await self._step_embed(
-                company_id, version, version_id, document_id, key, request, kwargs
+                company_id, version, version_id, document_id, key, request, kwargs, context=context
             )
         if step in ('save', 'commit', 'persist', 'transaction', 'transactional_save'):
             return await self._step_save(
-                company_id, version, version_id, document_id, key, request, kwargs
+                company_id, version, version_id, document_id, key, request, kwargs, context=context
             )
         if step in ('cascade', 'post_process', ' finalize'.strip(), 'finalize', 'after_commit'):
             return await self._step_cascade(
-                company_id, version, version_id, document_id, key, request, kwargs
+                company_id, version, version_id, document_id, key, request, kwargs, context=context
             )
         if step in ('cache', 'cache_clear', 'clear_cache', 'answer_cache'):
             return await self._step_cache(
-                company_id, version, version_id, document_id, key, request, kwargs
+                company_id, version, version_id, document_id, key, request, kwargs, context=context
             )
         if step in ('metric', 'metrics', 'extract_metrics', 'save_metrics'):
             return await self._step_metric(
-                company_id, version, version_id, document_id, key, request, kwargs
+                company_id, version, version_id, document_id, key, request, kwargs, context=context
             )
         if step == 'delta_tracking_check':
             return {'step': step, 'status': 'ok', 'delta_tracking': self.delta_tracking}
@@ -709,6 +951,7 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
         reader_result = await self._read(company_id, version, key)
@@ -722,9 +965,10 @@ class PipelineStepWorker:
             extracted_text=reader_result.text if isinstance(reader_result, ReaderResult) else None,
             metrics_extracted=len(metrics),
         )
-        # store in-memory keyed by version
-        _IN_MEMORY_CHUNKS[str(version_id)] = {'reader_result': reader_result}
-        _IN_MEMORY_METRICS[str(version_id)] = metrics
+        reader_data = await self._load_reader_data(version_id, request, kwargs, context)
+        reader_data['reader_result'] = reader_result
+        reader_data['metrics'] = metrics
+        await self._save_reader_data(version_id, reader_data, context)
         delta_flag = self.delta_tracking
         branch = 'delta' if delta_flag else 'full_reprocess'
         # if delta disabled still run (full process) - already default
@@ -747,13 +991,13 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
-        reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+        reader_data = await self._load_reader_data(version_id, request, kwargs, context)
         reader_result = reader_data.get('reader_result')
         if reader_result is None:
             reader_result = await self._read(company_id, version, key)
-            reader_data = _IN_MEMORY_CHUNKS.setdefault(str(version_id), {})
             reader_data['reader_result'] = reader_result
         branch = 'delta' if self.delta_tracking else 'full_reprocess'
         # page hashes audit even brand-new doc
@@ -770,8 +1014,8 @@ class PipelineStepWorker:
                 page_hashes.append(hashlib.sha256(ch.encode('utf-8', 'replace')).hexdigest())
         except Exception:
             pass
-        reader_data = _IN_MEMORY_CHUNKS.setdefault(str(version_id), reader_data)
         reader_data.setdefault('page_hashes', page_hashes)
+        await self._save_reader_data(version_id, reader_data, context)
         # Integrate the domain DeltaDiffer so updates compare page fingerprints.
         try:
             differ = DeltaDiffer()
@@ -779,6 +1023,7 @@ class PipelineStepWorker:
             reader_data.setdefault('page_diff', page_diff)
         except Exception:
             pass
+        await self._save_reader_data(version_id, reader_data, context)
         return {
             'step': step,
             'status': 'processing',
@@ -799,9 +1044,10 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
-        reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+        reader_data = await self._load_reader_data(version_id, request, kwargs, context)
         reader_result = reader_data.get('reader_result')
         if reader_result is None:
             reader_result = await self._read(company_id, version, key)
@@ -885,7 +1131,7 @@ class PipelineStepWorker:
         reader_data['embed_chunks'] = [chunk.text for chunk in changed_entities]
         reader_data['removed_chunk_ids'] = removed_chunk_ids
         reader_data['previous_version_id'] = None
-        _IN_MEMORY_CHUNKS[str(version_id)] = reader_data
+        await self._save_reader_data(version_id, reader_data, context)
         await self._update_state(
             version, company_id, version_id, 'processing', chunk_count=len(chunks)
         )
@@ -912,9 +1158,10 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
-        reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+        reader_data = await self._load_reader_data(version_id, request, kwargs, context)
         chunks = (
             reader_data.get('embed_chunks')
             or reader_data.get('changed_chunks')
@@ -972,7 +1219,7 @@ class PipelineStepWorker:
                     vec = [0.0] * 8
             vectors.append(vec)
         reader_data['vectors'] = vectors
-        _IN_MEMORY_CHUNKS[str(version_id)] = reader_data
+        await self._save_reader_data(version_id, reader_data, context)
         await self._update_state(
             version, company_id, version_id, 'processing', embedded_count=len(vectors)
         )
@@ -993,19 +1240,20 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
         state = self._version_state(version)
         # Idempotent no-op when the version is already committed: re-running a job or
         # message must not duplicate chunks, vectors, side effects, cache clears, or events.
         if state in ('committed', 'done', 'stored_complete'):
-            reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+            reader_data = await self._load_reader_data(version_id, request, kwargs, context)
             chunks = reader_data.get('chunks', [])
             chunk_entities = reader_data.get('chunk_entities', []) or []
             vectors = reader_data.get('vectors', [])
             metrics = reader_data.get('metrics')
             if metrics is None:
-                metrics = _IN_MEMORY_METRICS.get(str(version_id), [])
+                metrics = []
             return {
                 'step': step,
                 'status': 'committed',
@@ -1021,14 +1269,18 @@ class PipelineStepWorker:
                 'change_event_published': False,
                 'no_duplicate_side_effects': True,
             }
-        reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+        reader_data = await self._load_reader_data(version_id, request, kwargs, context)
         chunks = reader_data.get('chunks', [])
         chunk_entities = reader_data.get('chunk_entities', []) or []
         changed_entities = reader_data.get('changed_chunk_entities', []) or chunk_entities
         vectors = reader_data.get('vectors', [])
         metrics = reader_data.get('metrics')
         if metrics is None:
-            metrics = _IN_MEMORY_METRICS.get(str(version_id), [])
+            metrics = (
+                _context_to_reader_data(context).get('metrics') if context is not None else None
+            )
+        if metrics is None:
+            metrics = []
         removed_chunk_ids = reader_data.get('removed_chunk_ids', []) or []
         document_id = _get(version, 'document_id', 'documentId', default=None)
         if document_id is None and isinstance(request, dict):
@@ -1330,6 +1582,7 @@ class PipelineStepWorker:
                 cmethod = getattr(self.unit_of_work, 'commit', None)
                 if callable(cmethod):
                     await _awaitv(cmethod())
+            await self._save_reader_data(version_id, reader_data, context)
             return {
                 'step': step,
                 'status': 'committed',
@@ -1373,6 +1626,7 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
         await self._clear_cache(company_id)
@@ -1545,6 +1799,7 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
         await self._clear_cache(company_id)
@@ -1564,18 +1819,21 @@ class PipelineStepWorker:
         key: str,
         request: Any,
         kwargs: dict[str, Any],
+        context: Any = None,
     ) -> Any:
         step = self.step_name
-        reader_data = _IN_MEMORY_CHUNKS.get(str(version_id), {})
+        reader_data = await self._load_reader_data(version_id, request, kwargs, context)
         metrics = reader_data.get('metrics')
         if metrics is None:
-            metrics = _IN_MEMORY_METRICS.get(str(version_id), [])
+            metrics = []
             if not metrics:
                 reader_result = reader_data.get('reader_result')
                 if reader_result is None:
                     reader_result = await self._read(company_id, version, key)
                 metrics = self._extract_metrics(reader_result)
         persisted = await self._persist_metrics(company_id, version_id, metrics)
+        reader_data['metrics'] = metrics
+        await self._save_reader_data(version_id, reader_data, context)
         return {
             'step': step,
             'status': 'metrics_persisted',
@@ -1694,8 +1952,6 @@ class PipelineStepWorker:
                     break
             if persisted:
                 break
-        # in-memory cache
-        _IN_MEMORY_METRICS[str(version_id)] = metrics
         return persisted
 
     async def _clear_cache(self, company_id: Any) -> None:

@@ -2609,12 +2609,31 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         except Exception:  # noqa: S110
             pass
 
+    state_store = _existing(
+        kwargs,
+        'state_store',
+        'step_state_store',
+        'pipeline_state_store',
+        'context_store',
+        'run_state_store',
+        'store',
+    )
+    if state_store is None:
+        try:
+            from finsight.composition.state_store import build_state_store as _build_state_store
+
+            state_store = _build_state_store(config=config, session=session, **_extra0)
+        except Exception:
+            state_store = None
+
     common = dict(
         document_repository=document_repository,
         document_table_repository=document_table_repository,
         chunk_repository=chunk_repository,
         vector_store=vector_store,
         vector_write=vector_write,
+        state_store=state_store,
+        store=state_store,
         metric_repository=metric_repository,
         reader=reader,
         page_router=page_router,
@@ -2711,6 +2730,11 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         mapping['read'] = _instance
     except Exception:  # noqa: S110
         pass
+
+    # Alias collapse: read/parse/extract share one deep instance.
+    if 'read' in mapping:
+        for _alias in ('parse', 'extract'):
+            mapping[_alias] = mapping['read']
 
     # Instantiate the deep DeltaStep module for delta routing.
     try:

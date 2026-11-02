@@ -6,12 +6,12 @@ import uuid
 from typing import Any
 
 from .pipeline_step_worker import (
-    _IN_MEMORY_CHUNKS,
-    _IN_MEMORY_METRICS,
     PipelineStepWorker,
     _awaitv,
     _coerce_company,
+    _context_to_reader_data,
     _first,
+    _merge_sources_into_reader_data,
 )
 from .step_context import (  # noqa: F401
     Context,
@@ -107,54 +107,33 @@ class SaveStepOperations(PipelineStepWorker):
         version: Any,
         key: Any,
     ) -> None:
-        rid = str(version_id)
-        reader_data = _IN_MEMORY_CHUNKS.get(rid, {})
-        if not isinstance(reader_data, dict):
-            reader_data = {}
-
-        chunks = _first(ctx, 'chunks', default=None)
-        if chunks is None:
-            chunks = reader_data.get('chunks', [])
-        chunk_entities = _first(ctx, 'chunk_entities', default=None)
-        if chunk_entities is None:
-            chunk_entities = reader_data.get('chunk_entities', []) or []
-        changed = _first(ctx, 'changed_chunk_entities', default=None)
-        if changed is None:
-            changed = reader_data.get('changed_chunk_entities', []) or list(chunk_entities)
-        vectors = _first(ctx, 'vectors', default=None)
-        if vectors is None:
-            vectors = reader_data.get('vectors', [])
-        removed = _first(ctx, 'removed_chunk_ids', default=None)
-        if removed is None:
-            removed = reader_data.get('removed_chunk_ids', [])
-        metrics = _first(ctx, 'metrics', default=None)
-        if metrics is None:
-            metrics = reader_data.get('metrics')
-        if metrics is None:
-            metrics = _IN_MEMORY_METRICS.get(rid, [])
-        reader_result = _first(ctx, 'reader_result', default=None)
-        if reader_result is None:
-            reader_result = reader_data.get('reader_result')
-
-        reader_data.setdefault('chunks', chunks or [])
-        reader_data['chunk_entities'] = chunk_entities or []
-        reader_data['changed_chunk_entities'] = changed or []
-        reader_data['changed_chunks'] = [
-            getattr(c, 'text', c) if not isinstance(c, str) else c for c in (changed or [])
-        ]
-        reader_data['embed_chunks'] = reader_data['changed_chunks']
-        reader_data['vectors'] = vectors or []
-        reader_data['removed_chunk_ids'] = removed or []
-        if reader_result is not None:
-            reader_data['reader_result'] = reader_result
-        reader_data.setdefault('document_tables', reader_data.get('document_tables', []))
-        _IN_MEMORY_CHUNKS[rid] = reader_data
-        if metrics is not None:
-            _IN_MEMORY_METRICS.setdefault(rid, metrics)
+        # Inter-step state travels as the context value (and through the state-store
+        # seam); no module-level dictionary is seeded here.
+        for name, value in (
+            ('company_id', company_id),
+            ('version_id', version_id),
+            ('document_id', document_id),
+            ('key', key),
+            ('version', version),
+        ):
+            try:
+                if getattr(ctx, name, None) is None:
+                    setattr(ctx, name, value)
+            except Exception:  # noqa: BLE001
+                if isinstance(ctx, dict) and ctx.get(name) is None:
+                    ctx[name] = value
 
     async def _committed(self, ctx: Any, version: Any, version_id: Any) -> Any:
         rid = str(version_id)
-        reader_data = _IN_MEMORY_CHUNKS.get(rid, {})
+        reader_data = {}
+        if getattr(self, 'state_store', None) is not None:
+            try:
+                stored = await _awaitv(self.state_store.get(rid))
+            except Exception:  # noqa: BLE001
+                stored = None
+            if stored is not None:
+                reader_data = _context_to_reader_data(stored)
+        _merge_sources_into_reader_data(reader_data, ctx)
         if not isinstance(reader_data, dict):
             reader_data = {}
         chunks = _first(ctx, 'chunks', default=None)
@@ -170,8 +149,10 @@ class SaveStepOperations(PipelineStepWorker):
         if metrics is None:
             metrics = reader_data.get('metrics')
         if metrics is None:
-            metrics = _IN_MEMORY_METRICS.get(rid, [])
+            metrics = []
         document_tables = reader_data.get('document_tables', [])
+        if document_tables is None:
+            document_tables = _first(ctx, 'document_tables', default=[]) or []
         for name, value in (
             ('status', 'committed'),
             ('committed', True),
