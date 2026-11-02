@@ -2830,10 +2830,79 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         for _alias in ('chunking', 'parse_chunks'):
             mapping.setdefault(_alias, mapping['chunk'])
 
-    # Alias collapse: read/parse/extract share one instance.
-    if 'read' in mapping:
-        for _alias in ('parse', 'extract'):
-            mapping.setdefault(_alias, mapping['read'])
+    # Instantiate the deep SaveStep module for save/commit/persist/transaction routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.save_step')
+        _SaveStep = getattr(_mod, 'SaveStep')
+        _known_save = {
+            'document_repository',
+            'document_repo',
+            'documents',
+            'document_store',
+            'document_table_repository',
+            'document_tables_repository',
+            'document_table_repo',
+            'table_repository',
+            'tables_repository',
+            'table_store',
+            'chunk_repository',
+            'chunks',
+            'chunk_store',
+            'document_chunks',
+            'vector_store',
+            'vectors',
+            'vector_repository',
+            'search',
+            'vector_write',
+            'vector_writer',
+            'metric_repository',
+            'metrics',
+            'metrics_repository',
+            'figures',
+            'extracted_metrics',
+            'answer_cache',
+            'cache',
+            'answer_cache_port',
+            'change_event_publisher',
+            'event_publisher',
+            'publisher',
+            'change_publisher',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'unit_of_work',
+            'uow',
+            'transaction',
+            'tx',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+            'delta_tracking',
+            'container',
+            'composition',
+            'root',
+            'app',
+            'context',
+        }
+        _instance = _SaveStep(**{k: v for k, v in common.items() if k in _known_save})
+        mapping['save'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
+    # Alias collapse: save/commit/persist/transaction/transactional_save share one instance.
+    if 'save' in mapping:
+        for _alias in (
+            'commit',
+            'persist',
+            'transaction',
+            'transactional',
+            'transactional_save',
+        ):
+            mapping[_alias] = mapping['save']
 
     return _WorkerSet(mapping)
 
