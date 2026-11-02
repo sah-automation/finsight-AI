@@ -1,9 +1,7 @@
-"""Named ingestion step: extract_metrics."""
+"""Compatibility alias for removed name-only step subclass (#165)."""
 
 from __future__ import annotations
 
 from .pipeline_step_worker import PipelineStepWorker
 
-
-class ExtractMetricsStep(PipelineStepWorker):
-    step_name = 'extract_metrics'
+ExtractMetricsStep = PipelineStepWorker

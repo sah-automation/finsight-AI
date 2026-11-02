@@ -1,9 +1,7 @@
-"""Named ingestion step worker: read."""
+"""Compatibility alias for removed name-only step subclass (#165)."""
 
 from __future__ import annotations
 
 from .pipeline_step_worker import PipelineStepWorker
 
-
-class ReadStepWorker(PipelineStepWorker):
-    step_name = 'read'
+ReadStepWorker = PipelineStepWorker

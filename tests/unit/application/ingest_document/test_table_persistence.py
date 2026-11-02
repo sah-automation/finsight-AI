@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from finsight.application.ingest_document.save_worker import SaveWorker
+from finsight.application.ingest_document.save_step import SaveStep as SaveWorker
 from finsight.core.errors import DatabaseError
 from finsight.core.types import CompanyId
 from finsight.domain.value_objects.reader_result import ReaderResult

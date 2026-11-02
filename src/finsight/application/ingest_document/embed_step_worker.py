@@ -1,9 +1,7 @@
-"""Named ingestion step worker: embed."""
+"""Compatibility alias for removed name-only step subclass (#165)."""
 
 from __future__ import annotations
 
 from .pipeline_step_worker import PipelineStepWorker
 
-
-class EmbedStepWorker(PipelineStepWorker):
-    step_name = 'embed'
+EmbedStepWorker = PipelineStepWorker

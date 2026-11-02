@@ -1,9 +1,7 @@
-"""Named ingestion step: parse."""
+"""Compatibility alias for removed name-only step subclass (#165)."""
 
 from __future__ import annotations
 
 from .pipeline_step_worker import PipelineStepWorker
 
-
-class ParseStep(PipelineStepWorker):
-    step_name = 'parse'
+ParseStep = PipelineStepWorker

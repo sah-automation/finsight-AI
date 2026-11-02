@@ -1,9 +1,7 @@
-"""Named ingestion step: after_commit."""
+"""Compatibility alias for removed name-only step subclass (#165)."""
 
 from __future__ import annotations
 
 from .pipeline_step_worker import PipelineStepWorker
 
-
-class AfterCommitStep(PipelineStepWorker):
-    step_name = 'after_commit'
+AfterCommitStep = PipelineStepWorker

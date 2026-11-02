@@ -1,9 +1,7 @@
-"""Named ingestion step worker: clear_cache."""
+"""Compatibility alias for removed name-only step subclass (#165)."""
 
 from __future__ import annotations
 
 from .pipeline_step_worker import PipelineStepWorker
 
-
-class ClearCacheStepWorker(PipelineStepWorker):
-    step_name = 'clear_cache'
+ClearCacheStepWorker = PipelineStepWorker

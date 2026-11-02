@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from finsight.application.ingest_document.delta_worker import DeltaWorker as PipelineStepWorker
+from finsight.application.ingest_document.pipeline_step_worker import PipelineStepWorker
 from finsight.core.types import CompanyId
 
 CID = CompanyId('company-1')
@@ -12,7 +12,7 @@ CID = CompanyId('company-1')
 class TestDeltaTrackingSwitch:
     @pytest.mark.switch
     async def test_delta_tracking_on(self) -> None:
-        worker = PipelineStepWorker(delta_tracking=True)
+        worker = PipelineStepWorker(step_name='delta', delta_tracking=True)
         result = await worker.handle(
             company_id=CID,
             version_id='version-1',
@@ -24,7 +24,7 @@ class TestDeltaTrackingSwitch:
 
     @pytest.mark.switch
     async def test_delta_tracking_off(self) -> None:
-        worker = PipelineStepWorker(delta_tracking=False)
+        worker = PipelineStepWorker(step_name='delta', delta_tracking=False)
         result = await worker.handle(
             company_id=CID,
             version_id='version-1',

@@ -1,9 +1,7 @@
-"""Named ingestion step worker: delta_tracking_check."""
+"""Compatibility alias for removed name-only step subclass (#165)."""
 
 from __future__ import annotations
 
 from .pipeline_step_worker import PipelineStepWorker
 
-
-class DeltaTrackingCheckStepWorker(PipelineStepWorker):
-    step_name = 'delta_tracking_check'
+DeltaTrackingCheckStepWorker = PipelineStepWorker

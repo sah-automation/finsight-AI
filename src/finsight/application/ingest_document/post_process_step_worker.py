@@ -1,9 +1,7 @@
-"""Named ingestion step worker: post_process."""
+"""Compatibility alias for removed name-only step subclass (#165)."""
 
 from __future__ import annotations
 
 from .pipeline_step_worker import PipelineStepWorker
 
-
-class PostProcessStepWorker(PipelineStepWorker):
-    step_name = 'post_process'
+PostProcessStepWorker = PipelineStepWorker

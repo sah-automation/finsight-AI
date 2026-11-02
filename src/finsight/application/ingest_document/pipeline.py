@@ -1,47 +1,67 @@
-"""Compatibility re-export for ingestion pipeline workers."""
+"""Compatibility re-export module for ingestion pipeline workers."""
 
 from __future__ import annotations
 
-from .cache_clear_worker import CacheClearWorker
-from .cascade_worker import CascadeWorker
-from .chunk_worker import ChunkWorker
-from .commit_worker import CommitWorker
-from .delta_worker import DeltaWorker
-from .embed_worker import EmbedWorker
-from .extract_worker import ExtractWorker
 from .ingestion_pipeline import IngestionPipeline
 from .ingestion_worker import IngestionWorker
 from .ingestion_workers import IngestionWorkers
-from .metric_worker import MetricWorker
-from .metrics_worker import MetricsWorker
-from .parse_worker import ParseWorker
-from .persist_worker import PersistWorker
 from .pipeline_step_worker import PipelineStepWorker
-from .pipeline_worker import PipelineWorker
-from .processing_worker import ProcessingWorker
-from .read_worker import ReadWorker
-from .save_worker import SaveWorker
-from .step_worker import StepWorker
+
+# Compatibility aliases for removed name-only step subclasses (#165).
+PipelineWorker = PipelineStepWorker
+StepWorker = PipelineStepWorker
+ReadWorker = PipelineStepWorker
+ParseWorker = PipelineStepWorker
+ExtractWorker = PipelineStepWorker
+ReadStepWorker = PipelineStepWorker
+DeltaWorker = PipelineStepWorker
+ChunkWorker = PipelineStepWorker
+ChunkingWorker = PipelineStepWorker
+ParseChunksWorker = PipelineStepWorker
+EmbedWorker = PipelineStepWorker
+EmbeddingWorker = PipelineStepWorker
+SaveWorker = PipelineStepWorker
+CommitWorker = PipelineStepWorker
+PersistWorker = PipelineStepWorker
+TransactionWorker = PipelineStepWorker
+TransactionalSaveWorker = PipelineStepWorker
+CascadeWorker = PipelineStepWorker
+PostProcessWorker = PipelineStepWorker
+FinalizeWorker = PipelineStepWorker
+AfterCommitWorker = PipelineStepWorker
+MetricWorker = PipelineStepWorker
+MetricsWorker = PipelineStepWorker
+ExtractMetricsWorker = PipelineStepWorker
+SaveMetricsWorker = PipelineStepWorker
+CacheWorker = PipelineStepWorker
+CacheClearWorker = PipelineStepWorker
+ClearCacheWorker = PipelineStepWorker
+AnswerCacheWorker = PipelineStepWorker
+DeltaTrackingCheckWorker = PipelineStepWorker
+ProcessingWorker = PipelineStepWorker
+
+# Backwards-compatible names formerly exported from name-only modules.
+CommitStep = PipelineStepWorker
+ExtractStep = PipelineStepWorker
+FinalizeStep = PipelineStepWorker
+MetricsStep = PipelineStepWorker
+ParseStep = PipelineStepWorker
+ParseChunksStep = PipelineStepWorker
+PersistStep = PipelineStepWorker
+PostProcessStep = PipelineStepWorker
+TransactionStep = PipelineStepWorker
+TransactionalSaveStep = PipelineStepWorker
+AnswerCacheStep = PipelineStepWorker
+ClearCacheStep = PipelineStepWorker
+ExtractMetricsStep = PipelineStepWorker
+SaveMetricsStep = PipelineStepWorker
+ChunkingStep = PipelineStepWorker
+EmbeddingStep = PipelineStepWorker
+CacheClearStep = PipelineStepWorker
 
 __all__ = [
-    'CacheClearWorker',
-    'CascadeWorker',
-    'ChunkWorker',
-    'CommitWorker',
-    'DeltaWorker',
-    'EmbedWorker',
-    'ExtractWorker',
     'IngestionPipeline',
     'IngestionWorker',
     'IngestionWorkers',
-    'MetricWorker',
-    'MetricsWorker',
-    'ParseWorker',
-    'PersistWorker',
     'PipelineStepWorker',
-    'PipelineWorker',
-    'ProcessingWorker',
-    'ReadWorker',
-    'SaveWorker',
-    'StepWorker',
 ]

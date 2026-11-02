@@ -2650,49 +2650,14 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         **_extra0,
     )
 
-    worker_classes_order = [
-        'finsight.application.ingest_document.scan_worker.ScanWorker',
-        'finsight.application.ingest_document.read_worker.ReadWorker',
-        'finsight.application.ingest_document.delta_worker.DeltaWorker',
-        'finsight.application.ingest_document.chunk_worker.ChunkWorker',
-        'finsight.application.ingest_document.embed_worker.EmbedWorker',
-        'finsight.application.ingest_document.save_worker.SaveWorker',
-        'finsight.application.ingest_document.commit_worker.CommitWorker',
-        'finsight.application.ingest_document.cascade_worker.CascadeWorker',
-        'finsight.application.ingest_document.metrics_worker.MetricsWorker',
-        'finsight.application.ingest_document.cache_clear_worker.CacheClearWorker',
-    ]
-
     mapping: dict[str, Any] = {}
+
     # Reuse scan worker if provided.
     scan_worker = kwargs.get('scan_worker')
     if scan_worker is None:
         scan_worker = build_scan_worker(config=config, session=session, **_extra0)
     if scan_worker is not None:
         mapping['scan'] = scan_worker
-
-    for dotted in worker_classes_order:
-        module_path, cls_name = dotted.rsplit('.', 1)
-        if module_path.endswith('scan_worker'):
-            continue
-        if module_path.endswith('scan_worker') and 'scan' in mapping:
-            # still instantiate a dedicated? keep provided.
-            pass
-        try:
-            Cls = _import_adapter(module_path, cls_name)
-            if Cls is None:
-                continue
-            # Skip duplicating scan if already present from provided scan worker? instantiate fresh is ok.
-            if Cls is None:
-                continue
-            instance = Cls(**common)
-            # Use step_name if available else class-derived.
-            step_name = getattr(instance, 'step_name', None)
-            if not step_name or step_name == 'step':
-                step_name = cls_name.replace('Worker', '').lower()
-            mapping.setdefault(step_name, instance)
-        except Exception:  # noqa: S112
-            continue
 
     # Map scan worker step name.
     if 'scan' not in mapping and scan_worker is not None:
