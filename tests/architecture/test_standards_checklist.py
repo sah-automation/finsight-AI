@@ -241,7 +241,6 @@ def _collect_check_results() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
         'ObjectStorage': 's3_storage',
         'UnitOfWork': 'postgres_unit_of_work',
         'TracingPort': 'tracing_adapter',
-        'Span': 'span_tracer',
     }
     missing_adapters = []
     for port, adapter_stem in port_adapter_map.items():

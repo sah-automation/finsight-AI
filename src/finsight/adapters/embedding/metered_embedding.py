@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .litellm_embedding import LiteLLMEmbedding
+from .lite_llm_embedding import LiteLLMEmbedding
 
 _LOGGER = logging.getLogger(__name__)
 

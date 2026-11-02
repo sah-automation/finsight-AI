@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, S110, ARG004, PLC0415
+# ruff: noqa: BLE001, ARG004
 # mypy: disable-error-code="misc,method-assign,no-untyped-def,arg-type,attr-defined"
 """LiteLLM-backed model gateway with failover, backup requests, and metering."""
 
@@ -82,14 +82,6 @@ def _resolve_acompletion() -> Callable[..., Any]:
     module_fn = acompletion
     if module_fn is not None and module_fn is not _ORIGINAL_ACOMPLETION:
         return cast('Callable[..., Any]', module_fn)
-    try:
-        import finsight.adapters.llm.litellm_gateway as _alias_module
-
-        alias_fn = getattr(_alias_module, 'acompletion', None)
-        if alias_fn is not None and alias_fn is not _ORIGINAL_ACOMPLETION:
-            return cast('Callable[..., Any]', alias_fn)
-    except Exception:
-        pass
     if litellm_fn is not None:
         return cast('Callable[..., Any]', litellm_fn)
     if module_fn is not None:

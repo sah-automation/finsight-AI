@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, S110, PLC0415
+# ruff: noqa: BLE001
 """LiteLLM-backed embedding adapter with retries and dimension validation."""
 
 from __future__ import annotations
@@ -44,14 +44,6 @@ def _resolve_aembedding() -> Any:
     module_fn = aembedding
     if module_fn is not None and module_fn is not _ORIGINAL_AEMBEDDING:
         return module_fn
-    try:
-        import finsight.adapters.embedding.litellm_embedding as _alias_module
-
-        alias_fn = getattr(_alias_module, 'aembedding', None)
-        if alias_fn is not None and alias_fn is not _ORIGINAL_AEMBEDDING:
-            return alias_fn
-    except Exception:  # pragma: no cover
-        pass
     if litellm_fn is not None:
         return litellm_fn
     if module_fn is not None:

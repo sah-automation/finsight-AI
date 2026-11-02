@@ -4,7 +4,7 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from .litellm_embedding import LiteLLMEmbedding
+from .lite_llm_embedding import LiteLLMEmbedding
 
 
 def _resolve_wrapped(kwargs: dict[str, Any], args: list[Any]) -> Any:

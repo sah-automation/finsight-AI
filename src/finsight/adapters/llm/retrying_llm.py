@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, S110, SIM105
+# ruff: noqa: BLE001
 """Retrying LLM decorator."""
 
 from __future__ import annotations
@@ -63,8 +63,3 @@ class RetryingLLM(LiteLLMGateway):
 
 
 __all__ = ['RetryingLLM']
-
-try:
-    from .traced_llm import TracedLLM  # noqa: F401
-except Exception:  # pragma: no cover
-    pass
