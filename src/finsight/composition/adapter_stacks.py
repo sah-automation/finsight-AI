@@ -223,31 +223,3 @@ def _build_extraction_stack(*args: Any, **kwargs: Any) -> Any:
     from ._adapter_stacks_extraction import _build_extraction_stack as _impl
 
     return _impl(*args, **kwargs)
-
-
-# Aliases with varied names for hidden callers.
-build_llm = _build_llm_stack
-build_llm_gateway = _build_llm_stack
-build_model_gateway = _build_llm_stack
-build_llm_stack = _build_llm_stack
-build_gateway = _build_llm_stack
-
-build_embedding = _build_embedding_stack
-build_embedding_provider = _build_embedding_stack
-build_embeddings = _build_embedding_stack
-build_embedding_stack = _build_embedding_stack
-
-build_reranker = _build_reranker_stack
-build_rerank = _build_reranker_stack
-build_reranker_stack = _build_reranker_stack
-
-build_extraction = _build_extraction_stack
-build_extractor = _build_extraction_stack
-build_textract = _build_extraction_stack
-build_extraction_stack = _build_extraction_stack
-
-# Compatibility re-exports of composition builders.
-from .container import (  # noqa: E402
-    build_hybrid_search,
-    build_metric_repository,
-)

@@ -841,9 +841,9 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     if ask_question_use_case is None:
         from finsight.application.ask_question import AskQuestion
         from .adapter_stacks import (
-            build_llm_gateway as _build_llm_gateway,
-            build_embedding_provider as _build_embedding_provider,
-            build_reranker as _build_reranker,
+            _build_llm_stack as _build_llm_gateway,
+            _build_embedding_stack as _build_embedding_provider,
+            _build_reranker_stack as _build_reranker,
         )
 
         llm_gateway = _existing(kwargs, 'llm_gateway', 'llm', 'gateway', 'model_gateway', 'model')
@@ -2626,14 +2626,16 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         except Exception:
             state_store = None
 
-    common = dict(
+    # Use StepFactory to create step instances
+    from finsight.composition.step_factory import StepFactory
+
+    factory = StepFactory(
         document_repository=document_repository,
         document_table_repository=document_table_repository,
         chunk_repository=chunk_repository,
         vector_store=vector_store,
         vector_write=vector_write,
         state_store=state_store,
-        store=state_store,
         metric_repository=metric_repository,
         reader=reader,
         page_router=page_router,
@@ -2663,427 +2665,56 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     if 'scan' not in mapping and scan_worker is not None:
         mapping['scan'] = scan_worker
 
-    # Instantiate the deep ReadStep module for read/parse/extract routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.read_step')
-        _ReadStep = getattr(_mod, 'ReadStep')
-        _known = {
-            'reader',
-            'document_reader',
-            'primary_reader',
-            'page_router',
-            'router',
-            'document_repository',
-            'document_repo',
-            'documents',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'object_storage',
-            'storage',
-            's3',
-            'page_router_enabled',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-        }
-        _instance = _ReadStep(**{k: v for k, v in common.items() if k in _known})
-        mapping['read'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Alias collapse: read/parse/extract share one deep instance.
-    if 'read' in mapping:
-        for _alias in ('parse', 'extract'):
-            mapping[_alias] = mapping['read']
-
-    # Instantiate the deep DeltaStep module for delta routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.delta_step')
-        _DeltaStep = getattr(_mod, 'DeltaStep')
-        _known_delta = {
-            'reader',
-            'document_reader',
-            'primary_reader',
-            'page_router',
-            'router',
-            'document_repository',
-            'document_repo',
-            'documents',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'object_storage',
-            'storage',
-            's3',
-            'page_router_enabled',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-        }
-        _instance = _DeltaStep(**{k: v for k, v in common.items() if k in _known_delta})
-        mapping['delta'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Instantiate the deep ChunkStep module for chunk/chunking/parse_chunks routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.chunk_step')
-        _ChunkStep = getattr(_mod, 'ChunkStep')
-        _known_chunk = {
-            'reader',
-            'document_reader',
-            'primary_reader',
-            'page_router',
-            'router',
-            'document_repository',
-            'document_repo',
-            'documents',
-            'chunk_repository',
-            'chunks',
-            'chunk_store',
-            'document_chunks',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'object_storage',
-            'storage',
-            's3',
-            'page_router_enabled',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-        }
-        _instance = _ChunkStep(**{k: v for k, v in common.items() if k in _known_chunk})
-        mapping['chunk'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Instantiate the deep EmbedStep module for embed/embedding routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.embed_step')
-        _EmbedStep = getattr(_mod, 'EmbedStep')
-        _known_embed = {
-            'embedding',
-            'embedding_adapter',
-            'embedder',
-            'embeddings',
-            'embedding_provider',
-            'provider',
-            'chunk_repository',
-            'chunks',
-            'chunk_store',
-            'document_chunks',
-            'document_repository',
-            'document_repo',
-            'documents',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'object_storage',
-            'storage',
-            's3',
-            'page_router_enabled',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-        }
-        _instance = _EmbedStep(**{k: v for k, v in common.items() if k in _known_embed})
-        mapping['embed'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Alias collapse: embed/embedding share one instance.
-    if 'embed' in mapping:
-        for _alias in ('embedding',):
-            mapping.setdefault(_alias, mapping['embed'])
-
-    # Alias collapse: chunk/chunking/parse_chunks share one instance.
-    if 'chunk' in mapping:
-        for _alias in ('chunking', 'parse_chunks'):
-            mapping.setdefault(_alias, mapping['chunk'])
-
-    # Instantiate the deep SaveStep module for save/commit/persist/transaction routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.save_step')
-        _SaveStep = getattr(_mod, 'SaveStep')
-        _known_save = {
-            'document_repository',
-            'document_repo',
-            'documents',
-            'document_store',
-            'document_table_repository',
-            'document_tables_repository',
-            'document_table_repo',
-            'table_repository',
-            'tables_repository',
-            'table_store',
-            'chunk_repository',
-            'chunks',
-            'chunk_store',
-            'document_chunks',
-            'vector_store',
-            'vectors',
-            'vector_repository',
-            'search',
-            'vector_write',
-            'vector_writer',
-            'metric_repository',
-            'metrics',
-            'metrics_repository',
-            'figures',
-            'extracted_metrics',
-            'answer_cache',
-            'cache',
-            'answer_cache_port',
-            'change_event_publisher',
-            'event_publisher',
-            'publisher',
-            'change_publisher',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'unit_of_work',
-            'uow',
-            'transaction',
-            'tx',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-            'delta_tracking',
-            'container',
-            'composition',
-            'root',
-            'app',
-            'context',
-        }
-        _instance = _SaveStep(**{k: v for k, v in common.items() if k in _known_save})
-        mapping['save'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Instantiate the deep CascadeStep module for cascade/post_process/finalize/after_commit routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.cascade_step')
-        _CascadeStep = getattr(_mod, 'CascadeStep')
-        _known_cascade = {
-            'document_repository',
-            'document_repo',
-            'documents',
-            'document_store',
-            'metric_repository',
-            'metrics',
-            'metrics_repository',
-            'figures',
-            'extracted_metrics',
-            'change_event_publisher',
-            'event_publisher',
-            'publisher',
-            'change_publisher',
-            'answer_cache',
-            'cache',
-            'answer_cache_port',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-            'container',
-            'composition',
-            'root',
-            'app',
-            'context',
-        }
-        _instance = _CascadeStep(**{k: v for k, v in common.items() if k in _known_cascade})
-        mapping['cascade'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Alias collapse: cascade/post_process/finalize/after_commit share one instance.
-    if 'cascade' in mapping:
-        for _alias in ('post_process', 'finalize', 'after_commit'):
-            mapping[_alias] = mapping['cascade']
-
-    # Alias collapse: save/commit/persist/transaction/transactional_save share one instance.
-    if 'save' in mapping:
-        for _alias in (
-            'commit',
-            'persist',
-            'transaction',
-            'transactional',
-            'transactional_save',
-        ):
-            mapping[_alias] = mapping['save']
-
-    # Instantiate the deep CacheStep module for cache/clear-cache routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.cache_step')
-        _CacheStep = getattr(_mod, 'CacheStep')
-        _known_cache = {
-            'answer_cache',
-            'cache',
-            'answer_cache_port',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-            'container',
-            'composition',
-            'root',
-            'app',
-            'context',
-            'delta_tracking',
-        }
-        _instance = _CacheStep(**{k: v for k, v in common.items() if k in _known_cache})
-        mapping['cache'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Instantiate the deep MetricStep module for metric/metrics routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.metric_step')
-        _MetricStep = getattr(_mod, 'MetricStep')
-        _known_metric = {
-            'metric_repository',
-            'metrics',
-            'metrics_repository',
-            'figures',
-            'extracted_metrics',
-            'document_repository',
-            'document_repo',
-            'documents',
-            'document_store',
-            'reader',
-            'document_reader',
-            'primary_reader',
-            'page_router',
-            'router',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'object_storage',
-            'storage',
-            's3',
-            'page_router_enabled',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-            'container',
-            'composition',
-            'root',
-            'app',
-            'context',
-            'delta_tracking',
-        }
-        _instance = _MetricStep(**{k: v for k, v in common.items() if k in _known_metric})
-        mapping['metric'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Instantiate the deep DeltaTrackingCheckStep module.
-    try:
-        import importlib
-
-        _mod = importlib.import_module(
-            'finsight.application.ingest_document.delta_tracking_check_step'
-        )
-        _DeltaTrackingCheckStep = getattr(_mod, 'DeltaTrackingCheckStep')
-        _known_delta_tracking_check = {
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'delta_tracking',
-            'container',
-            'composition',
-            'root',
-            'app',
-            'context',
-        }
-        _instance = _DeltaTrackingCheckStep(
-            **{k: v for k, v in common.items() if k in _known_delta_tracking_check}
-        )
-        mapping['delta_tracking_check'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Instantiate the deep ProcessingStep module for default processing routing.
-    try:
-        import importlib
-
-        _mod = importlib.import_module('finsight.application.ingest_document.processing_step')
-        _ProcessingStep = getattr(_mod, 'ProcessingStep')
-        _known_processing = {
-            'document_repository',
-            'document_repo',
-            'documents',
-            'document_store',
-            'config',
-            'settings',
-            'configuration',
-            'app_config',
-            'state_store',
-            'store',
-            'context_store',
-            'step_state_store',
-            'container',
-            'composition',
-            'root',
-            'app',
-            'context',
-            'delta_tracking',
-        }
-        _instance = _ProcessingStep(**{k: v for k, v in common.items() if k in _known_processing})
-        mapping['processing'] = _instance
-    except Exception:  # noqa: S110
-        pass
-
-    # Alias collapse: cache/clear_cache/answer_cache share one instance.
-    if 'cache' in mapping:
-        for _alias in ('cache_clear', 'clear_cache', 'answer_cache'):
-            mapping[_alias] = mapping['cache']
-
-    # Alias collapse: metric/metrics/extract_metrics/save_metrics share one instance.
-    if 'metric' in mapping:
-        for _alias in ('metrics', 'extract_metrics', 'save_metrics'):
-            mapping[_alias] = mapping['metric']
+    # Create step instances using factory
+    _create_step(mapping, 'read', factory.create_read_step, ('parse', 'extract'))
+    _create_step(mapping, 'delta', factory.create_delta_step, ())
+    _create_step(mapping, 'chunk', factory.create_chunk_step, ('chunking', 'parse_chunks'))
+    _create_step(mapping, 'embed', factory.create_embed_step, ('embedding',))
+    _create_step(
+        mapping,
+        'save',
+        factory.create_save_step,
+        ('commit', 'persist', 'transaction', 'transactional', 'transactional_save'),
+    )
+    _create_step(
+        mapping,
+        'cascade',
+        factory.create_cascade_step,
+        ('post_process', 'finalize', 'after_commit'),
+    )
+    _create_step(
+        mapping, 'cache', factory.create_cache_step, ('cache_clear', 'clear_cache', 'answer_cache')
+    )
+    _create_step(
+        mapping,
+        'metric',
+        factory.create_metric_step,
+        ('metrics', 'extract_metrics', 'save_metrics'),
+    )
+    _create_step(mapping, 'delta_tracking_check', factory.create_delta_tracking_check_step, ())
+    _create_step(mapping, 'processing', factory.create_processing_step, ())
 
     return _WorkerSet(mapping)
+
+
+def _create_step(
+    mapping: dict[str, Any],
+    primary_name: str,
+    factory_method: Any,
+    aliases: tuple[str, ...],
+) -> None:
+    """Create a step and its aliases, handling errors gracefully."""
+    try:
+        instance = factory_method()
+        if instance is not None:
+            mapping[primary_name] = instance
+            for alias in aliases:
+                mapping.setdefault(alias, instance)
+    except Exception as exc:
+        # Log error but don't fail - step may be optional
+        import logging
+
+        logging.getLogger(__name__).warning('Failed to create step %s: %s', primary_name, exc)
 
 
 # Aliases expected by hidden tests / callers.
@@ -3099,23 +2730,29 @@ from .adapter_stacks import (  # noqa: E402
     _build_embedding_stack as _build_embedding_stack,  # noqa: PLC0414
     _build_reranker_stack as _build_reranker_stack,  # noqa: PLC0414
     _build_extraction_stack as _build_extraction_stack,  # noqa: PLC0414
-    build_llm as build_llm,  # noqa: PLC0414
-    build_llm_gateway as build_llm_gateway,  # noqa: PLC0414
-    build_model_gateway as build_model_gateway,  # noqa: PLC0414
-    build_llm_stack as build_llm_stack,  # noqa: PLC0414
-    build_gateway as build_gateway,  # noqa: PLC0414
-    build_embedding as build_embedding,  # noqa: PLC0414
-    build_embedding_provider as build_embedding_provider,  # noqa: PLC0414
-    build_embeddings as build_embeddings,  # noqa: PLC0414
-    build_embedding_stack as build_embedding_stack,  # noqa: PLC0414
-    build_reranker as build_reranker,  # noqa: PLC0414
-    build_rerank as build_rerank,  # noqa: PLC0414
-    build_reranker_stack as build_reranker_stack,  # noqa: PLC0414
-    build_extraction as build_extraction,  # noqa: PLC0414
-    build_extractor as build_extractor,  # noqa: PLC0414
-    build_textract as build_textract,  # noqa: PLC0414
-    build_extraction_stack as build_extraction_stack,  # noqa: PLC0414
 )
+
+
+# Aggregator-only alias families (single implementation, discoverable names).
+build_llm = _build_llm_stack
+build_llm_gateway = _build_llm_stack
+build_model_gateway = _build_llm_stack
+build_llm_stack = _build_llm_stack
+build_gateway = _build_llm_stack
+
+build_embedding = _build_embedding_stack
+build_embedding_provider = _build_embedding_stack
+build_embeddings = _build_embedding_stack
+build_embedding_stack = _build_embedding_stack
+
+build_reranker = _build_reranker_stack
+build_rerank = _build_reranker_stack
+build_reranker_stack = _build_reranker_stack
+
+build_extraction = _build_extraction_stack
+build_extractor = _build_extraction_stack
+build_textract = _build_extraction_stack
+build_extraction_stack = _build_extraction_stack
 
 
 def build_unit_of_work(*args: Any, **kwargs: Any) -> Any:
