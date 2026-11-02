@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from finsight.domain.ports.queue import QueuePort as QueuePortBase
+from finsight.domain.ports.queue_port import QueuePort as QueuePortBase
 
 from ._sqs_queue_ack import _sqs_ack
 from ._sqs_queue_dead_letter import _sqs_dead_letter

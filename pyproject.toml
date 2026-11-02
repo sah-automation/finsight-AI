@@ -344,7 +344,6 @@ ignore = [
 "src/finsight/adapters/repositories/user_repository.py" = [
     "ANN401", "S608",
 ]
-"src/finsight/domain/ports/queue.py" = ["F401", "F403"]
 # The config loader parses arbitrary YAML (so Any is honest), imports the
 # logger lazily to avoid a circular import, and owns the deliberate
 # module-level config singleton described in CODING_STANDARDS section 6.

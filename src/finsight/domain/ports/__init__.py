@@ -20,7 +20,7 @@ from .metric_repository import MetricRepository, MetricsRepository
 from .object_storage import ObjectStorage
 from .partition_gateway import PartitionGateway, PartitionManager
 from .partition_metadata_repository import PartitionMetadataRepository
-from .queue import Queue, QueuePort
+from .queue_port import Queue, QueuePort
 from .reranker import Reranker, RerankerPort
 from .tracing_port import TracingPort
 from .unit_of_work import UnitOfWork

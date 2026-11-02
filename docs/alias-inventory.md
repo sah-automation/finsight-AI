@@ -98,7 +98,6 @@ Reviewed compatibility shim modules and canonical module choices.
 | `finsight/core/signing/citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
 | `finsight/domain/citation_locator.py` | `finsight.domain.value_objects.citation_locator` | Retained documented shim; remove after migration. |
 | `finsight/domain/entities/document_tables.py` | `finsight.domain.entities.document_table` | Retained documented shim; remove after migration. |
-| `finsight/domain/ports/queue.py` | `finsight.domain.ports.queue_port` | Retained documented shim; remove after migration. |
 | `finsight/domain/services/citation.py` | `finsight.domain.services.citation_checker` | Retained documented shim; remove after migration. |
 | `finsight/domain/services/citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
 | `finsight/domain/services/evidence.py` | `finsight.domain.services.evidence_checker` | Retained documented shim; remove after migration. |
