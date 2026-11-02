@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from finsight.core.types import AnswerId, CompanyId, UserId
-from finsight.domain.services.evidence import is_citation_valid
+from finsight.domain.services.evidence_checker import is_citation_valid
 from finsight.domain.value_objects.citation import Citation
 
 

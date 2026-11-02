@@ -1,3 +1,6 @@
+from finsight.domain.value_objects.span import Span
+from finsight.domain.value_objects.usage_record import UsageRecord
+
 from .answer import Answer
 from .chunk import Chunk
 from .company import Company
@@ -13,8 +16,6 @@ from .document_version import (
 from .insufficient_data import InsufficientData
 from .metric import Metric
 from .partition_metadata import PartitionMetadata
-from .span import Span
-from .usage_record import UsageRecord
 from .user import User
 
 __all__ = [

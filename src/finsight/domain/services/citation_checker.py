@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from finsight.domain.services.evidence import is_citation_valid
+from finsight.domain.services.evidence_checker import is_citation_valid
 from finsight.domain.value_objects import Citation
 
 from .citation_validation_result import CitationValidationResult

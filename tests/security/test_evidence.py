@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from finsight.domain.services.evidence import answer_has_evidence, is_citation_valid
+from finsight.domain.services.evidence_checker import answer_has_evidence, is_citation_valid
 from finsight.domain.value_objects import Citation
 
 pytestmark = pytest.mark.security

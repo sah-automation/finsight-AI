@@ -127,7 +127,7 @@ class _OutputGateOperations:
         # If citations list passed alongside, check validity lazily (presence only here)
         # Actually require each citation valid-ish
         try:
-            from finsight.domain.services.evidence import is_citation_valid
+            from finsight.domain.services.evidence_checker import is_citation_valid
 
             if citations:
                 citation_ok = all(is_citation_valid(c) for c in citations)

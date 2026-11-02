@@ -92,19 +92,6 @@ Reviewed compatibility shim modules and canonical module choices.
 | `finsight/adapters/transaction.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
 | `finsight/adapters/unit_of_work.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
 | `finsight/adapters/uow.py` | `finsight.adapters.repositories.postgres_unit_of_work` | Retained documented shim; remove after migration. |
-| `finsight/core/citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
-| `finsight/core/crypto/citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
-| `finsight/core/security/signed_citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
-| `finsight/core/signing/citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
-| `finsight/domain/citation_locator.py` | `finsight.domain.value_objects.citation_locator` | Retained documented shim; remove after migration. |
-| `finsight/domain/entities/document_tables.py` | `finsight.domain.entities.document_table` | Retained documented shim; remove after migration. |
-| `finsight/domain/services/citation.py` | `finsight.domain.services.citation_checker` | Retained documented shim; remove after migration. |
-| `finsight/domain/services/citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
-| `finsight/domain/services/evidence.py` | `finsight.domain.services.evidence_checker` | Retained documented shim; remove after migration. |
-| `finsight/domain/services/router.py` | `finsight.domain.services.model_router` | Retained documented shim; remove after migration. |
-| `finsight/domain/services/signed_citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
-| `finsight/domain/signed_citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
-| `finsight/domain/value_objects/citation_locator.py` | `finsight.core.security.citation_locator` | Retained documented shim; remove after migration. |
 | `finsight/entrypoints/api/me.py` | `finsight.entrypoints.api, finsight.entrypoints.api.current_user` | Retained documented shim; remove after migration. |
 | `finsight/entrypoints/api/user.py` | `finsight.entrypoints.api, finsight.entrypoints.api.current_user` | Retained documented shim; remove after migration. |
 | `finsight/entrypoints/api/users.py` | `finsight.entrypoints.api, finsight.entrypoints.api.current_user` | Retained documented shim; remove after migration. |

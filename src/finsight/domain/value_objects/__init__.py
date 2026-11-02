@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from .change_event_type import ChangeEventType
-from .citation import Citation
-from .citation_locator import (
+from finsight.core.security.citation_locator import (
     CitationLocator,
     mint_citation_locator,
     verify_citation_locator,
 )
+
+from .change_event_type import ChangeEventType
+from .citation import Citation
 from .confidence import Confidence
 from .currency import Currency
 from .document_change_event import DocumentChangeEvent
