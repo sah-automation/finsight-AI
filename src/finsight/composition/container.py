@@ -2893,6 +2893,53 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     except Exception:  # noqa: S110
         pass
 
+    # Instantiate the deep CascadeStep module for cascade/post_process/finalize/after_commit routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.cascade_step')
+        _CascadeStep = getattr(_mod, 'CascadeStep')
+        _known_cascade = {
+            'document_repository',
+            'document_repo',
+            'documents',
+            'document_store',
+            'metric_repository',
+            'metrics',
+            'metrics_repository',
+            'figures',
+            'extracted_metrics',
+            'change_event_publisher',
+            'event_publisher',
+            'publisher',
+            'change_publisher',
+            'answer_cache',
+            'cache',
+            'answer_cache_port',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+            'container',
+            'composition',
+            'root',
+            'app',
+            'context',
+        }
+        _instance = _CascadeStep(**{k: v for k, v in common.items() if k in _known_cascade})
+        mapping['cascade'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
+    # Alias collapse: cascade/post_process/finalize/after_commit share one instance.
+    if 'cascade' in mapping:
+        for _alias in ('post_process', 'finalize', 'after_commit'):
+            mapping[_alias] = mapping['cascade']
+
     # Alias collapse: save/commit/persist/transaction/transactional_save share one instance.
     if 'save' in mapping:
         for _alias in (
