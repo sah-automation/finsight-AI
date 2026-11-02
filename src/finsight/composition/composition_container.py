@@ -596,17 +596,13 @@ class CompositionContainer:
         import contextlib
 
         with contextlib.suppress(Exception):
-            import finsight.entrypoints.api.source_viewer as source_viewer_entrypoint
+            from finsight.entrypoints.api import source_viewer
 
-            source_viewer_entrypoint.get_source_viewer_use_case = lambda *_a, **_k: getattr(
+            source_viewer.get_source_viewer_use_case = lambda *_a, **_k: getattr(
                 self, 'source_viewer_use_case', None
             )
-            source_viewer_entrypoint.get_source_view_use_case = (
-                source_viewer_entrypoint.get_source_viewer_use_case
-            )
-            source_viewer_entrypoint.get_view_source_use_case = (
-                source_viewer_entrypoint.get_source_viewer_use_case
-            )
+            source_viewer.get_source_view_use_case = source_viewer.get_source_viewer_use_case
+            source_viewer.get_view_source_use_case = source_viewer.get_source_viewer_use_case
 
         with contextlib.suppress(Exception):
             import finsight.entrypoints.api._ask_4 as _ask_4_module

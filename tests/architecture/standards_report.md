@@ -29,7 +29,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/reader_registry.py: 792 lines
   - composition/container.py: 3057 lines
   - composition/step_deps.py: 328 lines
-  - composition/composition_container.py: 644 lines
+  - composition/composition_container.py: 640 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
   - application/reprocess/reprocess.py: 716 lines
