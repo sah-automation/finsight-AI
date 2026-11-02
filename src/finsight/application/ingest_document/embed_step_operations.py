@@ -64,30 +64,6 @@ class EmbedStepOperations(PipelineStepWorker):
                             pass
                     except Exception:  # noqa: BLE001
                         pass
-        reader_result = None
-        try:
-            reader_result = ctx.reader_result if hasattr(ctx, 'reader_result') else None
-        except Exception:  # noqa: BLE001
-            reader_result = None
-        if reader_result is None and isinstance(ctx, dict):
-            reader_result = ctx.get('reader_result')
-        if reader_result is None and self._reader() is not None:
-            try:
-                reader_result = await self._read(company_id, version, key)
-            except Exception:  # noqa: BLE001
-                reader_result = None
-            if reader_result is not None:
-                try:
-                    ctx.reader_result = reader_result
-                except Exception:  # noqa: BLE001
-                    if isinstance(ctx, dict):
-                        ctx['reader_result'] = reader_result
-        if reader_result is not None:
-            if isinstance(reader_result, self._reader_result_type()):
-                text = reader_result.text
-            else:
-                text = str(_get(reader_result, 'text', default='') or '')
-            return self._chunk_text(text)
         return []
 
     def _reader_result_type(self) -> Any:
@@ -105,7 +81,10 @@ class EmbedStepOperations(PipelineStepWorker):
         if isinstance(chunks, str):
             return [chunks]
         if not isinstance(chunks, (list, tuple)):
-            chunks = [chunks]
+            try:
+                chunks = list(chunks)
+            except TypeError:
+                chunks = [chunks]
         for ch in chunks:
             if isinstance(ch, str):
                 texts.append(ch)

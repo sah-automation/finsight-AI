@@ -59,6 +59,9 @@ class EmbedStep(EmbedStepOperations, PipelineStepWorker):
         embedding_adapter: Any = None,
         embedder: Any = None,
         embeddings: Any = None,
+        embedding_port: Any = None,
+        port: Any = None,
+        adapter: Any = None,
         provider: Any = None,
         embedding_provider: Any = None,
         chunk_repository: Any = None,
@@ -93,7 +96,23 @@ class EmbedStep(EmbedStepOperations, PipelineStepWorker):
                     else (
                         embeddings
                         if embeddings is not None
-                        else (embedding_provider if embedding_provider is not None else provider)
+                        else (
+                            embedding_port
+                            if embedding_port is not None
+                            else (
+                                port
+                                if port is not None
+                                else (
+                                    adapter
+                                    if adapter is not None
+                                    else (
+                                        embedding_provider
+                                        if embedding_provider is not None
+                                        else provider
+                                    )
+                                )
+                            )
+                        )
                     )
                 )
             )
@@ -196,6 +215,19 @@ class EmbedStep(EmbedStepOperations, PipelineStepWorker):
                 ctx['document_id'] = document_id
                 ctx['key'] = key
                 ctx['version'] = version
+
+    async def _get_version(self, company_id: Any, version_id: Any, document_id: Any = None) -> Any:
+        from finsight.domain.entities.document_version import DocumentVersion
+
+        # EmbedStep must not read a document; version state comes from context or a
+        # synthetic in-memory version only.
+        return DocumentVersion(
+            company_id=company_id,
+            id=version_id,
+            document_id=document_id,
+            state='stored',
+            extras={},
+        )
 
     def _effective_state(self, version: Any, ctx: Any) -> str:
         state = self._version_state(version)
