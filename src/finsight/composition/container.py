@@ -2679,6 +2679,39 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     if 'scan' not in mapping and scan_worker is not None:
         mapping['scan'] = scan_worker
 
+    # Instantiate the deep ReadStep module for read/parse/extract routing.
+    try:
+        import importlib
+
+        _mod = importlib.import_module('finsight.application.ingest_document.read_step')
+        _ReadStep = getattr(_mod, 'ReadStep')
+        _known = {
+            'reader',
+            'document_reader',
+            'primary_reader',
+            'page_router',
+            'router',
+            'document_repository',
+            'document_repo',
+            'documents',
+            'config',
+            'settings',
+            'configuration',
+            'app_config',
+            'object_storage',
+            'storage',
+            's3',
+            'page_router_enabled',
+            'state_store',
+            'store',
+            'context_store',
+            'step_state_store',
+        }
+        _instance = _ReadStep(**{k: v for k, v in common.items() if k in _known})
+        mapping['read'] = _instance
+    except Exception:  # noqa: S110
+        pass
+
     # Alias collapse: read/parse/extract share one instance.
     if 'read' in mapping:
         for _alias in ('parse', 'extract'):
