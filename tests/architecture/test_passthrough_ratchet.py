@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = PROJECT_ROOT / 'src' / 'finsight'
 
 # Baseline measured on the clean tree. Tickets may only ever lower this value.
-BASELINE_PASSTHROUGH_COUNT = 140
+BASELINE_PASSTHROUGH_COUNT = 110
 
 
 def _passthrough_count() -> int:
