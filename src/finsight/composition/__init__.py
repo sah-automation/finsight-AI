@@ -233,6 +233,10 @@ try:
             tail = fullname.rsplit('.', 1)[-1]
             if tail == 'factories':
                 return None
+            # Issue #174: the deleted composition/factories package must never be
+            # synthesised from the container surface via this fallback loader.
+            if fullname.startswith('finsight.composition.factories.'):
+                return None
             if tail in sys.modules:
                 return None
             return importlib.machinery.ModuleSpec(fullname, _CompositionAliasLoader())
