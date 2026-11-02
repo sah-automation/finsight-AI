@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from .base_reader import BaseReader
 
-# Compatibility alias modules (imported for hidden tests that use short names).
-from .csv import *  # noqa: F403
+# Canonical adapter modules.
 from .csv_reader import (
     CSV,
     Csv,
@@ -21,15 +20,12 @@ from .csv_reader import (
     TSVReader,
     TsvReader,
 )
-from .delimited import *  # noqa: F403
-from .docx import *  # noqa: F403
 from .docx_reader import (
     DOCX,
     Docx,
     DocxDocumentReader,
     DocxReader,
 )
-from .excel import *  # noqa: F403
 from .excel_reader import Excel, ExcelReader
 from .format_reader_selector import (
     FormatReader,
@@ -38,29 +34,31 @@ from .format_reader_selector import (
     ReaderFactorySelector,
     ReaderSelector,
 )
-from .layout import *  # noqa: F403
 from .page_router import PageRouter
 from .pdf_plumber_reader import *  # noqa: F403
 from .pdf_plumber_reader import PdfPlumberReader
 from .pdfplumber import *  # noqa: F403
-from .self_hosted import *  # noqa: F403
-from .self_hosted_layout import *  # noqa: F403
-from .self_hosted_layout import (
+from .self_hosted_layout_reader import (
     Layout,
+    LayoutDocumentReader,
     LayoutReader,
     SelfHosted,
+    SelfHostedDocumentReader,
     SelfHostedLayout,
+    SelfHostedLayoutReader,
+    SelfHostedReader,
 )
-from .self_hosted_layout_reader import SelfHostedLayoutReader
-from .self_hosted_reader import *  # noqa: F403
-from .table import *  # noqa: F403
-from .table import LayoutTableReader, Table, TableDocumentReader, TableLayoutReader
-from .table_layout import *  # noqa: F403
-from .table_reader import TableReader
-from .table_reader_alias import *  # noqa: F403
+from .table_reader import (
+    LayoutTableReader,
+    Table,
+    TableDocumentReader,
+    TableLayoutReader,
+    TableReader,
+)
 from .tesseract_reader import Tesseract, TesseractReader
 from .textract_reader import Textract, TextractReader
-from .tsv import *  # noqa: F403
+
+# Retained public spellings.
 from .xls import *  # noqa: F403
 from .xlsx import *  # noqa: F403
 
@@ -84,6 +82,7 @@ __all__ = [
     'FormatReaderSelector',
     'FormatSelector',
     'Layout',
+    'LayoutDocumentReader',
     'LayoutReader',
     'LayoutTableReader',
     'PageRouter',
@@ -91,8 +90,10 @@ __all__ = [
     'ReaderFactorySelector',
     'ReaderSelector',
     'SelfHosted',
+    'SelfHostedDocumentReader',
     'SelfHostedLayout',
     'SelfHostedLayoutReader',
+    'SelfHostedReader',
     'TSVDocumentReader',
     'TSVReader',
     'Table',

@@ -2,32 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any
+from .s3_storage import *  # noqa: F403
 
-from .aws_s3 import AwsS3
-from .boto3_storage import Boto3Storage
-from .object_storage import ObjectStorage
-from .object_storage_adapter import ObjectStorageAdapter
-from .object_store import ObjectStore
-from .s3 import S3
-from .s3_adapter import S3Adapter
-from .s3_bucket import S3Bucket
-from .s3_client import S3Client
-from .s3_object import S3Object
-from .s3_object_storage import S3ObjectStorage
-from .s3_object_storage_adapter import S3ObjectStorageAdapter
-from .s3_object_store import S3ObjectStore
-from .s3_storage import (
-    AwsS3ObjectStorage,
-    AwsS3Storage,
-    S3Storage,
-    S3StorageAdapter,
-)
-from .storage import Storage as StorageAlias
-from .storage_adapter import StorageAdapter
+ObjectStorage = S3Storage
 
-# Backwards-friendly alias.
-Storage: Any = StorageAlias
+# Compatibility spellings for the same adapter.
+AwsS3 = S3Storage
+Boto3Storage = S3Storage
+ObjectStore = S3Storage
+S3Adapter = S3Storage
+S3Bucket = S3Storage
+S3Client = S3Storage
+S3Object = S3Storage
+S3ObjectStore = S3Storage
+StorageAdapter = S3Storage
+
 
 __all__ = [
     'S3',

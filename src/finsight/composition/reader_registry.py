@@ -294,7 +294,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
     textract_reader = _instantiate_reader(
         _reader_class_from_specs(
             [
-                ('finsight.adapters.readers.textract', ('Textract', 'TextractReader')),
                 ('finsight.adapters.readers.textract_reader', ('Textract', 'TextractReader')),
             ]
         ),
@@ -306,7 +305,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
     tesseract_reader = _instantiate_reader(
         _reader_class_from_specs(
             [
-                ('finsight.adapters.readers.tesseract', ('Tesseract', 'TesseractReader')),
                 ('finsight.adapters.readers.tesseract_reader', ('Tesseract', 'TesseractReader')),
             ]
         ),
@@ -319,16 +317,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
         _reader_class_from_specs(
             [
                 (
-                    'finsight.adapters.readers.self_hosted_layout',
-                    (
-                        'SelfHostedLayout',
-                        'SelfHostedLayoutReader',
-                        'LayoutReader',
-                        'Layout',
-                        'SelfHosted',
-                    ),
-                ),
-                (
                     'finsight.adapters.readers.self_hosted_layout_reader',
                     (
                         'SelfHostedLayoutReader',
@@ -337,34 +325,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
                         'Layout',
                         'SelfHosted',
                     ),
-                ),
-                (
-                    'finsight.adapters.readers.self_hosted',
-                    (
-                        'SelfHostedLayout',
-                        'SelfHostedLayoutReader',
-                        'LayoutReader',
-                        'Layout',
-                        'SelfHosted',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.self_hosted_reader',
-                    (
-                        'SelfHostedLayout',
-                        'SelfHostedLayoutReader',
-                        'LayoutReader',
-                        'Layout',
-                        'SelfHosted',
-                    ),
-                ),
-                (
-                    'finsight.adapters.readers.layout',
-                    ('SelfHostedLayout', 'SelfHostedLayoutReader', 'LayoutReader', 'Layout'),
-                ),
-                (
-                    'finsight.adapters.readers.layout_reader',
-                    ('SelfHostedLayout', 'SelfHostedLayoutReader', 'LayoutReader', 'Layout'),
                 ),
             ]
         ),
@@ -377,14 +337,9 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
         _reader_class_from_specs(
             [
                 (
-                    'finsight.adapters.readers.table',
-                    ('Table', 'TableReader', 'TableDocumentReader', 'TableLayoutReader'),
-                ),
-                (
                     'finsight.adapters.readers.table_reader',
                     ('TableReader', 'Table', 'TableDocumentReader', 'TableLayoutReader'),
                 ),
-                ('finsight.adapters.readers.table_reader_alias', ('TableReader', 'Table')),
             ]
         ),
         config,
@@ -395,10 +350,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
     excel_reader = _instantiate_reader(
         _reader_class_from_specs(
             [
-                (
-                    'finsight.adapters.readers.excel',
-                    ('Excel', 'ExcelReader', 'XlsxReader', 'XlsReader', 'ExcelDocumentReader'),
-                ),
                 (
                     'finsight.adapters.readers.excel_reader',
                     ('Excel', 'ExcelReader', 'XlsxReader', 'XlsReader', 'ExcelDocumentReader'),
@@ -418,21 +369,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
         _reader_class_from_specs(
             [
                 (
-                    'finsight.adapters.readers.csv',
-                    (
-                        'CSV',
-                        'CsvReader',
-                        'CSVReader',
-                        'Csv',
-                        'CsvDocumentReader',
-                        'CSVDocumentReader',
-                        'DelimitedReader',
-                        'TabularReader',
-                        'TSVReader',
-                        'TsvReader',
-                    ),
-                ),
-                (
                     'finsight.adapters.readers.csv_reader',
                     (
                         'CsvReader',
@@ -447,14 +383,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
                         'TsvReader',
                     ),
                 ),
-                (
-                    'finsight.adapters.readers.delimited',
-                    ('DelimitedReader', 'DelimitedDocumentReader', 'CsvReader'),
-                ),
-                (
-                    'finsight.adapters.readers.delimited_reader',
-                    ('DelimitedReader', 'DelimitedDocumentReader', 'CsvReader'),
-                ),
                 ('finsight.adapters.readers.tabular', ('TabularReader', 'CsvReader')),
             ]
         ),
@@ -466,17 +394,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
     docx_reader = _instantiate_reader(
         _reader_class_from_specs(
             [
-                (
-                    'finsight.adapters.readers.docx',
-                    (
-                        'DOCX',
-                        'DocxReader',
-                        'Docx',
-                        'DocxDocumentReader',
-                        'WordReader',
-                        'WordDocumentReader',
-                    ),
-                ),
                 (
                     'finsight.adapters.readers.docx_reader',
                     (
