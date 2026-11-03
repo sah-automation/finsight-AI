@@ -440,7 +440,43 @@ class CompositionContainer:
             'view_source': self.source_viewer_use_case,
             'reprocess': self.reprocess_use_case,
             'reprocess_use_case': self.reprocess_use_case,
+            'documents': (
+                deps.get('documents_use_case')
+                or deps.get('document_use_case')
+                or deps.get('docs_use_case')
+                or deps.get('documents')
+                or deps.get('document')
+            ),
+            'documents_use_case': (
+                deps.get('documents_use_case')
+                or deps.get('document_use_case')
+                or deps.get('docs_use_case')
+            ),
+            'document_use_case': (
+                deps.get('documents_use_case')
+                or deps.get('document_use_case')
+                or deps.get('docs_use_case')
+            ),
+            'threads': (
+                deps.get('threads_use_case')
+                or deps.get('thread_use_case')
+                or deps.get('threads')
+                or deps.get('thread')
+            ),
+            'threads_use_case': (deps.get('threads_use_case') or deps.get('thread_use_case')),
+            'thread_use_case': (deps.get('threads_use_case') or deps.get('thread_use_case')),
+            'feedback': (
+                deps.get('feedback_use_case')
+                or deps.get('feedbacks_use_case')
+                or deps.get('feedback')
+                or deps.get('feedbacks')
+            ),
+            'feedback_use_case': (deps.get('feedback_use_case') or deps.get('feedbacks_use_case')),
+            'feedbacks_use_case': (deps.get('feedback_use_case') or deps.get('feedbacks_use_case')),
         }
+        _extra_use_cases = deps.get('use_cases') if isinstance(deps, dict) else None
+        if isinstance(_extra_use_cases, dict):
+            self.use_cases.update(_extra_use_cases)
         self.adapters = {
             'company_repository': company_repository,
             'user_repository': user_repository,
