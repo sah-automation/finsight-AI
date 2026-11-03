@@ -42,14 +42,14 @@ Generated from tests/architecture/test_standards_checklist.py
   - entrypoints/api/source_viewer.py: 802 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
-  - application/source_viewer/source_viewer.py: 2089 lines
+  - application/source_viewer/_step_helpers.py: 563 lines
+  - application/source_viewer/source_viewer.py: 1607 lines
   - application/update_document/update_document.py: 1363 lines
   - application/ingest_document/upload_document.py: 886 lines
-  - application/ingest_document/scan_worker.py: 853 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 68
+  - Unit: 70
   - Contract: 25
   - Switch: 16
 

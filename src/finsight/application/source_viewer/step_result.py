@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
-if TYPE_CHECKING:
-    from .source_viewer_context import SourceViewerContext
+from .source_viewer_context import SourceViewerContext  # noqa: TC001
 
 
 @dataclass(frozen=True)
