@@ -37,7 +37,6 @@ from .format_reader_selector import (
 from .page_router import PageRouter
 from .pdf_plumber_reader import *  # noqa: F403
 from .pdf_plumber_reader import PdfPlumberReader
-from .pdfplumber import *  # noqa: F403
 from .self_hosted_layout_reader import (
     Layout,
     LayoutDocumentReader,
@@ -57,10 +56,6 @@ from .table_reader import (
 )
 from .tesseract_reader import Tesseract, TesseractReader
 from .textract_reader import Textract, TextractReader
-
-# Retained public spellings.
-from .xls import *  # noqa: F403
-from .xlsx import *  # noqa: F403
 
 __all__ = [
     'CSV',

@@ -1614,10 +1614,6 @@ def _build_vector_write_impl(*args: Any, **kwargs: Any) -> Any:
             'finsight.adapters.vector_store.aurora_pg_vector_write',
             ('AuroraPgVectorWrite', 'PostgresVectorWrite'),
         ),
-        (
-            'finsight.adapters.vector_store.aurora_pgvector',
-            ('AuroraPgVectorWrite', 'PostgresVectorWrite'),
-        ),
     ):
         try:
             Cls = _import_adapter(module_path, *names)
@@ -2243,7 +2239,7 @@ def _build_page_router_impl(*args: Any, **kwargs: Any) -> Any:
     if pdf_reader is None:
         try:
             PdfCls = _import_adapter(
-                'finsight.adapters.readers.pdfplumber', 'PdfPlumberReader', 'PdfPlumber'
+                'finsight.adapters.readers.pdf_plumber_reader', 'PdfPlumberReader', 'PdfPlumber'
             )
             pdf_reader = PdfCls(config=config, session=session) if PdfCls is not None else None
         except Exception:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from finsight.adapters.readers.page_router import PageRouter
-from finsight.adapters.readers.pdfplumber_reader import PdfPlumberReader
+from finsight.adapters.readers.pdf_plumber_reader import PdfPlumberReader
 from finsight.core.types import CompanyId
 
 

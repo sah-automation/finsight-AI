@@ -79,7 +79,7 @@ class FormatReaderSelector(BaseReader):
 
                     return PdfPlumberReader(config=self._config)
                 except Exception:
-                    from .pdfplumber_reader import PdfPlumberReader
+                    from .pdf_plumber_reader import PdfPlumberReader
 
                     return PdfPlumberReader(config=self._config)
 

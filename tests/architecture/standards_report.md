@@ -26,8 +26,8 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **no_sensitive_data_in_logs**: No sensitive data in logs
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
-  - composition/reader_registry.py: 792 lines
-  - composition/container.py: 3057 lines
+  - composition/reader_registry.py: 786 lines
+  - composition/container.py: 3053 lines
   - composition/step_deps.py: 328 lines
   - composition/composition_container.py: 640 lines
   - core/errors/__init__.py: 338 lines

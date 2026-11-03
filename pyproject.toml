@@ -115,7 +115,6 @@ ignore = [
     "ANN401", "BLE001", "C416", "E501", "N803", "PLC0415", "S110",
     "SIM105", "TRY300",
 ]
-"src/finsight/adapters/storage/s3.py" = ["N814"]
 "src/finsight/adapters/storage/*.py" = [
     "ANN001", "ANN002", "ANN003", "ANN401", "ARG001", "ARG002", "ARG005",
     "BLE001", "B009", "B904", "E501", "N818", "PLC0415", "PLR0911",

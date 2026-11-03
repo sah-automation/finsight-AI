@@ -1,7 +1,0 @@
-"""Short alias module for S3 storage adapter."""
-
-from __future__ import annotations
-
-from .s3_storage import S3Storage as S3
-
-__all__ = ['S3']

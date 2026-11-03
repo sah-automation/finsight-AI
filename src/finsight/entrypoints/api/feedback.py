@@ -7,7 +7,11 @@ from ._feedback_1 import *
 from ._feedback_2 import *
 from ._feedback_3 import *
 from ._feedback_4 import *
-from ._feedback_5 import *
+
+FeedbackRecord = _FeedbackModel
+ReportWrongSourceModel = _FeedbackModel
+ReportWrongSourceResponse = _FeedbackModel
+WrongSourceReport = _FeedbackModel
 
 
 class Feedback:

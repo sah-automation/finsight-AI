@@ -278,12 +278,10 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
     pdf_reader = _instantiate_reader(
         _reader_class_from_specs(
             [
-                ('finsight.adapters.readers.pdfplumber', ('PdfPlumber', 'PdfPlumberReader')),
                 (
                     'finsight.adapters.readers.pdf_plumber_reader',
                     ('PdfPlumberReader', 'PdfPlumber'),
                 ),
-                ('finsight.adapters.readers.pdfplumber_reader', ('PdfPlumberReader', 'PdfPlumber')),
             ]
         ),
         config,
@@ -354,10 +352,6 @@ def _build_reader_registry_impl(*args: Any, **kwargs: Any) -> ReaderRegistry:
                     'finsight.adapters.readers.excel_reader',
                     ('Excel', 'ExcelReader', 'XlsxReader', 'XlsReader', 'ExcelDocumentReader'),
                 ),
-                ('finsight.adapters.readers.xlsx', ('ExcelReader', 'Excel', 'XlsxReader')),
-                ('finsight.adapters.readers.xlsx_reader', ('XlsxReader', 'ExcelReader', 'Excel')),
-                ('finsight.adapters.readers.xls', ('XlsReader', 'ExcelReader', 'Excel')),
-                ('finsight.adapters.readers.xls_reader', ('XlsReader', 'ExcelReader', 'Excel')),
             ]
         ),
         config,
