@@ -113,6 +113,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'entrypoints',
         'removal_condition': 'Move shared helpers to _shared.py and split router under 300 lines.',
     },
+    'entrypoints/api/onboarding.py': {
+        'reason': 'Collapsed onboarding router keeps helpers in-line pending extraction in ticket 10.',
+        'owner': 'entrypoints',
+        'removal_condition': 'Move shared helpers to _shared.py and split router under 300 lines.',
+    },
     'application/ask_question/ask_question.py': {
         'reason': 'Q&A orchestration retains legacy heavy execution path.',
         'owner': 'application',
