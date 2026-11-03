@@ -2,6 +2,8 @@
 
 from .models import Result, SourceViewerResult, SourceViewResult, ViewResult
 from .source_viewer import SourceViewer
+from .source_viewer_context import SourceViewerContext
+from .step_result import StepResult
 
 # Broad aliases for flexible test seams.
 SourceViewerUseCase = SourceViewer
@@ -28,11 +30,13 @@ __all__ = [
     'SourceViewUseCase',
     'SourceViewer',
     'SourceViewerApplication',
+    'SourceViewerContext',
     'SourceViewerFlow',
     'SourceViewerHandler',
     'SourceViewerResult',
     'SourceViewerService',
     'SourceViewerUseCase',
+    'StepResult',
     'ViewResult',
     'ViewSource',
 ]

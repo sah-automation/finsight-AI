@@ -183,6 +183,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'application',
         'removal_condition': 'Split decoded lokator handling from viewer orchestration.',
     },
+    'application/source_viewer/_step_helpers.py': {
+        'reason': 'Internal helpers extracted from the source viewer fused module.',
+        'owner': 'application',
+        'removal_condition': 'Delete when source viewer cleanup (issue 212) collapses helper indirection.',
+    },
     'application/update_document/update_document.py': {
         'reason': 'Update orchestration retains compatibility aliases.',
         'owner': 'application',
