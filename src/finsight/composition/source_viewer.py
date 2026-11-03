@@ -79,20 +79,13 @@ def _build_source_viewer_use_case_impl(*args: Any, **kwargs: Any) -> Any:
         kwargs,
         'source_viewer_use_case',
         'source_viewer',
-        'source_view_use_case',
-        'source_view',
-        'view_source_use_case',
-        'view_source',
         'use_case',
-        'service',
-        'handler',
-        'orchestrator',
     )
     if provided is not None:
         return provided
     container = _container(*args, **kwargs)
     if container is not None:
-        for attr in ('source_viewer_use_case', 'source_viewer', 'source_view_use_case'):
+        for attr in ('source_viewer_use_case', 'source_viewer'):
             value = getattr(container, attr, None)
             if value is not None:
                 return value
@@ -233,20 +226,11 @@ def get_source_viewer_use_case(*args: Any, **kwargs: Any) -> Any:
         return build_source_viewer_use_case(*args, **kwargs)
     container = get_default_container()
     if container is not None:
-        for attr in ('source_viewer_use_case', 'source_viewer'):
-            value = getattr(container, attr, None)
-            if value is not None:
-                return value
+        value = getattr(container, 'source_viewer_use_case', None)
+        if value is not None:
+            return value
     return build_source_viewer_use_case()
 
 
 def create_source_viewer_use_case(*args: Any, **kwargs: Any) -> Any:
-    return build_source_viewer_use_case(*args, **kwargs)
-
-
-def get_source_view_use_case(*args: Any, **kwargs: Any) -> Any:
-    return build_source_viewer_use_case(*args, **kwargs)
-
-
-def get_view_source_use_case(*args: Any, **kwargs: Any) -> Any:
     return build_source_viewer_use_case(*args, **kwargs)

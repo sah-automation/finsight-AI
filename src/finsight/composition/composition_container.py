@@ -28,10 +28,6 @@ class CompositionContainer:
         qa_use_case: Any = None,
         question_use_case: Any = None,
         source_viewer_use_case: Any = None,
-        source_viewer: Any = None,
-        source_view_use_case: Any = None,
-        view_source_use_case: Any = None,
-        source_view: Any = None,
         mode: str = 'standard',
         reader_registry: Any = None,
         readers: Any = None,
@@ -256,21 +252,8 @@ class CompositionContainer:
         self.source_viewer_use_case = (
             source_viewer_use_case
             if source_viewer_use_case is not None
-            else source_viewer
-            if source_viewer is not None
-            else source_view_use_case
-            if source_view_use_case is not None
-            else view_source_use_case
-            if view_source_use_case is not None
-            else source_view
-            if source_view is not None
             else deps.get('source_viewer_use_case')
         )
-        self.source_viewer = self.source_viewer_use_case
-        self.source_view_use_case = self.source_viewer_use_case
-        self.view_source_use_case = self.source_viewer_use_case
-        self.source_view = self.source_viewer_use_case
-        self.source_viewer_service = self.source_viewer_use_case
 
         self.deps = deps
         # Allow deps fallback.
@@ -431,9 +414,6 @@ class CompositionContainer:
             'ask_question_use_case': self.ask_question_use_case,
             'qa': self.ask_question_use_case,
             'source_viewer': self.source_viewer_use_case,
-            'source_view': self.source_viewer_use_case,
-            'source_viewer_use_case': self.source_viewer_use_case,
-            'view_source': self.source_viewer_use_case,
             'reprocess': self.reprocess_use_case,
             'reprocess_use_case': self.reprocess_use_case,
             'documents': (

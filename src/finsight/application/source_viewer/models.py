@@ -110,8 +110,4 @@ class SourceViewerResult:
         }
 
 
-SourceViewResult = SourceViewerResult
-ViewResult = SourceViewerResult
-Result = SourceViewerResult
-
-__all__ = ['Result', 'SourceViewResult', 'SourceViewerResult', 'ViewResult']
+__all__ = ['SourceViewerResult']

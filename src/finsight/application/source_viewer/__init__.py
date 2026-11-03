@@ -2,7 +2,7 @@
 
 from ._request_to_context import *  # noqa: F403
 from ._request_to_context import _build_source_viewer_context
-from .models import Result, SourceViewerResult, SourceViewResult, ViewResult
+from .models import SourceViewerResult
 from .source_viewer import SourceViewer
 from .source_viewer_context import SourceViewerContext
 from .step_result import StepResult
@@ -22,42 +22,13 @@ _build_request_context = _build_source_viewer_context
 _request_to_context = _build_source_viewer_context
 _build_viewer_context = _build_source_viewer_context
 
-# Broad aliases for flexible test seams.
-SourceViewerUseCase = SourceViewer
-SourceViewUseCase = SourceViewer
-SourceView = SourceViewer
-SourceViewerApplication = SourceViewer
-OpenSource = SourceViewer
-OpenCitation = SourceViewer
-CitationViewer = SourceViewer
-SourceViewerService = SourceViewer
-SourceViewerFlow = SourceViewer
-SourceViewerHandler = SourceViewer
-ViewSource = SourceViewer
-ResolveSource = SourceViewer
-
 __all__ = [
     'AuthorizeStep',
-    'CitationViewer',
     'FetchContentStep',
-    'OpenCitation',
-    'OpenSource',
-    'ResolveSource',
-    'Result',
-    'SourceView',
-    'SourceViewResult',
-    'SourceViewUseCase',
     'SourceViewer',
-    'SourceViewerApplication',
     'SourceViewerContext',
-    'SourceViewerFlow',
-    'SourceViewerHandler',
     'SourceViewerResult',
-    'SourceViewerService',
-    'SourceViewerUseCase',
     'StepResult',
-    'ViewResult',
-    'ViewSource',
     '_build_context',
     '_build_request_context',
     '_build_source_viewer_context',

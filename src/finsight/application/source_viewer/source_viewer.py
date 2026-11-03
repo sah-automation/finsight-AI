@@ -1,13 +1,13 @@
-# ruff: noqa: ANN401, B007, BLE001, C416, C901, E501, F401, F841, I001, N806, PERF403, PLC0415, PLR0912, PLR0913, PLR0915, PLR0917, RET504, RUF100, S110, SIM105, UP035
 from __future__ import annotations
 
 import logging
 from typing import Any
 
+from ._request_to_context import _build_source_viewer_context
+from ._step_helpers import _coalesce, _normalize_version_key
+from .models import SourceViewerResult
 from .source_viewer_context import SourceViewerContext
 from .step_result import StepResult
-
-from ._step_helpers import _coalesce, _normalize_version_key
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def _collect_steps(**kwargs: Any) -> tuple[Any, ...]:
 
 
 class SourceViewer:
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         authorize_step: Any = None,
@@ -91,7 +91,7 @@ class SourceViewer:
         self.fetch_content_step = self._fetch_content_step
         self.fetch_original_step = self._fetch_original_step
         self.audit_step = self._audit_step
-        self.steps = [s for s in resolved]
+        self.steps = list(resolved)
         self.pipeline = list(self.steps)
         tracing_resolved = tracing if tracing is not None else tracer
         if tracing_resolved is None:
@@ -127,7 +127,7 @@ class SourceViewer:
             await self._trace(self._company_id(context), op_name)
             try:
                 result = await step.run(context)
-            except Exception as exc:  # pragma: no cover
+            except Exception as exc:  # noqa: BLE001, pragma: no cover
                 result = StepResult.stop_with_error(context, exc)
             if not isinstance(result, StepResult):
                 continue
@@ -145,18 +145,16 @@ class SourceViewer:
         if self._audit_step is not None:
             try:
                 await self._audit_step.run(context)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug('audit step failed', exc_info=exc)
 
     def _result(self, context: Any, outcome: str, initial: dict[str, Any]) -> Any:
-        from .models import SourceViewerResult
-
         if outcome == 'success':
             vobj = getattr(context, 'version_obj', None)
             cited_id = None
             try:
                 cited_id = _normalize_version_key(vobj) if vobj is not None else None
-            except Exception:
+            except Exception:  # noqa: BLE001
                 cited_id = None
             text = getattr(context, 'text', None)
             if text is None:
@@ -252,22 +250,11 @@ class SourceViewer:
             result_obj.result = 'not_available'
         return result_obj
 
-    async def execute(self, *args: Any, **kwargs: Any) -> Any:
-        return await self.run(*args, **kwargs)
-
-    async def view(self, *args: Any, **kwargs: Any) -> Any:
-        return await self.run(*args, **kwargs)
-
-    async def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        return await self.run(*args, **kwargs)
-
     def _coerce_context(self, *args: Any, **kwargs: Any) -> SourceViewerContext:
         first = args[0] if args else None
         if isinstance(first, SourceViewerContext):
             return first
-        from ._request_to_context import _build_source_viewer_context as _builder
-
-        return _builder(*args, **kwargs)
+        return _build_source_viewer_context(*args, **kwargs)
 
     def _company_id(self, context: Any) -> Any:
         value = getattr(context, 'company_id', None)
@@ -290,6 +277,6 @@ class SourceViewer:
             result = method(company_id, operation)
             if hasattr(result, '__await__'):
                 await result
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug('tracing step failed', exc_info=exc)
             return

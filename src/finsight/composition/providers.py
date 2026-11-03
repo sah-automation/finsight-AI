@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 from finsight.application.ask_question import AskQuestion
 from finsight.application.ingest_document.upload_document import UploadDocument
 from finsight.application.onboarding import OnboardingUseCase
-from finsight.application.source_viewer.source_viewer_use_case import SourceViewerUseCase
+from finsight.application.source_viewer import SourceViewer
 
 if TYPE_CHECKING:
     from .composition_container import CompositionContainer
@@ -93,9 +93,9 @@ def get_onboarding_use_case() -> OnboardingUseCase:
     return cast('OnboardingUseCase', _resolve_use_case('onboarding'))
 
 
-def get_source_viewer_use_case() -> SourceViewerUseCase:
+def get_source_viewer_use_case() -> SourceViewer:
     """Return the wired source-viewer use case."""
-    return cast('SourceViewerUseCase', _resolve_use_case('source_viewer'))
+    return cast('SourceViewer', _resolve_use_case('source_viewer'))
 
 
 def get_threads_use_case() -> ThreadsUseCase:

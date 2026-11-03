@@ -883,9 +883,6 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         kwargs,
         'source_viewer_use_case',
         'source_viewer',
-        'source_view_use_case',
-        'view_source_use_case',
-        'source_view',
     )
     if source_viewer_use_case is None:
         source_viewer_use_case = provided_deps.get('source_viewer_use_case')
@@ -1061,7 +1058,6 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         source_viewer_use_case=source_viewer_use_case,
         documents_use_case=document_repository,
         documents=document_repository,
-        source_viewer=source_viewer_use_case,
         state_store=state_store,
         step_state_store=state_store,
         pipeline_state_store=state_store,

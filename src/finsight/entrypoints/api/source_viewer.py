@@ -39,8 +39,6 @@ from finsight.core.types import Role
 from finsight.composition.providers import get_source_viewer_use_case
 from finsight.entrypoints.api.documents import _Response
 
-get_source_view_use_case = get_source_viewer_use_case
-get_view_source_use_case = get_source_viewer_use_case
 router = APIRouter(prefix='/documents', tags=['source_viewer'])
 
 
@@ -60,10 +58,6 @@ _USE_CASE_KEYS = (
     'use_case',
     'source_viewer_use_case',
     'source_viewer',
-    'source_view_use_case',
-    'source_view',
-    'view_source_use_case',
-    'view_source',
     'service',
     'handler',
     'orchestrator',
@@ -124,9 +118,7 @@ __all__ = [
     '_is_use_case',
     'annotations',
     'contextlib',
-    'get_source_view_use_case',
     'get_source_viewer_use_case',
-    'get_view_source_use_case',
     'inspect',
     'router',
 ]
@@ -163,10 +155,6 @@ async def _resolve_use_case(candidate: Any, data: dict[str, Any], context: Any) 
         for attr in (
             'source_viewer_use_case',
             'source_viewer',
-            'source_view_use_case',
-            'source_view',
-            'view_source_use_case',
-            'view_source',
             'use_case',
             'service',
             'handler',
@@ -181,11 +169,7 @@ async def _resolve_use_case(candidate: Any, data: dict[str, Any], context: Any) 
         return candidate
 
     # Fallback to composition.
-    for getter_name in (
-        'get_source_viewer_use_case',
-        'get_source_view_use_case',
-        'get_view_source_use_case',
-    ):
+    for getter_name in ('get_source_viewer_use_case',):
         try:
             getter = globals().get(getter_name)
             if getter is not None:
@@ -778,8 +762,6 @@ class SourceViewer:
             kwargs = dict(kwargs)
             kwargs.setdefault('use_case', self.use_case)
             kwargs.setdefault('source_viewer_use_case', self.use_case)
-            kwargs.setdefault('source_view_use_case', self.use_case)
-            kwargs.setdefault('view_source_use_case', self.use_case)
         if self.context is not None:
             kwargs = dict(kwargs)
             kwargs.setdefault('context', self.context)
