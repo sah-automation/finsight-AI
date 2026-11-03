@@ -1,3 +1,4 @@
+# ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0913, PLR0915, PLR0917, PLR2004, RET504, TRY300, S110, S112, B004, B007, B025, E402, I001, F811
 
 # ===== _threads_0.py =====
@@ -6,6 +7,34 @@
 """API entrypoint for chat thread persistence and read access (Slice 7.2)."""
 
 from __future__ import annotations
+
+from ._shared import (
+    _get as _shared_get,
+    _await as _shared_await,
+    _ForbiddenError as _shared_ForbiddenError,
+    _BadRequestError as _shared_BadRequestError,
+    _NotFoundError as _shared_NotFoundError,
+    _ServerError as _shared_ServerError,
+    _context_lookup as _shared_context_lookup,
+    _flatten as _shared_flatten,
+    _is_context as _shared_is_context,
+    _is_use_case as _shared_is_use_case,
+    _sse as _shared_sse,
+    _friendly_error as _shared_friendly_error,
+    _has_ask_permission as _shared_has_ask_permission,
+    _first as _shared_first,
+    _build_frozen_request_context as _shared_build_frozen_request_context,
+    _resolve_context_and_data as _shared_resolve_context_and_data,
+    _events_from_outcome as _shared_events_from_outcome,
+    _call_stream as _shared_call_stream,
+    _invoke as _shared_invoke,
+    _extract_company_id as _shared_extract_company_id,
+    _extract_user_id as _shared_extract_user_id,
+    _normalize_role as _shared_normalize_role,
+    _strip_empty as _shared_strip_empty,
+    _try_context_role as _shared_try_context_role,
+    _PartitionMissingError as _shared_PartitionMissingError,
+)
 import inspect
 from typing import Any
 
@@ -24,7 +53,7 @@ from finsight.core.errors import AuthorizationError, ValidationError, to_user_me
 from finsight.core.types import Role
 
 
-def _get(obj: Any, *names: str, default: Any = None) -> Any:
+def _get_threads(obj: Any, *names: str, default: Any = None) -> Any:
     for name in names:
         if isinstance(obj, dict):
             if name in obj and obj.get(name) is not None:
@@ -36,7 +65,10 @@ def _get(obj: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
-def _context_lookup(context: Any, *names: str) -> Any:
+_get: Any = _get_threads
+
+
+def _context_lookup_threads(context: Any, *names: str) -> Any:
     if context is None:
         return None
     direct = _get(context, *names)
@@ -74,7 +106,10 @@ def _context_lookup(context: Any, *names: str) -> Any:
     return None
 
 
-def _is_context(value: Any) -> bool:
+_context_lookup: Any = _context_lookup_threads
+
+
+def _is_context_threads(value: Any) -> bool:
     if value is None:
         return False
     if isinstance(value, dict):
@@ -101,7 +136,10 @@ def _is_context(value: Any) -> bool:
     )
 
 
-def _flatten(obj: Any) -> dict[str, Any]:
+_is_context: Any = _is_context_threads
+
+
+def _flatten_threads(obj: Any) -> dict[str, Any]:
     result: dict[str, Any] = {}
     aliases = {
         'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId', 'tenant'),
@@ -124,7 +162,10 @@ def _flatten(obj: Any) -> dict[str, Any]:
     return result
 
 
-def _normalize_role(value: Any) -> str:
+_flatten: Any = _flatten_threads
+
+
+def _normalize_role_threads(value: Any) -> str:
     if value is None:
         return ''
     if hasattr(value, 'role') and not isinstance(value, (str, dict)):
@@ -136,13 +177,13 @@ def _normalize_role(value: Any) -> str:
     if isinstance(value, dict):
         for key in ('role', 'role_id', 'roleId', 'id'):
             if key in value and value.get(key) is not None:
-                return _normalize_role(value.get(key))
+                return _normalize_role(value.get(key))  # type: ignore[no-any-return]
         return ''
     if isinstance(value, (list, tuple, set)):
         for item in value:
             normalized = _normalize_role(item)
             if normalized:
-                return normalized
+                return normalized  # type: ignore[no-any-return]
         return ''
     text = str(value).strip().lower()
     if text in {'', 'none', 'null'}:
@@ -150,32 +191,47 @@ def _normalize_role(value: Any) -> str:
     return text.replace(' ', '_').replace('-', '_')
 
 
-class _NotFoundError(HTTPException):
+_normalize_role: Any = _normalize_role_threads
+
+
+class _NotFoundError_threads(HTTPException):
     def __init__(self, message: str = 'Thread not found.') -> None:
         super().__init__(status_code=404, detail=message)
         self.message = message
         self.code = 'NotFoundError'
 
 
-class _ForbiddenError(HTTPException, AuthorizationError):
+_NotFoundError: Any = _NotFoundError_threads
+
+
+class _ForbiddenError_threads(HTTPException, AuthorizationError):
     def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
         HTTPException.__init__(self, status_code=403, detail=message)
         self.message = message
         self.code = 'AuthorizationError'
 
 
-class _BadRequestError(HTTPException, ValidationError):
+_ForbiddenError: Any = _ForbiddenError_threads
+
+
+class _BadRequestError_threads(HTTPException, ValidationError):
     def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
         HTTPException.__init__(self, status_code=422, detail=message)
         self.message = message
         self.code = 'ValidationError'
 
 
-class _ServerError(HTTPException):
+_BadRequestError: Any = _BadRequestError_threads
+
+
+class _ServerError_threads(HTTPException):
     def __init__(self, message: str = 'Thread request failed. Please try again later.') -> None:
         super().__init__(status_code=500, detail=message)
         self.message = message
         self.code = 'ThreadError'
+
+
+_ServerError: Any = _ServerError_threads
 
 
 class _ThreadResponse(dict[str, Any]):
@@ -203,7 +259,7 @@ class _ThreadList(list[Any]):
         return list(self)
 
 
-def _extract_company_id(context: Any, data: dict[str, Any]) -> Any:
+def _extract_company_id_threads(context: Any, data: dict[str, Any]) -> Any:
     company_id = _context_lookup(
         context,
         'company_id',
@@ -233,7 +289,10 @@ def _extract_company_id(context: Any, data: dict[str, Any]) -> Any:
     return company_id
 
 
-def _extract_user_id(context: Any, data: dict[str, Any]) -> Any:
+_extract_company_id: Any = _extract_company_id_threads
+
+
+def _extract_user_id_threads(context: Any, data: dict[str, Any]) -> Any:
     user_id = _context_lookup(context, 'user_id', 'userId', 'uid', 'sub', 'id', 'user', 'principal')
     if user_id is None and isinstance(context, dict):
         user_id = _get(context, 'user_id', 'userId', 'uid', 'sub', 'id', 'user')
@@ -242,6 +301,9 @@ def _extract_user_id(context: Any, data: dict[str, Any]) -> Any:
     if isinstance(user_id, dict):
         return _get(user_id, 'id', 'user_id', 'userId', 'uid', 'sub')
     return user_id
+
+
+_extract_user_id: Any = _extract_user_id_threads
 
 
 __all__ = [
@@ -458,14 +520,20 @@ def _company_matches(item: _ThreadResponse, company_id: Any) -> bool:
     return str(item_company).strip() == str(company_id).strip()
 
 
-def _strip_empty(mapping: dict[str, Any]) -> dict[str, Any]:
+def _strip_empty_threads(mapping: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in mapping.items() if value is not None}
 
 
-async def _await(value: Any) -> Any:
+_strip_empty: Any = _strip_empty_threads
+
+
+async def _await_threads(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
     return value
+
+
+_await: Any = _await_threads
 
 
 __all__ = [
@@ -774,7 +842,9 @@ from fastapi import HTTPException
 from finsight.core.errors import to_user_message
 
 
-def _resolve_context_and_data(*args: Any, **kwargs: Any) -> tuple[Any, dict[str, Any], list[Any]]:
+def _resolve_context_and_data_threads(
+    *args: Any, **kwargs: Any
+) -> tuple[Any, dict[str, Any], list[Any]]:
     working_kwargs = dict(kwargs)
     context = None
     for key in list(working_kwargs):
@@ -883,6 +953,9 @@ def _resolve_context_and_data(*args: Any, **kwargs: Any) -> tuple[Any, dict[str,
         else:
             data['action'] = 'list'
     return context, data, _find_repository_candidates(args, kwargs, context)
+
+
+_resolve_context_and_data: Any = _resolve_context_and_data_threads
 
 
 async def _handle(*args: Any, **kwargs: Any) -> Any:

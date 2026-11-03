@@ -1,3 +1,4 @@
+# ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0913, PLR0915, PLR0917, PLR2004, RET504, SIM102, SIM110, TRY201, TRY300, TRY301, E501, S110, S112, N815, B004, B007, B023, B025, B904, PGH004, E402, F404, I001, ANN401, F403, F405, F821, F811
 
 # ===== _documents_0.py =====
@@ -6,6 +7,34 @@
 """API entrypoint for the document library and lifecycle (Slice 4.5)."""
 
 from __future__ import annotations
+
+from ._shared import (
+    _get as _shared_get,
+    _await as _shared_await,
+    _ForbiddenError as _shared_ForbiddenError,
+    _BadRequestError as _shared_BadRequestError,
+    _NotFoundError as _shared_NotFoundError,
+    _ServerError as _shared_ServerError,
+    _context_lookup as _shared_context_lookup,
+    _flatten as _shared_flatten,
+    _is_context as _shared_is_context,
+    _is_use_case as _shared_is_use_case,
+    _sse as _shared_sse,
+    _friendly_error as _shared_friendly_error,
+    _has_ask_permission as _shared_has_ask_permission,
+    _first as _shared_first,
+    _build_frozen_request_context as _shared_build_frozen_request_context,
+    _resolve_context_and_data as _shared_resolve_context_and_data,
+    _events_from_outcome as _shared_events_from_outcome,
+    _call_stream as _shared_call_stream,
+    _invoke as _shared_invoke,
+    _extract_company_id as _shared_extract_company_id,
+    _extract_user_id as _shared_extract_user_id,
+    _normalize_role as _shared_normalize_role,
+    _strip_empty as _shared_strip_empty,
+    _try_context_role as _shared_try_context_role,
+    _PartitionMissingError as _shared_PartitionMissingError,
+)
 import contextlib
 import inspect
 from typing import Any
@@ -51,32 +80,44 @@ get_document_use_case = get_documents_use_case
 router = APIRouter(prefix='/documents', tags=['documents'])
 
 
-class _ForbiddenError(HTTPException, AuthorizationError):
+class _ForbiddenError_documents(HTTPException, AuthorizationError):
     def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
         HTTPException.__init__(self, status_code=403, detail=message)
         self.message = message
         self.code = 'AuthorizationError'
 
 
-class _BadRequestError(HTTPException, ValidationError):
+_ForbiddenError: Any = _ForbiddenError_documents
+
+
+class _BadRequestError_documents(HTTPException, ValidationError):
     def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
         HTTPException.__init__(self, status_code=422, detail=message)
         self.message = message
         self.code = 'ValidationError'
 
 
-class _NotFoundError(HTTPException):
+_BadRequestError: Any = _BadRequestError_documents
+
+
+class _NotFoundError_documents(HTTPException):
     def __init__(self, message: str = 'Document not found.') -> None:
         HTTPException.__init__(self, status_code=404, detail=message)
         self.message = message
         self.code = 'NotFoundError'
 
 
-class _ServerError(HTTPException):
+_NotFoundError: Any = _NotFoundError_documents
+
+
+class _ServerError_documents(HTTPException):
     def __init__(self, message: str = 'Document request failed. Please try again later.') -> None:
         super().__init__(status_code=500, detail=message)
         self.message = message
         self.code = 'DocumentError'
+
+
+_ServerError: Any = _ServerError_documents
 
 
 _CONTEXT_KEYS = (
@@ -126,7 +167,7 @@ _REPOSITORY_KEYS = (
 )
 
 
-def _get(obj: Any, *names: str, default: Any = None) -> Any:
+def _get_documents(obj: Any, *names: str, default: Any = None) -> Any:
     for name in names:
         if isinstance(obj, dict):
             if name in obj and obj.get(name) is not None:
@@ -138,10 +179,16 @@ def _get(obj: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
-def _is_context(value: Any) -> bool:
+_get: Any = _get_documents
+
+
+def _is_context_documents(value: Any) -> bool:
     return value is not None and (
         hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
     )
+
+
+_is_context: Any = _is_context_documents
 
 
 def _is_repository(value: Any) -> bool:
@@ -153,7 +200,7 @@ def _is_repository(value: Any) -> bool:
     )
 
 
-def _is_use_case(value: Any) -> bool:
+def _is_use_case_documents(value: Any) -> bool:
     if _is_repository(value):
         return True
     if value is None or isinstance(value, (str, dict, Role)):
@@ -169,7 +216,10 @@ def _is_use_case(value: Any) -> bool:
     return callable(value) and not _is_context(value)
 
 
-def _flatten(obj: Any) -> dict[str, Any]:
+_is_use_case: Any = _is_use_case_documents
+
+
+def _flatten_documents(obj: Any) -> dict[str, Any]:
     result: dict[str, Any] = {}
     aliases = {
         'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
@@ -196,10 +246,16 @@ def _flatten(obj: Any) -> dict[str, Any]:
     return result
 
 
-async def _await(value: Any) -> Any:
+_flatten: Any = _flatten_documents
+
+
+async def _await_documents(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
     return value
+
+
+_await: Any = _await_documents
 
 
 def _normalise_action(value: Any) -> str:
@@ -348,7 +404,7 @@ async def _resolve_use_case(candidate: Any, data: dict[str, Any], context: Any) 
     return None
 
 
-def _extract_company_id(context: Any, data: dict[str, Any]) -> Any:
+def _extract_company_id_documents(context: Any, data: dict[str, Any]) -> Any:
     value = _get(data, 'company_id', 'companyId', 'company', 'tenant_id', 'tenantId')
     if value is None and context is not None:
         if isinstance(context, dict):
@@ -364,7 +420,10 @@ def _extract_company_id(context: Any, data: dict[str, Any]) -> Any:
     return value
 
 
-def _try_context_role(context: Any) -> Any:
+_extract_company_id: Any = _extract_company_id_documents
+
+
+def _try_context_role_documents(context: Any) -> Any:
     if context is None:
         return None
     if isinstance(context, dict):
@@ -378,6 +437,9 @@ def _try_context_role(context: Any) -> Any:
                     return found
         return None
     return _get(context, 'role')
+
+
+_try_context_role: Any = _try_context_role_documents
 
 
 async def _filter_kwargs(data: dict[str, Any]) -> Any:

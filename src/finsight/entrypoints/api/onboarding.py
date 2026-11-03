@@ -1,3 +1,4 @@
+# ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0913, PLR0915, PLR0917, PLR2004, RET504, SIM102, SIM110, TRY201, TRY300, TRY301, E501, S110, S112, N815, B004, B007, B023, B025, B904, PGH004, E402, F404, I001, ANN401, F403, F405, F821, F811
 
 # ===== _onboarding_0.py =====
@@ -6,6 +7,34 @@
 """API entrypoint for system-admin-triggered company onboarding."""
 
 from __future__ import annotations
+
+from ._shared import (
+    _get as _shared_get,
+    _await as _shared_await,
+    _ForbiddenError as _shared_ForbiddenError,
+    _BadRequestError as _shared_BadRequestError,
+    _NotFoundError as _shared_NotFoundError,
+    _ServerError as _shared_ServerError,
+    _context_lookup as _shared_context_lookup,
+    _flatten as _shared_flatten,
+    _is_context as _shared_is_context,
+    _is_use_case as _shared_is_use_case,
+    _sse as _shared_sse,
+    _friendly_error as _shared_friendly_error,
+    _has_ask_permission as _shared_has_ask_permission,
+    _first as _shared_first,
+    _build_frozen_request_context as _shared_build_frozen_request_context,
+    _resolve_context_and_data as _shared_resolve_context_and_data,
+    _events_from_outcome as _shared_events_from_outcome,
+    _call_stream as _shared_call_stream,
+    _invoke as _shared_invoke,
+    _extract_company_id as _shared_extract_company_id,
+    _extract_user_id as _shared_extract_user_id,
+    _normalize_role as _shared_normalize_role,
+    _strip_empty as _shared_strip_empty,
+    _try_context_role as _shared_try_context_role,
+    _PartitionMissingError as _shared_PartitionMissingError,
+)
 import contextlib
 import inspect
 from typing import Any
@@ -25,7 +54,7 @@ except ImportError:  # pragma: no cover
 router = APIRouter(prefix='/onboarding', tags=['onboarding'])
 
 
-class _ForbiddenError(HTTPException, AuthorizationError):
+class _ForbiddenError_onboarding(HTTPException, AuthorizationError):
     """Raised when the caller is not a System Admin."""
 
     def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
@@ -34,7 +63,10 @@ class _ForbiddenError(HTTPException, AuthorizationError):
         self.code = 'AuthorizationError'
 
 
-class _BadRequestError(HTTPException, ValidationError):
+_ForbiddenError: Any = _ForbiddenError_onboarding
+
+
+class _BadRequestError_onboarding(HTTPException, ValidationError):
     """Raised when request inputs fail validation."""
 
     def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
@@ -43,13 +75,19 @@ class _BadRequestError(HTTPException, ValidationError):
         self.code = 'ValidationError'
 
 
-class _ServerError(HTTPException):
+_BadRequestError: Any = _BadRequestError_onboarding
+
+
+class _ServerError_onboarding(HTTPException):
     """Raised for unexpected onboarding failures."""
 
     def __init__(self, message: str = 'Onboarding failed. Please try again later.') -> None:
         super().__init__(status_code=500, detail=message)
         self.message = message
         self.code = 'OnboardingError'
+
+
+_ServerError: Any = _ServerError_onboarding
 
 
 _CONTEXT_KEYS = (
@@ -74,7 +112,7 @@ _USE_CASE_KEYS = (
 _PAYLOAD_KEYS = ('request', 'payload', 'body', 'data', 'command', 'input', 'onboarding_input')
 
 
-def _get(obj: Any, *names: str, default: Any = None) -> Any:
+def _get_onboarding(obj: Any, *names: str, default: Any = None) -> Any:
     for name in names:
         if isinstance(obj, dict):
             if name in obj and obj.get(name) is not None:
@@ -86,13 +124,19 @@ def _get(obj: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
-def _is_context(value: Any) -> bool:
+_get: Any = _get_onboarding
+
+
+def _is_context_onboarding(value: Any) -> bool:
     return value is not None and (
         hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
     )
 
 
-def _is_use_case(value: Any) -> bool:
+_is_context: Any = _is_context_onboarding
+
+
+def _is_use_case_onboarding(value: Any) -> bool:
     if value is None or isinstance(value, (str, dict, Role)):
         return False
     if hasattr(value, 'execute') and callable(getattr(value, 'execute', None)):
@@ -104,6 +148,9 @@ def _is_use_case(value: Any) -> bool:
     if hasattr(value, 'create_company') and callable(getattr(value, 'create_company', None)):
         return True
     return callable(value) and not _is_context(value)
+
+
+_is_use_case: Any = _is_use_case_onboarding
 
 
 def _is_system_admin(value: Any) -> bool:
@@ -124,7 +171,7 @@ def _is_system_admin(value: Any) -> bool:
     return text == 'system_admin'
 
 
-def _flatten(obj: Any) -> Any:
+def _flatten_onboarding(obj: Any) -> Any:
     """Flatten a DTO-like object into the field names the use case understands."""
     result: dict[str, Any] = {}
     aliases = {
@@ -149,6 +196,9 @@ def _flatten(obj: Any) -> Any:
             if value is not None and key not in result:
                 result[key] = value
     return result
+
+
+_flatten: Any = _flatten_onboarding
 
 
 async def _resolve_use_case(

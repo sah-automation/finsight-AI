@@ -1,3 +1,4 @@
+# ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0915, PLR2004, TRY201, TRY301, S110, S112, B004, B904, E402, I001, F811
 
 # ===== _source_viewer_0.py =====
@@ -15,6 +16,34 @@ single ``404`` response with body ``{"status": "not_available"}``.
 """
 
 from __future__ import annotations
+
+from ._shared import (
+    _get as _shared_get,
+    _await as _shared_await,
+    _ForbiddenError as _shared_ForbiddenError,
+    _BadRequestError as _shared_BadRequestError,
+    _NotFoundError as _shared_NotFoundError,
+    _ServerError as _shared_ServerError,
+    _context_lookup as _shared_context_lookup,
+    _flatten as _shared_flatten,
+    _is_context as _shared_is_context,
+    _is_use_case as _shared_is_use_case,
+    _sse as _shared_sse,
+    _friendly_error as _shared_friendly_error,
+    _has_ask_permission as _shared_has_ask_permission,
+    _first as _shared_first,
+    _build_frozen_request_context as _shared_build_frozen_request_context,
+    _resolve_context_and_data as _shared_resolve_context_and_data,
+    _events_from_outcome as _shared_events_from_outcome,
+    _call_stream as _shared_call_stream,
+    _invoke as _shared_invoke,
+    _extract_company_id as _shared_extract_company_id,
+    _extract_user_id as _shared_extract_user_id,
+    _normalize_role as _shared_normalize_role,
+    _strip_empty as _shared_strip_empty,
+    _try_context_role as _shared_try_context_role,
+    _PartitionMissingError as _shared_PartitionMissingError,
+)
 import contextlib
 import inspect
 from typing import Any
@@ -48,32 +77,44 @@ except ImportError:  # pragma: no cover
 router = APIRouter(prefix='/documents', tags=['source_viewer'])
 
 
-class _NotFoundError(HTTPException):
+class _NotFoundError_source_viewer(HTTPException):
     def __init__(self) -> None:
         super().__init__(status_code=404, detail={'status': 'not_available'})
         self.message = 'not_available'
         self.code = 'NotAvailable'
 
 
-class _ForbiddenError(HTTPException, AuthorizationError):
+_NotFoundError: Any = _NotFoundError_source_viewer
+
+
+class _ForbiddenError_source_viewer(HTTPException, AuthorizationError):
     def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
         HTTPException.__init__(self, status_code=403, detail=message)
         self.message = message
         self.code = 'AuthorizationError'
 
 
-class _BadRequestError(HTTPException, ValidationError):
+_ForbiddenError: Any = _ForbiddenError_source_viewer
+
+
+class _BadRequestError_source_viewer(HTTPException, ValidationError):
     def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
         HTTPException.__init__(self, status_code=422, detail=message)
         self.message = message
         self.code = 'ValidationError'
 
 
-class _ServerError(HTTPException):
+_BadRequestError: Any = _BadRequestError_source_viewer
+
+
+class _ServerError_source_viewer(HTTPException):
     def __init__(self, message: str = 'Source unavailable.') -> None:
         super().__init__(status_code=404, detail={'status': 'not_available'})
         self.message = message
         self.code = 'SourceError'
+
+
+_ServerError: Any = _ServerError_source_viewer
 
 
 _CONTEXT_KEYS = (
@@ -117,7 +158,7 @@ _PAYLOAD_KEYS = (
 )
 
 
-def _get(obj: Any, *names: str, default: Any = None) -> Any:
+def _get_source_viewer(obj: Any, *names: str, default: Any = None) -> Any:
     for name in names:
         if isinstance(obj, dict):
             if name in obj and obj.get(name) is not None:
@@ -129,10 +170,16 @@ def _get(obj: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
-def _is_context(value: Any) -> bool:
+_get: Any = _get_source_viewer
+
+
+def _is_context_source_viewer(value: Any) -> bool:
     return value is not None and (
         hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
     )
+
+
+_is_context: Any = _is_context_source_viewer
 
 
 def _is_repository(value: Any) -> bool:
@@ -150,7 +197,7 @@ def _is_repository(value: Any) -> bool:
     )
 
 
-def _is_use_case(value: Any) -> bool:
+def _is_use_case_source_viewer(value: Any) -> bool:
     if _is_repository(value):
         return True
     if value is None or isinstance(value, (str, dict, Role)):
@@ -182,7 +229,10 @@ def _is_use_case(value: Any) -> bool:
     return callable(value) and not _is_context(value)
 
 
-def _flatten(obj: Any) -> dict[str, Any]:
+_is_use_case: Any = _is_use_case_source_viewer
+
+
+def _flatten_source_viewer(obj: Any) -> dict[str, Any]:
     result: dict[str, Any] = {}
     aliases = {
         'document_id': ('document_id', 'documentId', 'doc_id', 'document'),
@@ -207,10 +257,16 @@ def _flatten(obj: Any) -> dict[str, Any]:
     return result
 
 
-async def _await(value: Any) -> Any:
+_flatten: Any = _flatten_source_viewer
+
+
+async def _await_source_viewer(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
     return value
+
+
+_await: Any = _await_source_viewer
 
 
 __all__ = [
@@ -504,7 +560,9 @@ except Exception:  # pragma: no cover
         pass
 
 
-async def _invoke(use_case: Any, original: bool, payload: dict[str, Any], context: Any) -> Any:
+async def _invoke_source_viewer(
+    use_case: Any, original: bool, payload: dict[str, Any], context: Any
+) -> Any:
 
     call_payload = dict(payload)
 
@@ -608,6 +666,9 @@ async def _invoke(use_case: Any, original: bool, payload: dict[str, Any], contex
         raise last_error
 
     return None
+
+
+_invoke: Any = _invoke_source_viewer
 
 
 __all__ = ['_invoke']

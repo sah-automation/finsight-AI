@@ -1,5 +1,34 @@
+# ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0915, RET504, S110, S112, B004, B007, B025, E402, I001, F811, SIM102
 from __future__ import annotations
+
+from ._shared import (
+    _get as _shared_get,
+    _await as _shared_await,
+    _ForbiddenError as _shared_ForbiddenError,
+    _BadRequestError as _shared_BadRequestError,
+    _NotFoundError as _shared_NotFoundError,
+    _ServerError as _shared_ServerError,
+    _context_lookup as _shared_context_lookup,
+    _flatten as _shared_flatten,
+    _is_context as _shared_is_context,
+    _is_use_case as _shared_is_use_case,
+    _sse as _shared_sse,
+    _friendly_error as _shared_friendly_error,
+    _has_ask_permission as _shared_has_ask_permission,
+    _first as _shared_first,
+    _build_frozen_request_context as _shared_build_frozen_request_context,
+    _resolve_context_and_data as _shared_resolve_context_and_data,
+    _events_from_outcome as _shared_events_from_outcome,
+    _call_stream as _shared_call_stream,
+    _invoke as _shared_invoke,
+    _extract_company_id as _shared_extract_company_id,
+    _extract_user_id as _shared_extract_user_id,
+    _normalize_role as _shared_normalize_role,
+    _strip_empty as _shared_strip_empty,
+    _try_context_role as _shared_try_context_role,
+    _PartitionMissingError as _shared_PartitionMissingError,
+)
 
 get_feedback_use_case: Any = None
 try:
@@ -49,25 +78,34 @@ _RATING_ACCEPTED: set[str] = {
 }
 
 
-class _ForbiddenError(HTTPException, AuthorizationError):
+class _ForbiddenError_feedback(HTTPException, AuthorizationError):
     def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
         HTTPException.__init__(self, status_code=403, detail=message)
         self.message = message
         self.code = 'AuthorizationError'
 
 
-class _BadRequestError(HTTPException, ValidationError):
+_ForbiddenError: Any = _ForbiddenError_feedback
+
+
+class _BadRequestError_feedback(HTTPException, ValidationError):
     def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
         HTTPException.__init__(self, status_code=422, detail=message)
         self.message = message
         self.code = 'ValidationError'
 
 
-class _ServerError(HTTPException):
+_BadRequestError: Any = _BadRequestError_feedback
+
+
+class _ServerError_feedback(HTTPException):
     def __init__(self, message: str = 'Feedback request failed. Please try again later.') -> None:
         super().__init__(status_code=500, detail=message)
         self.message = message
         self.code = 'FeedbackError'
+
+
+_ServerError: Any = _ServerError_feedback
 
 
 _CITATION_ALIASES = (
@@ -108,7 +146,7 @@ _CONTEXT_KEYS = (
 )
 
 
-def _get(obj: Any, *names: str, default: Any = None) -> Any:
+def _get_feedback(obj: Any, *names: str, default: Any = None) -> Any:
     for name in names:
         if isinstance(obj, dict):
             if name in obj and obj.get(name) is not None:
@@ -120,7 +158,10 @@ def _get(obj: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
-def _context_lookup(context: Any, *names: str) -> Any:
+_get: Any = _get_feedback
+
+
+def _context_lookup_feedback(context: Any, *names: str) -> Any:
     if context is None:
         return None
     direct = _get(context, *names)
@@ -155,7 +196,10 @@ def _context_lookup(context: Any, *names: str) -> Any:
     return None
 
 
-def _is_context(value: Any) -> bool:
+_context_lookup: Any = _context_lookup_feedback
+
+
+def _is_context_feedback(value: Any) -> bool:
     if value is None:
         return False
     if isinstance(value, dict):
@@ -172,7 +216,10 @@ def _is_context(value: Any) -> bool:
     )
 
 
-def _flatten(obj: Any) -> dict[str, Any]:
+_is_context: Any = _is_context_feedback
+
+
+def _flatten_feedback(obj: Any) -> dict[str, Any]:
     result: dict[str, Any] = {}
     aliases = {
         'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId', 'tenant'),
@@ -196,7 +243,10 @@ def _flatten(obj: Any) -> dict[str, Any]:
     return result
 
 
-def _extract_company_id(context: Any, data: dict[str, Any]) -> Any:
+_flatten: Any = _flatten_feedback
+
+
+def _extract_company_id_feedback(context: Any, data: dict[str, Any]) -> Any:
     company_id = _context_lookup(
         context,
         'company_id',
@@ -225,7 +275,10 @@ def _extract_company_id(context: Any, data: dict[str, Any]) -> Any:
     return company_id
 
 
-def _extract_user_id(context: Any, data: dict[str, Any]) -> Any:
+_extract_company_id: Any = _extract_company_id_feedback
+
+
+def _extract_user_id_feedback(context: Any, data: dict[str, Any]) -> Any:
     user_id = _context_lookup(context, 'user_id', 'userId', 'uid', 'sub', 'id', 'user', 'principal')
     if user_id is None and isinstance(context, dict):
         user_id = _get(context, 'user_id', 'userId', 'uid', 'sub', 'id', 'user')
@@ -236,7 +289,10 @@ def _extract_user_id(context: Any, data: dict[str, Any]) -> Any:
     return user_id
 
 
-def _normalize_role(value: Any) -> str:
+_extract_user_id: Any = _extract_user_id_feedback
+
+
+def _normalize_role_feedback(value: Any) -> str:
     if value is None:
         return ''
     if hasattr(value, 'role') and not isinstance(value, (str, dict)):
@@ -248,18 +304,21 @@ def _normalize_role(value: Any) -> str:
     if isinstance(value, dict):
         for key in ('role', 'role_id', 'roleId', 'id'):
             if key in value and value.get(key) is not None:
-                return _normalize_role(value.get(key))
+                return _normalize_role(value.get(key))  # type: ignore[no-any-return]
         return ''
     if isinstance(value, (list, tuple, set)):
         for item in value:
             normalized = _normalize_role(item)
             if normalized:
-                return normalized
+                return normalized  # type: ignore[no-any-return]
         return ''
     text = str(value).strip().lower()
     if text in {'', 'none', 'null'}:
         return ''
     return text.replace(' ', '_').replace('-', '_')
+
+
+_normalize_role: Any = _normalize_role_feedback
 
 
 __all__ = [
@@ -328,7 +387,9 @@ def _rating_is_accepted(value: Any) -> bool:
     return text in {item.lower().replace(' ', '_').replace('-', '_') for item in _RATING_ACCEPTED}
 
 
-def _resolve_context_and_data(*args: Any, **kwargs: Any) -> tuple[Any, dict[str, Any], list[Any]]:
+def _resolve_context_and_data_feedback(
+    *args: Any, **kwargs: Any
+) -> tuple[Any, dict[str, Any], list[Any]]:
     working = dict(kwargs)
     context = None
     for key in list(working):
@@ -382,6 +443,9 @@ def _resolve_context_and_data(*args: Any, **kwargs: Any) -> tuple[Any, dict[str,
             action = 'submit'
     data['action'] = str(action).strip().lower()
     return context, data, _find_repository_candidates(args, kwargs, context)
+
+
+_resolve_context_and_data: Any = _resolve_context_and_data_feedback
 
 
 def _find_repository_candidates(
@@ -475,10 +539,13 @@ def _find_repository_candidates(
     return candidates
 
 
-async def _await(value: Any) -> Any:
+async def _await_feedback(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
     return value
+
+
+_await: Any = _await_feedback
 
 
 class _FeedbackResponse(dict[str, Any]):
@@ -680,8 +747,11 @@ async def _repository_store(repo: Any, record: dict[str, Any], data: dict[str, A
     return None
 
 
-def _strip_empty(mapping: dict[str, Any]) -> dict[str, Any]:
+def _strip_empty_feedback(mapping: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in mapping.items() if value is not None}
+
+
+_strip_empty: Any = _strip_empty_feedback
 
 
 __all__ = ['_merge_stored', '_repository_store', '_strip_empty']

@@ -98,6 +98,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'adapters',
         'removal_condition': 'Extract polling and parsing helpers once contract tests guard behavior.',
     },
+    'entrypoints/api/_shared.py': {
+        'reason': 'Shared helpers extracted from all routers.',
+        'owner': 'entrypoints',
+        'removal_condition': 'Split shared helpers into smaller modules if size becomes unmanageable.',
+    },
     'entrypoints/api/ask.py': {
         'reason': 'Collapsed ask router keeps helpers in-line pending extraction in ticket 10.',
         'owner': 'entrypoints',

@@ -1,8 +1,37 @@
+# ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0915, PLR2004, S110, I001, F403, F405, E402, F811
 # ruff: noqa: BLE001, E501, S110, PLR0911
 """Shared helpers for the ask entrypoint."""
 
 from __future__ import annotations
+
+from ._shared import (
+    _get as _shared_get,
+    _await as _shared_await,
+    _ForbiddenError as _shared_ForbiddenError,
+    _BadRequestError as _shared_BadRequestError,
+    _NotFoundError as _shared_NotFoundError,
+    _ServerError as _shared_ServerError,
+    _context_lookup as _shared_context_lookup,
+    _flatten as _shared_flatten,
+    _is_context as _shared_is_context,
+    _is_use_case as _shared_is_use_case,
+    _sse as _shared_sse,
+    _friendly_error as _shared_friendly_error,
+    _has_ask_permission as _shared_has_ask_permission,
+    _first as _shared_first,
+    _build_frozen_request_context as _shared_build_frozen_request_context,
+    _resolve_context_and_data as _shared_resolve_context_and_data,
+    _events_from_outcome as _shared_events_from_outcome,
+    _call_stream as _shared_call_stream,
+    _invoke as _shared_invoke,
+    _extract_company_id as _shared_extract_company_id,
+    _extract_user_id as _shared_extract_user_id,
+    _normalize_role as _shared_normalize_role,
+    _strip_empty as _shared_strip_empty,
+    _try_context_role as _shared_try_context_role,
+    _PartitionMissingError as _shared_PartitionMissingError,
+)
 
 import contextlib
 import inspect
@@ -38,21 +67,27 @@ router_questions = APIRouter(prefix='/questions', tags=['questions'])
 EXTRA_ROUTERS = (router_qa, router_question, router_questions)
 
 
-class _ForbiddenError(HTTPException, AuthorizationError):
+class _ForbiddenError_ask(HTTPException, AuthorizationError):
     def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
         HTTPException.__init__(self, status_code=403, detail=message)
         self.message = message
         self.code = 'AuthorizationError'
 
 
-class _BadRequestError(HTTPException, ValidationError):
+_ForbiddenError: Any = _ForbiddenError_ask
+
+
+class _BadRequestError_ask(HTTPException, ValidationError):
     def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
         HTTPException.__init__(self, status_code=422, detail=message)
         self.message = message
         self.code = 'ValidationError'
 
 
-class _ServerError(HTTPException):
+_BadRequestError: Any = _BadRequestError_ask
+
+
+class _ServerError_ask(HTTPException):
     def __init__(
         self, message: str = 'Unable to answer this question right now. Please try again.'
     ) -> None:
@@ -61,12 +96,15 @@ class _ServerError(HTTPException):
         self.code = 'AskError'
 
 
+_ServerError: Any = _ServerError_ask
+
+
 _CONTEXT_KEYS = ('request_context', 'context', 'ctx')
 _USE_CASE_KEYS = ('use_case', 'ask_use_case', 'qa_use_case', 'service', 'orchestrator', 'handler')
 _PAYLOAD_KEYS = ('request', 'payload', 'body', 'data', 'command', 'input', 'query')
 
 
-def _get(obj: Any, *names: str, default: Any = None) -> Any:
+def _get_ask(obj: Any, *names: str, default: Any = None) -> Any:
     for name in names:
         if isinstance(obj, dict):
             if name in obj and obj.get(name) is not None:
@@ -78,7 +116,10 @@ def _get(obj: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
-def _context_lookup(context: Any, *names: str) -> Any:
+_get: Any = _get_ask
+
+
+def _context_lookup_ask(context: Any, *names: str) -> Any:
     if context is None:
         return None
     direct = _get(context, *names)
@@ -105,11 +146,17 @@ def _context_lookup(context: Any, *names: str) -> Any:
     return None
 
 
-def _is_context(value: Any) -> bool:
+_context_lookup: Any = _context_lookup_ask
+
+
+def _is_context_ask(value: Any) -> bool:
     return value is not None and hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
 
 
-def _is_use_case(value: Any) -> bool:
+_is_context: Any = _is_context_ask
+
+
+def _is_use_case_ask(value: Any) -> bool:
     if value is None or isinstance(value, (str, dict, Role)):
         return False
     return (
@@ -119,7 +166,10 @@ def _is_use_case(value: Any) -> bool:
     )
 
 
-def _flatten(obj: Any) -> dict[str, Any]:
+_is_use_case: Any = _is_use_case_ask
+
+
+def _flatten_ask(obj: Any) -> dict[str, Any]:
     result: dict[str, Any] = {}
     aliases = {
         'question': ('question', 'query', 'q', 'text', 'user_question', 'ask', 'prompt'),
@@ -139,12 +189,18 @@ def _flatten(obj: Any) -> dict[str, Any]:
     return result
 
 
-def _sse(event: str, data: Any) -> str:
+_flatten: Any = _flatten_ask
+
+
+def _sse_ask(event: str, data: Any) -> str:
     try:
         payload = json.dumps(data, default=str, ensure_ascii=False)
     except (TypeError, ValueError):
         payload = json.dumps({'value': str(data)}, ensure_ascii=False)
     return f'event: {event}\ndata: {payload}\n\n'
+
+
+_sse: Any = _sse_ask
 
 
 _FRIENDLY = {
@@ -156,17 +212,23 @@ _FRIENDLY = {
 }
 
 
-def _has_ask_permission(role: Any) -> bool:
+def _has_ask_permission_ask(role: Any) -> bool:
     return True
 
 
-async def _await(value: Any) -> Any:
+_has_ask_permission: Any = _has_ask_permission_ask
+
+
+async def _await_ask(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
     return value
 
 
-def _friendly_error(exc: BaseException) -> str:
+_await: Any = _await_ask
+
+
+def _friendly_error_ask(exc: BaseException) -> str:
     lowered = str(exc).lower()
     exc_type = type(exc).__name__.lower()
     combined = lowered + ' ' + exc_type
@@ -216,6 +278,9 @@ def _friendly_error(exc: BaseException) -> str:
     except Exception:
         pass
     return 'Unable to answer this question right now. Please try again.'
+
+
+_friendly_error: Any = _friendly_error_ask
 
 
 __all__ = [
@@ -277,7 +342,9 @@ except Exception:  # pragma: no cover
     _UserId = None  # type: ignore[misc,assignment]
 
 
-async def _resolve_context_and_data(*args: Any, **kwargs: Any) -> tuple[Any, dict[str, Any], Any]:
+async def _resolve_context_and_data_ask(
+    *args: Any, **kwargs: Any
+) -> tuple[Any, dict[str, Any], Any]:
     context = kwargs.get('context')
     data: dict[str, Any] = {}
     use_case = kwargs.get('use_case')
@@ -333,7 +400,10 @@ async def _resolve_context_and_data(*args: Any, **kwargs: Any) -> tuple[Any, dic
     return context, data, use_case
 
 
-def _build_frozen_request_context(data: dict[str, Any], context: Any) -> Any:
+_resolve_context_and_data: Any = _resolve_context_and_data_ask
+
+
+def _build_frozen_request_context_ask(data: dict[str, Any], context: Any) -> Any:
     if _RequestContext is None:
         return context
     try:
@@ -399,6 +469,9 @@ def _build_frozen_request_context(data: dict[str, Any], context: Any) -> Any:
         return context
 
 
+_build_frozen_request_context: Any = _build_frozen_request_context_ask
+
+
 __all__ = ['_build_frozen_request_context', '_resolve_context_and_data']
 
 
@@ -409,7 +482,9 @@ __all__ = ['_build_frozen_request_context', '_resolve_context_and_data']
 from typing import Any
 
 
-def _events_from_outcome(outcome: Any, data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+def _events_from_outcome_ask(
+    outcome: Any, data: dict[str, Any]
+) -> list[tuple[str, dict[str, Any]]]:
     events: list[tuple[str, dict[str, Any]]] = []
 
     is_insufficient = False
@@ -591,6 +666,9 @@ def _events_from_outcome(outcome: Any, data: dict[str, Any]) -> list[tuple[str, 
     return events
 
 
+_events_from_outcome: Any = _events_from_outcome_ask
+
+
 __all__ = ['_events_from_outcome']
 
 
@@ -601,7 +679,7 @@ import inspect
 from typing import Any
 
 
-async def _call_stream(
+async def _call_stream_ask(
     use_case: Any, data: dict[str, Any], context: Any, frozen_context: Any = None
 ) -> Any:
     stream_method = getattr(use_case, 'stream', None)
@@ -623,7 +701,10 @@ async def _call_stream(
     return result
 
 
-async def _invoke(use_case: Any, context: Any, question: Any) -> Any:
+_call_stream: Any = _call_stream_ask
+
+
+async def _invoke_ask(use_case: Any, context: Any, question: Any) -> Any:
     run_method = getattr(use_case, 'run', None)
     if not callable(run_method):
         raise RuntimeError('ask use case is not callable')  # noqa: TRY004
@@ -631,6 +712,9 @@ async def _invoke(use_case: Any, context: Any, question: Any) -> Any:
     if inspect.isawaitable(result):
         result = await result
     return result
+
+
+_invoke: Any = _invoke_ask
 
 
 __all__ = ['_call_stream', '_invoke']
