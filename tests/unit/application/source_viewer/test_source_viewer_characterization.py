@@ -9,7 +9,7 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from finsight.application.source_viewer.source_viewer import SourceViewer
+from finsight.application.source_viewer import SourceViewer
 from finsight.core.security.citation_locator import mint_citation_locator
 
 SECRET = 'secret-key-1234567890-abcdefghijklmnopqrstuvwxyz'  # pragma: allowlist secret
@@ -299,7 +299,6 @@ def test_original_document_link_success_and_missing() -> None:
             company_id=cid,
             document_version='v1',
             category='financial',
-            _original=True,
             original=True,
         )
         assert res.status == 'available'
