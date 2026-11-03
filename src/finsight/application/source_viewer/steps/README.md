@@ -1,3 +1,3 @@
 # Source viewer steps
 
-Package holding the (future) per-step modules for the source-viewer pipeline.
+Package holding the per-step modules for the source-viewer pipeline.

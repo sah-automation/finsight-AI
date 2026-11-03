@@ -161,6 +161,12 @@ ignore = [
     "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR2004", "RET504", "S110",
     "S112", "SIM102", "SIM105", "TRY300", "TC001", "RUF100",
 ]
+# Source viewer step modules expose flexible constructor/context surfaces.
+"src/finsight/application/source_viewer/steps/*.py" = [
+    "ANN401", "ANN002", "ANN003", "BLE001", "E501", "PLC0415", "PLE0605", "PLR0911",
+    "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR2004", "RET504", "S110", "S112",
+    "SIM102", "SIM105", "TRY300", "TC001", "RUF100", "TID252",
+]
 # Compatibility alias package for the ingest document upload use case.
 "src/finsight/application/upload/*.py" = [
     "ANN401", "ANN002", "ANN003", "BLE001", "E501", "PLC0415", "PLE0605", "PLR0911",
