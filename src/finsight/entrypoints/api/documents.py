@@ -9,6 +9,18 @@
 from __future__ import annotations
 
 from ._shared import (
+    _BadRequestError,
+    _ForbiddenError,
+    _NotFoundError,
+    _ServerError,
+    _await,
+    _flatten,
+    _get,
+    _is_context,
+    _is_use_case,
+)
+
+from ._shared import (
     _get as _shared_get,
     _await as _shared_await,
     _ForbiddenError as _shared_ForbiddenError,
@@ -80,46 +92,6 @@ get_document_use_case = get_documents_use_case
 router = APIRouter(prefix='/documents', tags=['documents'])
 
 
-class _ForbiddenError_documents(HTTPException, AuthorizationError):
-    def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
-        HTTPException.__init__(self, status_code=403, detail=message)
-        self.message = message
-        self.code = 'AuthorizationError'
-
-
-_ForbiddenError: Any = _ForbiddenError_documents
-
-
-class _BadRequestError_documents(HTTPException, ValidationError):
-    def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
-        HTTPException.__init__(self, status_code=422, detail=message)
-        self.message = message
-        self.code = 'ValidationError'
-
-
-_BadRequestError: Any = _BadRequestError_documents
-
-
-class _NotFoundError_documents(HTTPException):
-    def __init__(self, message: str = 'Document not found.') -> None:
-        HTTPException.__init__(self, status_code=404, detail=message)
-        self.message = message
-        self.code = 'NotFoundError'
-
-
-_NotFoundError: Any = _NotFoundError_documents
-
-
-class _ServerError_documents(HTTPException):
-    def __init__(self, message: str = 'Document request failed. Please try again later.') -> None:
-        super().__init__(status_code=500, detail=message)
-        self.message = message
-        self.code = 'DocumentError'
-
-
-_ServerError: Any = _ServerError_documents
-
-
 _CONTEXT_KEYS = (
     'request_context',
     'context',
@@ -167,30 +139,6 @@ _REPOSITORY_KEYS = (
 )
 
 
-def _get_documents(obj: Any, *names: str, default: Any = None) -> Any:
-    for name in names:
-        if isinstance(obj, dict):
-            if name in obj and obj.get(name) is not None:
-                return obj.get(name)
-        elif hasattr(obj, name):
-            value = getattr(obj, name, None)
-            if value is not None:
-                return value
-    return default
-
-
-_get: Any = _get_documents
-
-
-def _is_context_documents(value: Any) -> bool:
-    return value is not None and (
-        hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
-    )
-
-
-_is_context: Any = _is_context_documents
-
-
 def _is_repository(value: Any) -> bool:
     if value is None or isinstance(value, (str, dict, Role)):
         return False
@@ -198,64 +146,6 @@ def _is_repository(value: Any) -> bool:
         callable(getattr(value, name, None))
         for name in ('list_documents', 'get_document', 'soft_delete_document', 'purge_document')
     )
-
-
-def _is_use_case_documents(value: Any) -> bool:
-    if _is_repository(value):
-        return True
-    if value is None or isinstance(value, (str, dict, Role)):
-        return False
-    if callable(value) and not hasattr(value, 'execute'):
-        # Factories are resolved later.
-        return False
-    if any(
-        hasattr(value, attr) and callable(getattr(value, attr, None))
-        for attr in ('execute', 'run', 'handle', 'list_documents', 'get_document')
-    ):
-        return True
-    return callable(value) and not _is_context(value)
-
-
-_is_use_case: Any = _is_use_case_documents
-
-
-def _flatten_documents(obj: Any) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    aliases = {
-        'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
-        'document_id': ('document_id', 'documentId', 'doc_id', 'id', 'document'),
-        'query': ('query', 'search', 'q', 'term', 'text'),
-        'category': ('category', 'document_category', 'doc_category'),
-        'period': ('period', 'reporting_period', 'period_label'),
-        'status': ('status', 'document_status', 'state'),
-        'action': ('action', 'operation', 'mode', 'kind', 'type'),
-        'deleted_retention_days': (
-            'deleted_retention_days',
-            'retention_days',
-            'retentionDays',
-        ),
-    }
-    for canonical, names in aliases.items():
-        value = _get(obj, *names)
-        if value is not None:
-            result[canonical] = value
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if value is not None and key not in result:
-                result[key] = value
-    return result
-
-
-_flatten: Any = _flatten_documents
-
-
-async def _await_documents(value: Any) -> Any:
-    if inspect.isawaitable(value):
-        return await value
-    return value
-
-
-_await: Any = _await_documents
 
 
 def _normalise_action(value: Any) -> str:

@@ -9,6 +9,18 @@
 from __future__ import annotations
 
 from ._shared import (
+    _BadRequestError,
+    _ForbiddenError,
+    _NotFoundError,
+    _ServerError,
+    _await,
+    _context_lookup,
+    _flatten,
+    _get,
+    _is_context,
+)
+
+from ._shared import (
     _get as _shared_get,
     _await as _shared_await,
     _ForbiddenError as _shared_ForbiddenError,
@@ -53,118 +65,6 @@ from finsight.core.errors import AuthorizationError, ValidationError, to_user_me
 from finsight.core.types import Role
 
 
-def _get_threads(obj: Any, *names: str, default: Any = None) -> Any:
-    for name in names:
-        if isinstance(obj, dict):
-            if name in obj and obj.get(name) is not None:
-                return obj.get(name)
-        elif hasattr(obj, name):
-            value = getattr(obj, name, None)
-            if value is not None:
-                return value
-    return default
-
-
-_get: Any = _get_threads
-
-
-def _context_lookup_threads(context: Any, *names: str) -> Any:
-    if context is None:
-        return None
-    direct = _get(context, *names)
-    if direct is not None:
-        return direct
-    nested_keys = (
-        'user',
-        'principal',
-        'identity',
-        'current_user',
-        'context',
-        'request_context',
-        'auth_context',
-        'security_context',
-        'company',
-        'account',
-        'chat_history',
-        'thread_repository',
-        'threads',
-    )
-    if isinstance(context, dict):
-        for nested_key in nested_keys:
-            nested = context.get(nested_key)
-            if nested is not None:
-                found = _context_lookup(nested, *names)
-                if found is not None:
-                    return found
-        return None
-    for nested_key in nested_keys:
-        nested = getattr(context, nested_key, None)
-        if nested is not None:
-            found = _context_lookup(nested, *names)
-            if found is not None:
-                return found
-    return None
-
-
-_context_lookup: Any = _context_lookup_threads
-
-
-def _is_context_threads(value: Any) -> bool:
-    if value is None:
-        return False
-    if isinstance(value, dict):
-        for key in (
-            'request_context',
-            'context',
-            'ctx',
-            'user_context',
-            'auth_context',
-            'security_context',
-            'current_user',
-            'principal',
-            'identity',
-            'user',
-        ):
-            if key in value:
-                return True
-        for key in ('company_id', 'companyId', 'role', 'user_id', 'userId', 'thread_id'):
-            if key in value:
-                return True
-        return False
-    return any(
-        hasattr(value, attr) for attr in ('role', 'company_id', 'companyId', 'user_id', 'userId')
-    )
-
-
-_is_context: Any = _is_context_threads
-
-
-def _flatten_threads(obj: Any) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    aliases = {
-        'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId', 'tenant'),
-        'user_id': ('user_id', 'userId', 'user', 'uid', 'sub', 'id'),
-        'thread_id': ('thread_id', 'ThreadId', 'threadId', 'thread', 'chat_id', 'conversation_id'),
-        'title': ('title', 'name', 'subject'),
-        'question': ('question', 'query', 'text', 'prompt'),
-        'access_scope': ('access_scope', 'accessScope', 'scope', 'access', 'permission_scope'),
-        'role': ('role', 'user_role', 'role_id', 'roleId'),
-        'action': ('action', 'operation', 'mode', 'kind', 'verb'),
-    }
-    for canonical, names in aliases.items():
-        value = _get(obj, *names)
-        if value is not None:
-            result[canonical] = value
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if value is not None and key not in result:
-                result[key] = value
-    return result
-
-
-_flatten: Any = _flatten_threads
-
-
 def _normalize_role_threads(value: Any) -> str:
     if value is None:
         return ''
@@ -192,46 +92,6 @@ def _normalize_role_threads(value: Any) -> str:
 
 
 _normalize_role: Any = _normalize_role_threads
-
-
-class _NotFoundError_threads(HTTPException):
-    def __init__(self, message: str = 'Thread not found.') -> None:
-        super().__init__(status_code=404, detail=message)
-        self.message = message
-        self.code = 'NotFoundError'
-
-
-_NotFoundError: Any = _NotFoundError_threads
-
-
-class _ForbiddenError_threads(HTTPException, AuthorizationError):
-    def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
-        HTTPException.__init__(self, status_code=403, detail=message)
-        self.message = message
-        self.code = 'AuthorizationError'
-
-
-_ForbiddenError: Any = _ForbiddenError_threads
-
-
-class _BadRequestError_threads(HTTPException, ValidationError):
-    def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
-        HTTPException.__init__(self, status_code=422, detail=message)
-        self.message = message
-        self.code = 'ValidationError'
-
-
-_BadRequestError: Any = _BadRequestError_threads
-
-
-class _ServerError_threads(HTTPException):
-    def __init__(self, message: str = 'Thread request failed. Please try again later.') -> None:
-        super().__init__(status_code=500, detail=message)
-        self.message = message
-        self.code = 'ThreadError'
-
-
-_ServerError: Any = _ServerError_threads
 
 
 class _ThreadResponse(dict[str, Any]):
@@ -525,15 +385,6 @@ def _strip_empty_threads(mapping: dict[str, Any]) -> dict[str, Any]:
 
 
 _strip_empty: Any = _strip_empty_threads
-
-
-async def _await_threads(value: Any) -> Any:
-    if inspect.isawaitable(value):
-        return await value
-    return value
-
-
-_await: Any = _await_threads
 
 
 __all__ = [

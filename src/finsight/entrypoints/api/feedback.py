@@ -3,6 +3,17 @@
 from __future__ import annotations
 
 from ._shared import (
+    _BadRequestError,
+    _ForbiddenError,
+    _ServerError,
+    _await,
+    _context_lookup,
+    _flatten,
+    _get,
+    _is_context,
+)
+
+from ._shared import (
     _get as _shared_get,
     _await as _shared_await,
     _ForbiddenError as _shared_ForbiddenError,
@@ -78,36 +89,6 @@ _RATING_ACCEPTED: set[str] = {
 }
 
 
-class _ForbiddenError_feedback(HTTPException, AuthorizationError):
-    def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
-        HTTPException.__init__(self, status_code=403, detail=message)
-        self.message = message
-        self.code = 'AuthorizationError'
-
-
-_ForbiddenError: Any = _ForbiddenError_feedback
-
-
-class _BadRequestError_feedback(HTTPException, ValidationError):
-    def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
-        HTTPException.__init__(self, status_code=422, detail=message)
-        self.message = message
-        self.code = 'ValidationError'
-
-
-_BadRequestError: Any = _BadRequestError_feedback
-
-
-class _ServerError_feedback(HTTPException):
-    def __init__(self, message: str = 'Feedback request failed. Please try again later.') -> None:
-        super().__init__(status_code=500, detail=message)
-        self.message = message
-        self.code = 'FeedbackError'
-
-
-_ServerError: Any = _ServerError_feedback
-
-
 _CITATION_ALIASES = (
     'citation_reference',
     'citation',
@@ -144,106 +125,6 @@ _CONTEXT_KEYS = (
     'identity',
     'user',
 )
-
-
-def _get_feedback(obj: Any, *names: str, default: Any = None) -> Any:
-    for name in names:
-        if isinstance(obj, dict):
-            if name in obj and obj.get(name) is not None:
-                return obj.get(name)
-        elif hasattr(obj, name):
-            value = getattr(obj, name, None)
-            if value is not None:
-                return value
-    return default
-
-
-_get: Any = _get_feedback
-
-
-def _context_lookup_feedback(context: Any, *names: str) -> Any:
-    if context is None:
-        return None
-    direct = _get(context, *names)
-    if direct is not None:
-        return direct
-    nested_keys = (
-        'user',
-        'principal',
-        'identity',
-        'current_user',
-        'context',
-        'request_context',
-        'auth_context',
-        'security_context',
-        'company',
-        'account',
-    )
-    if isinstance(context, dict):
-        for nested_key in nested_keys:
-            nested = context.get(nested_key)
-            if nested is not None:
-                found = _context_lookup(nested, *names)
-                if found is not None:
-                    return found
-        return None
-    for nested_key in nested_keys:
-        nested = getattr(context, nested_key, None)
-        if nested is not None:
-            found = _context_lookup(nested, *names)
-            if found is not None:
-                return found
-    return None
-
-
-_context_lookup: Any = _context_lookup_feedback
-
-
-def _is_context_feedback(value: Any) -> bool:
-    if value is None:
-        return False
-    if isinstance(value, dict):
-        if any(key in value for key in _CONTEXT_KEYS):
-            return True
-        has_company = any(
-            key in value
-            for key in ('company_id', 'companyId', 'tenant_id', 'tenantId', 'tenant', 'company')
-        )
-        has_identity = any(key in value for key in ('role', 'user_id', 'userId', 'uid', 'sub'))
-        return has_company and has_identity
-    return any(
-        hasattr(value, attr) for attr in ('role', 'company_id', 'companyId', 'user_id', 'userId')
-    )
-
-
-_is_context: Any = _is_context_feedback
-
-
-def _flatten_feedback(obj: Any) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    aliases = {
-        'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId', 'tenant'),
-        'user_id': ('user_id', 'userId', 'user', 'uid', 'sub', 'id'),
-        'thread_id': ('thread_id', 'ThreadId', 'threadId', 'thread', 'chat_id', 'conversation_id'),
-        'answer_id': ('answer_id', 'answerId', 'answer', 'response_id', 'responseId'),
-        'rating': _RATING_ALIASES,
-        'reason': _REASON_ALIASES,
-        'citation_reference': _CITATION_ALIASES,
-        'role': ('role', 'user_role', 'role_id', 'roleId'),
-        'action': ('action', 'operation', 'mode', 'kind', 'verb'),
-    }
-    for canonical, names in aliases.items():
-        value = _get(obj, *names)
-        if value is not None:
-            result[canonical] = value
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if value is not None and key not in result:
-                result[key] = value
-    return result
-
-
-_flatten: Any = _flatten_feedback
 
 
 def _extract_company_id_feedback(context: Any, data: dict[str, Any]) -> Any:
@@ -537,15 +418,6 @@ def _find_repository_candidates(
             if value not in candidates:
                 candidates.append(value)
     return candidates
-
-
-async def _await_feedback(value: Any) -> Any:
-    if inspect.isawaitable(value):
-        return await value
-    return value
-
-
-_await: Any = _await_feedback
 
 
 class _FeedbackResponse(dict[str, Any]):

@@ -32,14 +32,14 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/composition_container.py: 676 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
-  - entrypoints/api/upload.py: 990 lines
-  - entrypoints/api/ask.py: 1077 lines
-  - entrypoints/api/feedback.py: 1335 lines
-  - entrypoints/api/onboarding.py: 561 lines
-  - entrypoints/api/documents.py: 1010 lines
+  - entrypoints/api/upload.py: 876 lines
+  - entrypoints/api/ask.py: 543 lines
+  - entrypoints/api/feedback.py: 1207 lines
+  - entrypoints/api/onboarding.py: 464 lines
+  - entrypoints/api/documents.py: 900 lines
   - entrypoints/api/_shared.py: 673 lines
-  - entrypoints/api/threads.py: 1375 lines
-  - entrypoints/api/source_viewer.py: 1008 lines
+  - entrypoints/api/threads.py: 1226 lines
+  - entrypoints/api/source_viewer.py: 884 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
   - application/source_viewer/source_viewer.py: 2089 lines

@@ -18,6 +18,18 @@ single ``404`` response with body ``{"status": "not_available"}``.
 from __future__ import annotations
 
 from ._shared import (
+    _BadRequestError,
+    _ForbiddenError,
+    _NotFoundError,
+    _ServerError,
+    _await,
+    _flatten,
+    _get,
+    _is_context,
+    _is_use_case,
+)
+
+from ._shared import (
     _get as _shared_get,
     _await as _shared_await,
     _ForbiddenError as _shared_ForbiddenError,
@@ -77,46 +89,6 @@ except ImportError:  # pragma: no cover
 router = APIRouter(prefix='/documents', tags=['source_viewer'])
 
 
-class _NotFoundError_source_viewer(HTTPException):
-    def __init__(self) -> None:
-        super().__init__(status_code=404, detail={'status': 'not_available'})
-        self.message = 'not_available'
-        self.code = 'NotAvailable'
-
-
-_NotFoundError: Any = _NotFoundError_source_viewer
-
-
-class _ForbiddenError_source_viewer(HTTPException, AuthorizationError):
-    def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
-        HTTPException.__init__(self, status_code=403, detail=message)
-        self.message = message
-        self.code = 'AuthorizationError'
-
-
-_ForbiddenError: Any = _ForbiddenError_source_viewer
-
-
-class _BadRequestError_source_viewer(HTTPException, ValidationError):
-    def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
-        HTTPException.__init__(self, status_code=422, detail=message)
-        self.message = message
-        self.code = 'ValidationError'
-
-
-_BadRequestError: Any = _BadRequestError_source_viewer
-
-
-class _ServerError_source_viewer(HTTPException):
-    def __init__(self, message: str = 'Source unavailable.') -> None:
-        super().__init__(status_code=404, detail={'status': 'not_available'})
-        self.message = message
-        self.code = 'SourceError'
-
-
-_ServerError: Any = _ServerError_source_viewer
-
-
 _CONTEXT_KEYS = (
     'request_context',
     'context',
@@ -158,30 +130,6 @@ _PAYLOAD_KEYS = (
 )
 
 
-def _get_source_viewer(obj: Any, *names: str, default: Any = None) -> Any:
-    for name in names:
-        if isinstance(obj, dict):
-            if name in obj and obj.get(name) is not None:
-                return obj.get(name)
-        elif obj is not None and hasattr(obj, name):
-            value = getattr(obj, name, None)
-            if value is not None:
-                return value
-    return default
-
-
-_get: Any = _get_source_viewer
-
-
-def _is_context_source_viewer(value: Any) -> bool:
-    return value is not None and (
-        hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
-    )
-
-
-_is_context: Any = _is_context_source_viewer
-
-
 def _is_repository(value: Any) -> bool:
     if value is None or isinstance(value, (str, dict, Role)):
         return False
@@ -195,78 +143,6 @@ def _is_repository(value: Any) -> bool:
             'generate_presigned_download_url',
         )
     )
-
-
-def _is_use_case_source_viewer(value: Any) -> bool:
-    if _is_repository(value):
-        return True
-    if value is None or isinstance(value, (str, dict, Role)):
-        return False
-    if (
-        callable(value)
-        and not hasattr(value, 'execute')
-        and not hasattr(value, 'run')
-        and not hasattr(value, '__call__')
-        and not hasattr(value, 'view_original')
-        and not hasattr(value, 'view_source')
-    ):
-        return False
-    if any(
-        hasattr(value, attr) and callable(getattr(value, attr, None))
-        for attr in (
-            'execute',
-            'run',
-            'handle',
-            '__call__',
-            'view',
-            'open',
-            'view_original',
-            'view_source',
-            'source_view',
-        )
-    ):
-        return True
-    return callable(value) and not _is_context(value)
-
-
-_is_use_case: Any = _is_use_case_source_viewer
-
-
-def _flatten_source_viewer(obj: Any) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    aliases = {
-        'document_id': ('document_id', 'documentId', 'doc_id', 'document'),
-        'citation_id': ('citation_id', 'citationId', 'citation', 'locator', 'citation_locator'),
-        'citation': ('citation', 'citation_id', 'citationId', 'citation_locator', 'locator'),
-        'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
-        'role': ('role', 'user_role', 'roleId'),
-        'access_scope': ('access_scope', 'accessScope', 'scope', 'permission_scope'),
-        'user_id': ('user_id', 'userId', 'user', 'uid'),
-        'trace_id': ('trace_id', 'traceId', 'trace'),
-        'permissions': ('permissions', 'permission_matrix', 'perms'),
-        'locator': ('locator', 'citation', 'citation_id', 'citationId', 'citation_locator'),
-    }
-    for canonical, names in aliases.items():
-        value = _get(obj, *names)
-        if value is not None:
-            result[canonical] = value
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if value is not None and key not in result:
-                result[key] = value
-    return result
-
-
-_flatten: Any = _flatten_source_viewer
-
-
-async def _await_source_viewer(value: Any) -> Any:
-    if inspect.isawaitable(value):
-        return await value
-    return value
-
-
-_await: Any = _await_source_viewer
 
 
 __all__ = [

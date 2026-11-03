@@ -9,6 +9,16 @@
 from __future__ import annotations
 
 from ._shared import (
+    _BadRequestError,
+    _ForbiddenError,
+    _ServerError,
+    _flatten,
+    _get,
+    _is_context,
+    _is_use_case,
+)
+
+from ._shared import (
     _get as _shared_get,
     _await as _shared_await,
     _ForbiddenError as _shared_ForbiddenError,
@@ -54,42 +64,6 @@ except ImportError:  # pragma: no cover
 router = APIRouter(prefix='/onboarding', tags=['onboarding'])
 
 
-class _ForbiddenError_onboarding(HTTPException, AuthorizationError):
-    """Raised when the caller is not a System Admin."""
-
-    def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
-        HTTPException.__init__(self, status_code=403, detail=message)
-        self.message = message
-        self.code = 'AuthorizationError'
-
-
-_ForbiddenError: Any = _ForbiddenError_onboarding
-
-
-class _BadRequestError_onboarding(HTTPException, ValidationError):
-    """Raised when request inputs fail validation."""
-
-    def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
-        HTTPException.__init__(self, status_code=422, detail=message)
-        self.message = message
-        self.code = 'ValidationError'
-
-
-_BadRequestError: Any = _BadRequestError_onboarding
-
-
-class _ServerError_onboarding(HTTPException):
-    """Raised for unexpected onboarding failures."""
-
-    def __init__(self, message: str = 'Onboarding failed. Please try again later.') -> None:
-        super().__init__(status_code=500, detail=message)
-        self.message = message
-        self.code = 'OnboardingError'
-
-
-_ServerError: Any = _ServerError_onboarding
-
-
 _CONTEXT_KEYS = (
     'request_context',
     'context',
@@ -112,47 +86,6 @@ _USE_CASE_KEYS = (
 _PAYLOAD_KEYS = ('request', 'payload', 'body', 'data', 'command', 'input', 'onboarding_input')
 
 
-def _get_onboarding(obj: Any, *names: str, default: Any = None) -> Any:
-    for name in names:
-        if isinstance(obj, dict):
-            if name in obj and obj.get(name) is not None:
-                return obj.get(name)
-        elif hasattr(obj, name):
-            value = getattr(obj, name, None)
-            if value is not None:
-                return value
-    return default
-
-
-_get: Any = _get_onboarding
-
-
-def _is_context_onboarding(value: Any) -> bool:
-    return value is not None and (
-        hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
-    )
-
-
-_is_context: Any = _is_context_onboarding
-
-
-def _is_use_case_onboarding(value: Any) -> bool:
-    if value is None or isinstance(value, (str, dict, Role)):
-        return False
-    if hasattr(value, 'execute') and callable(getattr(value, 'execute', None)):
-        return True
-    if hasattr(value, 'run') and callable(getattr(value, 'run', None)):
-        return True
-    if hasattr(value, 'onboard') and callable(getattr(value, 'onboard', None)):
-        return True
-    if hasattr(value, 'create_company') and callable(getattr(value, 'create_company', None)):
-        return True
-    return callable(value) and not _is_context(value)
-
-
-_is_use_case: Any = _is_use_case_onboarding
-
-
 def _is_system_admin(value: Any) -> bool:
     if value is None:
         return False
@@ -169,36 +102,6 @@ def _is_system_admin(value: Any) -> bool:
         return False
     text = str(value).strip().lower().replace(' ', '_').replace('-', '_')
     return text == 'system_admin'
-
-
-def _flatten_onboarding(obj: Any) -> Any:
-    """Flatten a DTO-like object into the field names the use case understands."""
-    result: dict[str, Any] = {}
-    aliases = {
-        'company_name': ('company_name', 'name', 'display_name', 'company_display_name', 'company'),
-        'region': ('region', 'preferred_region', 'hosting_region'),
-        'admin_email': (
-            'admin_email',
-            'first_admin_email',
-            'email',
-            'admin_user_email',
-            'user_email',
-        ),
-        'request_key': ('request_key', 'request_id', 'idempotency_key'),
-    }
-    for canonical, names in aliases.items():
-        value = _get(obj, *names)
-        if value is not None:
-            result[canonical] = value
-    # preserve any already-canonical unexpected keys passed through
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if value is not None and key not in result:
-                result[key] = value
-    return result
-
-
-_flatten: Any = _flatten_onboarding
 
 
 async def _resolve_use_case(

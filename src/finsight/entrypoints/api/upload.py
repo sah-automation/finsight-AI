@@ -8,6 +8,18 @@
 from __future__ import annotations
 
 from ._shared import (
+    _BadRequestError,
+    _ForbiddenError,
+    _PartitionMissingError,
+    _ServerError,
+    _await,
+    _flatten,
+    _get,
+    _is_context,
+    _is_use_case,
+)
+
+from ._shared import (
     _get as _shared_get,
     _await as _shared_await,
     _ForbiddenError as _shared_ForbiddenError,
@@ -50,46 +62,6 @@ try:
 except ImportError:  # pragma: no cover
     pass
 router = APIRouter(prefix='/upload', tags=['upload'])
-
-
-class _ForbiddenError_upload(HTTPException, AuthorizationError):
-    def __init__(self, message: str = 'You do not have permission to perform this action.') -> None:
-        HTTPException.__init__(self, status_code=403, detail=message)
-        self.message = message
-        self.code = 'AuthorizationError'
-
-
-_ForbiddenError: Any = _ForbiddenError_upload
-
-
-class _BadRequestError_upload(HTTPException, ValidationError):
-    def __init__(self, message: str = 'Invalid input. Please check your request.') -> None:
-        HTTPException.__init__(self, status_code=422, detail=message)
-        self.message = message
-        self.code = 'ValidationError'
-
-
-_BadRequestError: Any = _BadRequestError_upload
-
-
-class _PartitionMissingError_upload(HTTPException):
-    def __init__(self, message: str = 'partition missing') -> None:
-        HTTPException.__init__(self, status_code=409, detail=message)
-        self.message = message
-        self.code = 'PartitionMissing'
-
-
-_PartitionMissingError: Any = _PartitionMissingError_upload
-
-
-class _ServerError_upload(HTTPException):
-    def __init__(self, message: str = 'Upload failed. Please try again later.') -> None:
-        super().__init__(status_code=500, detail=message)
-        self.message = message
-        self.code = 'UploadError'
-
-
-_ServerError: Any = _ServerError_upload
 
 
 _CONTEXT_KEYS = (
@@ -143,30 +115,6 @@ _STATUS_VALUES = {'draft', 'final'}
 _UPLOAD_TYPES = {'new', 'update'}
 
 
-def _get_upload(obj: Any, *names: str, default: Any = None) -> Any:
-    for name in names:
-        if isinstance(obj, dict):
-            if name in obj and obj.get(name) is not None:
-                return obj.get(name)
-        elif hasattr(obj, name):
-            value = getattr(obj, name, None)
-            if value is not None:
-                return value
-    return default
-
-
-_get: Any = _get_upload
-
-
-def _is_context_upload(value: Any) -> bool:
-    return value is not None and (
-        hasattr(value, 'role') and not isinstance(value, (str, Role, dict))
-    )
-
-
-_is_context: Any = _is_context_upload
-
-
 def _is_partition_manager(value: Any) -> bool:
     if value is None or isinstance(value, (str, dict, Role)):
         return False
@@ -203,68 +151,6 @@ def _is_partition_metadata_repo(value: Any) -> bool:
             'partition_exists',
         )
     )
-
-
-def _is_use_case_upload(value: Any) -> bool:
-    if value is None or isinstance(value, (str, dict, Role)):
-        return False
-    if hasattr(value, 'execute') and callable(getattr(value, 'execute', None)):
-        return True
-    if hasattr(value, 'run') and callable(getattr(value, 'run', None)):
-        return True
-    if hasattr(value, 'upload') and callable(getattr(value, 'upload', None)):
-        return True
-    if hasattr(value, 'handle') and callable(getattr(value, 'handle', None)):
-        return True
-    return callable(value) and not _is_context(value)
-
-
-_is_use_case: Any = _is_use_case_upload
-
-
-def _flatten_upload(obj: Any) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    aliases = {
-        'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
-        'document_category': (
-            'document_category',
-            'documentCategory',
-            'category',
-            'doc_category',
-            'document_type',
-        ),
-        'period': ('period', 'reporting_period', 'period_label'),
-        'status': ('status', 'document_status', 'state'),
-        'upload_type': ('upload_type', 'uploadType', 'type', 'action'),
-        'replaces_document_id': (
-            'replaces_document_id',
-            'replacesDocumentId',
-            'replace_document_id',
-            'replaces',
-        ),
-        'file': ('file', 'files', 'filename', 'file_name', 'document', 'documents'),
-    }
-    for canonical, names in aliases.items():
-        value = _get(obj, *names)
-        if value is not None:
-            result[canonical] = value
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if value is not None and key not in result:
-                result[key] = value
-    return result
-
-
-_flatten: Any = _flatten_upload
-
-
-async def _await_upload(value: Any) -> Any:
-    if inspect.isawaitable(value):
-        return await value
-    return value
-
-
-_await: Any = _await_upload
 
 
 async def _call_method(method: Any, company_id: Any, table_name: str | None = None) -> Any:
