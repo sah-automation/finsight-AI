@@ -4,7 +4,7 @@ from .models import Result, SourceViewerResult, SourceViewResult, ViewResult
 from .source_viewer import SourceViewer
 from .source_viewer_context import SourceViewerContext
 from .step_result import StepResult
-from .steps import AuthorizeStep
+from .steps import AuthorizeStep, FetchContentStep
 
 # Broad aliases for flexible test seams.
 SourceViewerUseCase = SourceViewer
@@ -23,6 +23,7 @@ ResolveSource = SourceViewer
 __all__ = [
     'AuthorizeStep',
     'CitationViewer',
+    'FetchContentStep',
     'OpenCitation',
     'OpenSource',
     'ResolveSource',
