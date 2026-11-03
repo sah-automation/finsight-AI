@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from finsight.application.source_viewer._step_helpers import _await, _coalesce, _get_attr
 from finsight.application.source_viewer.step_result import StepResult
+from finsight.domain.ports.audit_log import AuditLog
+
+logger = logging.getLogger(__name__)
 
 _AUDIT_METHOD_NAMES = (
     'append_source_view',
@@ -37,10 +41,12 @@ class AuditStep:
     def __init__(
         self,
         *,
-        audit_log: Any = None,
+        audit_log: AuditLog | None = None,
         audit: Any = None,
         audit_logger: Any = None,
         audit_log_port: Any = None,
+        audit_port: Any = None,
+        port: Any = None,
         source_view_audit_log: Any = None,
         **_aliases: Any,
     ) -> None:
@@ -51,6 +57,10 @@ class AuditStep:
             resolved = audit_logger
         if resolved is None:
             resolved = audit_log_port
+        if resolved is None:
+            resolved = audit_port
+        if resolved is None:
+            resolved = port
         if resolved is None:
             resolved = source_view_audit_log
         if resolved is None:
@@ -83,8 +93,11 @@ class AuditStep:
     def _normalize_outcome(self, value: Any) -> str | None:
         if value is None:
             return None
+        kind_value = getattr(value, 'kind', None)
+        if kind_value is not None:
+            value = kind_value
         text = str(getattr(value, 'value', value)).strip().lower()
-        if text in {'success', 'available', 'ok', 'completed', 'done', 'true'}:
+        if text in {'success', 'available', 'ok', 'completed', 'done', 'true', 'continue'}:
             return 'success'
         if text in {
             'not_available',
@@ -102,19 +115,19 @@ class AuditStep:
         return text or None
 
     def _outcome(self, context: Any) -> str:
-        for attr in ('outcome', 'result', 'status'):
+        for attr in ('outcome', 'result', 'status', 'kind'):
             normalized = self._normalize_outcome(getattr(context, attr, None))
             if normalized is not None:
                 return normalized
         extras = getattr(context, 'extras', None)
         if isinstance(extras, dict):
-            for key in ('outcome', 'result', 'status'):
+            for key in ('outcome', 'result', 'status', 'kind'):
                 normalized = self._normalize_outcome(extras.get(key))
                 if normalized is not None:
                     return normalized
         result_obj = getattr(context, 'result_obj', None)
         if result_obj is not None:
-            for attr in ('outcome', 'result', 'status'):
+            for attr in ('outcome', 'result', 'status', 'kind'):
                 normalized = self._normalize_outcome(getattr(result_obj, attr, None))
                 if normalized is not None:
                     return normalized
@@ -239,9 +252,9 @@ class AuditStep:
                 try:
                     await _await(method(**{'company_id': company_id, **payload_without_company}))
                 except Exception:
-                    pass
+                    logger.debug('audit write retry failed', exc_info=True)
         except Exception:
-            pass
+            logger.debug('audit write failed (trace_id=%s)', trace_id, exc_info=True)
 
         return StepResult.continue_(context)
 
