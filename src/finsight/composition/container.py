@@ -1032,6 +1032,8 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         ask_question_use_case=ask_question_use_case,
         ask_use_case=ask_question_use_case,
         source_viewer_use_case=source_viewer_use_case,
+        documents_use_case=document_repository,
+        documents=document_repository,
         source_viewer=source_viewer_use_case,
         state_store=state_store,
         step_state_store=state_store,

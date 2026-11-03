@@ -664,6 +664,7 @@ class CompositionContainer:
             documents_entrypoint.get_document_use_case = lambda *_a, **_k: getattr(
                 self, 'document_repository', None
             )
+            documents_entrypoint.get_documents_use_case = documents_entrypoint.get_document_use_case
 
 
 CompositionContainer = CompositionContainer  # noqa: PLW0127
