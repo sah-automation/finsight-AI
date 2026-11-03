@@ -43,10 +43,7 @@ class ResolveCitationStep:
             setattr(context, attr, value)
 
     def _decode(self, token: Any) -> Any:
-        try:
-            decoded = _decode_locator_helper(token)
-        except Exception:
-            return None
+        decoded = _decode_locator_helper(token)
         if not isinstance(decoded, dict) or not decoded:
             return None
         return decoded
