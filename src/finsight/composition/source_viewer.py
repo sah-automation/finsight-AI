@@ -161,23 +161,63 @@ def _build_source_viewer_use_case_impl(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         pass
     from finsight.application.source_viewer import SourceViewer
+    from finsight.application.source_viewer.steps import (
+        AuditStep,
+        AuthorizeStep,
+        FetchContentStep,
+        FetchOriginalStep,
+        ResolveCitationStep,
+        ResolveVersionStep,
+    )
+
+    signing_key = _existing(kwargs, 'signing_key', 'secret', 'secret_key')
+    if signing_key is None:
+        signing_key = getattr(config, 'signing_key', None)
+    if signing_key is None:
+        raise ValueError('signing_key must be configured')
+
+    docs_cfg = None
+    if hasattr(config, 'documents'):
+        docs_cfg = getattr(config, 'documents', None)
+    elif isinstance(config, dict):
+        docs_cfg = config.get('documents')
+    retention_days = 365
+    original_link_ttl = 300
+    try:
+        if docs_cfg is not None:
+            raw_retention = getattr(docs_cfg, 'version_retention_days', None)
+            if raw_retention is None and isinstance(docs_cfg, dict):
+                raw_retention = docs_cfg.get('version_retention_days')
+            if raw_retention is not None:
+                retention_days = int(raw_retention)
+        if docs_cfg is not None:
+            raw_ttl = getattr(docs_cfg, 'source_original_link_ttl_seconds', None)
+            if raw_ttl is None and isinstance(docs_cfg, dict):
+                raw_ttl = docs_cfg.get('source_original_link_ttl_seconds')
+            if raw_ttl is not None:
+                original_link_ttl = int(raw_ttl)
+    except (TypeError, ValueError):
+        pass
+    if original_link_ttl < 1:
+        original_link_ttl = 300
 
     return SourceViewer(
-        config=config,
-        document_repository=document_repository,
-        chunk_repository=chunk_repository,
-        document_table_repository=table_repository,
-        table_repository=table_repository,
-        object_storage=object_storage,
-        storage=object_storage,
-        audit_log=audit_log,
-        request_context=_existing(kwargs, 'request_context', 'context', 'ctx'),
-        company_id=_existing(kwargs, 'company_id', 'companyId', 'company', 'tenant_id'),
-        user_id=_existing(kwargs, 'user_id', 'userId', 'actor'),
-        role=_existing(kwargs, 'role'),
-        trace_id=_existing(kwargs, 'trace_id', 'traceId', 'trace'),
-        access_scope=_existing(kwargs, 'access_scope', 'accessScope'),
-        permissions=_existing(kwargs, 'permissions'),
+        authorize_step=AuthorizeStep(config=config),
+        resolve_citation_step=ResolveCitationStep(signing_key=signing_key),
+        resolve_version_step=ResolveVersionStep(
+            document_repository=document_repository,
+            version_retention_days=retention_days,
+        ),
+        fetch_content_step=FetchContentStep(
+            chunk_repository=chunk_repository,
+            table_repository=table_repository,
+        ),
+        fetch_original_step=FetchOriginalStep(
+            object_storage=object_storage,
+            document_repository=document_repository,
+            ttl=original_link_ttl,
+        ),
+        audit_step=AuditStep(audit_log=audit_log),
     )
 
 

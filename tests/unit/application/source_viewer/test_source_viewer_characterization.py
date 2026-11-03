@@ -150,6 +150,40 @@ def _committed_version(
     return row
 
 
+from finsight.application.source_viewer.steps import (
+    AuditStep,
+    AuthorizeStep,
+    FetchContentStep,
+    FetchOriginalStep,
+    ResolveCitationStep,
+    ResolveVersionStep,
+)
+
+
+class _Viewer(SourceViewer):
+    def __init__(
+        self, *args: Any, _permissions: Any = None, _access_scope: Any = None, **kwargs: Any
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._permissions = _permissions
+        self._access_scope = _access_scope
+
+    async def run(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[override]
+        kwargs.setdefault('company_id', 'c1')
+        kwargs.setdefault('role', 'analyst')
+        if 'permissions' not in kwargs:
+            kwargs['permissions'] = (
+                self._permissions
+                if self._permissions is not None
+                else {'financial': ['read', 'view_original']}
+            )
+        if 'access_scope' not in kwargs:
+            kwargs['access_scope'] = (
+                self._access_scope if self._access_scope is not None else ['financial']
+            )
+        return await super().run(*args, **kwargs)
+
+
 def _viewer(
     *,
     doc_repo: Any = None,
@@ -161,20 +195,22 @@ def _viewer(
     access_scope: list[str] | None = None,
     config: Any = None,
 ) -> SourceViewer:
-    return SourceViewer(
-        config=config,
-        document_repository=doc_repo,
-        chunk_repository=chunk_repo,
-        table_repository=table_repo,
-        object_storage=storage,
-        audit_log=audit,
-        company_id='c1',
-        role='analyst',
-        permissions=permissions
-        if permissions is not None
-        else {'financial': ['read', 'view_original']},
-        access_scope=access_scope if access_scope is not None else ['financial'],
-        signing_key=SECRET,
+    # Build steps from the supplied adapters (parity with the legacy fused flow).
+    return _Viewer(
+        authorize_step=AuthorizeStep(config=config),
+        resolve_citation_step=ResolveCitationStep(signing_key=SECRET),
+        resolve_version_step=ResolveVersionStep(
+            document_repository=doc_repo, version_retention_days=365
+        ),
+        fetch_content_step=FetchContentStep(
+            chunk_repository=chunk_repo, table_repository=table_repo
+        ),
+        fetch_original_step=FetchOriginalStep(
+            object_storage=storage, document_repository=doc_repo, ttl=300
+        ),
+        audit_step=AuditStep(audit_log=audit),
+        _permissions=permissions,
+        _access_scope=access_scope if access_scope is not None else ['financial'],
     )
 
 
@@ -376,18 +412,21 @@ def test_audit_record_captured_success_and_denial() -> None:
         assert len(audit.records) >= 1
 
         audit2 = _Audit()
-        viewer_denied = SourceViewer(
-            config=None,
-            document_repository=_DocRepo({'v1': v1}),
-            chunk_repository=_ChunkRepo(chunks=chunks),
-            company_id=cid,
-            role='system_admin',
-            permissions={},
-            access_scope=['financial'],
-            signing_key=SECRET,
-            audit_log=audit2,
+        viewer_denied = _Viewer(
+            authorize_step=AuthorizeStep(config=None),
+            resolve_citation_step=ResolveCitationStep(signing_key=SECRET),
+            resolve_version_step=ResolveVersionStep(document_repository=_DocRepo({'v1': v1})),
+            fetch_content_step=FetchContentStep(chunk_repository=_ChunkRepo(chunks=chunks)),
+            fetch_original_step=FetchOriginalStep(
+                object_storage=None, document_repository=_DocRepo({'v1': v1}), ttl=300
+            ),
+            audit_step=AuditStep(audit_log=audit2),
+            _permissions={},
+            _access_scope=['financial'],
         )
-        res2 = await viewer_denied.run(company_id=cid, document_version='v1', page=1)
+        res2 = await viewer_denied.run(
+            company_id=cid, role='system_admin', document_version='v1', page=1
+        )
         assert res2.status == 'not_available'
         assert len(audit2.records) >= 1
 
@@ -401,15 +440,15 @@ def test_result_shape_not_available_and_error() -> None:
 
         # not-available
         doc_repo = _DocRepo({'v1': v1})
-        viewer = SourceViewer(
-            config=None,
-            document_repository=doc_repo,
-            chunk_repository=_ChunkRepo(chunks=[]),
-            company_id=cid,
-            role='analyst',
-            permissions={'financial': ['read', 'view_original']},
-            access_scope=['financial'],
-            signing_key=SECRET,
+        viewer = _Viewer(
+            authorize_step=AuthorizeStep(config=None),
+            resolve_citation_step=ResolveCitationStep(signing_key=SECRET),
+            resolve_version_step=ResolveVersionStep(document_repository=doc_repo),
+            fetch_content_step=FetchContentStep(chunk_repository=_ChunkRepo(chunks=[])),
+            fetch_original_step=FetchOriginalStep(
+                object_storage=None, document_repository=doc_repo, ttl=300
+            ),
+            audit_step=AuditStep(audit_log=None),
         )
         res = await viewer.run(company_id=cid, document_version='nope')
         assert res.status == 'not_available'

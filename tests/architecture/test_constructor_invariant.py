@@ -40,11 +40,6 @@ BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'application',
         'removal_condition': 'Replace with typed constructor when the reprocess flow is converted.',
     },
-    'application/source_viewer/source_viewer.py::SourceViewer': {
-        'reason': 'Source viewer retains alias-probing constructor resolution.',
-        'owner': 'application',
-        'removal_condition': 'Replace with typed constructor when the source viewer flow is converted.',
-    },
     'application/onboarding/create_company.py::CreateCompany': {
         'reason': 'Onboarding create-company flow retains alias-probing constructor resolution.',
         'owner': 'application',

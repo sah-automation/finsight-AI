@@ -178,11 +178,6 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'composition',
         'removal_condition': 'Split when step count exceeds 15.',
     },
-    'application/source_viewer/source_viewer.py': {
-        'reason': 'Source viewer combines reader decoding and authorization helpers.',
-        'owner': 'application',
-        'removal_condition': 'Split decoded lokator handling from viewer orchestration.',
-    },
     'application/source_viewer/_step_helpers.py': {
         'reason': 'Internal helpers extracted from the source viewer fused module.',
         'owner': 'application',

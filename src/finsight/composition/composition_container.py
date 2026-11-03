@@ -265,10 +265,6 @@ class CompositionContainer:
             else source_view
             if source_view is not None
             else deps.get('source_viewer_use_case')
-            or deps.get('source_viewer')
-            or deps.get('source_view_use_case')
-            or deps.get('view_source_use_case')
-            or deps.get('source_view')
         )
         self.source_viewer = self.source_viewer_use_case
         self.source_view_use_case = self.source_viewer_use_case

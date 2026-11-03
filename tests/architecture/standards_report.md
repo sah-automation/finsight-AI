@@ -27,9 +27,9 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
   - composition/reader_registry.py: 786 lines
-  - composition/container.py: 3055 lines
+  - composition/container.py: 3101 lines
   - composition/step_deps.py: 328 lines
-  - composition/composition_container.py: 635 lines
+  - composition/composition_container.py: 631 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
   - entrypoints/api/upload.py: 835 lines
@@ -42,8 +42,8 @@ Generated from tests/architecture/test_standards_checklist.py
   - entrypoints/api/source_viewer.py: 802 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
+  - application/source_viewer/_request_to_context.py: 505 lines
   - application/source_viewer/_step_helpers.py: 673 lines
-  - application/source_viewer/source_viewer.py: 1607 lines
   - application/update_document/update_document.py: 1363 lines
   - application/ingest_document/upload_document.py: 886 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)

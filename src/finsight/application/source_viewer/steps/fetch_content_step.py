@@ -122,10 +122,7 @@ class FetchContentStep:
         repo = self._chunk_repository
         if repo is None:
             return StepResult.stop_with_not_available(context)
-        try:
-            chunk_obj = await _await(_call_chunk_get(repo, company_id, supplied))
-        except Exception:
-            chunk_obj = None
+        chunk_obj = await _await(_call_chunk_get(repo, company_id, supplied))
         if chunk_obj is None:
             return StepResult.stop_with_not_available(context)
         c_version = _get_attr(chunk_obj, 'version_id', 'version')
@@ -203,12 +200,9 @@ class FetchContentStep:
         table_payload: Any = None
         tables_list: list[Any] = []
         if chunk_repo is not None:
-            try:
-                chunks = await _await(
-                    _call_chunk_list(chunk_repo, company_id, version_id, document_id, page)
-                )
-            except Exception:
-                chunks = []
+            chunks = await _await(
+                _call_chunk_list(chunk_repo, company_id, version_id, document_id, page)
+            )
         else:
             chunks = []
         chunks = _as_list(chunks)

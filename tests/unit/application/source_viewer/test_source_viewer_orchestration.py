@@ -3,52 +3,70 @@
 from __future__ import annotations
 
 import asyncio
-from types import SimpleNamespace
 from typing import Any
 
 from finsight.application.source_viewer import SourceViewer
+from finsight.application.source_viewer.source_viewer_context import SourceViewerContext
+from finsight.application.source_viewer.step_result import StepResult
 
 
-class _Repo:
-    async def get_version(
-        self, company_id: Any = None, version_id: Any = None, *args: Any, **kwargs: Any
-    ) -> Any:
-        return SimpleNamespace(
-            state='committed',
-            document_id='doc1',
-            id='v1',
-            document_title='Doc',
-            company_id=company_id,
-        )
-
-    async def get(self, *args: Any, **kwargs: Any) -> Any:
-        return SimpleNamespace(title='Doc')
-
-    async def list_versions(self, *args: Any, **kwargs: Any) -> Any:
-        return []
-
-    async def get_latest_version(self, *args: Any, **kwargs: Any) -> Any:
-        return None
+class _OkStep:
+    async def run(self, context: Any) -> StepResult:
+        return StepResult.continue_(context)
 
 
-def _viewer() -> SourceViewer:
-    return SourceViewer(
-        company_id='co1',
-        document_repository=_Repo(),
-        signing_key='secret-key-1234567890-abcdefghijklmnopqrstuvwxyz',  # pragma: allowlist secret
+class _StopStep:
+    async def run(self, context: Any) -> StepResult:
+        return StepResult.stop_with_not_available(context)
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def step(self, label: str, stop: bool = False) -> Any:
+        outer = self
+
+        class _Step:
+            async def run(self, context: Any) -> StepResult:
+                outer.calls.append(label)
+                if stop:
+                    return StepResult.stop_with_not_available(context)
+                return StepResult.continue_(context)
+
+        return _Step()
+
+
+def test_source_viewer_sequence_runs_all_steps() -> None:
+    recorder = _Recorder()
+    steps = [recorder.step(f's{i}') for i in range(5)]
+    audit = recorder.step('audit')
+
+    viewer = SourceViewer(
+        authorize_step=steps[0],
+        resolve_citation_step=steps[1],
+        resolve_version_step=steps[2],
+        fetch_content_step=steps[3],
+        fetch_original_step=steps[4],
+        audit_step=audit,
     )
 
-
-def test_source_viewer_view_success() -> None:
-    viewer = _viewer()
-    result = asyncio.run(viewer.view(company_id='co1', document_id='doc1', document_version='v1'))
-    assert result.outcome == 'success'
-    assert result.document_id == 'doc1'
+    ctx = SourceViewerContext(company_id='co1')
+    result = asyncio.run(viewer.run(ctx))
+    assert result.status == 'available'
+    assert recorder.calls == ['s0', 's1', 's2', 's3', 's4', 'audit']
 
 
-def test_source_viewer_view_original_path() -> None:
-    viewer = _viewer()
-    result = asyncio.run(
-        viewer.view_original(company_id='co1', document_id='doc1', document_version='v1')
+def test_source_viewer_short_circuits() -> None:
+    recorder = _Recorder()
+    steps = [recorder.step('s0', stop=True), recorder.step('s1')]
+    audit = recorder.step('audit')
+
+    viewer = SourceViewer(
+        steps=[steps[0], steps[1], _OkStep(), _OkStep(), _OkStep(), audit],
     )
-    assert result.outcome in ('success', 'not_available')
+
+    ctx = SourceViewerContext(company_id='co1')
+    result = asyncio.run(viewer.run(ctx))
+    assert result.status == 'not_available'
+    assert recorder.calls == ['s0', 'audit']

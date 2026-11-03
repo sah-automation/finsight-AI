@@ -890,17 +890,63 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     if source_viewer_use_case is None:
         source_viewer_use_case = provided_deps.get('source_viewer_use_case')
     if source_viewer_use_case is None:
+        signing_key = _existing(kwargs, 'signing_key', 'secret', 'secret_key')
+        if signing_key is None:
+            signing_key = getattr(config, 'signing_key', None)
+        if signing_key is None:
+            raise ValueError('signing_key must be configured')
+
         from finsight.application.source_viewer import SourceViewer
+        from finsight.application.source_viewer.steps import (
+            AuditStep,
+            AuthorizeStep,
+            FetchContentStep,
+            FetchOriginalStep,
+            ResolveCitationStep,
+            ResolveVersionStep,
+        )
+
+        docs_cfg = getattr(config, 'documents', None)
+        if docs_cfg is None and isinstance(config, dict):
+            docs_cfg = config.get('documents')
+        retention_days = 365
+        original_link_ttl = 300
+        try:
+            if docs_cfg is not None:
+                raw_retention = getattr(docs_cfg, 'version_retention_days', None)
+                if raw_retention is None and isinstance(docs_cfg, dict):
+                    raw_retention = docs_cfg.get('version_retention_days')
+                if raw_retention is not None:
+                    retention_days = int(raw_retention)
+            if docs_cfg is not None:
+                raw_ttl = getattr(docs_cfg, 'source_original_link_ttl_seconds', None)
+                if raw_ttl is None and isinstance(docs_cfg, dict):
+                    raw_ttl = docs_cfg.get('source_original_link_ttl_seconds')
+                if raw_ttl is not None:
+                    original_link_ttl = int(raw_ttl)
+        except (TypeError, ValueError):
+            pass
+        if original_link_ttl < 1:
+            original_link_ttl = 300
 
         source_viewer_use_case = SourceViewer(
-            config=config,
-            document_repository=document_repository,
-            chunk_repository=chunk_repository,
-            document_table_repository=document_table_repository,
-            table_repository=document_table_repository,
-            object_storage=object_storage,
-            storage=object_storage,
-            audit_log=audit_log,
+            authorize_step=AuthorizeStep(config=config),
+            resolve_citation_step=ResolveCitationStep(signing_key=signing_key),
+            resolve_version_step=ResolveVersionStep(
+                document_repository=document_repository,
+                version_retention_days=retention_days,
+            ),
+            fetch_content_step=FetchContentStep(
+                chunk_repository=chunk_repository,
+                table_repository=document_table_repository,
+            ),
+            fetch_original_step=FetchOriginalStep(
+                object_storage=object_storage,
+                document_repository=document_repository,
+                ttl=original_link_ttl,
+            ),
+            audit_step=AuditStep(audit_log=audit_log),
+            tracing=tracing,
         )
 
     queue = provided_deps.get('queue')
