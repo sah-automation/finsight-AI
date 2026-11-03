@@ -42,7 +42,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - entrypoints/api/source_viewer.py: 802 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
-  - application/source_viewer/_step_helpers.py: 563 lines
+  - application/source_viewer/_step_helpers.py: 673 lines
   - application/source_viewer/source_viewer.py: 1607 lines
   - application/update_document/update_document.py: 1363 lines
   - application/ingest_document/upload_document.py: 886 lines

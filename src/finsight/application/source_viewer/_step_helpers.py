@@ -561,3 +561,113 @@ __all__ = [
     'list_documents_category',
     'verify_signed_locator',
 ]
+
+
+def _resolve_original_storage_key_impl(
+    storage: Any,
+    version_obj: Any,
+    document_obj: Any,
+    company_id: Any,
+    document_id_input: Any,
+    version_id_input: Any,
+) -> Any:
+
+    # Direct attributes on version/document.
+    for obj in (version_obj, document_obj):
+        key = _get_attr(
+            obj,
+            'storage_key',
+            's3_key',
+            'object_key',
+            'file_key',
+            'source_key',
+            'storage_path',
+            's3_path',
+            'object_path',
+            'path',
+            'uri',
+            'source_uri',
+            'location',
+            'key',
+            default=None,
+        )
+        if key is not None:
+            return key
+
+    # Nested metadata/extras.
+    for obj in (version_obj, document_obj):
+        for attr in ('metadata', 'extras', 'meta', 'data', 'properties'):
+            nested = _get_attr(obj, attr, default=None)
+            if isinstance(nested, dict):
+                for k in (
+                    'storage_key',
+                    's3_key',
+                    'object_key',
+                    'file_key',
+                    'source_key',
+                    'storage_path',
+                    'key',
+                    'path',
+                    'uri',
+                ):
+                    if nested.get(k) is not None:
+                        return nested.get(k)
+
+    # Build from storage adapter key builder.
+    cid = str(company_id) if company_id is not None else ''
+    doc_id = _coalesce(
+        document_id_input,
+        _get_attr(version_obj, 'document_id', 'documentId', 'doc_id', default=None),
+        _get_attr(document_obj, 'document_id', 'documentId', 'doc_id', 'id', default=None),
+    )
+    ver_id = _coalesce(
+        version_id_input,
+        _get_attr(version_obj, 'version_id', 'document_version_id', 'id', 'version', default=None),
+    )
+    filename = _coalesce(
+        _get_attr(
+            version_obj,
+            'filename',
+            'file_name',
+            'original_filename',
+            'source_filename',
+            'name',
+            'title',
+            default=None,
+        ),
+        _get_attr(
+            document_obj,
+            'filename',
+            'file_name',
+            'original_filename',
+            'title',
+            'name',
+            default=None,
+        ),
+    )
+    if storage is not None and doc_id is not None and filename is not None:
+        builder = None
+        for name in (
+            'build_key',
+            'generate_key',
+            'create_key',
+            'key_for',
+            'compose_key',
+            'build_storage_key',
+        ):
+            candidate = getattr(storage, name, None)
+            if callable(candidate):
+                builder = candidate
+                break
+        if builder is not None:
+            try:
+                return builder(cid, doc_id, ver_id, filename)
+            except Exception:
+                pass
+        # Fallback constructed key.
+        safe_name = _text(filename).strip().split('/')[-1]
+        if safe_name == '':
+            safe_name = 'document'
+        ver_part = str(ver_id) if ver_id is not None else 'version'
+        return f'{cid}/documents/{doc_id}/versions/{ver_part}/{safe_name}'
+    return None
