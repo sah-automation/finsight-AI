@@ -625,47 +625,6 @@ class CompositionContainer:
         except KeyError:
             return default
 
-    def wire_entrypoints(self, *args: Any, **kwargs: Any) -> Any:
-        return self._wire_entrypoints_impl(*args, **kwargs)
-
-    def _wire_entrypoints_impl(self) -> None:
-        import contextlib
-
-        with contextlib.suppress(Exception):
-            from finsight.entrypoints.api import source_viewer
-
-            source_viewer.get_source_viewer_use_case = lambda *_a, **_k: getattr(
-                self, 'source_viewer_use_case', None
-            )
-            source_viewer.get_source_view_use_case = source_viewer.get_source_viewer_use_case
-            source_viewer.get_view_source_use_case = source_viewer.get_source_viewer_use_case
-
-        with contextlib.suppress(Exception):
-            import finsight.entrypoints.api.ask as ask_entrypoint
-
-            ask_entrypoint._get_ask_use_case = lambda *_a, **_k: self.ask_question_use_case  # type: ignore[attr-defined]
-            ask_entrypoint._get_ask_use_case_raw = lambda *_a, **_k: self.ask_question_use_case  # type: ignore[assignment, attr-defined]
-
-        with contextlib.suppress(Exception):
-            import finsight.entrypoints.api.onboarding as onboarding_entrypoint
-
-            onboarding_entrypoint.get_onboarding_use_case = lambda *_a, **_k: (
-                self.onboarding_use_case
-            )
-
-        with contextlib.suppress(Exception):
-            import finsight.entrypoints.api.upload as upload_entrypoint
-
-            upload_entrypoint.get_upload_use_case = lambda *_a, **_k: self.upload_use_case
-
-        with contextlib.suppress(Exception):
-            import finsight.entrypoints.api.documents as documents_entrypoint
-
-            documents_entrypoint.get_document_use_case = lambda *_a, **_k: getattr(
-                self, 'document_repository', None
-            )
-            documents_entrypoint.get_documents_use_case = documents_entrypoint.get_document_use_case
-
 
 CompositionContainer = CompositionContainer  # noqa: PLW0127
 CompositionRoot = CompositionContainer
