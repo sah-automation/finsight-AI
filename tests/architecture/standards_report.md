@@ -36,6 +36,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - entrypoints/api/ask.py: 993 lines
   - entrypoints/api/onboarding.py: 511 lines
   - entrypoints/api/documents.py: 948 lines
+  - entrypoints/api/source_viewer.py: 947 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
   - application/source_viewer/source_viewer.py: 2089 lines
@@ -45,7 +46,6 @@ Generated from tests/architecture/test_standards_checklist.py
   - application/ingest_document/pipeline_step_worker.py: 2235 lines
   - application/ask_question/ask_question.py: 731 lines
   - application/onboarding/create_company.py: 634 lines
-  - composition/reader_factory.py::create: 92 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
