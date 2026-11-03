@@ -1,6 +1,7 @@
 # ruff: noqa: ANN401, B007, BLE001, C416, C901, E501, F401, F841, I001, N806, PERF403, PLC0415, PLR0912, PLR0913, PLR0915, PLR0917, RET504, RUF100, S110, SIM105, UP035
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from .source_viewer_context import SourceViewerContext
@@ -8,12 +9,7 @@ from .step_result import StepResult
 
 from ._step_helpers import _coalesce, _normalize_version_key
 
-
-def _step(value: Any, *names: str) -> Any:
-    for name in names:
-        if value is not None:
-            return value
-    return None
+logger = logging.getLogger(__name__)
 
 
 def _collect_steps(**kwargs: Any) -> tuple[Any, ...]:
@@ -149,8 +145,8 @@ class SourceViewer:
         if self._audit_step is not None:
             try:
                 await self._audit_step.run(context)
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.debug('audit step failed', exc_info=exc)
 
     def _result(self, context: Any, outcome: str, initial: dict[str, Any]) -> Any:
         from .models import SourceViewerResult
@@ -294,5 +290,6 @@ class SourceViewer:
             result = method(company_id, operation)
             if hasattr(result, '__await__'):
                 await result
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            logger.debug('tracing step failed', exc_info=exc)
             return

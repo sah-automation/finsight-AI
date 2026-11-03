@@ -13,6 +13,31 @@ from .container import (
 )
 
 
+def _docs_config(config: Any) -> Any:
+    docs_cfg = getattr(config, 'documents', None)
+    if docs_cfg is None and isinstance(config, dict):
+        docs_cfg = config.get('documents')
+    if docs_cfg is None:
+        raise ValueError('documents config must be configured')
+    return docs_cfg
+
+
+def _get_field(config: Any, name: str) -> Any:
+    value = getattr(config, name, None)
+    if value is None and isinstance(config, dict):
+        value = config.get(name)
+    if value is None:
+        raise ValueError(f'documents.{name} must be configured')
+    return value
+
+
+def resolve_source_viewer_settings(config: Any) -> tuple[int, int]:
+    docs_cfg = _docs_config(config)
+    retention_days = int(_get_field(docs_cfg, 'version_retention_days'))
+    original_link_ttl = int(_get_field(docs_cfg, 'source_original_link_ttl_seconds'))
+    return retention_days, original_link_ttl
+
+
 def _container(*args: Any, **kwargs: Any) -> Any:
     if args or kwargs:
         try:
@@ -176,30 +201,11 @@ def _build_source_viewer_use_case_impl(*args: Any, **kwargs: Any) -> Any:
     if signing_key is None:
         raise ValueError('signing_key must be configured')
 
-    docs_cfg = None
-    if hasattr(config, 'documents'):
-        docs_cfg = getattr(config, 'documents', None)
-    elif isinstance(config, dict):
-        docs_cfg = config.get('documents')
-    retention_days = 365
-    original_link_ttl = 300
-    try:
-        if docs_cfg is not None:
-            raw_retention = getattr(docs_cfg, 'version_retention_days', None)
-            if raw_retention is None and isinstance(docs_cfg, dict):
-                raw_retention = docs_cfg.get('version_retention_days')
-            if raw_retention is not None:
-                retention_days = int(raw_retention)
-        if docs_cfg is not None:
-            raw_ttl = getattr(docs_cfg, 'source_original_link_ttl_seconds', None)
-            if raw_ttl is None and isinstance(docs_cfg, dict):
-                raw_ttl = docs_cfg.get('source_original_link_ttl_seconds')
-            if raw_ttl is not None:
-                original_link_ttl = int(raw_ttl)
-    except (TypeError, ValueError):
-        pass
-    if original_link_ttl < 1:
-        original_link_ttl = 300
+    retention_days, original_link_ttl = resolve_source_viewer_settings(config)
+
+    tracing = _existing(kwargs, 'tracing', 'tracer', 'tracing_port', 'span_tracer', 'span_tracing')
+    if tracing is None and container is not None:
+        tracing = getattr(container, 'tracing', None)
 
     return SourceViewer(
         authorize_step=AuthorizeStep(config=config),
@@ -218,6 +224,7 @@ def _build_source_viewer_use_case_impl(*args: Any, **kwargs: Any) -> Any:
             ttl=original_link_ttl,
         ),
         audit_step=AuditStep(audit_log=audit_log),
+        tracing=tracing,
     )
 
 

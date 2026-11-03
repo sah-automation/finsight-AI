@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from finsight.application.source_viewer._step_helpers import (
     _as_int,
+    _coalesce,
     _first,
     _get_attr,
 )
@@ -116,6 +117,10 @@ class ResolveCitationStep:
         self._set_if_none(context, 'locator', token)
         self._set_if_none(context, 'locator_payload', payload)
 
+    def _remember_token(self, context: Any, token: Any) -> None:
+        context.locator_token = _coalesce(getattr(context, 'locator_token', None), token)
+        context.locator = _coalesce(getattr(context, 'locator', None), token)
+
     async def run(self, context: SourceViewerContext) -> StepResult:
         """Verify the citation input and decode locator claims onto ``context``."""
         citation_input = self._citation_input(context)
@@ -125,7 +130,8 @@ class ResolveCitationStep:
             if '.' not in citation_input:
                 return StepResult.continue_(context)
             if not _verify_signed_locator_helper(citation_input, self._signing_key):
-                return StepResult.stop_with_not_available(context)
+                self._remember_token(context, citation_input)
+                return StepResult.stop_with_not_available(context)  # noqa: E702
             payload = self._decode(citation_input)
             if not isinstance(payload, dict):
                 return StepResult.stop_with_not_available(context)
