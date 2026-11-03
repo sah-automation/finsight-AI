@@ -8,11 +8,6 @@ from ._feedback_2 import *
 from ._feedback_3 import *
 from ._feedback_4 import *
 
-FeedbackRecord = _FeedbackModel
-ReportWrongSourceModel = _FeedbackModel
-ReportWrongSourceResponse = _FeedbackModel
-WrongSourceReport = _FeedbackModel
-
 
 class Feedback:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -145,13 +140,9 @@ __all__ = [
     'EXTRA_ROUTERS',
     'Feedback',
     'FeedbackEntry',
-    'FeedbackRecord',
     'FeedbackRequest',
     'FeedbackResponse',
     'ReportWrongSource',
-    'ReportWrongSourceModel',
-    'ReportWrongSourceResponse',
-    'WrongSourceReport',
     '_FeedbackResponse',
     '_handle',
     '_make_response',
@@ -190,17 +181,13 @@ _all_helper_names = [
     'ConfigDict',
     'EXTRA_ROUTERS',
     'FeedbackEntry',
-    'FeedbackRecord',
     'FeedbackRequest',
     'FeedbackResponse',
     'Field',
     'HTTPException',
-    'ReportWrongSourceModel',
-    'ReportWrongSourceResponse',
     'Role',
     'UTC',
     'ValidationError',
-    'WrongSourceReport',
     '_APPROVED_REASON_LOOKUP',
     '_BadRequestError',
     '_CITATION_ALIASES',

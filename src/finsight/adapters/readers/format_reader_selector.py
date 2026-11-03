@@ -74,14 +74,9 @@ class FormatReaderSelector(BaseReader):
 
                 return PageRouter()
             except Exception:
-                try:
-                    from .pdf_plumber_reader import PdfPlumberReader
+                from .pdf_plumber_reader import PdfPlumberReader
 
-                    return PdfPlumberReader(config=self._config)
-                except Exception:
-                    from .pdf_plumber_reader import PdfPlumberReader
-
-                    return PdfPlumberReader(config=self._config)
+                return PdfPlumberReader(config=self._config)
 
     def _default_excel_reader(self) -> Any:
         from .excel_reader import ExcelReader
