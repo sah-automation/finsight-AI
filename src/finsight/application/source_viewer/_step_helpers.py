@@ -614,7 +614,7 @@ def _resolve_original_storage_key_impl(
                         return nested.get(k)
 
     # Build from storage adapter key builder.
-    cid = str(company_id) if company_id is not None else ''
+    cid = str(company_id)
     doc_id = _coalesce(
         document_id_input,
         _get_attr(version_obj, 'document_id', 'documentId', 'doc_id', default=None),
