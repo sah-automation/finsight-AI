@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from finsight.composition import build_container, providers
 from finsight.entrypoints.api import (
     ask,
     current_user,
@@ -18,11 +19,14 @@ from finsight.entrypoints.api import (
 )
 
 
-def create_app(*args: Any, **kwargs: Any) -> Any:
-    return _create_app_impl(*args, **kwargs)
+def create_app() -> FastAPI:
+    return _create_app_impl()
 
 
 def _create_app_impl() -> FastAPI:
+    container = build_container()
+    providers.init(container)
+
     app = FastAPI(
         title='FinSight AI API',
         version='0.1.0',
@@ -70,6 +74,3 @@ def _install_ask_event_schema(app: FastAPI) -> None:
         return app.openapi_schema
 
     app.openapi = openapi  # type: ignore[method-assign]
-
-
-app = create_app()

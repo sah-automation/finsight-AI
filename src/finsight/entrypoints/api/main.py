@@ -5,6 +5,6 @@ Deployment/public surface: re-exports ``app`` and ``create_app`` from
 this module. Owner: platform; removal condition: none.
 """
 
-from finsight.entrypoints.api.app import app, create_app
+from finsight.entrypoints.api.app import create_app
 
-__all__ = ['app', 'create_app']
+__all__ = ['create_app']
