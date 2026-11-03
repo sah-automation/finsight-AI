@@ -51,7 +51,7 @@ def _decode_locator(token: Any) -> Any:
         from finsight.application.source_viewer._step_helpers import decode_locator
 
         return decode_locator(token)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 
@@ -388,6 +388,14 @@ def _build_source_viewer_context(*args: Any, **kwargs: Any) -> SourceViewerConte
         payload.get('expiresIn'),
         payload.get('ttl'),
     )
+    if ttl_raw is None and request_obj is not None:
+        ttl_raw = _get_attr(
+            request_obj,
+            'source_original_link_ttl_seconds',
+            'ttl_seconds',
+            'expires_in',
+            'ttl',
+        )
     if ttl_raw is not None:
         try:
             ttl: Any = int(ttl_raw)
@@ -399,6 +407,9 @@ def _build_source_viewer_context(*args: Any, **kwargs: Any) -> SourceViewerConte
     # Original flags.
     original_requested = any(
         bool(payload.get(k)) for k in ('_original', 'original', 'original_only')
+    ) or (
+        request_obj is not None
+        and any(bool(_get_attr(request_obj, k)) for k in ('_original', 'original', 'original_only'))
     )
 
     return SourceViewerContext(
@@ -422,9 +433,35 @@ def _build_source_viewer_context(*args: Any, **kwargs: Any) -> SourceViewerConte
 
 def _looks_context_value(value: Any) -> bool:
     if isinstance(value, dict):
-        return any(k in value for k in ('company_id', 'role', 'permissions', 'access_scope'))
-    return hasattr(value, 'company_id') and (
-        hasattr(value, 'role') or hasattr(value, 'permissions')
+        return any(
+            k in value
+            for k in (
+                'company_id',
+                'companyId',
+                'company',
+                'tenant_id',
+                'user_id',
+                'userId',
+                'role',
+                'permissions',
+                'access_scope',
+                'accessScope',
+                'trace_id',
+                'traceId',
+            )
+        )
+    return (
+        hasattr(value, 'company_id')
+        or hasattr(value, 'companyId')
+        or hasattr(value, 'user_id')
+        or hasattr(value, 'userId')
+    ) and (
+        hasattr(value, 'role')
+        or hasattr(value, 'permissions')
+        or hasattr(value, 'access_scope')
+        or hasattr(value, 'accessScope')
+        or hasattr(value, 'trace_id')
+        or hasattr(value, 'traceId')
     )
 
 
