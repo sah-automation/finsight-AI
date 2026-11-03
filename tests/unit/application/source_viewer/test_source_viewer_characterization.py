@@ -197,7 +197,7 @@ def _viewer(
 ) -> SourceViewer:
     # Build steps from the supplied adapters (parity with the legacy fused flow).
     return _Viewer(
-        authorize_step=AuthorizeStep(config=config),
+        authorize_step=AuthorizeStep(permission_policy=config),
         resolve_citation_step=ResolveCitationStep(signing_key=SECRET),
         resolve_version_step=ResolveVersionStep(
             document_repository=doc_repo, version_retention_days=365
@@ -206,7 +206,7 @@ def _viewer(
             chunk_repository=chunk_repo, table_repository=table_repo
         ),
         fetch_original_step=FetchOriginalStep(
-            object_storage=storage, document_repository=doc_repo, ttl=300
+            object_storage=storage, document_repository=doc_repo, ttl_seconds=300
         ),
         audit_step=AuditStep(audit_log=audit),
         _permissions=permissions,
@@ -413,12 +413,14 @@ def test_audit_record_captured_success_and_denial() -> None:
 
         audit2 = _Audit()
         viewer_denied = _Viewer(
-            authorize_step=AuthorizeStep(config=None),
+            authorize_step=AuthorizeStep(permission_policy=None),
             resolve_citation_step=ResolveCitationStep(signing_key=SECRET),
-            resolve_version_step=ResolveVersionStep(document_repository=_DocRepo({'v1': v1})),
+            resolve_version_step=ResolveVersionStep(
+                document_repository=_DocRepo({'v1': v1}), version_retention_days=365
+            ),
             fetch_content_step=FetchContentStep(chunk_repository=_ChunkRepo(chunks=chunks)),
             fetch_original_step=FetchOriginalStep(
-                object_storage=None, document_repository=_DocRepo({'v1': v1}), ttl=300
+                object_storage=None, document_repository=_DocRepo({'v1': v1}), ttl_seconds=300
             ),
             audit_step=AuditStep(audit_log=audit2),
             _permissions={},
@@ -441,12 +443,14 @@ def test_result_shape_not_available_and_error() -> None:
         # not-available
         doc_repo = _DocRepo({'v1': v1})
         viewer = _Viewer(
-            authorize_step=AuthorizeStep(config=None),
+            authorize_step=AuthorizeStep(permission_policy=None),
             resolve_citation_step=ResolveCitationStep(signing_key=SECRET),
-            resolve_version_step=ResolveVersionStep(document_repository=doc_repo),
+            resolve_version_step=ResolveVersionStep(
+                document_repository=doc_repo, version_retention_days=365
+            ),
             fetch_content_step=FetchContentStep(chunk_repository=_ChunkRepo(chunks=[])),
             fetch_original_step=FetchOriginalStep(
-                object_storage=None, document_repository=doc_repo, ttl=300
+                object_storage=None, document_repository=doc_repo, ttl_seconds=300
             ),
             audit_step=AuditStep(audit_log=None),
         )

@@ -94,9 +94,7 @@ from .reprocess import (
     get_reprocess_use_case,
 )
 from .source_viewer import (
-    build_source_viewer_use_case,
-    create_source_viewer_use_case,
-    get_source_viewer_use_case,
+    resolve_source_viewer_settings,
 )
 from .state_store import (
     build_in_memory_state_store,
@@ -165,7 +163,6 @@ __all__ = [
     'build_reranker_stack',
     'build_root',
     'build_scan_worker',
-    'build_source_viewer_use_case',
     'build_standard',
     'build_standard_container',
     'build_standard_set',
@@ -186,7 +183,6 @@ __all__ = [
     'create_reader',
     'create_reader_registry',
     'create_reprocess_use_case',
-    'create_source_viewer_use_case',
     'create_upload_use_case',
     'get_ask_use_case',
     'get_container',
@@ -196,6 +192,6 @@ __all__ = [
     'get_reader',
     'get_reader_registry',
     'get_reprocess_use_case',
-    'get_source_viewer_use_case',
     'get_upload_use_case',
+    'resolve_source_viewer_settings',
 ]

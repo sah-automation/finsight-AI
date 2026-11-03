@@ -59,11 +59,17 @@ def test_source_viewer_sequence_runs_all_steps() -> None:
 
 def test_source_viewer_short_circuits() -> None:
     recorder = _Recorder()
-    steps = [recorder.step('s0', stop=True), recorder.step('s1')]
+    s0 = recorder.step('s0', stop=True)
+    s1 = recorder.step('s1')
     audit = recorder.step('audit')
 
     viewer = SourceViewer(
-        steps=[steps[0], steps[1], _OkStep(), _OkStep(), _OkStep(), audit],
+        authorize_step=s0,
+        resolve_citation_step=s1,
+        resolve_version_step=_OkStep(),
+        fetch_content_step=_OkStep(),
+        fetch_original_step=_OkStep(),
+        audit_step=audit,
     )
 
     ctx = SourceViewerContext(company_id='co1')

@@ -46,14 +46,10 @@ class SourceViewerContext:
     signed_original_link: Any = None
     locator_token: Any = None
     locator_payload: Any = None
-    locator: Any = None
 
     # Output
     result_obj: Any = None
     outcome: Any = None
-
-    # Extras carried for compatibility
-    extras: dict[str, Any] = field(default_factory=dict)
 
 
 __all__ = ['SourceViewerContext']

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from finsight.application.source_viewer._step_helpers import (
     _as_list,
@@ -21,6 +21,10 @@ from finsight.application.source_viewer._step_helpers import (
 )
 from finsight.application.source_viewer.step_result import StepResult
 
+if TYPE_CHECKING:
+    from finsight.application.source_viewer.source_viewer_context import SourceViewerContext
+    from finsight.domain.ports.document_repository import DocumentRepository
+
 _ALLOWED_STATES = frozenset({'', 'committed', 'needs_review', 'superseded', 'done'})
 
 
@@ -30,90 +34,23 @@ class ResolveVersionStep:
     def __init__(
         self,
         *,
-        document_repository: Any = None,
-        document_repo: Any = None,
-        doc_repository: Any = None,
-        doc_repo: Any = None,
-        repository: Any = None,
-        repo: Any = None,
-        documents: Any = None,
-        documents_repository: Any = None,
-        version_retention_days: Any = None,
-        retention_days: Any = None,
-        retention_window_days: Any = None,
-        version_retention_window_days: Any = None,
-        retention: Any = None,
-        version_retention: Any = None,
-        retention_window: Any = None,
+        document_repository: DocumentRepository | None,
+        version_retention_days: int,
     ) -> None:
-        resolved_repo = None
-        for candidate in (
-            document_repository,
-            document_repo,
-            doc_repository,
-            doc_repo,
-            repository,
-            repo,
-            documents,
-            documents_repository,
-        ):
-            if candidate is not None:
-                resolved_repo = candidate
-                break
+        self._document_repository = document_repository
+        self._retention_days = int(version_retention_days)
 
-        resolved_days: Any = None
-        for candidate in (
-            version_retention_days,
-            retention_days,
-            retention_window_days,
-            version_retention_window_days,
-            retention,
-            version_retention,
-            retention_window,
-        ):
-            if candidate is not None:
-                resolved_days = candidate
-                break
-
-        self._document_repository = resolved_repo
-
-        try:
-            self._retention_days = int(resolved_days) if resolved_days is not None else 365
-        except (TypeError, ValueError):
-            self._retention_days = 365
-
-    def _context_value(self, context: Any, *attrs: str) -> Any:
-        for attr in attrs:
-            value = getattr(context, attr, None)
-            if value is not None:
-                return value
-        extras = getattr(context, 'extras', None)
-        if isinstance(extras, dict):
-            for attr in attrs:
-                value = extras.get(attr)
-                if value is not None:
-                    return value
-        return None
-
-    async def _resolve_version_obj(self, context: Any, company_id: Any) -> Any:
-        pre_supplied = getattr(context, 'version_obj', None)
-        if pre_supplied is None:
-            extras = getattr(context, 'extras', None)
-            if isinstance(extras, dict):
-                pre_supplied = extras.get('version_obj') or extras.get('document_version_obj')
-        if pre_supplied is not None:
-            return pre_supplied
-
+    async def _resolve_version_obj(self, context: SourceViewerContext, company_id: Any) -> Any:
+        if context.version_obj is not None:
+            return context.version_obj
         repo = self._document_repository
-        version_id = self._context_value(context, 'version_id')
-        if repo is not None and version_id is not None:
+        if repo is not None and context.version_id is not None:
             try:
-                return await _await(_call_document_get_version(repo, company_id, version_id))
-            except Exception:
+                return await _await(
+                    _call_document_get_version(repo, company_id, context.version_id)
+                )
+            except (TypeError, ValueError, RuntimeError):
                 return None
-        extras = getattr(context, 'extras', None)
-        if isinstance(extras, dict):
-            return extras.get('version_obj') or extras.get('document_version_obj')
         return None
 
     def _company_ok(self, version_obj: Any, company_id: Any) -> bool:
@@ -130,16 +67,14 @@ class ResolveVersionStep:
         expired = _is_expired(created_at, self._retention_days)
         return expired is not True
 
-    async def _detect_newer(
-        self, context: Any, version_obj: Any, company_id: Any
+    async def _detect_newer(  # noqa: PLR0912
+        self, context: SourceViewerContext, version_obj: Any, company_id: Any
     ) -> tuple[bool, Any, Any]:
         v_document_id = _coalesce(
             _get_attr(version_obj, 'document_id', 'documentId', 'doc_id'),
-            getattr(context, 'document_id', None),
+            context.document_id,
         )
-        cited_id = _normalize_version_key(version_obj) or _text(
-            getattr(context, 'version_id', None)
-        )
+        cited_id = _normalize_version_key(version_obj) or _text(context.version_id)
 
         newer_available = False
         newer_id: Any = None
@@ -150,24 +85,22 @@ class ResolveVersionStep:
                 versions_list = await _await(
                     _call_document_list_versions(repo, company_id, v_document_id)
                 )
-            except Exception:
+            except (TypeError, ValueError, RuntimeError):
                 versions_list = None
         if versions_list is None and repo is not None:
             try:
                 versions_list = await _await(_call_document_list_versions(repo, company_id, None))
-            except Exception:
+            except (TypeError, ValueError, RuntimeError):
                 versions_list = None
 
         if versions_list is not None:
             for item in _as_list(versions_list):
                 if _normalize_version_key(item) == cited_id:
                     continue
-                if (
-                    _normalize_state(
-                        _get_attr(item, 'state', 'status', 'document_state', 'lifecycle_state')
-                    )
-                    != 'committed'
-                ):
+                state = _normalize_state(
+                    _get_attr(item, 'state', 'status', 'document_state', 'lifecycle_state')
+                )
+                if state != 'committed':
                     continue
                 if _is_newer_version(version_obj, item):
                     newer_available = True
@@ -178,10 +111,10 @@ class ResolveVersionStep:
             try:
                 latest = await _await(
                     _call_document_latest_version(
-                        repo, company_id, v_document_id or getattr(context, 'document_id', None)
+                        repo, company_id, v_document_id or context.document_id
                     )
                 )
-            except Exception:
+            except (TypeError, ValueError, RuntimeError):
                 latest = None
             if latest is not None:
                 latest_id = _normalize_version_key(latest)
@@ -192,17 +125,19 @@ class ResolveVersionStep:
         return newer_available, newer_id, v_document_id
 
     async def _resolve_metadata(
-        self, context: Any, version_obj: Any, company_id: Any, v_document_id: Any
+        self,
+        context: SourceViewerContext,
+        version_obj: Any,
+        company_id: Any,
+        v_document_id: Any,
     ) -> tuple[Any, str, Any]:
-        document_title = _coalesce(
-            _get_attr(
-                version_obj,
-                'document_title',
-                'title',
-                'filename',
-                'file_name',
-                'original_filename',
-            )
+        document_title = _get_attr(
+            version_obj,
+            'document_title',
+            'title',
+            'filename',
+            'file_name',
+            'original_filename',
         )
         document_obj: Any = None
         if document_title is None:
@@ -210,20 +145,14 @@ class ResolveVersionStep:
             if repo is not None and v_document_id is not None:
                 try:
                     document_obj = await _await(_call_document_get(repo, company_id, v_document_id))
-                except Exception:
+                except (TypeError, ValueError, RuntimeError):
                     document_obj = None
-            document_title = _coalesce(
-                _get_attr(document_obj, 'title', 'name', 'filename', 'document_title')
-            )
+            document_title = _get_attr(document_obj, 'title', 'name', 'filename', 'document_title')
         if document_title is None:
-            document_title = _text(
-                v_document_id
-                or getattr(context, 'document_id', None)
-                or getattr(context, 'version_id', None)
-            )
+            document_title = _text(v_document_id or context.document_id or context.version_id)
 
         category = _coalesce(
-            getattr(context, 'category', None),
+            context.category,
             _get_attr(version_obj, 'category', 'document_category', 'doc_category'),
         )
         return document_obj, document_title, category
@@ -238,9 +167,9 @@ class ResolveVersionStep:
             return False
         return self._retention_ok(version_obj)
 
-    def _apply(
+    def _apply(  # noqa: PLR0913, PLR0917
         self,
-        context: Any,
+        context: SourceViewerContext,
         version_obj: Any,
         document_obj: Any,
         document_title: Any,
@@ -255,12 +184,12 @@ class ResolveVersionStep:
         context.category = category
         context.newer_available = newer_available
         context.newer_id = newer_id
-        resolved_document_id = _coalesce(v_document_id, getattr(context, 'document_id', None))
+        resolved_document_id = _coalesce(v_document_id, context.document_id)
         if resolved_document_id is not None:
             context.document_id = resolved_document_id
 
-    async def run(self, context: Any) -> StepResult:
-        company_id = getattr(context, 'company_id', None)
+    async def run(self, context: SourceViewerContext) -> StepResult:
+        company_id = context.company_id
         version_obj = await self._resolve_version_obj(context, company_id)
         if version_obj is None or not self._is_viewable(version_obj, company_id):
             return StepResult.stop_with_not_available(context)
@@ -281,3 +210,6 @@ class ResolveVersionStep:
             v_document_id,
         )
         return StepResult.continue_(context)
+
+
+__all__ = ['ResolveVersionStep']

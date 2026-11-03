@@ -908,7 +908,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         retention_days, original_link_ttl = resolve_source_viewer_settings(config)
 
         source_viewer_use_case = SourceViewer(
-            authorize_step=AuthorizeStep(config=config),
+            authorize_step=AuthorizeStep(permission_policy=config.permissions),
             resolve_citation_step=ResolveCitationStep(signing_key=signing_key),
             resolve_version_step=ResolveVersionStep(
                 document_repository=document_repository,
@@ -921,7 +921,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             fetch_original_step=FetchOriginalStep(
                 object_storage=object_storage,
                 document_repository=document_repository,
-                ttl=original_link_ttl,
+                ttl_seconds=original_link_ttl,
             ),
             audit_step=AuditStep(audit_log=audit_log),
             tracing=tracing,

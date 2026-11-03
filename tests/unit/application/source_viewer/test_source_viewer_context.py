@@ -12,7 +12,6 @@ def test_source_viewer_context_defaults() -> None:
     assert context.result_obj is None
     assert context.outcome is None
     assert context.tables == []
-    assert context.extras == {}
 
 
 def test_step_result_constructors() -> None:

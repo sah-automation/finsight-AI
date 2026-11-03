@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 
 from finsight.application.source_viewer._step_helpers import (
     _as_int,
-    _coalesce,
     _first,
     _get_attr,
 )
@@ -19,7 +18,7 @@ from finsight.application.source_viewer._step_helpers import (
 from finsight.application.source_viewer.step_result import StepResult
 
 if TYPE_CHECKING:
-    from finsight.application.source_viewer.source_viewer_context import (  # noqa: TC001
+    from finsight.application.source_viewer.source_viewer_context import (
         SourceViewerContext,
     )
 
@@ -114,14 +113,13 @@ class ResolveCitationStep:
                     'e': end,
                 }
         self._set_if_none(context, 'locator_token', token)
-        self._set_if_none(context, 'locator', token)
         self._set_if_none(context, 'locator_payload', payload)
 
     def _remember_token(self, context: Any, token: Any) -> None:
-        context.locator_token = _coalesce(getattr(context, 'locator_token', None), token)
-        context.locator = _coalesce(getattr(context, 'locator', None), token)
+        if context.locator_token is None:
+            context.locator_token = token
 
-    async def run(self, context: SourceViewerContext) -> StepResult:
+    async def run(self, context: SourceViewerContext) -> StepResult:  # noqa: PLR0911
         """Verify the citation input and decode locator claims onto ``context``."""
         citation_input = self._citation_input(context)
         if citation_input is None:
@@ -131,7 +129,7 @@ class ResolveCitationStep:
                 return StepResult.continue_(context)
             if not _verify_signed_locator_helper(citation_input, self._signing_key):
                 self._remember_token(context, citation_input)
-                return StepResult.stop_with_not_available(context)  # noqa: E702
+                return StepResult.stop_with_not_available(context)
             payload = self._decode(citation_input)
             if not isinstance(payload, dict):
                 return StepResult.stop_with_not_available(context)
