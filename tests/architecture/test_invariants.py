@@ -188,6 +188,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'application',
         'removal_condition': 'Delete when source viewer cleanup (issue 212) collapses helper indirection.',
     },
+    'application/source_viewer/_request_to_context.py': {
+        'reason': 'Private request-to-context builder retains comprehensive alias precedence mapping.',
+        'owner': 'application',
+        'removal_condition': 'Collapse into typed pipeline input object once orchestrator migration completes.',
+    },
     'application/update_document/update_document.py': {
         'reason': 'Update orchestration retains compatibility aliases.',
         'owner': 'application',
