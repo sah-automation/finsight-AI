@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import FastAPI
 
 from finsight.composition import build_container, providers
+from finsight.core.config.loader import load_config
 from finsight.entrypoints.api import (
     ask,
     current_user,
@@ -24,7 +25,7 @@ def create_app() -> FastAPI:
 
 
 def _create_app_impl() -> FastAPI:
-    container = build_container()
+    container = build_container(load_config())
     providers.init(container)
 
     app = FastAPI(

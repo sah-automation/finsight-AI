@@ -641,11 +641,10 @@ class CompositionContainer:
             source_viewer.get_view_source_use_case = source_viewer.get_source_viewer_use_case
 
         with contextlib.suppress(Exception):
-            import finsight.entrypoints.api._ask_4 as _ask_4_module
             import finsight.entrypoints.api.ask as ask_entrypoint
 
             ask_entrypoint._get_ask_use_case = lambda *_a, **_k: self.ask_question_use_case  # type: ignore[attr-defined]
-            _ask_4_module._get_ask_use_case_raw = lambda *_a, **_k: self.ask_question_use_case  # type: ignore[attr-defined]
+            ask_entrypoint._get_ask_use_case_raw = lambda *_a, **_k: self.ask_question_use_case  # type: ignore[assignment, attr-defined]
 
         with contextlib.suppress(Exception):
             import finsight.entrypoints.api.onboarding as onboarding_entrypoint
