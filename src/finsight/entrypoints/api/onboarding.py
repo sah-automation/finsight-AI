@@ -1,8 +1,6 @@
 # ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0913, PLR0915, PLR0917, PLR2004, RET504, SIM102, SIM110, TRY201, TRY300, TRY301, E501, S110, S112, N815, B004, B007, B023, B025, B904, PGH004, E402, F404, I001, ANN401, F403, F405, F821, F811
 
-# ===== _onboarding_0.py =====
-
 # ruff: noqa: PLR0912, I001
 """API entrypoint for system-admin-triggered company onboarding."""
 
@@ -18,33 +16,6 @@ from ._shared import (
     _is_use_case,
 )
 
-from ._shared import (
-    _get as _shared_get,
-    _await as _shared_await,
-    _ForbiddenError as _shared_ForbiddenError,
-    _BadRequestError as _shared_BadRequestError,
-    _NotFoundError as _shared_NotFoundError,
-    _ServerError as _shared_ServerError,
-    _context_lookup as _shared_context_lookup,
-    _flatten as _shared_flatten,
-    _is_context as _shared_is_context,
-    _is_use_case as _shared_is_use_case,
-    _sse as _shared_sse,
-    _friendly_error as _shared_friendly_error,
-    _has_ask_permission as _shared_has_ask_permission,
-    _first as _shared_first,
-    _build_frozen_request_context as _shared_build_frozen_request_context,
-    _resolve_context_and_data as _shared_resolve_context_and_data,
-    _events_from_outcome as _shared_events_from_outcome,
-    _call_stream as _shared_call_stream,
-    _invoke as _shared_invoke,
-    _extract_company_id as _shared_extract_company_id,
-    _extract_user_id as _shared_extract_user_id,
-    _normalize_role as _shared_normalize_role,
-    _strip_empty as _shared_strip_empty,
-    _try_context_role as _shared_try_context_role,
-    _PartitionMissingError as _shared_PartitionMissingError,
-)
 import contextlib
 import inspect
 from typing import Any
@@ -54,13 +25,8 @@ from finsight.application.onboarding import CreateCompany
 from finsight.core.errors import AuthorizationError, ValidationError, to_user_message
 from finsight.core.types import Role
 
-get_onboarding_use_case: _Any = None
-try:
-    from finsight.composition.providers import get_onboarding_use_case as _get_onboarding_use_case
+from finsight.composition.providers import get_onboarding_use_case
 
-    get_onboarding_use_case = _get_onboarding_use_case
-except ImportError:  # pragma: no cover
-    pass
 router = APIRouter(prefix='/onboarding', tags=['onboarding'])
 
 
@@ -241,8 +207,6 @@ __all__ = [
     'to_user_message',
 ]
 
-
-# ===== _onboarding_1.py =====
 
 from finsight.core.errors import AuthorizationError, ValidationError, to_user_message
 
@@ -434,7 +398,6 @@ class Onboarding:
     """Thin wrapper exposing the onboarding entrypoint as a callable object."""
 
     def __init__(self, context: Any = None) -> None:
-        from finsight.composition.providers import get_onboarding_use_case
 
         self.use_case = get_onboarding_use_case()
         self.context = context

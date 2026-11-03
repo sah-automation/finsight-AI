@@ -21,10 +21,7 @@ from finsight.entrypoints.api import (
 
 
 def create_app() -> FastAPI:
-    return _create_app_impl()
-
-
-def _create_app_impl() -> FastAPI:
+    """Build the container, wire the providers, and assemble the FastAPI app."""
     container = build_container(load_config())
     providers.init(container)
 
@@ -33,7 +30,13 @@ def _create_app_impl() -> FastAPI:
         version='0.1.0',
         description='FinSight AI backend API contract',
     )
+    _include_routers(app)
+    _install_ask_event_schema(app)
+    return app
 
+
+def _include_routers(app: FastAPI) -> None:
+    """Mount the primary routers and their legacy aliases."""
     primary_routers = (
         ask.router,
         documents.router,
@@ -47,18 +50,9 @@ def _create_app_impl() -> FastAPI:
     for router_obj in primary_routers:
         app.include_router(router_obj)
 
-    # Include common router aliases used by existing callers/tests.
-    for extra in getattr(ask, 'EXTRA_ROUTERS', ()):
-        app.include_router(extra)
-    for extra in getattr(current_user, 'EXTRA_ROUTERS', ()):
-        app.include_router(extra)
-    for extra in getattr(threads, 'EXTRA_ROUTERS', ()):
-        app.include_router(extra)
-    for extra in getattr(feedback, 'EXTRA_ROUTERS', ()):
-        app.include_router(extra)
-
-    _install_ask_event_schema(app)
-    return app
+    for module in (ask, current_user, threads, feedback):
+        for extra in getattr(module, 'EXTRA_ROUTERS', ()):
+            app.include_router(extra)
 
 
 def _install_ask_event_schema(app: FastAPI) -> None:

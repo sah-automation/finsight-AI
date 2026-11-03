@@ -1,8 +1,6 @@
 # ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0915, PLR2004, TRY201, TRY301, S110, S112, B004, B904, E402, I001, F811
 
-# ===== _source_viewer_0.py =====
-
 # ruff: noqa: BLE001, B004, I001
 """API entrypoint for source viewer backend (Slice 6.7).
 
@@ -29,33 +27,6 @@ from ._shared import (
     _is_use_case,
 )
 
-from ._shared import (
-    _get as _shared_get,
-    _await as _shared_await,
-    _ForbiddenError as _shared_ForbiddenError,
-    _BadRequestError as _shared_BadRequestError,
-    _NotFoundError as _shared_NotFoundError,
-    _ServerError as _shared_ServerError,
-    _context_lookup as _shared_context_lookup,
-    _flatten as _shared_flatten,
-    _is_context as _shared_is_context,
-    _is_use_case as _shared_is_use_case,
-    _sse as _shared_sse,
-    _friendly_error as _shared_friendly_error,
-    _has_ask_permission as _shared_has_ask_permission,
-    _first as _shared_first,
-    _build_frozen_request_context as _shared_build_frozen_request_context,
-    _resolve_context_and_data as _shared_resolve_context_and_data,
-    _events_from_outcome as _shared_events_from_outcome,
-    _call_stream as _shared_call_stream,
-    _invoke as _shared_invoke,
-    _extract_company_id as _shared_extract_company_id,
-    _extract_user_id as _shared_extract_user_id,
-    _normalize_role as _shared_normalize_role,
-    _strip_empty as _shared_strip_empty,
-    _try_context_role as _shared_try_context_role,
-    _PartitionMissingError as _shared_PartitionMissingError,
-)
 import contextlib
 import inspect
 from typing import Any
@@ -65,27 +36,11 @@ from finsight.application.source_viewer import SourceViewerResult
 from finsight.core.errors import AuthorizationError, ValidationError
 from finsight.core.types import Role
 
-try:
-    from finsight.entrypoints.api.documents import _Response
-except Exception:  # pragma: no cover
+from finsight.composition.providers import get_source_viewer_use_case
+from finsight.entrypoints.api.documents import _Response
 
-    class _Response(dict[str, Any]):  # type: ignore[no-redef]
-        pass
-
-
-get_source_viewer_use_case: Any = None
-get_source_view_use_case: Any = None
-get_view_source_use_case: Any = None
-try:
-    from finsight.composition.providers import (
-        get_source_viewer_use_case as _get_source_viewer_use_case,
-    )
-
-    get_source_viewer_use_case = _get_source_viewer_use_case
-    get_source_view_use_case = _get_source_viewer_use_case
-    get_view_source_use_case = _get_source_viewer_use_case
-except ImportError:  # pragma: no cover
-    pass
+get_source_view_use_case = get_source_viewer_use_case
+get_view_source_use_case = get_source_viewer_use_case
 router = APIRouter(prefix='/documents', tags=['source_viewer'])
 
 
@@ -176,20 +131,11 @@ __all__ = [
     'router',
 ]
 
-# ===== _source_viewer_1.py =====
-
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0915, S110, S112, B004, I001
 
 import contextlib
 import inspect
 from typing import Any
-
-try:
-    from finsight.entrypoints.api.documents import _Response
-except Exception:  # pragma: no cover
-
-    class _Response(dict[str, Any]):  # type: ignore[no-redef]
-        pass
 
 
 async def _resolve_use_case(candidate: Any, data: dict[str, Any], context: Any) -> Any:
@@ -422,18 +368,9 @@ def _result_to_dict(result: Any) -> dict[str, Any]:
 
 __all__ = ['_extract_context_and_data', '_resolve_use_case', '_result_status', '_result_to_dict']
 
-# ===== _source_viewer_2a.py =====
-
 # ruff: noqa: BLE001, TRY201, I001
 
 from typing import Any
-
-try:
-    from finsight.entrypoints.api.documents import _Response
-except Exception:  # pragma: no cover
-
-    class _Response(dict[str, Any]):  # type: ignore[no-redef]
-        pass
 
 
 async def _invoke_source_viewer(
@@ -549,19 +486,10 @@ _invoke: Any = _invoke_source_viewer
 
 __all__ = ['_invoke']
 
-# ===== _source_viewer_2.py =====
-
 # ruff: noqa: BLE001, TRY301, B904, I001
 
 from typing import Any
 from finsight.application.source_viewer import SourceViewerResult
-
-try:
-    from finsight.entrypoints.api.documents import _Response
-except Exception:  # pragma: no cover
-
-    class _Response(dict[str, Any]):  # type: ignore[no-redef]
-        pass
 
 
 def _available_status(status: str | None) -> bool:
@@ -779,20 +707,11 @@ __all__ = [
     'view_source',
 ]
 
-# ===== _source_viewer_3.py =====
-
 # ruff: noqa: BLE001, PLR2004, I001
 
 from typing import Any
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
-
-try:
-    from finsight.entrypoints.api.documents import _Response
-except Exception:  # pragma: no cover
-
-    class _Response(dict[str, Any]):  # type: ignore[no-redef]
-        pass
 
 
 def handle_documents(*args: Any, **kwargs: Any) -> Any:
@@ -845,7 +764,6 @@ class SourceViewer:
     """Thin wrapper exposing the source viewer entrypoint as a callable object."""
 
     def __init__(self, context: Any = None, **deps: Any) -> None:
-        from finsight.composition.providers import get_source_viewer_use_case
 
         self.use_case = get_source_viewer_use_case()
         self.context = context

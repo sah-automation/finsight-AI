@@ -1,8 +1,6 @@
 # ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0913, PLR0915, PLR0917, PLR2004, RET504, SIM102, SIM110, TRY201, TRY300, TRY301, E501, S110, S112, N815, B004, B007, B023, B025, B904, PGH004, E402, F404, I001, ANN401, F403, F405, F821, F811
 
-# ===== _documents_0.py =====
-
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, S110, E402, I001
 """API entrypoint for the document library and lifecycle (Slice 4.5)."""
 
@@ -20,72 +18,13 @@ from ._shared import (
     _is_use_case,
 )
 
-from ._shared import (
-    _get as _shared_get,
-    _await as _shared_await,
-    _ForbiddenError as _shared_ForbiddenError,
-    _BadRequestError as _shared_BadRequestError,
-    _NotFoundError as _shared_NotFoundError,
-    _ServerError as _shared_ServerError,
-    _context_lookup as _shared_context_lookup,
-    _flatten as _shared_flatten,
-    _is_context as _shared_is_context,
-    _is_use_case as _shared_is_use_case,
-    _sse as _shared_sse,
-    _friendly_error as _shared_friendly_error,
-    _has_ask_permission as _shared_has_ask_permission,
-    _first as _shared_first,
-    _build_frozen_request_context as _shared_build_frozen_request_context,
-    _resolve_context_and_data as _shared_resolve_context_and_data,
-    _events_from_outcome as _shared_events_from_outcome,
-    _call_stream as _shared_call_stream,
-    _invoke as _shared_invoke,
-    _extract_company_id as _shared_extract_company_id,
-    _extract_user_id as _shared_extract_user_id,
-    _normalize_role as _shared_normalize_role,
-    _strip_empty as _shared_strip_empty,
-    _try_context_role as _shared_try_context_role,
-    _PartitionMissingError as _shared_PartitionMissingError,
-)
 import contextlib
 import inspect
 from typing import Any
 from fastapi import APIRouter, Body, HTTPException
+from finsight.composition.providers import get_documents_use_case
 from finsight.core.errors import AuthorizationError, ValidationError, to_user_message
-
-_get_document_repository: Any = None
-try:
-    from finsight.composition.container import (
-        build_document_repository as _build_document_repository,
-    )
-
-    def _get_document_repository(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
-        if args or kwargs:
-            return _build_document_repository(*args, **kwargs)
-        try:
-            from finsight.composition.container import get_default_container
-
-            container = get_default_container()
-            if (
-                container is not None
-                and getattr(container, 'document_repository', None) is not None
-            ):
-                return container.document_repository
-        except Exception:
-            pass
-        return _build_document_repository()
-
-except ImportError:  # pragma: no cover
-    _get_document_repository = None
 from finsight.core.types import Role
-
-get_documents_use_case: Any = None
-try:
-    from finsight.composition.providers import get_documents_use_case as _get_documents_use_case
-
-    get_documents_use_case = _get_documents_use_case
-except ImportError:  # pragma: no cover
-    pass
 
 # Backwards-compatible alias (singular) used by container wiring and legacy callers.
 get_document_use_case = get_documents_use_case
@@ -217,7 +156,6 @@ __all__ = [
     '_await',
     '_flatten',
     '_get',
-    '_get_document_repository',
     '_is_context',
     '_is_privileged',
     '_is_repository',
@@ -230,8 +168,6 @@ __all__ = [
     'router',
     'to_user_message',
 ]
-
-# ===== _documents_1.py =====
 
 # ruff: noqa: BLE001, PLR0911, PLR0912, RET504, TRY300, S112, B023, I001, F403, F405
 import contextlib
@@ -272,26 +208,11 @@ async def _resolve_use_case(candidate: Any, data: dict[str, Any], context: Any) 
                     return await _resolve_use_case(resolved, data, context)
         return candidate
 
-    # Fall back to the composition root / a memory repository.
-    try:
-        if get_documents_use_case is not None:
-            resolved = get_documents_use_case()
-            if inspect.isawaitable(resolved):
-                resolved = await resolved
-            if resolved is not None:
-                return resolved
-    except (ImportError, AttributeError, TypeError, RuntimeError):
-        pass
-    try:
-        if _get_document_repository is not None:
-            resolved = _get_document_repository()
-            if inspect.isawaitable(resolved):
-                resolved = await resolved
-            if resolved is not None:
-                return resolved
-    except (ImportError, AttributeError, TypeError, RuntimeError):
-        pass
-    return None
+    # Fall back to the provider registered at app startup.
+    resolved = get_documents_use_case()
+    if inspect.isawaitable(resolved):
+        resolved = await resolved
+    return resolved
 
 
 def _extract_company_id_documents(context: Any, data: dict[str, Any]) -> Any:
@@ -491,8 +412,6 @@ __all__ = [
     '_run_use_case',
     '_try_context_role',
 ]
-
-# ===== _documents_2.py =====
 
 # ruff: noqa: PLC0415, PLR0912, PLR0915, PLR2004, SIM102, B007, I001, F403, F405
 from typing import Any
@@ -785,8 +704,6 @@ __all__ = [
     'soft_delete_document',
 ]
 
-# ===== _documents_3.py =====
-
 # ruff: noqa: I001, F403, F405
 from typing import Any
 from fastapi import Body
@@ -853,7 +770,6 @@ class Documents:
         role: Any = None,
         **deps: Any,
     ) -> None:
-        from finsight.composition.providers import get_documents_use_case
 
         self.use_case = get_documents_use_case()
         self.context = context

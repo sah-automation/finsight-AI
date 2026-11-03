@@ -16,24 +16,24 @@ from finsight.core.errors import (
     ValidationError,
     to_user_message,
 )
-from finsight.core.types import Role
-
-try:
-    from finsight.core.errors import InsufficientData as _InsufficientDataError
-except Exception:
-    _InsufficientDataError = None  # type: ignore[assignment,misc]
-try:
-    from finsight.core.types import CompanyId as _CompanyId
-    from finsight.core.types import RequestContext as _RequestContext
-    from finsight.core.types import Role as _Role
-    from finsight.core.types import TraceId as _TraceId
-    from finsight.core.types import UserId as _UserId
-except Exception:
-    _CompanyId = None  # type: ignore[misc,assignment]
-    _RequestContext = None  # type: ignore[misc,assignment]
-    _Role = None  # type: ignore[misc,assignment]
-    _TraceId = None  # type: ignore[misc,assignment]
-    _UserId = None  # type: ignore[misc,assignment]
+from finsight.core.types import (
+    CompanyId as _CompanyId,
+)
+from finsight.core.types import (
+    RequestContext as _RequestContext,
+)
+from finsight.core.types import (
+    Role,
+)
+from finsight.core.types import (
+    Role as _Role,
+)
+from finsight.core.types import (
+    TraceId as _TraceId,
+)
+from finsight.core.types import (
+    UserId as _UserId,
+)
 
 
 class _ForbiddenError(HTTPException, AuthorizationError):

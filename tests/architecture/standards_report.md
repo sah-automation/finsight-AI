@@ -32,14 +32,14 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/composition_container.py: 635 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
-  - entrypoints/api/upload.py: 876 lines
-  - entrypoints/api/ask.py: 543 lines
-  - entrypoints/api/feedback.py: 1207 lines
-  - entrypoints/api/onboarding.py: 464 lines
-  - entrypoints/api/documents.py: 900 lines
+  - entrypoints/api/upload.py: 835 lines
+  - entrypoints/api/ask.py: 505 lines
+  - entrypoints/api/feedback.py: 1166 lines
+  - entrypoints/api/onboarding.py: 427 lines
+  - entrypoints/api/documents.py: 816 lines
   - entrypoints/api/_shared.py: 692 lines
-  - entrypoints/api/threads.py: 1226 lines
-  - entrypoints/api/source_viewer.py: 884 lines
+  - entrypoints/api/threads.py: 1178 lines
+  - entrypoints/api/source_viewer.py: 802 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
   - application/source_viewer/source_viewer.py: 2089 lines
@@ -49,7 +49,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 67
+  - Unit: 68
   - Contract: 25
   - Switch: 16
 

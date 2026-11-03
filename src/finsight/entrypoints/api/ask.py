@@ -28,33 +28,6 @@ from ._shared import (
     _is_use_case,
 )
 
-from ._shared import (
-    _get as _shared_get,
-    _await as _shared_await,
-    _ForbiddenError as _shared_ForbiddenError,
-    _BadRequestError as _shared_BadRequestError,
-    _NotFoundError as _shared_NotFoundError,
-    _ServerError as _shared_ServerError,
-    _context_lookup as _shared_context_lookup,
-    _flatten as _shared_flatten,
-    _is_context as _shared_is_context,
-    _is_use_case as _shared_is_use_case,
-    _sse as _shared_sse,
-    _friendly_error as _shared_friendly_error,
-    _has_ask_permission as _shared_has_ask_permission,
-    _first as _shared_first,
-    _build_frozen_request_context as _shared_build_frozen_request_context,
-    _resolve_context_and_data as _shared_resolve_context_and_data,
-    _events_from_outcome as _shared_events_from_outcome,
-    _call_stream as _shared_call_stream,
-    _invoke as _shared_invoke,
-    _extract_company_id as _shared_extract_company_id,
-    _extract_user_id as _shared_extract_user_id,
-    _normalize_role as _shared_normalize_role,
-    _strip_empty as _shared_strip_empty,
-    _try_context_role as _shared_try_context_role,
-    _PartitionMissingError as _shared_PartitionMissingError,
-)
 
 import contextlib
 import inspect
@@ -206,10 +179,7 @@ from finsight.core.errors import InsufficientData as _InsufficientDataError
 from finsight.domain.entities.insufficient_data import InsufficientData as _InsufficientDataResult
 
 
-try:
-    from finsight.composition.providers import get_ask_use_case as _get_ask_use_case_raw
-except Exception:
-    _get_ask_use_case_raw = None  # type: ignore[assignment]
+from finsight.composition.providers import get_ask_use_case
 
 
 async def _resolve_use_case(candidate: Any, data: dict[str, Any], context: Any) -> Any:
@@ -222,16 +192,10 @@ async def _resolve_use_case(candidate: Any, data: dict[str, Any], context: Any) 
                     candidate = candidate[key]
                     break
         return candidate
-    try:
-        if _get_ask_use_case_raw is not None:
-            resolved = _get_ask_use_case_raw()
-            if inspect.isawaitable(resolved):
-                resolved = await resolved
-            if resolved is not None:
-                return resolved
-    except Exception:
-        pass
-    raise RuntimeError('ask use case is not available')
+    resolved = get_ask_use_case()
+    if inspect.isawaitable(resolved):
+        resolved = await resolved
+    return resolved
 
 
 async def _handle(*args: Any, **kwargs: Any) -> StreamingResponse:
@@ -447,8 +411,6 @@ class Ask:
     """Thin wrapper exposing the ask entrypoint as a callable object."""
 
     def __init__(self, context: Any = None) -> None:
-        from finsight.composition.providers import get_ask_use_case
-
         self.use_case = get_ask_use_case()
         self.context = context
 

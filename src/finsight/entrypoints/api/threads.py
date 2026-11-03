@@ -1,8 +1,6 @@
 # ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0913, PLR0915, PLR0917, PLR2004, RET504, TRY300, S110, S112, B004, B007, B025, E402, I001, F811
 
-# ===== _threads_0.py =====
-
 # ruff: noqa: PLR0911, I001
 """API entrypoint for chat thread persistence and read access (Slice 7.2)."""
 
@@ -20,45 +18,10 @@ from ._shared import (
     _is_context,
 )
 
-from ._shared import (
-    _get as _shared_get,
-    _await as _shared_await,
-    _ForbiddenError as _shared_ForbiddenError,
-    _BadRequestError as _shared_BadRequestError,
-    _NotFoundError as _shared_NotFoundError,
-    _ServerError as _shared_ServerError,
-    _context_lookup as _shared_context_lookup,
-    _flatten as _shared_flatten,
-    _is_context as _shared_is_context,
-    _is_use_case as _shared_is_use_case,
-    _sse as _shared_sse,
-    _friendly_error as _shared_friendly_error,
-    _has_ask_permission as _shared_has_ask_permission,
-    _first as _shared_first,
-    _build_frozen_request_context as _shared_build_frozen_request_context,
-    _resolve_context_and_data as _shared_resolve_context_and_data,
-    _events_from_outcome as _shared_events_from_outcome,
-    _call_stream as _shared_call_stream,
-    _invoke as _shared_invoke,
-    _extract_company_id as _shared_extract_company_id,
-    _extract_user_id as _shared_extract_user_id,
-    _normalize_role as _shared_normalize_role,
-    _strip_empty as _shared_strip_empty,
-    _try_context_role as _shared_try_context_role,
-    _PartitionMissingError as _shared_PartitionMissingError,
-)
 import inspect
 from typing import Any
 
-get_threads_use_case: Any = None
-try:
-    from finsight.composition.providers import (
-        get_threads_use_case as _get_threads_use_case,
-    )
-
-    get_threads_use_case = _get_threads_use_case
-except ImportError:  # pragma: no cover
-    pass
+from finsight.composition.providers import get_threads_use_case
 
 from fastapi import APIRouter, HTTPException
 from finsight.core.errors import AuthorizationError, ValidationError, to_user_message
@@ -190,8 +153,6 @@ __all__ = [
     'inspect',
     'to_user_message',
 ]
-
-# ===== _threads_1.py =====
 
 # ruff: noqa: BLE001, PLR0912, PLR0915, SIM102, S110, I001
 import inspect
@@ -396,8 +357,6 @@ __all__ = [
     '_strip_empty',
 ]
 
-# ===== _threads_2.py =====
-
 # ruff: noqa: BLE001, PLR0911, PLR0912, S110, S112, B004, B025, I001
 from typing import Any
 
@@ -550,8 +509,6 @@ def _result_as_list(result: Any) -> list[Any] | None:
 
 __all__ = ['_repository_list', '_result_as_list']
 
-# ===== _threads_3.py =====
-
 # ruff: noqa: BLE001, PLR0913, PLR0917, S112, B025, I001
 from typing import Any
 
@@ -684,8 +641,6 @@ async def _repository_get(
 
 
 __all__ = ['_repository_get']
-
-# ===== _threads_4.py =====
 
 # ruff: noqa: PLC0415, PLR0912, PLR0915, PLR2004, SIM102, TRY300, B007, I001
 from typing import Any
@@ -960,8 +915,6 @@ __all__ = [
     'threads',
 ]
 
-# ===== _threads_5.py =====
-
 # ruff: noqa: RET504, E402, I001
 from typing import Any
 from fastapi import APIRouter
@@ -1134,7 +1087,6 @@ class Threads:
     """Thin wrapper exposing the threads entrypoint as a callable object."""
 
     def __init__(self, context: Any = None, **deps: Any) -> None:
-        from finsight.composition.providers import get_threads_use_case
 
         self.use_case = get_threads_use_case()
         self.context = context

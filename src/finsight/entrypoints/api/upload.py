@@ -1,7 +1,5 @@
 # ruff: noqa: F401, N801, N818, E501, SIM110, PLR1714, RUF100
 # ruff: noqa: BLE001, PLC0415, PLR0911, PLR0912, PLR0913, PLR0915, PLR0917, PLR2004, RET504, SIM102, SIM110, TRY201, TRY300, TRY301, E501, S110, S112, N815, B004, B007, B023, B025, B904, PGH004, E402, F404, I001, ANN401, F403, F405, F821, F811
-# ===== _upload_0.py =====
-
 # ruff: noqa: PLR0912, I001
 """API entrypoint for document uploads (with partition-existence gate)."""
 
@@ -19,33 +17,6 @@ from ._shared import (
     _is_use_case,
 )
 
-from ._shared import (
-    _get as _shared_get,
-    _await as _shared_await,
-    _ForbiddenError as _shared_ForbiddenError,
-    _BadRequestError as _shared_BadRequestError,
-    _NotFoundError as _shared_NotFoundError,
-    _ServerError as _shared_ServerError,
-    _context_lookup as _shared_context_lookup,
-    _flatten as _shared_flatten,
-    _is_context as _shared_is_context,
-    _is_use_case as _shared_is_use_case,
-    _sse as _shared_sse,
-    _friendly_error as _shared_friendly_error,
-    _has_ask_permission as _shared_has_ask_permission,
-    _first as _shared_first,
-    _build_frozen_request_context as _shared_build_frozen_request_context,
-    _resolve_context_and_data as _shared_resolve_context_and_data,
-    _events_from_outcome as _shared_events_from_outcome,
-    _call_stream as _shared_call_stream,
-    _invoke as _shared_invoke,
-    _extract_company_id as _shared_extract_company_id,
-    _extract_user_id as _shared_extract_user_id,
-    _normalize_role as _shared_normalize_role,
-    _strip_empty as _shared_strip_empty,
-    _try_context_role as _shared_try_context_role,
-    _PartitionMissingError as _shared_PartitionMissingError,
-)
 import contextlib
 import inspect
 import re
@@ -54,13 +25,8 @@ from fastapi import APIRouter, Body, HTTPException
 from finsight.core.errors import AuthorizationError, ValidationError, to_user_message
 from finsight.core.types import DocumentCategory, Role
 
-get_upload_use_case: Any = None
-try:
-    from finsight.composition.providers import get_upload_use_case as _get_upload_use_case
+from finsight.composition.providers import get_upload_use_case
 
-    get_upload_use_case = _get_upload_use_case
-except ImportError:  # pragma: no cover
-    pass
 router = APIRouter(prefix='/upload', tags=['upload'])
 
 
@@ -238,8 +204,6 @@ __all__ = [
     'router',
     'to_user_message',
 ]
-
-# ===== _upload_1.py =====
 
 # ruff: noqa: BLE001, PLR0911, PLR0912, S110, I001, F403, F405
 import contextlib
@@ -496,8 +460,6 @@ __all__ = [
     '_truthy',
 ]
 
-# ===== _upload_2.py =====
-
 # ruff: noqa: PLR0912, PLR0915, B904, I001, F403, F405
 from typing import Any
 from finsight.core.types import DocumentCategory
@@ -610,8 +572,6 @@ async def _validate_form(data: dict[str, Any], config: Any = None) -> None:
 
 
 __all__ = ['_extract_company_id', '_try_context_role', '_validate_form']
-
-# ===== _upload_3.py =====
 
 # ruff: noqa: PLC0415, PLR0912, PLR0915, I001, F403, F405
 from typing import Any
@@ -831,7 +791,6 @@ class Upload:
     """Thin wrapper exposing the upload entrypoint as a callable object."""
 
     def __init__(self, context: Any = None, partition_manager: Any = None, **deps: Any) -> None:
-        from finsight.composition.providers import get_upload_use_case
 
         self.use_case = get_upload_use_case()
         self.context = context

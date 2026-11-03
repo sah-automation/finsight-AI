@@ -58,6 +58,17 @@ def test_container_exposes_the_same_adapter_instances() -> None:
     assert save_worker.document_table_repository is container.document_table_repository
 
 
+def test_container_populates_the_fields_the_providers_read() -> None:
+    """The providers resolve use cases from ``container.use_cases``."""
+    container = build_container(config=load_config('test'))
+
+    assert container.use_cases['ask'] is container.ask_question_use_case
+    assert container.use_cases['upload'] is container.upload_use_case
+    assert container.use_cases['onboarding'] is container.onboarding_use_case
+    assert container.use_cases['source_viewer'] is container.source_viewer_use_case
+    assert container.use_cases['documents'] is container.document_repository
+
+
 def test_worker_set_alias_collapse_twenty_names_to_ten_instances() -> None:
     """Verify that the worker set maps 20 alias names to 10 unique step instances."""
     container = build_container(config=load_config('test'))

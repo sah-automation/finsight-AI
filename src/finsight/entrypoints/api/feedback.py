@@ -13,48 +13,12 @@ from ._shared import (
     _is_context,
 )
 
-from ._shared import (
-    _get as _shared_get,
-    _await as _shared_await,
-    _ForbiddenError as _shared_ForbiddenError,
-    _BadRequestError as _shared_BadRequestError,
-    _NotFoundError as _shared_NotFoundError,
-    _ServerError as _shared_ServerError,
-    _context_lookup as _shared_context_lookup,
-    _flatten as _shared_flatten,
-    _is_context as _shared_is_context,
-    _is_use_case as _shared_is_use_case,
-    _sse as _shared_sse,
-    _friendly_error as _shared_friendly_error,
-    _has_ask_permission as _shared_has_ask_permission,
-    _first as _shared_first,
-    _build_frozen_request_context as _shared_build_frozen_request_context,
-    _resolve_context_and_data as _shared_resolve_context_and_data,
-    _events_from_outcome as _shared_events_from_outcome,
-    _call_stream as _shared_call_stream,
-    _invoke as _shared_invoke,
-    _extract_company_id as _shared_extract_company_id,
-    _extract_user_id as _shared_extract_user_id,
-    _normalize_role as _shared_normalize_role,
-    _strip_empty as _shared_strip_empty,
-    _try_context_role as _shared_try_context_role,
-    _PartitionMissingError as _shared_PartitionMissingError,
-)
 
-get_feedback_use_case: Any = None
-try:
-    from finsight.composition.providers import (
-        get_feedback_use_case as _get_feedback_use_case,
-    )
-
-    get_feedback_use_case = _get_feedback_use_case
-except ImportError:  # pragma: no cover
-    pass
+from finsight.composition.providers import get_feedback_use_case
 
 from typing import Any
 
 
-# ===== merged fragment _feedback_0.py =====
 """API entrypoint for feedback and report-wrong-source submissions (Slice 7.3)."""
 
 import inspect
@@ -239,7 +203,6 @@ __all__ = [
 ]
 
 
-# ===== merged fragment _feedback_1.py =====
 import inspect
 from typing import Any
 
@@ -453,7 +416,6 @@ __all__ = [
 ]
 
 
-# ===== merged fragment _feedback_2.py =====
 from typing import Any
 
 
@@ -629,7 +591,6 @@ _strip_empty: Any = _strip_empty_feedback
 __all__ = ['_merge_stored', '_repository_store', '_strip_empty']
 
 
-# ===== merged fragment _feedback_3.py =====
 from typing import Any
 
 
@@ -762,7 +723,6 @@ def _company_matches(item: Any, company_id: Any) -> bool:
 __all__ = ['_company_matches', '_repository_list']
 
 
-# ===== merged fragment _feedback_4.py =====
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -1041,7 +1001,6 @@ class Feedback:
     """Thin wrapper exposing the feedback entrypoint as a callable object."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        from finsight.composition.providers import get_feedback_use_case
 
         self.context = kwargs.get('context')
         self.role = kwargs.get('role')
