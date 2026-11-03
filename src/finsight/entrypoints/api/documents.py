@@ -897,16 +897,13 @@ class Documents:
 
     def __init__(
         self,
-        use_case: Any = None,
         context: Any = None,
         role: Any = None,
         **deps: Any,
     ) -> None:
-        if use_case is None:
-            from finsight.composition.providers import get_documents_use_case
+        from finsight.composition.providers import get_documents_use_case
 
-            use_case = get_documents_use_case()
-        self.use_case = use_case
+        self.use_case = get_documents_use_case()
         self.context = context
         self.role = role
         self.deps = deps

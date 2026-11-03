@@ -34,7 +34,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - adapters/readers/textract_reader.py: 356 lines
   - entrypoints/api/upload.py: 928 lines
   - entrypoints/api/ask.py: 993 lines
-  - entrypoints/api/documents.py: 951 lines
+  - entrypoints/api/documents.py: 948 lines
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
   - application/source_viewer/source_viewer.py: 2089 lines
