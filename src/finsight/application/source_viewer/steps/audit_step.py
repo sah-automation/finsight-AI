@@ -133,7 +133,7 @@ class AuditStep:
                     return normalized
         return 'success'
 
-    async def _run(self, context: Any) -> StepResult:
+    async def _run_impl(self, context: Any) -> StepResult:
         audit = self._audit_log
         if audit is None:
             return StepResult.continue_(context)
@@ -257,6 +257,13 @@ class AuditStep:
             logger.debug('audit write failed (trace_id=%s)', trace_id, exc_info=True)
 
         return StepResult.continue_(context)
+
+    async def _run(self, context: Any) -> StepResult:
+        try:
+            return await self._run_impl(context)
+        except Exception:
+            logger.debug('audit step failed', exc_info=True)
+            return StepResult.continue_(context)
 
     async def run(self, context: Any) -> StepResult:
         return await self._run(context)
