@@ -116,6 +116,25 @@ def _is_context(value: Any) -> bool:
     if value is None:
         return False
     if isinstance(value, dict):
+        # Request/payload wrappers are not pure contexts, even when they also
+        # carry scoping fields such as company_id. An explicit context key
+        # always wins (context wrappers may nest payload-ish identifiers).
+        _core_payload_keys = (
+            set(_PAYLOAD_KEYS)
+            | set(_USE_CASE_KEYS)
+            | {
+                'question',
+                'query',
+                'q',
+                'text',
+                'action',
+                'rating',
+            }
+        )
+        if any(key in value for key in _core_payload_keys) and not any(
+            key in value for key in _CONTEXT_KEYS
+        ):
+            return False
         for key in (
             'request_context',
             'context',

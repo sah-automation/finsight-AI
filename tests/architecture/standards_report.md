@@ -37,7 +37,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - entrypoints/api/feedback.py: 1207 lines
   - entrypoints/api/onboarding.py: 464 lines
   - entrypoints/api/documents.py: 900 lines
-  - entrypoints/api/_shared.py: 673 lines
+  - entrypoints/api/_shared.py: 692 lines
   - entrypoints/api/threads.py: 1226 lines
   - entrypoints/api/source_viewer.py: 884 lines
   - application/reprocess/reprocess.py: 716 lines
