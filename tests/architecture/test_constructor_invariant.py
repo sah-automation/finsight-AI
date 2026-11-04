@@ -97,7 +97,7 @@ CONSTRUCTOR_INVARIANT_EXCEPTIONS = BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS
 BARE_KWARGS_EXCEPTIONS = BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS
 
 
-def _bare_kwargs_constructors(application_root: Path) -> list[tuple[str, str, int]]:
+def _variadic_constructors(application_root: Path) -> list[tuple[str, str, int]]:
     """Return (relative_path, class_name, line) for variadic ``__init__`` params.
 
     Flags any variadic constructor parameter (``*<name>`` or ``**<name>``),
@@ -121,6 +121,7 @@ def _bare_kwargs_constructors(application_root: Path) -> list[tuple[str, str, in
                     continue
             if relative is None:
                 relative = str(filepath)
+        assert isinstance(relative, str)
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
@@ -137,11 +138,11 @@ def _bare_kwargs_constructors(application_root: Path) -> list[tuple[str, str, in
 
 
 # Alias names for the broadened (variadic) check.
-_bare_variadic_constructors = _bare_kwargs_constructors
-_variadic_constructors = _bare_kwargs_constructors
-find_variadic_constructors = _bare_kwargs_constructors
-find_bare_kwargs_constructors = _bare_kwargs_constructors
-find_bare_variadic_constructors = _bare_kwargs_constructors
+_bare_kwargs_constructors = _variadic_constructors
+_bare_variadic_constructors = _variadic_constructors
+find_variadic_constructors = _variadic_constructors
+find_bare_kwargs_constructors = _variadic_constructors
+find_bare_variadic_constructors = _variadic_constructors
 
 
 @pytest.mark.architecture
