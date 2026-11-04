@@ -320,7 +320,7 @@ async def _partition_exists(
                     return _truthy(result)
 
     if manager is None and metadata is None and checker is None:
-        return False
+        return True
     return False
 
 
