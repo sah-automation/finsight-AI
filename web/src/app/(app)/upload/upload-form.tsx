@@ -363,6 +363,7 @@ export function UploadForm({
 
       try {
         const body: JsonRecord = {
+          company_id: user?.company_id,
           document_category: category,
           period,
           status: status.toLowerCase(),
@@ -478,6 +479,7 @@ export function UploadForm({
       replaces,
       status,
       uploadType,
+      user,
       validate,
       onUploaded,
       directUpload,
