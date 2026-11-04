@@ -92,10 +92,6 @@ BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS: dict[str, dict[str, str]] = {
     },
 }
 
-# Alias names some callers may expect.
-CONSTRUCTOR_INVARIANT_EXCEPTIONS = BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS
-BARE_KWARGS_EXCEPTIONS = BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS
-
 
 def _variadic_constructors(application_root: Path) -> list[tuple[str, str, int]]:
     """Return (relative_path, class_name, line) for variadic ``__init__`` params.

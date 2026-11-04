@@ -27,26 +27,12 @@ from .step_context import (  # noqa: F401
 
 __all__ = [
     'Context',
-    'DeepDeltaStep',
-    'Delta',
-    'DeltaModule',
     'DeltaStep',
-    'DeltaStepDeep',
     'IngestionContext',
     'IngestionStepContext',
     'PipelineContext',
-    'PipelineDeltaStep',
     'PipelineStepContext',
     'StepContext',
-]
-
-aliases = [
-    'DeepDeltaStep',
-    'Delta',
-    'DeltaModule',
-    'DeltaStep',
-    'DeltaStepDeep',
-    'PipelineDeltaStep',
 ]
 
 
@@ -292,6 +278,3 @@ class DeltaStep(PipelineStepWorker):
 
     def __call__(self, context: Any) -> Any:
         return self.run(context)
-
-
-Delta = DeepDeltaStep = DeltaStepDeep = DeltaModule = PipelineDeltaStep = DeltaStep
