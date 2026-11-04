@@ -4,7 +4,7 @@
 
 COVERAGE_MIN ?= 50
 
-.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps coverage-domain coverage-application coverage-packages coverage-diff web-typecheck web-lint web-test web-build web-api-check web-verify
+.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps coverage-domain coverage-application coverage-packages coverage-diff web-typecheck web-lint web-test web-build web-api-check web-verify sizes
 
 # Default target
 help:
@@ -64,6 +64,7 @@ help:
 	@echo "Maintenance:"
 	@echo "  clean          - Remove build artifacts"
 	@echo "  update-deps    - Update dependencies to latest allowed versions"
+	@echo "  sizes          - Report files and functions exceeding size limits"
 
 # ============================================================
 # Installation
@@ -271,3 +272,9 @@ web-api-check:
 
 web-verify: web-api-check web-typecheck web-lint web-test web-build
 	@echo "✓ Web quality checks passed"
+
+# ============================================================
+# Size report
+# ============================================================
+sizes:
+	uv run python tests/support/size_report.py
