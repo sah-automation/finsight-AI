@@ -385,3 +385,28 @@ def count_passthroughs(root: Path | str) -> int:
 is_passthrough = is_passthrough_module
 is_pass_through = is_passthrough_module
 is_pass_through_module = is_passthrough_module
+
+
+def find_variadic_constructors(package_path: Path | str) -> list[tuple[str, str, int]]:
+    """Find ``__init__`` methods with any variadic parameter (``*`` / ``**``)."""
+    violations: list[tuple[str, str, int]] = []
+    for filepath in get_python_files(package_path):
+        tree = parse_python_file(filepath)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for item in node.body:
+                if not isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                if item.name != '__init__':
+                    continue
+                if item.args.vararg is None and item.args.kwarg is None:
+                    continue
+                violations.append((str(filepath), node.name, item.lineno))
+    return violations
+
+
+# Alias names some callers may expect.
+find_bare_kwargs_constructors = find_variadic_constructors
+find_bare_variadic_constructors = find_variadic_constructors
+find_variadic_init = find_variadic_constructors

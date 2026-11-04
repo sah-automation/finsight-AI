@@ -1,4 +1,4 @@
-"""Architecture invariant: no bare ``**kwargs`` constructors in application layer."""
+"""Architecture invariant: no bare variadic constructors in application layer."""
 
 from __future__ import annotations
 
@@ -60,6 +60,36 @@ BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'application',
         'removal_condition': 'Replace with typed construction when the onboarding flow is converted.',
     },
+    'application/delete_document/models.py::DeleteResult': {
+        'reason': 'Delete result DTO retains alias-friendly construction.',
+        'owner': 'application',
+        'removal_condition': 'Replace with typed construction when the delete flow is converted.',
+    },
+    'application/ingest_document/models.py::UploadResult': {
+        'reason': 'Upload result DTO retains alias-friendly construction.',
+        'owner': 'application',
+        'removal_condition': 'Replace with typed construction when the upload flow is converted.',
+    },
+    'application/ingest_document/pipeline_step_worker.py::PipelineStepWorker': {
+        'reason': 'Pipeline step worker retains alias-probing constructor resolution.',
+        'owner': 'application',
+        'removal_condition': 'Replace with typed constructor when the worker is converted.',
+    },
+    'application/onboarding/models.py::CreateCompanyResult': {
+        'reason': 'Onboarding result DTO retains alias-friendly construction.',
+        'owner': 'application',
+        'removal_condition': 'Replace with typed construction when the onboarding flow is converted.',
+    },
+    'application/reprocess/models.py::ReprocessResult': {
+        'reason': 'Reprocess result DTO retains alias-friendly construction.',
+        'owner': 'application',
+        'removal_condition': 'Replace with typed construction when the reprocess flow is converted.',
+    },
+    'application/update_document/models.py::UpdateResult': {
+        'reason': 'Update result DTO retains alias-friendly construction.',
+        'owner': 'application',
+        'removal_condition': 'Replace with typed construction when the update flow is converted.',
+    },
 }
 
 # Alias names some callers may expect.
@@ -68,11 +98,29 @@ BARE_KWARGS_EXCEPTIONS = BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS
 
 
 def _bare_kwargs_constructors(application_root: Path) -> list[tuple[str, str, int]]:
-    """Return (relative_path, class_name, line) for bare ``**kwargs``/``**kw`` inits."""
+    """Return (relative_path, class_name, line) for variadic ``__init__`` params.
+
+    Flags any variadic constructor parameter (``*<name>`` or ``**<name>``),
+    including ``*args``, ``**kwargs``, ``**_aliases``, etc. Non-``__init__``
+    methods are never reported.
+    """
     violations: list[tuple[str, str, int]] = []
     for filepath in get_python_files(application_root):
         tree = parse_python_file(filepath)
-        relative = str(filepath.relative_to(SRC_ROOT))
+        # Compute a stable repository-relative path when possible, but never
+        # crash when scanning a directory outside of SRC_ROOT (e.g. in tests).
+        try:
+            relative = str(filepath.relative_to(SRC_ROOT))
+        except ValueError:
+            relative = None
+            for base in (application_root.parent, application_root):
+                try:
+                    relative = str(filepath.relative_to(base))
+                    break
+                except ValueError:
+                    continue
+            if relative is None:
+                relative = str(filepath)
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
@@ -81,12 +129,19 @@ def _bare_kwargs_constructors(application_root: Path) -> list[tuple[str, str, in
                     continue
                 if item.name != '__init__':
                     continue
-                if item.args.kwarg is None:
-                    continue
-                if item.args.kwarg.arg not in ('kwargs', 'kw'):
+                # Any variadic positional (*name) or keyword (**name) parameter.
+                if item.args.vararg is None and item.args.kwarg is None:
                     continue
                 violations.append((relative, node.name, item.lineno))
     return violations
+
+
+# Alias names for the broadened (variadic) check.
+_bare_variadic_constructors = _bare_kwargs_constructors
+_variadic_constructors = _bare_kwargs_constructors
+find_variadic_constructors = _bare_kwargs_constructors
+find_bare_kwargs_constructors = _bare_kwargs_constructors
+find_bare_variadic_constructors = _bare_kwargs_constructors
 
 
 @pytest.mark.architecture
