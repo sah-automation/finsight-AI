@@ -13,17 +13,17 @@ DANGEROUS_PATTERNS=(
   "git restore \."
   "push --force"
   "reset --hard"
-  "git commit .*--no-verify"
-  "--no-verify"
 )
+
+# Block `git commit --no-verify` specifically, regardless of flag ordering.
+if echo "$COMMAND" | grep -qE -e 'git.*commit.*--no-verify|--no-verify.*git.*commit'; then
+  echo "BLOCKED: '$COMMAND' uses --no-verify, which bypasses the pre-commit gate. Use \`make ratchet\` to update standards_report.md, then commit normally." >&2
+  exit 2
+fi
 
 for pattern in "${DANGEROUS_PATTERNS[@]}"; do
   if echo "$COMMAND" | grep -qE -e "$pattern"; then
-    if echo "$COMMAND" | grep -qE -e "--no-verify"; then
-      echo "BLOCKED: '$COMMAND' uses --no-verify, which bypasses the pre-commit gate. Use \`make ratchet\` to update standards_report.md, then commit normally." >&2
-    else
-      echo "BLOCKED: '$COMMAND' matches dangerous pattern '$pattern'. The user has prevented you from doing this." >&2
-    fi
+    echo "BLOCKED: '$COMMAND' matches dangerous pattern '$pattern'. The user has prevented you from doing this." >&2
     exit 2
   fi
 done
