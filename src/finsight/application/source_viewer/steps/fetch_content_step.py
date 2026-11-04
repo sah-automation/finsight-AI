@@ -210,6 +210,7 @@ class FetchContentStep:
         return StepResult.continue_(context)
 
     async def run(self, context: SourceViewerContext) -> StepResult:
+        """Execute this pipeline step."""
         self._ensure_highlight(context)
         company_id = _get_attr(context, 'company_id', 'companyId', 'tenant_id', 'company')
         version_id = _get_attr(context, 'version_id', 'versionId', 'version')

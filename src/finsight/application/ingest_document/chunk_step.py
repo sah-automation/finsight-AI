@@ -122,6 +122,7 @@ class ChunkStep(ChunkStepOperations, PipelineStepWorker):
                 pass
 
     async def run(self, context: Any) -> Any:
+        """Execute this pipeline step."""
         company_id, version_id, document_id, key, version = await self._resolve(context)
         state = self._effective_state(version, context)
         if state in ('committed', 'done'):

@@ -115,6 +115,7 @@ class DeltaStep(PipelineStepWorker):
         )
 
     async def run(self, context: Any) -> Any:
+        """Execute this pipeline step."""
         ctx = context
         company_id, version_id, document_id, key, version = await self._resolve(ctx)
         self._stash(ctx, company_id, version_id, document_id, key, version)
@@ -293,8 +294,4 @@ class DeltaStep(PipelineStepWorker):
         return self.run(context)
 
 
-Delta = DeltaStep
-DeepDeltaStep = DeltaStep
-DeltaStepDeep = DeltaStep
-DeltaModule = DeltaStep
-PipelineDeltaStep = DeltaStep
+Delta = DeepDeltaStep = DeltaStepDeep = DeltaModule = PipelineDeltaStep = DeltaStep

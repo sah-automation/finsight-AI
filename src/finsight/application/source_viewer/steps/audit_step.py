@@ -101,6 +101,7 @@ class AuditStep:
         return StepResult.continue_(context)
 
     async def run(self, context: SourceViewerContext) -> StepResult:
+        """Execute this pipeline step."""
         try:
             return await self._run_impl(context)
         except Exception:

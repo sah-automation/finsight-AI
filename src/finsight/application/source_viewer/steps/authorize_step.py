@@ -187,6 +187,7 @@ class AuthorizeStep:
         return False
 
     async def run(self, context: SourceViewerContext) -> StepResult:
+        """Execute this pipeline step."""
         role_raw = context.role
         permissions = context.permissions
         access_scope = context.access_scope

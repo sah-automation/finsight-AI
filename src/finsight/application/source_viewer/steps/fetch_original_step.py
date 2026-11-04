@@ -137,6 +137,7 @@ class FetchOriginalStep:
         return StepResult.continue_(context)
 
     async def run(self, context: SourceViewerContext) -> StepResult:
+        """Execute this pipeline step."""
         return await self._run(context)
 
 

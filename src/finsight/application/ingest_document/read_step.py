@@ -104,6 +104,7 @@ class ReadStep(PipelineStepWorker):
         )
 
     async def run(self, context: Any) -> Any:
+        """Execute this pipeline step."""
         ctx = context
         company_id, version_id, document_id, key, version = await self._resolve(ctx)
         self._stash(ctx, company_id, version_id, document_id, key, version)

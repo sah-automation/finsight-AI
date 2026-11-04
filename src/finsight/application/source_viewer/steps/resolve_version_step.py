@@ -189,6 +189,7 @@ class ResolveVersionStep:
             context.document_id = resolved_document_id
 
     async def run(self, context: SourceViewerContext) -> StepResult:
+        """Execute this pipeline step."""
         company_id = context.company_id
         version_obj = await self._resolve_version_obj(context, company_id)
         if version_obj is None or not self._is_viewable(version_obj, company_id):

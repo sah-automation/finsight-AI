@@ -95,6 +95,7 @@ class DeltaTrackingCheckStep(PipelineStepWorker):
         )
 
     async def run(self, context: Any) -> Any:
+        """Execute this pipeline step."""
         ctx = context
         try:
             ctx.delta_tracking = self.delta_tracking
