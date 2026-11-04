@@ -657,6 +657,47 @@ class TestNoEnvironmentChecksInBusinessCode:
 # ============================================================
 
 
+# ============================================================
+# Test: Step module <-> test file pairing (source viewer)
+# ============================================================
+
+
+@pytest.mark.architecture
+class TestStepModuleHasTestFile:
+    """Each public step module must have a matching test file.
+
+    A 1:1 correspondence is enforced between modules in
+    ``src/finsight/application/source_viewer/steps/`` and test files in
+    ``tests/unit/application/source_viewer/steps/`` so that no step class ships
+    without coverage (regression guard for #205-#210).
+    """
+
+    def test_step_module_has_test_file(self) -> None:
+        """Every public step module has a matching ``test_<module>.py``."""
+        steps_src = SRC_ROOT / 'application' / 'source_viewer' / 'steps'
+        steps_tests = _REPO_ROOT / 'tests' / 'unit' / 'application' / 'source_viewer' / 'steps'
+
+        unpaired_modules: list[str] = []
+        for module_path in sorted(steps_src.glob('*.py')):
+            if module_path.name == '__init__.py':
+                continue
+            if module_path.name.startswith('_'):
+                continue
+            if module_path.name == 'README.md':
+                continue
+            expected_test = steps_tests / f'test_{module_path.stem}.py'
+            if not expected_test.exists():
+                unpaired_modules.append(
+                    f'{module_path.relative_to(_REPO_ROOT)} '
+                    f'-> {expected_test.relative_to(_REPO_ROOT)}'
+                )
+
+        assert not unpaired_modules, (
+            'Step modules missing a test file (expected tests/unit/.../test_<module>.py):\n'
+            + '\n'.join(f'  {item}' for item in unpaired_modules)
+        )
+
+
 _REPO_ROOT = Path(__file__).parent.parent.parent
 _INVARIANTS_REL = 'tests/architecture/test_invariants.py'
 _TEST_INVARIANTS_ABS = Path(__file__).resolve()
