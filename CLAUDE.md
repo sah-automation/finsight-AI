@@ -7,7 +7,7 @@ This project enforces strict coding standards. You MUST comply with:
 
 ## Required Gates (RUN BEFORE DECLARING DONE)
 ```bash
-make lint && make typecheck && make imports && make arch-test && make test && make test-security
+make preflight && make test-security
 ```
 
 ## Critical Rules

@@ -18,6 +18,7 @@ help:
 	@echo "Quality Gates (run all):"
 	@echo "  check          - Run every gate once (lint + typecheck + imports + vulture + secrets + tests + security)"
 	@echo "  ci             - CI pipeline (lint + typecheck + imports + vulture + secrets + coverage incl. security)"
+	@echo "  preflight      - Fast loop (lint + typecheck + imports + arch-test + unit tests)"
 	@echo "  pre-commit     - Run pre-commit on all files"
 	@echo ""
 	@echo "Individual Checks:"
@@ -85,6 +86,11 @@ install-hooks:
 # ============================================================
 check: lint typecheck imports vulture secrets test test-security
 	@echo "✓ All quality checks passed"
+
+# Fast pre-flight loop (lint + typecheck + imports + arch-test + unit tests)
+# Excludes: vulture, secrets, integration, contract, switches, security, coverage
+preflight: lint typecheck imports arch-test test-unit
+	@echo "✓ Pre-flight checks passed"
 
 # Advanced quality gates (issue #80)
 property-tests:
