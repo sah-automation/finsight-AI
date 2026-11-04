@@ -15,8 +15,12 @@ DANGEROUS_PATTERNS=(
   "reset --hard"
 )
 
-# Block `git commit --no-verify` specifically, regardless of flag ordering.
-if echo "$COMMAND" | grep -qE -e 'git.*commit.*--no-verify|--no-verify.*git.*commit'; then
+# Block `git commit --no-verify` / `git commit -n`, regardless of flag order.
+# Strip quoted arguments first so a commit message that merely mentions the
+# flag is not mistaken for its use.
+COMMIT_ARGS=$(printf '%s' "$COMMAND" | sed -E "s/'[^']*'//g" | sed -E 's/"[^"]*"//g')
+if printf '%s' "$COMMIT_ARGS" | grep -qE 'git[[:space:]]+commit' \
+  && printf '%s' "$COMMIT_ARGS" | grep -qE -- '--no-verify|(^|[[:space:]])-[A-Za-z]*n[A-Za-z]*([[:space:]]|$)'; then
   echo "BLOCKED: '$COMMAND' uses --no-verify, which bypasses the pre-commit gate. Use \`make ratchet\` to update standards_report.md, then commit normally." >&2
   exit 2
 fi

@@ -159,7 +159,6 @@ arch-test:
 # make ratchet target command (issue #220):
 # UPDATE_STANDARDS_REPORT=1 pytest tests/architecture/test_standards_checklist.py -v
 ratchet:
-	@# UPDATE_STANDARDS_REPORT=1 pytest tests/architecture/test_standards_checklist.py -v
 	UPDATE_STANDARDS_REPORT=1 uv run pytest tests/architecture/test_standards_checklist.py -v
 
 # ============================================================

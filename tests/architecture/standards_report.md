@@ -16,11 +16,6 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **switch_both_paths_tested**: All config switches have ON and OFF tests implemented
 ✅ **constructor_injection**: No hidden os.getenv/environ access in business code
 ⏭️ **company_id_on_all_data_calls**: All data access methods require company_id
-  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:13 get
-  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:20 load
-  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:23 save
-  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:29 fetch
-  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/state_store.py:32 delete
 ✅ **no_model_math**: No float math on monetary values in domain
 ✅ **no_raw_errors_to_user**: No bare Exception raised in entrypoints (specific exceptions OK - caught by middleware)
 ✅ **no_sensitive_data_in_logs**: No sensitive data in logs
@@ -49,7 +44,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 75
+  - Unit: 76
   - Contract: 25
   - Switch: 16
 

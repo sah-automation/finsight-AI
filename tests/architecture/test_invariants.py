@@ -85,8 +85,7 @@ VENDOR_BRANCHING_PATTERNS = [
 # Maximum lines per file/function
 MAX_FILE_LINES = 300
 MAX_FUNCTION_LINES = 30
-MAX_PUBLIC_FUNCTION_LINES = MAX_FUNCTION_LINES
-MAX_PRIVATE_FUNCTION_LINES = 60
+MAX_PRIVATE_FUNCTION_LINES = 60  # Ratchet: tighten as private helpers are split.
 
 # Reviewed exceptions for module size. Each entry must include a reason, an
 # owner, and a removal condition. Adding an entry without these fields makes
@@ -248,7 +247,8 @@ OVERSIZED_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'removal_condition': 'Split span configuration object in port.',
     },
 }
-# Private helpers currently above the 60-line ratchet.
+# Private helpers currently above the 60-line ratchet. Entries are removed as
+# the ratchet shrinks toward the 30-line target tracked in #185.
 OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
     'adapters/audit/postgres_audit_log.py::_append_impl': {
         'reason': 'Private helper exceeds the 60-line ratchet; pending refactor.',
@@ -540,11 +540,6 @@ OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'application',
         'removal_condition': 'Split the helper once a focused seam is extracted.',
     },
-    'application/source_viewer/steps/fetch_original_step.py::_resolve_storage_key': {
-        'reason': 'Private helper exceeds the 60-line ratchet; pending refactor.',
-        'owner': 'application',
-        'removal_condition': 'Split the helper once a focused seam is extracted.',
-    },
     'application/update_document/update_document.py::_enqueue': {
         'reason': 'Private helper exceeds the 60-line ratchet; pending refactor.',
         'owner': 'application',
@@ -811,11 +806,6 @@ OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'removal_condition': 'Split the helper once a focused seam is extracted.',
     },
 }
-
-# Compatibility aliases for callers/tests that use a different name.
-OVERSIZED_PRIVATE_EXCEPTIONS = OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS
-PRIVATE_FUNCTION_EXCEPTIONS = OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS
-
 
 # ============================================================
 # Test: Only core/config reads env vars
@@ -1204,10 +1194,6 @@ class TestSizeLimits:
             f'  {item}' for item in oversized
         )
 
-    # Compatibility aliases for alternative test method names.
-    test_private_function_size = test_private_function_line_count
-    test_private_functions = test_private_function_line_count
-
 
 # ============================================================
 # Test: No 'if env == "prod"' in business code
@@ -1256,11 +1242,6 @@ class TestNoEnvironmentChecksInBusinessCode:
 
 
 # ============================================================
-# Test: Exception entries are not added/widened with the file
-# ============================================================
-
-
-# ============================================================
 # Test: Step module <-> test file pairing (source viewer)
 # ============================================================
 
@@ -1285,8 +1266,6 @@ class TestStepModuleHasTestFile:
             if module_path.name == '__init__.py':
                 continue
             if module_path.name.startswith('_'):
-                continue
-            if module_path.name == 'README.md':
                 continue
             expected_test = steps_tests / f'test_{module_path.stem}.py'
             if not expected_test.exists():
@@ -1330,16 +1309,6 @@ class TestStepRunDocstrings:
             f'  {item}' for item in violations
         )
 
-    # Compatibility aliases for alternative test method names.
-    test_run_docstrings = test_public_run_methods_have_docstrings
-    test_step_run_docstrings = test_public_run_methods_have_docstrings
-
-
-# Compatibility class-name aliases for hidden tests that use a different name.
-TestStepRunDocstring = TestStepRunDocstrings
-TestPublicRunDocstrings = TestStepRunDocstrings
-TestRunDocstrings = TestStepRunDocstrings
-
 
 _REPO_ROOT = Path(__file__).parent.parent.parent
 _INVARIANTS_REL = 'tests/architecture/test_invariants.py'
@@ -1360,60 +1329,41 @@ _LEGACY_EXCEPTION_FRESHNESS_COMMITS = frozenset(
 )
 
 
+_EXCEPTION_ENTRY = re.compile(
+    r"^\s+'([^']+)': \{\s*\n(.*?)^\s+\},",
+    re.MULTILINE | re.DOTALL,
+)
+_REMOVAL_CONDITION = re.compile(r"'removal_condition':\s*'([^']*)'")
+_EXCEPTION_SECTIONS = (
+    ('OVERSIZED_FILE_EXCEPTIONS', 'OVERSIZED_FUNCTION_EXCEPTIONS'),
+    ('OVERSIZED_FUNCTION_EXCEPTIONS', 'OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS'),
+    ('OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS', '\n\n\n#'),
+)
+
+
 def _parse_exception_items(text: str) -> list[tuple[str, str]]:
     """Return (relative_path, removal_condition) for each exception entry."""
     items: list[tuple[str, str]] = []
-
-    file_start = text.index('OVERSIZED_FILE_EXCEPTIONS')
-    file_end = text.index('OVERSIZED_FUNCTION_EXCEPTIONS')
-    for match in re.finditer(
-        r"^\s+'([^']+)': \{\s*\n(.*?)^\s+\},",
-        text[file_start:file_end],
-        re.MULTILINE | re.DOTALL,
-    ):
-        key = match.group(1)
-        body = match.group(2)
-        removal = re.search(r"'removal_condition':\s*'([^']*)'", body)
-        items.append((key, removal.group(1) if removal else ''))
-
-    func_text = text[text.index('OVERSIZED_FUNCTION_EXCEPTIONS') :]
-    cut = func_text.find('\n\n\n#')
-    if cut != -1:
-        func_text = func_text[:cut]
-    for match in re.finditer(
-        r"^\s+'([^']+)': \{\s*\n(.*?)^\s+\},",
-        func_text,
-        re.MULTILINE | re.DOTALL,
-    ):
-        key = match.group(1)
-        body = match.group(2)
-        removal = re.search(r"'removal_condition':\s*'([^']*)'", body)
-        relative = key.split('::', 1)[0]
-        items.append((relative, removal.group(1) if removal else ''))
-
-    private_idx = text.find('OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS')
-    if private_idx != -1:
-        private_text = text[private_idx:]
-        cut = private_text.find('\n\n\n#')
-        if cut != -1:
-            private_text = private_text[:cut]
-        for match in re.finditer(
-            r"^\s+'([^']+)': \{\s*\n(.*?)^\s+\},",
-            private_text,
-            re.MULTILINE | re.DOTALL,
-        ):
-            key = match.group(1)
-            body = match.group(2)
-            removal = re.search(r"'removal_condition':\s*'([^']*)'", body)
-            relative = key.split('::', 1)[0]
-            items.append((relative, removal.group(1) if removal else ''))
-
+    seen: set[tuple[str, str]] = set()
+    for start_marker, end_marker in _EXCEPTION_SECTIONS:
+        start = text.find(start_marker)
+        if start == -1:
+            continue
+        end = text.find(end_marker, start)
+        section = text[start:] if end == -1 else text[start:end]
+        for match in _EXCEPTION_ENTRY.finditer(section):
+            relative = match.group(1).split('::', 1)[0]
+            removal = _REMOVAL_CONDITION.search(match.group(2))
+            item = (relative, removal.group(1) if removal else '')
+            if item not in seen:
+                seen.add(item)
+                items.append(item)
     return items
 
 
 def _git(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603
-        ['git', *args],
+        ['git', *args],  # noqa: S607
         cwd=cwd or _REPO_ROOT,
         capture_output=True,
         text=True,
@@ -1519,21 +1469,24 @@ class TestExceptionFreshness:
         current_number = _current_ticket_number(_REPO_ROOT)
 
         violations: list[str] = []
+        checked_files: set[str] = set()
         for relative, removal_condition in disk_items:
             repo_file = 'src/finsight/' + relative
 
             # Condition 1: latest commit touching the excepted file must not
             # also touch the exception list, unless grandfathered.
-            sha = _latest_commit_touching(repo_file)
-            if (
-                sha is not None
-                and inv_rel in _commit_files(sha)
-                and sha not in _LEGACY_EXCEPTION_FRESHNESS_COMMITS
-            ):
-                violations.append(
-                    f'{relative}: latest commit touching {repo_file} '
-                    f'({sha[:8]}) also touches {inv_rel}.'
-                )
+            if relative not in checked_files:
+                checked_files.add(relative)
+                sha = _latest_commit_touching(repo_file)
+                if (
+                    sha is not None
+                    and inv_rel in _commit_files(sha)
+                    and sha not in _LEGACY_EXCEPTION_FRESHNESS_COMMITS
+                ):
+                    violations.append(
+                        f'{relative}: latest commit touching {repo_file} '
+                        f'({sha[:8]}) also touches {inv_rel}.'
+                    )
 
             # Condition 2: removal_condition must not cite the current ticket/PR.
             if current_number is not None and _references_ticket(removal_condition, current_number):

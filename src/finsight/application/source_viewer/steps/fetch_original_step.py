@@ -141,25 +141,15 @@ class FetchOriginalStep:
         return await self._run(context)
 
 
-def _resolve_storage_key(  # noqa: PLR0913, PLR0917
+def _resolve_storage_identity(  # noqa: PLR0913, PLR0917
     storage: Any,
     version_obj: Any,
     document_obj: Any,
     company_id: Any,
     document_id_input: Any,
     version_id_input: Any,
-) -> Any:
-    for obj in (version_obj, document_obj):
-        key = _get_attr(obj, *_STORAGE_KEY_NAMES)
-        if key is not None:
-            return key
-        for attr in ('metadata', 'extras', 'meta', 'data', 'properties'):
-            nested = _get_attr(obj, attr)
-            if isinstance(nested, dict):
-                key = _get_attr(nested, *_NESTED_KEY_NAMES)
-                if key is not None:
-                    return key
-
+) -> tuple[str, Any, Any, Any] | None:
+    """Resolve the identity fields needed to build a storage key."""
     company = str(company_id)
     document_id = _coalesce(
         document_id_input,
@@ -191,6 +181,39 @@ def _resolve_storage_key(  # noqa: PLR0913, PLR0917
     )
     if storage is None or document_id is None or filename is None:
         return None
+    return company, document_id, version_id, filename
+
+
+def _resolve_storage_key(  # noqa: PLR0913, PLR0917
+    storage: Any,
+    version_obj: Any,
+    document_obj: Any,
+    company_id: Any,
+    document_id_input: Any,
+    version_id_input: Any,
+) -> Any:
+    for obj in (version_obj, document_obj):
+        key = _get_attr(obj, *_STORAGE_KEY_NAMES)
+        if key is not None:
+            return key
+        for attr in ('metadata', 'extras', 'meta', 'data', 'properties'):
+            nested = _get_attr(obj, attr)
+            if isinstance(nested, dict):
+                key = _get_attr(nested, *_NESTED_KEY_NAMES)
+                if key is not None:
+                    return key
+
+    identity = _resolve_storage_identity(
+        storage,
+        version_obj,
+        document_obj,
+        company_id,
+        document_id_input,
+        version_id_input,
+    )
+    if identity is None:
+        return None
+    company, document_id, version_id, filename = identity
     for name in (
         'build_key',
         'generate_key',

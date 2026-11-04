@@ -44,6 +44,10 @@ DATA_METHOD_KEYWORDS: tuple[str, ...] = (
     'execute',
 )
 
+# Pipeline run state is keyed by a globally unique run/version id, not by
+# tenant. The state-store seam therefore has no company_id dimension (#157).
+NON_TENANT_CLASS_NAMES: frozenset[str] = frozenset({'StateStore', 'InMemoryStateStore'})
+
 # Identifiers that must never be passed directly to a logger.
 SENSITIVE_LOG_IDENTIFIERS: frozenset[str] = frozenset(
     {
@@ -177,7 +181,9 @@ def find_methods_without_company_id(package_path: Path) -> list[tuple[str, str, 
             # Private or value-object helper classes (e.g. stream chunks) are not
             # tenant data accessors; their dict-style helpers are false positives.
             if class_name is not None and (
-                class_name.startswith('_') or class_name.endswith(('Chunk', 'Result'))
+                class_name.startswith('_')
+                or class_name.endswith(('Chunk', 'Result'))
+                or class_name in NON_TENANT_CLASS_NAMES
             ):
                 continue
 
@@ -385,28 +391,3 @@ def count_passthroughs(root: Path | str) -> int:
 is_passthrough = is_passthrough_module
 is_pass_through = is_passthrough_module
 is_pass_through_module = is_passthrough_module
-
-
-def find_variadic_constructors(package_path: Path | str) -> list[tuple[str, str, int]]:
-    """Find ``__init__`` methods with any variadic parameter (``*`` / ``**``)."""
-    violations: list[tuple[str, str, int]] = []
-    for filepath in get_python_files(package_path):
-        tree = parse_python_file(filepath)
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.ClassDef):
-                continue
-            for item in node.body:
-                if not isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    continue
-                if item.name != '__init__':
-                    continue
-                if item.args.vararg is None and item.args.kwarg is None:
-                    continue
-                violations.append((str(filepath), node.name, item.lineno))
-    return violations
-
-
-# Alias names some callers may expect.
-find_bare_kwargs_constructors = find_variadic_constructors
-find_bare_variadic_constructors = find_variadic_constructors
-find_variadic_init = find_variadic_constructors

@@ -112,15 +112,6 @@ def _generate_report(results: dict[str, Any]) -> str:
     return '\n'.join(lines) + '\n'
 
 
-# Backwards-compatible aliases for the in-memory report renderer.
-_render_report = _generate_report
-_build_report = _generate_report
-_format_report = _generate_report
-generate_report = _generate_report
-render_report = _generate_report
-build_report = _generate_report
-
-
 def _write_report(results: dict[str, Any], path: Path | str | None = None) -> str:
     """Compatibility wrapper; renders in memory, optionally writing to ``path``."""
     content = _generate_report(results)

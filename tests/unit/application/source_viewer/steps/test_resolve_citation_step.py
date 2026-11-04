@@ -7,7 +7,7 @@ from finsight.application.source_viewer.source_viewer_context import SourceViewe
 from finsight.application.source_viewer.steps.resolve_citation_step import ResolveCitationStep
 from finsight.core.security.citation_locator import mint_citation_locator
 
-SECRET = 'secret-key-1234567890-abcdefghijklmnopqrstuvwxyz'
+SECRET = 'secret-key-1234567890-abcdefghijklmnopqrstuvwxyz'  # pragma: allowlist secret
 
 
 def _step(signing_key: str = SECRET) -> ResolveCitationStep:

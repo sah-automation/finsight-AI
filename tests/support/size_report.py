@@ -3,7 +3,7 @@
 This module backs ``make sizes``.  It scans ``src/finsight`` and uses the same
 line-counting rules as ``tests/architecture/test_invariants.py``.
 
-Thresholds (mirror ``CODING_STANDARDS.md`` and the architecture test):
+Thresholds (the project ratchet enforced by the architecture tests):
 
 * files: more than 300 lines
 * public functions: more than 30 lines
@@ -30,15 +30,12 @@ MAX_FILE_LINES = 300
 MAX_PUBLIC_FUNCTION_LINES = 30
 MAX_PRIVATE_FUNCTION_LINES = 60
 
-# Compatibility aliases used elsewhere in the codebase.
-MAX_FUNCTION_LINES = MAX_PUBLIC_FUNCTION_LINES
-PRIVATE_FUNCTION_THRESHOLD = MAX_PRIVATE_FUNCTION_LINES
-PUBLIC_FUNCTION_THRESHOLD = MAX_PUBLIC_FUNCTION_LINES
-FILE_THRESHOLD = MAX_FILE_LINES
-
 
 class _SizeReport(TypedDict):
     root: Path
+    file_threshold: int
+    public_threshold: int
+    private_threshold: int
     files: list[tuple[Path, int]]
     public_functions: list[tuple[Path, str, int]]
     private_functions: list[tuple[Path, str, int]]
@@ -87,7 +84,7 @@ def large_public_functions(
         (
             (path, name, lines)
             for path, name, lines in _all_function_rows(target)
-            if not _is_private_name(name) and not name.startswith('_') and lines > threshold
+            if not name.startswith('_') and lines > threshold
         ),
         key=lambda item: (-item[2], str(item[0]), item[1]),
     )
@@ -113,6 +110,9 @@ def analyze(root: Path | str | None = None, file_threshold: int = MAX_FILE_LINES
     target = SRC_ROOT if root is None else Path(root)
     return {
         'root': target,
+        'file_threshold': file_threshold,
+        'public_threshold': MAX_PUBLIC_FUNCTION_LINES,
+        'private_threshold': MAX_PRIVATE_FUNCTION_LINES,
         'files': large_files(target, file_threshold),
         'public_functions': large_public_functions(target, MAX_PUBLIC_FUNCTION_LINES),
         'private_functions': large_private_functions(target, MAX_PRIVATE_FUNCTION_LINES),
@@ -138,8 +138,9 @@ def build_report(
 
     lines: list[str] = []
 
-    lines.append('Files over 300 lines')
-    lines.append('=' * len('Files over 300 lines'))
+    file_header = f'Files over {data["file_threshold"]} lines'
+    lines.append(file_header)
+    lines.append('=' * len(file_header))
     files = data['files']
     if not files:
         lines.append('(none)')
@@ -148,8 +149,9 @@ def build_report(
             lines.append(f'{display(path)}: {n} lines')
 
     lines.append('')
-    lines.append('Public functions over 30 lines')
-    lines.append('=' * len('Public functions over 30 lines'))
+    public_header = f'Public functions over {data["public_threshold"]} lines'
+    lines.append(public_header)
+    lines.append('=' * len(public_header))
     public = data['public_functions']
     if not public:
         lines.append('(none)')
@@ -158,8 +160,9 @@ def build_report(
             lines.append(f'{display(path)}::{name}: {n} lines')
 
     lines.append('')
-    lines.append('Private functions over 60 lines')
-    lines.append('=' * len('Private functions over 60 lines'))
+    private_header = f'Private functions over {data["private_threshold"]} lines'
+    lines.append(private_header)
+    lines.append('=' * len(private_header))
     private = data['private_functions']
     if not private:
         lines.append('(none)')
@@ -190,21 +193,6 @@ def main(argv: list[str] | None = None) -> int:
     report = analyze(args.root, args.threshold_file)
     print(build_report(report, args.root, PROJECT_ROOT), end='')
     return 0
-
-
-run = main
-
-# Compatibility aliases kept small and canonical.
-find_large_files = large_files
-collect_large_files = large_files
-oversized_files = large_files
-find_large_public_functions = large_public_functions
-collect_large_public_functions = large_public_functions
-find_large_private_functions = large_private_functions
-collect_large_private_functions = large_private_functions
-generate_report = build_report
-format_report = build_report
-report = lambda root=None: build_report(analyze(root), root, None)  # noqa: E731
 
 
 if __name__ == '__main__':

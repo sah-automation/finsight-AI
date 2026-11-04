@@ -137,14 +137,6 @@ def _variadic_constructors(application_root: Path) -> list[tuple[str, str, int]]
     return violations
 
 
-# Alias names for the broadened (variadic) check.
-_bare_kwargs_constructors = _variadic_constructors
-_bare_variadic_constructors = _variadic_constructors
-find_variadic_constructors = _variadic_constructors
-find_bare_kwargs_constructors = _variadic_constructors
-find_bare_variadic_constructors = _variadic_constructors
-
-
 @pytest.mark.architecture
 class TestConstructorInvariant:
     """Fail when a new bare ``**kwargs`` constructor appears in application code."""
@@ -177,7 +169,7 @@ class TestConstructorInvariant:
     def test_no_unexpected_bare_kwargs_constructors(self) -> None:
         """All bare kwargs constructors must be reviewed exceptions."""
         unapproved: list[str] = []
-        for relative, class_name, lineno in _bare_kwargs_constructors(APPLICATION_ROOT):
+        for relative, class_name, lineno in _variadic_constructors(APPLICATION_ROOT):
             key = f'{relative}::{class_name}'
             if key not in BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS:
                 unapproved.append(f'{relative}:{lineno}: {class_name}')
