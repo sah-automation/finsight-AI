@@ -125,7 +125,9 @@ def _write_report(results: dict[str, Any], path: Path | str | None = None) -> st
     """Compatibility wrapper; renders in memory, optionally writing to ``path``."""
     content = _generate_report(results)
     if path is not None:
-        Path(path).write_text(content)
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
     return content
 
 
@@ -588,7 +590,7 @@ class TestStandardsChecklist:
 
         # When requested, write the tracked file (used by `make ratchet`).
         if os.environ.get('UPDATE_STANDARDS_REPORT') == '1':
-            REPORT_PATH.write_text(report)
+            _write_report(results, REPORT_PATH)
         else:
             # Compare-only: never touch the tracked file; fail loudly if stale.
             existing = REPORT_PATH.read_text() if REPORT_PATH.exists() else ''
