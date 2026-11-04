@@ -127,7 +127,7 @@ def _write_report(results: dict[str, Any], path: Path | str | None = None) -> st
     if path is not None:
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content)
+        target.write_text(content, encoding='utf-8')
     return content
 
 
@@ -593,7 +593,7 @@ class TestStandardsChecklist:
             _write_report(results, REPORT_PATH)
         else:
             # Compare-only: never touch the tracked file; fail loudly if stale.
-            existing = REPORT_PATH.read_text() if REPORT_PATH.exists() else ''
+            existing = REPORT_PATH.read_text(encoding='utf-8') if REPORT_PATH.exists() else ''
             if report != existing:
                 pytest.fail('standards_report.md is stale; run `make ratchet` to update')
 
