@@ -104,7 +104,7 @@ class AuditStep:
         try:
             return await self._run_impl(context)
         except Exception:
-            logger.debug('audit step failed', exc_info=True)
+            logger.debug('audit step failed (trace_id=%s)', context.trace_id, exc_info=True)
             return StepResult.continue_(context)
 
 

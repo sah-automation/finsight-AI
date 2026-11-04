@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from finsight.application.source_viewer._step_helpers import (
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     from finsight.domain.ports.document_table_repository import DocumentTableRepository
 
 _TABLE_ID_HINT = 'table'
+
+logger = logging.getLogger(__name__)
 
 
 class FetchContentStep:
@@ -136,7 +139,8 @@ class FetchContentStep:
                 matched = await _await(
                     _call_table_get(repo, company_id, supplied, version_id, document_id, page)
                 )
-            except Exception:  # noqa: BLE001
+            except Exception:
+                logger.debug('table get failed (trace_id=%s)', context.trace_id, exc_info=True)
                 matched = None
         if matched is None:
             return StepResult.stop_with_not_available(context)
