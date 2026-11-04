@@ -787,6 +787,14 @@ __all__ = [
 ]
 
 
+for _r in (router,):
+    _r.get('/health')(health)
+
+    _r.post('', response_model=None)(http_upload)
+
+    _r.post('/', response_model=None)(http_upload)
+
+
 class Upload:
     """Thin wrapper exposing the upload entrypoint as a callable object."""
 
