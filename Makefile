@@ -4,7 +4,7 @@
 
 COVERAGE_MIN ?= 50
 
-.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps coverage-domain coverage-application coverage-packages coverage-diff web-typecheck web-lint web-test web-build web-api-check web-verify sizes
+.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test ratchet coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps coverage-domain coverage-application coverage-packages coverage-diff web-typecheck web-lint web-test web-build web-api-check web-verify sizes
 
 # Default target
 help:
@@ -30,6 +30,7 @@ help:
 	@echo "  config-check   - Validate every config profile through the loader"
 	@echo "  docs-check     - Verify every relative Markdown link resolves"
 	@echo "  arch-test      - Run architecture invariant tests"
+	@echo "  ratchet        - Regenerate standards_report.md (UPDATE_STANDARDS_REPORT=1)"
 	@echo ""
 	@echo "Tests:"
 	@echo "  test           - Run all tests (unit + contract + architecture + switches)"
@@ -154,6 +155,9 @@ docker-build:
 # ============================================================
 arch-test:
 	uv run pytest tests/architecture -v --tb=short
+
+ratchet:
+	UPDATE_STANDARDS_REPORT=1 uv run pytest tests/architecture/test_standards_checklist.py -v
 
 # ============================================================
 # Test Suite
