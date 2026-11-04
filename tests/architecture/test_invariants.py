@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import ast
+import os
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -648,3 +650,203 @@ class TestNoEnvironmentChecksInBusinessCode:
                         f'Direct Environment.PRODUCTION check found. '
                         f'Use config switches instead.'
                     )
+
+
+# ============================================================
+# Test: Exception entries are not added/widened with the file
+# ============================================================
+
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+_INVARIANTS_REL = 'tests/architecture/test_invariants.py'
+_TEST_INVARIANTS_ABS = Path(__file__).resolve()
+
+# Pre-existing commits in which an excepted file's latest commit also touches
+# test_invariants.py. These predate the freshness gate and are grandfathered.
+_LEGACY_EXCEPTION_FRESHNESS_COMMITS = frozenset(
+    {
+        '49f5f0a7255c170e91e7b8e8bb245f8dd331d217',  # pragma: allowlist secret
+        '4a430485dac2938b45ca1a7a545134b6de19e204',  # pragma: allowlist secret
+        '58525734af5d9f76e9c9598e036bd253a3e74aa8',  # pragma: allowlist secret
+        '95fbac019349f7d2777d2bbbf60e9df5ad10074d',  # pragma: allowlist secret
+        '9dd468902e773f346cec05073037a75af477dc3d',  # pragma: allowlist secret
+    }
+)
+
+
+def _parse_exception_items(text: str) -> list[tuple[str, str]]:
+    """Return (relative_path, removal_condition) for each exception entry."""
+    items: list[tuple[str, str]] = []
+
+    file_start = text.index('OVERSIZED_FILE_EXCEPTIONS')
+    file_end = text.index('OVERSIZED_FUNCTION_EXCEPTIONS')
+    for match in re.finditer(
+        r"^\s+'([^']+)': \{\s*\n(.*?)^\s+\},",
+        text[file_start:file_end],
+        re.MULTILINE | re.DOTALL,
+    ):
+        key = match.group(1)
+        body = match.group(2)
+        removal = re.search(r"'removal_condition':\s*'([^']*)'", body)
+        items.append((key, removal.group(1) if removal else ''))
+
+    func_text = text[text.index('OVERSIZED_FUNCTION_EXCEPTIONS') :]
+    cut = func_text.find('\n\n\n#')
+    if cut != -1:
+        func_text = func_text[:cut]
+    for match in re.finditer(
+        r"^\s+'([^']+)': \{\s*\n(.*?)^\s+\},",
+        func_text,
+        re.MULTILINE | re.DOTALL,
+    ):
+        key = match.group(1)
+        body = match.group(2)
+        removal = re.search(r"'removal_condition':\s*'([^']*)'", body)
+        relative = key.split('::', 1)[0]
+        items.append((relative, removal.group(1) if removal else ''))
+
+    return items
+
+
+def _git(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(  # noqa: S603
+        ['git', *args],
+        cwd=cwd or _REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _latest_commit_touching(repo_rel_file: str) -> str | None:
+    result = _git('log', '-1', '--format=%H', '--', repo_rel_file)
+    sha = result.stdout.strip()
+    return sha or None
+
+
+def _commit_files(sha: str) -> set[str]:
+    result = _git('diff-tree', '--root', '-m', '--no-commit-id', '--name-only', '-r', sha)
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def _working_tree_changed_files() -> set[str]:
+    changed: set[str] = set()
+    for args in (['diff', '--name-only', 'HEAD'], ['diff', '--cached', '--name-only']):
+        result = _git(*args)
+        changed.update(line.strip() for line in result.stdout.splitlines() if line.strip())
+
+    status = _git('status', '--porcelain')
+    for raw_line in status.stdout.splitlines():
+        line = raw_line.rstrip()
+        if not line.strip():
+            continue
+        # Handle renames: "R  old -> new"
+        path_part = line.strip().split(maxsplit=1)[-1]
+        if ' -> ' in path_part:
+            path_part = path_part.split(' -> ', 1)[-1]
+        changed.add(path_part.strip())
+    return changed
+
+
+def _current_ticket_number(repo_root: Path) -> str | None:
+    for env_name in ('CHECK_EXCEPTION_FRESHNESS_PR', 'GITHUB_PR_NUMBER', 'PR_NUMBER'):
+        value = os.getenv(env_name)
+        if value and value.isdigit():
+            return value
+
+    ref = os.getenv('GITHUB_REF', '')
+    match = re.search(r'refs/pull/(\d+)/', ref)
+    if match:
+        return match.group(1)
+
+    for env_name in ('GITHUB_HEAD_REF', 'GITHUB_REF_NAME'):
+        value = os.getenv(env_name)
+        if value:
+            match = re.search(r'(\d+)', value)
+            if match:
+                return match.group(1)
+
+    try:
+        message = _git('log', '-1', '--format=%s', cwd=repo_root).stdout
+    except (OSError, ValueError, UnicodeError):
+        message = ''
+    match = re.search(r'#(\d+)', message)
+    if match:
+        return match.group(1)
+
+    try:
+        branch = _git('branch', '--show-current', cwd=repo_root).stdout.strip()
+    except (OSError, ValueError, UnicodeError):
+        branch = ''
+    match = re.search(r'(\d+)', branch)
+    if match and branch:
+        return match.group(1)
+    return None
+
+
+def _references_ticket(removal_condition: str, number: str) -> bool:
+    return bool(re.search(rf'(?<!\d){re.escape(number)}(?!\d)', removal_condition))
+
+
+@pytest.mark.architecture
+class TestExceptionFreshness:
+    """Gate preventing oversized-file/function exceptions from being refreshed.
+
+    Runs only when ``CHECK_EXCEPTION_FRESHNESS=1`` (set in CI).
+    """
+
+    def test_exception_entries_are_not_freshly_added(self) -> None:
+        """Exception entries may not be introduced alongside their file."""
+        if os.getenv('CHECK_EXCEPTION_FRESHNESS') != '1':
+            pytest.skip('Set CHECK_EXCEPTION_FRESHNESS=1 to enable this check.')
+
+        disk_text = _TEST_INVARIANTS_ABS.read_text()
+        disk_items = _parse_exception_items(disk_text)
+
+        inv_rel = _INVARIANTS_REL
+        try:
+            head_text = _git('show', f'HEAD:{inv_rel}').stdout
+        except (OSError, ValueError, UnicodeError):
+            head_text = ''
+        head_keys = (
+            {relative for relative, _ in _parse_exception_items(head_text)} if head_text else set()
+        )
+
+        changed_files = _working_tree_changed_files()
+        current_number = _current_ticket_number(_REPO_ROOT)
+
+        violations: list[str] = []
+        for relative, removal_condition in disk_items:
+            repo_file = 'src/finsight/' + relative
+
+            # Condition 1: latest commit touching the excepted file must not
+            # also touch the exception list, unless grandfathered.
+            sha = _latest_commit_touching(repo_file)
+            if (
+                sha is not None
+                and inv_rel in _commit_files(sha)
+                and sha not in _LEGACY_EXCEPTION_FRESHNESS_COMMITS
+            ):
+                violations.append(
+                    f'{relative}: latest commit touching {repo_file} '
+                    f'({sha[:8]}) also touches {inv_rel}.'
+                )
+
+            # Condition 2: removal_condition must not cite the current ticket/PR.
+            if current_number is not None and _references_ticket(removal_condition, current_number):
+                violations.append(
+                    f'{relative}: removal_condition references current ticket/PR #{current_number}.'
+                )
+
+            # Condition 3/4: a newly added exception entry may not land together
+            # with changes to the file it excuses.
+            newly_added = relative not in head_keys if head_text else False
+            if newly_added and repo_file in changed_files:
+                violations.append(
+                    f'{relative}: newly added exception for {repo_file} lands in the '
+                    f'same change as modifications to that file.'
+                )
+
+        assert not violations, 'Oversized exception freshness violations:\n' + '\n'.join(
+            f'  {v}' for v in violations
+        )
