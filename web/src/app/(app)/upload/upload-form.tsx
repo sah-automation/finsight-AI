@@ -311,12 +311,15 @@ export function UploadForm({
       await delay(attempt === 0 ? 0 : 300);
       if (!pollingRef.current) return;
       try {
-        const response = await fetch(`${API_BASE_PATH}/documents/${encodeURIComponent(documentId)}`, {
-          method: 'GET',
-          credentials: 'same-origin',
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-        });
+        const response = await fetch(
+          `${API_BASE_PATH}/documents/${encodeURIComponent(documentId)}${user?.company_id ? `?company_id=${encodeURIComponent(user.company_id)}` : ''}`,
+          {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { Accept: 'application/json' },
+          },
+        );
         if (response.ok) {
           const payload = (await response.json().catch(() => null)) as unknown;
           const record =
@@ -347,7 +350,7 @@ export function UploadForm({
         // keep polling
       }
     }
-  }, []);
+  }, [user?.company_id]);
 
   const fetchUpload = useCallback(
     async (forceBypass: boolean) => {

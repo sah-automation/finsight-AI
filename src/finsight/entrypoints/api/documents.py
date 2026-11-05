@@ -220,14 +220,46 @@ def _extract_company_id_documents(context: Any, data: dict[str, Any]) -> Any:
     if value is None and context is not None:
         if isinstance(context, dict):
             value = _get(context, 'company_id', 'companyId', 'company', 'tenant_id', 'tenantId')
-            if value is None and 'user' in context:
-                value = _extract_company_id(context.get('user'), {})
-            if value is None and 'context' in context:
-                value = _extract_company_id(context.get('context'), {})
+            if value is None:
+                for _nested_key in (
+                    'user',
+                    'principal',
+                    'identity',
+                    'current_user',
+                    'context',
+                    'request_context',
+                    'auth_context',
+                    'security_context',
+                    'user_context',
+                ):
+                    if _nested_key in context and context.get(_nested_key) is not None:
+                        value = _extract_company_id(context.get(_nested_key), {})
+                        if value is not None:
+                            break
         else:
             value = _get(context, 'company_id', 'companyId', 'company', 'tenant_id', 'tenantId')
-            if value is None and hasattr(context, 'company_id'):
-                value = getattr(context, 'company_id', None)
+            if value is None:
+                for _attr in ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'):
+                    if hasattr(context, _attr):
+                        candidate = getattr(context, _attr, None)
+                        if candidate is not None:
+                            value = candidate
+                            break
+            if value is None:
+                for _nested_attr in (
+                    'user',
+                    'principal',
+                    'identity',
+                    'current_user',
+                    'context',
+                    'request_context',
+                ):
+                    if hasattr(context, _nested_attr):
+                        candidate = getattr(context, _nested_attr, None)
+                        if candidate is not None:
+                            value = _extract_company_id(candidate, {})
+                            if value is not None:
+                                break
     return value
 
 
@@ -238,16 +270,39 @@ def _try_context_role_documents(context: Any) -> Any:
     if context is None:
         return None
     if isinstance(context, dict):
-        for key in ('role', 'role_id', 'roleId', 'roles'):
+        for key in ('role', 'role_id', 'roleId', 'roles', 'name'):
             if key in context:
-                return context.get(key)
-        for nested in ('user', 'principal', 'identity', 'current_user'):
-            if nested in context:
+                found = context.get(key)
+                if found is not None:
+                    return found
+        for nested in (
+            'user',
+            'principal',
+            'identity',
+            'current_user',
+            'context',
+            'request_context',
+            'auth_context',
+            'security_context',
+            'user_context',
+        ):
+            if nested in context and context.get(nested) is not None:
                 found = _try_context_role(context.get(nested))
                 if found is not None:
                     return found
         return None
-    return _get(context, 'role')
+    # object-style context
+    found = _get(context, 'role', 'role_id', 'roleId')
+    if found is not None:
+        return found
+    for attr in ('user', 'principal', 'identity', 'current_user', 'context'):
+        if hasattr(context, attr):
+            candidate = getattr(context, attr, None)
+            if candidate is not None:
+                found = _try_context_role(candidate)
+                if found is not None:
+                    return found
+    return None
 
 
 _try_context_role: Any = _try_context_role_documents
@@ -729,16 +784,22 @@ async def http_list(context: Any = None) -> Any:
     return await _handle(context, context=context)
 
 
-async def http_get(document_id: str, context: Any = None) -> Any:
-    return await _handle({'document_id': document_id}, context=context, action='get')
+async def http_get(document_id: str, context: Any = None, company_id: Any = None) -> Any:
+    data: dict[str, Any] = {'document_id': document_id}
+    if company_id is not None:
+        data['company_id'] = company_id
+    return await _handle(payload=data, context=context, action='get')
 
 
 async def http_create(payload: Any = Body(default=None), context: Any = None) -> Any:
-    return await _handle(payload, context=context)
+    return await _handle(payload=payload, context=context)
 
 
-async def http_delete(document_id: str, context: Any = None) -> Any:
-    return await _handle({'document_id': document_id}, context=context, action='delete')
+async def http_delete(document_id: str, context: Any = None, company_id: Any = None) -> Any:
+    data: dict[str, Any] = {'document_id': document_id}
+    if company_id is not None:
+        data['company_id'] = company_id
+    return await _handle(payload=data, context=context, action='delete')
 
 
 __all__ = [
@@ -759,6 +820,18 @@ __all__ = [
     'trash',
     'trash_bin',
 ]
+
+
+for _r in (router,):
+    _r.get('/health')(health)
+
+    _r.post('', response_model=None)(http_create)
+
+    _r.post('/', response_model=None)(http_create)
+
+    _r.get('/{document_id}', response_model=None)(http_get)
+
+    _r.delete('/{document_id}', response_model=None)(http_delete)
 
 
 class Documents:

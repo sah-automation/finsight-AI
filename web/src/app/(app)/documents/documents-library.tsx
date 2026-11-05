@@ -300,6 +300,7 @@ export function DocumentsLibrary({
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({
             action: targetView === 'recycle' ? 'recycle' : 'list',
+            company_id: user?.company_id,
           }),
         });
 
@@ -327,7 +328,7 @@ export function DocumentsLibrary({
         setLoading(false);
       }
     },
-    [router],
+    [router, user?.company_id],
   );
 
   useEffect(() => {
@@ -404,12 +405,15 @@ export function DocumentsLibrary({
     setSelected(doc);
     setDetailLoading(true);
     try {
-      const response = await fetch(`${API_BASE_PATH}/documents/${encodeURIComponent(id)}`, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        headers: { Accept: 'application/json' },
-      });
+      const response = await fetch(
+        `${API_BASE_PATH}/documents/${encodeURIComponent(id)}${user?.company_id ? `?company_id=${encodeURIComponent(user.company_id)}` : ''}`,
+        {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        },
+      );
       if (response.ok) {
         const body = (await response.json().catch(() => null)) as unknown;
         if (body && typeof body === 'object' && !Array.isArray(body)) {
@@ -426,7 +430,7 @@ export function DocumentsLibrary({
     } finally {
       setDetailLoading(false);
     }
-  }, []);
+  }, [user?.company_id]);
 
   const executeMutation = useCallback(
     async (document: DocumentRecord, type: 'delete' | 'purge' | 'restore') => {
@@ -434,10 +438,18 @@ export function DocumentsLibrary({
       try {
         let response: Response;
         if (type === 'delete') {
-          response = await fetch(`${API_BASE_PATH}/documents/${encodeURIComponent(id)}`, {
-            method: 'DELETE',
+          response = await fetch(`${API_BASE_PATH}/documents`, {
+            method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              action: 'delete',
+              delete: true,
+              document_id: id,
+              id,
+              company_id: user?.company_id,
+            }),
           });
         } else if (type === 'purge') {
           response = await fetch(`${API_BASE_PATH}/documents`, {
@@ -445,7 +457,14 @@ export function DocumentsLibrary({
             credentials: 'same-origin',
             cache: 'no-store',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ action: 'purge', purge: true, permanent: true, document_id: id, id }),
+            body: JSON.stringify({
+              action: 'purge',
+              purge: true,
+              permanent: true,
+              document_id: id,
+              id,
+              company_id: user?.company_id,
+            }),
           });
         } else {
           response = await fetch(`${API_BASE_PATH}/documents`, {
@@ -453,7 +472,13 @@ export function DocumentsLibrary({
             credentials: 'same-origin',
             cache: 'no-store',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ action: 'restore', restore: true, document_id: id, id }),
+            body: JSON.stringify({
+              action: 'restore',
+              restore: true,
+              document_id: id,
+              id,
+              company_id: user?.company_id,
+            }),
           });
         }
 
@@ -477,7 +502,7 @@ export function DocumentsLibrary({
         setConfirmAction(null);
       }
     },
-    [loadDocuments, view],
+    [loadDocuments, view, user?.company_id],
   );
 
   const toggleSort = (column: 'name' | 'updated' | 'period' | 'category') => {
