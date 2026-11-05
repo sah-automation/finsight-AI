@@ -430,6 +430,51 @@ def _upload_presigned_fields(outcome: Any, data: dict[str, Any]) -> tuple[Any, A
     return upload_url, presigned_url, bucket, key
 
 
+def _upload_response_fields(
+    lookup: Any,
+    upload_url: Any,
+    presigned_url: Any,
+    bucket: Any,
+    key: Any,
+    version_id: Any,
+    duplicate: bool,
+    suggest_update: bool,
+    partition_missing: bool,
+    enqueued: bool,
+    job_id: Any,
+    status: Any,
+    document_status: Any,
+) -> dict[str, Any]:
+    return {
+        'document_id': lookup('document_id', 'documentId', 'doc_id', 'docId'),
+        'version_id': version_id,
+        'company_id': lookup('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
+        'document_category': lookup(
+            'document_category', 'documentCategory', 'category', 'doc_category', 'document_type'
+        ),
+        'period': lookup('period', 'reporting_period', 'period_label'),
+        'upload_type': lookup('upload_type', 'uploadType', 'type', 'action'),
+        'document_status': document_status,
+        'file': lookup('file', 'filename', 'file_name', 'files', 'name', 'original_filename'),
+        'upload_url': upload_url,
+        'presigned_url': presigned_url,
+        'bucket': bucket,
+        'key': key,
+        'duplicate': duplicate,
+        'suggest_update': suggest_update,
+        'suggested_document_id': lookup(
+            'suggested_document_id', 'suggestedDocumentId', 'suggested_doc_id'
+        ),
+        'suggested_version_id': lookup(
+            'suggested_version_id', 'suggestedVersionId', 'suggested_ver_id'
+        ),
+        'partition_missing': partition_missing,
+        'enqueued': enqueued,
+        'job_id': job_id,
+        'status': status,
+    }
+
+
 def _as_response(outcome: Any, data: dict[str, Any]) -> dict[str, Any]:
     response = _UploadResponse()
     lookup = partial(_upload_get, outcome, data)
@@ -452,6 +497,9 @@ def _as_response(outcome: Any, data: dict[str, Any]) -> dict[str, Any]:
     suggest_update = bool(suggest_raw) if suggest_raw is not None else duplicate
     partition_raw = lookup('partition_missing', 'partitionMissing')
     partition_missing = bool(partition_raw) if partition_raw is not None else False
+    enqueued_raw = lookup('enqueued', 'queued', 'queued_job')
+    enqueued = bool(enqueued_raw) if enqueued_raw is not None else False
+    job_id = lookup('job_id', 'queued_job_id', 'queuedJobId', 'message_id')
     status = lookup('status', 'upload_status', 'uploadStatus')
     if status is None:
         status = 'accepted'
@@ -461,32 +509,21 @@ def _as_response(outcome: Any, data: dict[str, Any]) -> dict[str, Any]:
         document_status = data_dict.get('status')
 
     response.update(
-        {
-            'document_id': lookup('document_id', 'documentId', 'doc_id', 'docId'),
-            'version_id': version_id,
-            'company_id': lookup('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
-            'document_category': lookup(
-                'document_category', 'documentCategory', 'category', 'doc_category', 'document_type'
-            ),
-            'period': lookup('period', 'reporting_period', 'period_label'),
-            'upload_type': lookup('upload_type', 'uploadType', 'type', 'action'),
-            'document_status': document_status,
-            'file': lookup('file', 'filename', 'file_name', 'files', 'name', 'original_filename'),
-            'upload_url': upload_url,
-            'presigned_url': presigned_url,
-            'bucket': bucket,
-            'key': key,
-            'duplicate': duplicate,
-            'suggest_update': suggest_update,
-            'suggested_document_id': lookup(
-                'suggested_document_id', 'suggestedDocumentId', 'suggested_doc_id'
-            ),
-            'suggested_version_id': lookup(
-                'suggested_version_id', 'suggestedVersionId', 'suggested_ver_id'
-            ),
-            'partition_missing': partition_missing,
-            'status': status,
-        }
+        _upload_response_fields(
+            lookup,
+            upload_url,
+            presigned_url,
+            bucket,
+            key,
+            version_id,
+            duplicate,
+            suggest_update,
+            partition_missing,
+            enqueued,
+            job_id,
+            status,
+            document_status,
+        )
     )
     return response
 
@@ -849,14 +886,31 @@ for _r in (router,):
 class Upload:
     """Thin wrapper exposing the upload entrypoint as a callable object."""
 
-    def __init__(self, context: Any = None, partition_manager: Any = None, **deps: Any) -> None:
+    def __init__(
+        self,
+        context: Any = None,
+        partition_manager: Any = None,
+        use_case: Any = None,
+        **deps: Any,
+    ) -> None:
 
-        self.use_case = get_upload_use_case()
+        self.use_case = use_case if use_case is not None else get_upload_use_case()
         self.context = context
         self.partition_manager = partition_manager
         self.deps = deps
 
     async def run(self, *args: Any, **kwargs: Any) -> Any:
+        # A positional leading dict is the upload payload coming from the
+        # composition/caller seam. Convert it to ``payload=`` so _handle's
+        # routing does not misclassify it as a context (the payload carries
+        # ``company_id``, which ``_is_context`` treats as a context marker).
+        # Mirrors how ask/onboarding/documents pass payload explicitly.
+        args = tuple(args)
+        kwargs = dict(kwargs)
+        if args and isinstance(args[0], dict) and 'payload' not in kwargs:
+            payload_dict = args[0]
+            args = args[1:]
+            kwargs['payload'] = payload_dict
         if (
             self.use_case is not None
             and 'use_case' not in kwargs
