@@ -147,7 +147,24 @@ def _init_s3_storage(self: Any, *args: Any, **kwargs: Any) -> None:
         self.default_expires_in = 900
 
     # Encryption key mode (config switch).
-    enc_cfg = _encryption_config(self.config)
+    # Resolve a direct encryption-section object passed via constructor kwargs,
+    # falling back to the accessor on the resolved config object.
+    enc_cfg = None
+    for _enc_key in ('encryption', 'encryption_config', 'encryption_section'):
+        _cand = kwargs.get(_enc_key)
+        if _cand is None:
+            continue
+        if isinstance(_cand, dict):
+            enc_cfg = _cand.get('encryption', _cand.get('encryption_config', _cand))
+        elif hasattr(_cand, 'encryption'):
+            enc_cfg = _encryption_config(_cand)
+            if enc_cfg is None:
+                enc_cfg = _cand
+        else:
+            enc_cfg = _cand
+        break
+    if enc_cfg is None:
+        enc_cfg = _encryption_config(self.config)
     key_mode = _first(
         kwargs,
         'key_mode',
@@ -185,6 +202,7 @@ def _init_s3_storage(self: Any, *args: Any, **kwargs: Any) -> None:
     self.encryption_key_mode = key_mode
     self.key_mode = key_mode
     self.encryption_mode = key_mode
+    self.encryption_config = enc_cfg
 
     # KMS / encryption.
     self.kms_key_id = _first(

@@ -132,11 +132,11 @@ async def _generate_presigned_url(
         if mode is None:
             mode = getattr(self, 'key_mode', None)
         if mode is None:
-            mode = 'kms_customer' if getattr(self, 'kms_key_id', None) else 'aws_managed'
+            mode = 'aws_managed'
         mode = str(mode).strip().lower()
-        if mode in ('aws_managed', 'aws-managed', 'sse-s3', 'aes256', 'aes_256'):
+        if mode == 'aws_managed':
             params['ServerSideEncryption'] = 'AES256'
-        elif mode in ('kms_customer', 'kms', 'kms-customer', 'aws:kms', 'aws_kms'):
+        elif mode == 'kms_customer':
             params['ServerSideEncryption'] = 'aws:kms'
             key_id = getattr(self, 'kms_key_id', None)
             if key_id:

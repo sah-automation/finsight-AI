@@ -432,10 +432,10 @@ def _upload_presigned_fields(outcome: Any, data: dict[str, Any]) -> tuple[Any, A
 
 def _as_response(outcome: Any, data: dict[str, Any]) -> dict[str, Any]:
     response = _UploadResponse()
-    g = partial(_upload_get, outcome, data)
+    lookup = partial(_upload_get, outcome, data)
     upload_url, presigned_url, bucket, key = _upload_presigned_fields(outcome, data)
 
-    version_id = g('version_id', 'versionId', 'document_version_id', 'documentVersionId')
+    version_id = lookup('version_id', 'versionId', 'document_version_id', 'documentVersionId')
     if (
         version_id is None
         and outcome is not None
@@ -444,44 +444,44 @@ def _as_response(outcome: Any, data: dict[str, Any]) -> dict[str, Any]:
     ):
         version_id = getattr(outcome, 'id', None)
 
-    duplicate_raw = g(
+    duplicate_raw = lookup(
         'duplicate', 'is_duplicate', 'duplicated', 'duplicate_found', 'duplicate_detected'
     )
     duplicate = bool(duplicate_raw) if duplicate_raw is not None else False
-    suggest_raw = g('suggest_update', 'update_suggestion', 'suggested_update')
+    suggest_raw = lookup('suggest_update', 'update_suggestion', 'suggested_update')
     suggest_update = bool(suggest_raw) if suggest_raw is not None else duplicate
-    partition_raw = g('partition_missing', 'partitionMissing')
+    partition_raw = lookup('partition_missing', 'partitionMissing')
     partition_missing = bool(partition_raw) if partition_raw is not None else False
-    status = g('status', 'upload_status', 'uploadStatus')
+    status = lookup('status', 'upload_status', 'uploadStatus')
     if status is None:
         status = 'accepted'
-    document_status = g('document_status', 'documentStatus')
+    document_status = lookup('document_status', 'documentStatus')
     data_dict = data if isinstance(data, dict) else {}
     if document_status is None and data_dict.get('status') is not None:
         document_status = data_dict.get('status')
 
     response.update(
         {
-            'document_id': g('document_id', 'documentId', 'doc_id', 'docId'),
+            'document_id': lookup('document_id', 'documentId', 'doc_id', 'docId'),
             'version_id': version_id,
-            'company_id': g('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
-            'document_category': g(
+            'company_id': lookup('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
+            'document_category': lookup(
                 'document_category', 'documentCategory', 'category', 'doc_category', 'document_type'
             ),
-            'period': g('period', 'reporting_period', 'period_label'),
-            'upload_type': g('upload_type', 'uploadType', 'type', 'action'),
+            'period': lookup('period', 'reporting_period', 'period_label'),
+            'upload_type': lookup('upload_type', 'uploadType', 'type', 'action'),
             'document_status': document_status,
-            'file': g('file', 'filename', 'file_name', 'files', 'name', 'original_filename'),
+            'file': lookup('file', 'filename', 'file_name', 'files', 'name', 'original_filename'),
             'upload_url': upload_url,
             'presigned_url': presigned_url,
             'bucket': bucket,
             'key': key,
             'duplicate': duplicate,
             'suggest_update': suggest_update,
-            'suggested_document_id': g(
+            'suggested_document_id': lookup(
                 'suggested_document_id', 'suggestedDocumentId', 'suggested_doc_id'
             ),
-            'suggested_version_id': g(
+            'suggested_version_id': lookup(
                 'suggested_version_id', 'suggestedVersionId', 'suggested_ver_id'
             ),
             'partition_missing': partition_missing,

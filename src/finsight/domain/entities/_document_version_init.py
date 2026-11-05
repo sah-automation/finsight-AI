@@ -216,8 +216,6 @@ def _init_document_version(instance: Any, *args: Any, **kwargs: Any) -> None:  #
         'dict[str, object] | None', _coalesce(kwargs, 'metadata', default=instance.metadata)
     )
     # Always populate the declared extras mapping.
-    if not hasattr(instance, 'extras') or instance.extras is None:
-        instance.extras = {}
     extras = _coalesce(kwargs, 'extras', default=None)
     if isinstance(extras, dict):
         instance.extras = dict(extras)
