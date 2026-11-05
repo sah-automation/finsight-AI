@@ -20,6 +20,7 @@ from ._shared import (
 import contextlib
 import inspect
 import re
+from functools import partial
 from typing import Any
 from fastapi import APIRouter, Body, HTTPException
 from finsight.core.errors import AuthorizationError, ValidationError, to_user_message
@@ -385,58 +386,108 @@ async def _run_use_case(use_case: Any, data: dict[str, Any]) -> Any:
     raise _ServerError('Upload use case is not callable.')
 
 
+def _upload_get(outcome: Any, data: dict[str, Any], *names: Any) -> Any:
+    data_dict = data if isinstance(data, dict) else {}
+    if outcome is not None and not isinstance(outcome, dict):
+        for name in names:
+            value = getattr(outcome, name, None)
+            if value is not None:
+                return value
+    if isinstance(outcome, dict):
+        for name in names:
+            if outcome.get(name) is not None:
+                return outcome.get(name)
+    for name in names:
+        if data_dict.get(name) is not None:
+            return data_dict.get(name)
+    return None
+
+
+def _upload_presigned_fields(outcome: Any, data: dict[str, Any]) -> tuple[Any, Any, Any, Any]:
+    presigned = _upload_get(
+        outcome, data, 'upload_url', 'presigned_url', 'presigned_upload', 'url', 'link'
+    )
+    presigned_url = _upload_get(outcome, data, 'presigned_url', 'presignedUrl')
+    if presigned_url is None:
+        presigned_url = presigned
+    upload_url = presigned if presigned is not None else presigned_url
+    bucket = _upload_get(
+        outcome, data, 'bucket', 'storage_bucket', 'bucket_name', 'documents_bucket'
+    )
+    if bucket is None and presigned is not None and not isinstance(presigned, str):
+        try:
+            bucket = getattr(presigned, 'bucket', None)
+        except Exception:
+            bucket = None
+    key = _upload_get(
+        outcome, data, 'key', 'storage_key', 'object_key', 's3_key', 'objectKey', 'storageKey'
+    )
+    if key is None and presigned is not None and not isinstance(presigned, str):
+        try:
+            key = getattr(presigned, 'key', None)
+        except Exception:
+            key = None
+    return upload_url, presigned_url, bucket, key
+
+
 def _as_response(outcome: Any, data: dict[str, Any]) -> dict[str, Any]:
     response = _UploadResponse()
-    if isinstance(outcome, dict):
-        response.update(outcome)
-    for field in (
-        'company_id',
-        'document_category',
-        'period',
-        'upload_type',
-        'replaces_document_id',
-        'file',
-    ):
-        if field not in response and isinstance(data, dict) and data.get(field) is not None:
-            response[field] = data.get(field)
+    g = partial(_upload_get, outcome, data)
+    upload_url, presigned_url, bucket, key = _upload_presigned_fields(outcome, data)
+
+    version_id = g('version_id', 'versionId', 'document_version_id', 'documentVersionId')
     if (
-        'document_status' not in response
-        and isinstance(data, dict)
-        and data.get('status') is not None
+        version_id is None
+        and outcome is not None
+        and not isinstance(outcome, dict)
+        and hasattr(outcome, 'id')
     ):
-        response['document_status'] = data.get('status')
-    if outcome is not None and not isinstance(outcome, dict):
-        for attr in (
-            'status',
-            'upload_status',
-            'message',
-            'company_id',
-            'company_id_str',
-            'document_category',
-            'period',
-            'upload_type',
-            'replaces_document_id',
-            'file',
-            'presigned_url',
-            'upload_url',
-            'partition_missing',
-        ):
-            if hasattr(outcome, attr):
-                value = getattr(outcome, attr)
-                if value is not None:
-                    response[attr] = value
-    if 'partition_missing' not in response:
-        response['partition_missing'] = False
-    if 'status' not in response:
-        response['status'] = 'accepted'
-    if 'upload_status' not in response:
-        response['upload_status'] = response['status']
-    if 'accepted' not in response:
-        response['accepted'] = True
-    if 'result' not in response and outcome is not None:
-        response['result'] = outcome
-    if '_result' not in response and outcome is not None:
-        response['_result'] = outcome
+        version_id = getattr(outcome, 'id', None)
+
+    duplicate_raw = g(
+        'duplicate', 'is_duplicate', 'duplicated', 'duplicate_found', 'duplicate_detected'
+    )
+    duplicate = bool(duplicate_raw) if duplicate_raw is not None else False
+    suggest_raw = g('suggest_update', 'update_suggestion', 'suggested_update')
+    suggest_update = bool(suggest_raw) if suggest_raw is not None else duplicate
+    partition_raw = g('partition_missing', 'partitionMissing')
+    partition_missing = bool(partition_raw) if partition_raw is not None else False
+    status = g('status', 'upload_status', 'uploadStatus')
+    if status is None:
+        status = 'accepted'
+    document_status = g('document_status', 'documentStatus')
+    data_dict = data if isinstance(data, dict) else {}
+    if document_status is None and data_dict.get('status') is not None:
+        document_status = data_dict.get('status')
+
+    response.update(
+        {
+            'document_id': g('document_id', 'documentId', 'doc_id', 'docId'),
+            'version_id': version_id,
+            'company_id': g('company_id', 'companyId', 'company', 'tenant_id', 'tenantId'),
+            'document_category': g(
+                'document_category', 'documentCategory', 'category', 'doc_category', 'document_type'
+            ),
+            'period': g('period', 'reporting_period', 'period_label'),
+            'upload_type': g('upload_type', 'uploadType', 'type', 'action'),
+            'document_status': document_status,
+            'file': g('file', 'filename', 'file_name', 'files', 'name', 'original_filename'),
+            'upload_url': upload_url,
+            'presigned_url': presigned_url,
+            'bucket': bucket,
+            'key': key,
+            'duplicate': duplicate,
+            'suggest_update': suggest_update,
+            'suggested_document_id': g(
+                'suggested_document_id', 'suggestedDocumentId', 'suggested_doc_id'
+            ),
+            'suggested_version_id': g(
+                'suggested_version_id', 'suggestedVersionId', 'suggested_ver_id'
+            ),
+            'partition_missing': partition_missing,
+            'status': status,
+        }
+    )
     return response
 
 
@@ -766,7 +817,7 @@ async def health() -> dict[str, str]:
 
 
 async def http_upload(payload: Any = Body(default=None), context: Any = None) -> Any:
-    return await _handle(payload, context=context)
+    return await _handle(payload=payload, context=context)
 
 
 __all__ = [

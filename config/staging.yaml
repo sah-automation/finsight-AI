@@ -76,3 +76,7 @@ observability:
     embedding_retries_exceeded: 3
     job_in_retry_list: true
     role_cache_stale_seconds: 7200
+
+encryption:
+  key_mode: aws_managed
+  kms_key_alias: ""

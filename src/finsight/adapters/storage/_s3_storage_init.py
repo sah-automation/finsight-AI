@@ -146,6 +146,46 @@ def _init_s3_storage(self: Any, *args: Any, **kwargs: Any) -> None:
     if self.default_expires_in < 1:
         self.default_expires_in = 900
 
+    # Encryption key mode (config switch).
+    enc_cfg = _encryption_config(self.config)
+    key_mode = _first(
+        kwargs,
+        'key_mode',
+        'encryption_key_mode',
+        'encryption_mode',
+        'key_mode',
+        'mode',
+        'sse',
+        'server_side_encryption_mode',
+        default=None,
+    )
+    if key_mode is None and enc_cfg is not None:
+        for attr in ('key_mode', 'mode', 'server_side_encryption'):
+            val = (
+                getattr(enc_cfg, attr, None) if not isinstance(enc_cfg, dict) else enc_cfg.get(attr)
+            )
+            if val is not None:
+                key_mode = val
+                break
+    if key_mode is None and self.storage_config is not None:
+        for attr in ('key_mode', 'encryption_key_mode', 'encryption_mode'):
+            val = (
+                getattr(self.storage_config, attr, None)
+                if not isinstance(self.storage_config, dict)
+                else self.storage_config.get(attr)
+            )
+            if val is not None:
+                key_mode = val
+                break
+    if key_mode is None:
+        key_mode = 'aws_managed'
+    key_mode = str(key_mode).strip().lower()
+    if key_mode not in ('aws_managed', 'kms_customer'):
+        raise ValueError(f'invalid encryption key_mode: {key_mode!r}')
+    self.encryption_key_mode = key_mode
+    self.key_mode = key_mode
+    self.encryption_mode = key_mode
+
     # KMS / encryption.
     self.kms_key_id = _first(
         kwargs,
@@ -159,6 +199,18 @@ def _init_s3_storage(self: Any, *args: Any, **kwargs: Any) -> None:
         'encryption_key',
         default=None,
     )
+    if self.kms_key_id is None and key_mode != 'aws_managed':
+        # Allow alias from typed encryption config.
+        if enc_cfg is not None:
+            for attr in ('kms_key_alias', 'kms_key_id', 'key_id', 'key_alias', 'master_key_id'):
+                val = (
+                    getattr(enc_cfg, attr, None)
+                    if not isinstance(enc_cfg, dict)
+                    else enc_cfg.get(attr)
+                )
+                if val:
+                    self.kms_key_id = val
+                    break
     if self.kms_key_id is None:
         enc_cfg = _encryption_config(self.config)
         if enc_cfg is not None:
@@ -192,6 +244,10 @@ def _init_s3_storage(self: Any, *args: Any, **kwargs: Any) -> None:
             except Exception:
                 pass
 
+    if self.encryption_key_mode == 'kms_customer' and not self.kms_key_id:
+        raise ValueError('kms_key_id is required when key_mode is kms_customer')
+    if not hasattr(self, 'kms_key_id'):
+        self.kms_key_id = None
     self._bucket_by_scope = {}
     self._client_cache = None
     if self._provided_client is not None:

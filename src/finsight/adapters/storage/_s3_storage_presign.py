@@ -128,9 +128,23 @@ async def _generate_presigned_url(
         if content_type_value is not None:
             params['ContentType'] = content_type_value
         # Encryption metadata (for presigned PUT).
-        params['ServerSideEncryption'] = 'aws:kms'
-        if self.kms_key_id:
-            params['SSEKMSKeyId'] = self.kms_key_id
+        mode = getattr(self, 'encryption_key_mode', None)
+        if mode is None:
+            mode = getattr(self, 'key_mode', None)
+        if mode is None:
+            mode = 'kms_customer' if getattr(self, 'kms_key_id', None) else 'aws_managed'
+        mode = str(mode).strip().lower()
+        if mode in ('aws_managed', 'aws-managed', 'sse-s3', 'aes256', 'aes_256'):
+            params['ServerSideEncryption'] = 'AES256'
+        elif mode in ('kms_customer', 'kms', 'kms-customer', 'aws:kms', 'aws_kms'):
+            params['ServerSideEncryption'] = 'aws:kms'
+            key_id = getattr(self, 'kms_key_id', None)
+            if key_id:
+                params['SSEKMSKeyId'] = key_id
+            else:
+                raise ValueError('kms_key_id is required when key_mode is kms_customer')
+        else:
+            raise ValueError(f'invalid encryption key_mode: {mode!r}')
 
     call_kwargs = {
         'ClientMethod': client_method,
@@ -152,17 +166,20 @@ async def _generate_presigned_url(
         if callable(method):
             result = None
             try:
-                result = method(client_method, Params=params, ExpiresIn=expiry_int)
+                result = method(client_method, params, expiry_int)
             except TypeError:
                 try:
-                    result = method(**call_kwargs)
+                    result = method(client_method, Params=params, ExpiresIn=expiry_int)
                 except TypeError:
                     try:
-                        result = method(
-                            ClientMethod='put_object', Params=params, ExpiresIn=expiry_int
-                        )
+                        result = method(**call_kwargs)
                     except TypeError:
-                        result = None
+                        try:
+                            result = method(
+                                ClientMethod='put_object', Params=params, ExpiresIn=expiry_int
+                            )
+                        except TypeError:
+                            result = None
             result = await _await_value(result)
             # If a mock returned without consuming its configured return value,
             # prefer the mock's return_value when it carries a real payload.

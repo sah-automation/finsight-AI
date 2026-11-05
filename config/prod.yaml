@@ -107,3 +107,7 @@ reranker:
   timeout_seconds: 10
   max_retries: 2
   batch_size: 50
+
+encryption:
+  key_mode: aws_managed
+  kms_key_alias: ""

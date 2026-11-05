@@ -256,3 +256,7 @@ access:
   roles: ["executive_leadership", "corporate_finance_planners", "audit_compliance", "system_admin"]
   permissions_file: "config/permissions.yaml"
   role_cache_seconds_privileged: 0
+
+encryption:
+  key_mode: aws_managed
+  kms_key_alias: ""

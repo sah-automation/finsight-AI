@@ -34,6 +34,9 @@ def _normalize_review_scope(value: object) -> str | None:
 
 
 def _init_document_version(instance: Any, *args: Any, **kwargs: Any) -> None:  # noqa: PLR0912, PLR0915
+    instance.extras = getattr(instance, 'extras', None)
+    if not isinstance(instance.extras, dict):
+        instance.extras = {}
     positional_order = [
         'id',
         'company_id',
@@ -212,6 +215,9 @@ def _init_document_version(instance: Any, *args: Any, **kwargs: Any) -> None:  #
     instance.metadata = cast(
         'dict[str, object] | None', _coalesce(kwargs, 'metadata', default=instance.metadata)
     )
+    # Always populate the declared extras mapping.
+    if not hasattr(instance, 'extras') or instance.extras is None:
+        instance.extras = {}
     extras = _coalesce(kwargs, 'extras', default=None)
     if isinstance(extras, dict):
         instance.extras = dict(extras)

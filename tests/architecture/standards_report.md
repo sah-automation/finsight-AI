@@ -27,7 +27,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/composition_container.py: 611 lines
   - core/errors/__init__.py: 338 lines
   - adapters/readers/textract_reader.py: 356 lines
-  - entrypoints/api/upload.py: 843 lines
+  - entrypoints/api/upload.py: 894 lines
   - entrypoints/api/ask.py: 505 lines
   - entrypoints/api/feedback.py: 1166 lines
   - entrypoints/api/onboarding.py: 427 lines
