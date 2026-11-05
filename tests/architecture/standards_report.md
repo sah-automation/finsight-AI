@@ -28,7 +28,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - core/errors/__init__.py: 338 lines
   - adapters/storage/s3_storage.py: 308 lines
   - adapters/readers/textract_reader.py: 356 lines
-  - entrypoints/api/upload.py: 948 lines
+  - entrypoints/api/upload.py: 950 lines
   - entrypoints/api/ask.py: 505 lines
   - entrypoints/api/feedback.py: 1166 lines
   - entrypoints/api/onboarding.py: 427 lines

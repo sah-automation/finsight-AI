@@ -924,7 +924,9 @@ class Upload:
         if self.partition_manager is not None:
             kwargs = dict(kwargs)
             kwargs.setdefault('partition_manager', self.partition_manager)
-        kwargs.update(self.deps)
+        # Injected dependencies must not clobber a payload that the caller
+        # supplied as the first positional argument.
+        kwargs.update({key: value for key, value in self.deps.items() if key != 'payload'})
         return await _handle(*args, **kwargs)
 
     __call__ = run
