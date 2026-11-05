@@ -89,7 +89,7 @@ check: lint typecheck imports vulture secrets test test-security
 
 # Fast pre-flight loop (lint + typecheck + imports + arch-test + unit tests)
 # Excludes: vulture, secrets, integration, contract, switches, security, coverage
-preflight: lint typecheck imports arch-test test-unit
+preflight: lint typecheck imports arch-test test-unit bootstrap-check
 	@echo "✓ Pre-flight checks passed"
 
 # Advanced quality gates (issue #80)
@@ -135,6 +135,9 @@ pre-commit:
 config-check:
 	uv run python scripts/check_config.py
 
+.PHONY: bootstrap-check local-bootstrap-check local-bootstrap-parity bootstrap-parity check-bootstrap-parity
+bootstrap-check local-bootstrap-check local-bootstrap-parity bootstrap-parity check-bootstrap-parity:
+	uv run python scripts/check_local_bootstrap_parity.py
 docs-check:
 	uv run python scripts/check_links.py
 
