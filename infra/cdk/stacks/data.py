@@ -12,11 +12,20 @@ from aws_cdk import aws_rds as rds
 from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
+from stacks.cors_config import _resolve_cors_allowed_origins
+
 _REMOVAL_POLICIES = {
     'retain': RemovalPolicy.RETAIN,
     'destroy': RemovalPolicy.DESTROY,
 }
 _ENVS_FILE = Path(__file__).resolve().parent.parent / 'config' / 'envs.yaml'
+
+# CORS is required for browser PUT/GET/HEAD requests against presigned S3
+# upload URLs.  Origins are resolved from environment config (see
+# ``stacks.cors_config``) so they are never hard-coded per env.
+_CORS_ALLOWED_HEADERS = ['*']
+_CORS_EXPOSED_HEADERS = ['ETag']
+_CORS_MAX_AGE_SECONDS = 3000
 
 
 def _load_env_config(env_name: str) -> dict[str, Any]:
@@ -146,6 +155,19 @@ class DataStack(Stack):
             'removal_policy': removal_policy,
         }
 
+        cors_allowed_origins = _resolve_cors_allowed_origins(config, env_name)
+        cors_rule = s3.CorsRule(
+            allowed_methods=[
+                s3.HttpMethods.GET,
+                s3.HttpMethods.PUT,
+                s3.HttpMethods.HEAD,
+            ],
+            allowed_origins=cors_allowed_origins,
+            allowed_headers=_CORS_ALLOWED_HEADERS,
+            exposed_headers=_CORS_EXPOSED_HEADERS,
+            max_age=_CORS_MAX_AGE_SECONDS,
+        )
+
         # S3 buckets (parameterized by env)
         self.documents_bucket = s3.Bucket(
             self,
@@ -155,6 +177,7 @@ class DataStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=removal_policy,
             auto_delete_objects=removal_policy == RemovalPolicy.DESTROY,
+            cors=[cors_rule],
             **bucket_key_kwargs,
         )
         self.reports_bucket = s3.Bucket(
@@ -165,6 +188,7 @@ class DataStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=removal_policy,
             auto_delete_objects=removal_policy == RemovalPolicy.DESTROY,
+            cors=[cors_rule],
             **bucket_key_kwargs,
         )
         self.backups_bucket = s3.Bucket(
@@ -175,6 +199,7 @@ class DataStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=removal_policy,
             auto_delete_objects=removal_policy == RemovalPolicy.DESTROY,
+            cors=[cors_rule],
             **bucket_key_kwargs,
         )
 

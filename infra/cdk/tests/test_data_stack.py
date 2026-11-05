@@ -132,3 +132,30 @@ def test_customer_managed_key_mode_uses_one_kms_key_for_data() -> None:
     cluster = next(iter(template.find_resources('AWS::RDS::DBCluster').values()))
     assert cluster['Properties']['StorageEncrypted'] is True
     assert 'KmsKeyId' in cluster['Properties']
+
+
+def _s3_buckets(template: Template) -> dict[str, dict[str, object]]:
+    return template.find_resources('AWS::S3::Bucket')
+
+
+def test_upload_buckets_have_cors_rule() -> None:
+    template = _data_template('dev')
+    buckets = _s3_buckets(template)
+    assert buckets
+    for bucket in buckets.values():
+        cors = bucket['Properties'].get('CorsConfiguration')
+        assert cors is not None, 'upload bucket is missing CORS configuration'
+        rules = cors['CorsRules']
+        assert len(rules) == 1
+        rule = rules[0]
+        assert set(rule['AllowedMethods']) == {'GET', 'PUT', 'HEAD'}
+        assert 'ETag' in rule['ExposedHeaders']
+        allowed_headers = [str(header).lower() for header in rule['AllowedHeaders']]
+        assert '*' in allowed_headers or 'content-type' in allowed_headers
+
+
+def test_production_upload_buckets_do_not_allow_wildcard_origin() -> None:
+    template = _data_template('prod')
+    for bucket in _s3_buckets(template).values():
+        rule = bucket['Properties']['CorsConfiguration']['CorsRules'][0]
+        assert '*' not in rule['AllowedOrigins']
