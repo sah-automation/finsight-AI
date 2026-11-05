@@ -684,12 +684,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             }
         },
     )
-    upload_use_case = provided_deps.get('upload_use_case') or build_upload_use_case(
-        config=config,
-        session=session,
-        partition_manager=partition_manager,
-        **_extra,
-    )
+    upload_use_case = provided_deps.get('upload_use_case')
 
     provided_object_storage = provided_deps.get('object_storage')
     if provided_object_storage is None:
@@ -932,6 +927,17 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         queue = _existing(kwargs, 'queue', 'queue_port', 'sqs', 'job_queue', 'reprocessing_queue')
     if queue is None:
         queue = build_queue(config=config, session=session, **_extra)
+
+    if upload_use_case is None:
+        upload_use_case = build_upload_use_case(
+            config=config,
+            session=session,
+            partition_manager=partition_manager,
+            object_storage=object_storage,
+            job_repository=job_repository,
+            queue=queue,
+            **_extra,
+        )
 
     reprocess_use_case = _existing(
         kwargs,

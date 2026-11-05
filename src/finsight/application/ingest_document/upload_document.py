@@ -107,6 +107,17 @@ class UploadDocument:
         )
         self._answer_cache = _get_attr(kwargs, 'answer_cache', 'cache', default=None)
         self._job_repository = _get_attr(kwargs, 'job_repository', 'job_repo', 'jobs', default=None)
+        self._queue = _get_attr(
+            kwargs,
+            'queue_port',
+            'queue',
+            'queue_adapter',
+            'sqs',
+            'job_queue',
+            'messaging',
+            default=None,
+        )
+        self._queue_port = self._queue
         self._allowed_categories = None
         self._expires_in = 900
 
@@ -120,10 +131,19 @@ class UploadDocument:
             '_config',
             '_answer_cache',
             '_job_repository',
+            '_queue',
         ]
         for index, value in enumerate(args):
             if index < len(positional):
                 setattr(self, positional[index], value)
+
+        # Keep aliases in sync when dependencies are passed positionally.
+        if getattr(self, '_queue', None) is not None:
+            self._queue_port = self._queue
+            self.queue = self._queue
+            self.queue_port = self._queue
+        if getattr(self, '_job_repository', None) is not None:
+            self.job_repository = self._job_repository
 
         # If a provided use-case-like/container was passed, unwrap common attrs.
         for candidate_key in (
@@ -468,6 +488,17 @@ class UploadDocument:
                     pass
 
             await self._commit_transaction(tx)
+
+            # Trigger ingestion for the newly created version.
+            enqueued = False
+            queued_job_id = None
+            try:
+                enqueued, queued_job_id = await self._trigger_ingestion(
+                    company_id, document_id, version_id
+                )
+            except Exception:
+                enqueued = False
+                queued_job_id = None
         except Exception:
             await self._rollback_transaction(tx)
             raise
@@ -498,8 +529,153 @@ class UploadDocument:
             suggested_document_id=suggested_document_id,
             suggested_version_id=suggested_version_id,
             partition_missing=False,
+            enqueued=enqueued,
+            queued=enqueued,
+            queued_job=enqueued,
+            job_id=queued_job_id,
         )
         return result
+
+    async def _trigger_ingestion(
+        self, company_id: Any, document_id: Any, version_id: Any
+    ) -> tuple[bool, Any]:
+        queue = self._queue_port if self._queue_port is not None else self._queue
+        job_repo = self._job_repository
+        version_text = str(version_id)
+        if queue is None:
+            if job_repo is None:
+                return False, None
+            if await self._job_already_exists(job_repo, company_id, version_text):
+                return False, version_text
+            await self._record_ingestion_job(job_repo, company_id, version_text)
+            return True, version_text
+        version_text = str(version_id)
+        job_payload = {
+            'company_id': str(company_id),
+            'document_id': str(document_id),
+            'version_id': version_text,
+            'action': 'ingest',
+        }
+        job_repo = self._job_repository
+        if await self._job_already_exists(job_repo, company_id, version_text):
+            return False, None
+        enqueued, job_id = await self._enqueue_ingestion(queue, job_payload, version_text)
+        if enqueued and job_repo is not None:
+            await self._record_ingestion_job(job_repo, company_id, version_text)
+        if job_id is None:
+            job_id = version_text
+        return enqueued, job_id
+
+    async def _job_already_exists(self, job_repo: Any, company_id: Any, version_id: str) -> bool:
+        if job_repo is None:
+            return False
+        finder = None
+        for name in ('find_job', 'find', 'get_job', 'get', 'fetch_job', 'fetch'):
+            candidate = getattr(job_repo, name, None)
+            if callable(candidate):
+                finder = candidate
+                break
+        if finder is None:
+            return False
+        for attempt in (
+            lambda m=finder: m(company_id, version_id=version_id),
+            lambda m=finder: m(company_id, version_id),
+        ):
+            try:
+                result = await _await(attempt())  # type: ignore[no-untyped-call]
+                return bool(result)
+            except TypeError:
+                continue
+            except Exception:
+                continue
+        return False
+
+    async def _enqueue_ingestion(
+        self, queue: Any, payload: dict[str, Any], version_id: str
+    ) -> tuple[bool, Any]:
+        job_id: Any = None
+        queue_method = None
+        for name in (
+            'enqueue',
+            'enqueue_job',
+            'send',
+            'send_message',
+            'publish',
+            'dispatch',
+            'put',
+        ):
+            candidate = getattr(queue, name, None)
+            if callable(candidate):
+                queue_method = candidate
+                break
+        if queue_method is None:
+            return False, None
+        attempts = (
+            lambda m=queue_method: m('ingestion', payload),
+            lambda m=queue_method: m(queue='ingestion', message=payload),
+            lambda m=queue_method: m(payload=payload, queue='ingestion'),
+            lambda m=queue_method: m(payload),
+            lambda m=queue_method: m(message=payload),
+            lambda m=queue_method: m(body=payload),
+        )
+        for attempt in attempts:
+            try:
+                result = await _await(attempt())  # type: ignore[no-untyped-call]
+                if isinstance(result, dict):
+                    job_id = (
+                        result.get('job_id')
+                        or result.get('jobId')
+                        or result.get('id')
+                        or result.get('message_id')
+                        or result.get('MessageId')
+                    )
+                elif result is not None:
+                    job_id = (
+                        getattr(result, 'job_id', None)
+                        or getattr(result, 'jobId', None)
+                        or getattr(result, 'id', None)
+                    )
+                if job_id is None and isinstance(result, (str, int, uuid.UUID)):
+                    job_id = result
+                if job_id is None:
+                    job_id = version_id
+                return True, job_id
+            except TypeError:
+                continue
+            except Exception:
+                break
+        return False, None
+
+    async def _record_ingestion_job(self, job_repo: Any, company_id: Any, version_id: str) -> None:
+        for name in (
+            'create_job',
+            'create',
+            'add_job',
+            'enqueue',
+            'schedule',
+            'save_job',
+            'upsert_job',
+            'upsert',
+            'insert',
+        ):
+            creator = getattr(job_repo, name, None)
+            if not callable(creator):
+                continue
+            job_attempts = (
+                lambda m=creator: m(company_id, version_id, 'queued'),
+                lambda m=creator: m(company_id, version_id, status='queued'),
+                lambda m=creator: m(company_id=company_id, job_id=version_id, status='queued'),
+                lambda m=creator: m(company_id=company_id, version_id=version_id, status='queued'),
+            )
+            for attempt in job_attempts:
+                try:
+                    await _await(attempt())  # type: ignore[no-untyped-call]
+                    return
+                except TypeError:
+                    continue
+                except Exception:
+                    break
+        # try the next available repository method
 
     def _normalise_input(self, request: Any, extra: dict[str, Any]) -> Any:
         if request is None and not extra:
