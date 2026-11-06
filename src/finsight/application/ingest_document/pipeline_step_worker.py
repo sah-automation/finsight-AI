@@ -530,6 +530,27 @@ class PipelineStepWorker:
             return self.reader
         return None
 
+    async def _fetch_source(self, company_id: Any, key: str) -> tuple[Any, bool]:
+        source = None
+        failed = False
+        try:
+            source = (
+                self.object_storage.get_object(company_id, key)
+                if self.object_storage is not None
+                else None
+            )
+            if inspect.isawaitable(source):
+                source = await source
+        except Exception as exc:  # noqa: BLE001
+            failed = True
+            import logging
+
+            logging.getLogger(__name__).warning(
+                'Failed to read source object for company %s key %s: %s', company_id, key, exc
+            )
+            source = None
+        return source, failed
+
     async def _read(self, company_id: Any, version: Any, key: str) -> Any:
         reader = self._reader()
         if reader is None:
@@ -541,17 +562,9 @@ class PipelineStepWorker:
             import types
 
             reader = types.SimpleNamespace(read=reader)
-        source = None
-        try:
-            source = (
-                self.object_storage.get_object(company_id, key)
-                if self.object_storage is not None
-                else None
-            )
-        except Exception:
-            source = None
-        if inspect.isawaitable(source):
-            source = await source
+        source, storage_failed = await self._fetch_source(company_id, key)
+        if storage_failed:
+            return ReaderResult(text='', tables=[], page_numbers=[], confidence=None)
         kwargs = {'page_router_enabled': self.page_router_enabled}
         if self.config is not None:
             kwargs['config'] = self.config
@@ -559,11 +572,7 @@ class PipelineStepWorker:
             method = getattr(reader, name, None)
             if callable(method):
                 for attempt in (
-                    lambda m=method: (
-                        m(company_id, source, **kwargs)
-                        if source is not None
-                        else (_ for _ in ()).throw(TypeError())
-                    ),
+                    lambda m=method: m(company_id, source, **kwargs),
                     lambda m=method: m(company_id, key),
                     lambda m=method: m(company_id, key, **kwargs),
                     lambda m=method: m(company_id, **kwargs),
