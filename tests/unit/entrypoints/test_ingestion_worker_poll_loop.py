@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import sys
 from pathlib import Path
@@ -12,7 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'scripts'))
 
-import run_ingestion_worker as worker  # type: ignore
+import run_ingestion_worker as worker  # type: ignore[import-not-found]
 
 pytestmark = pytest.mark.unit
 
