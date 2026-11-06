@@ -522,9 +522,7 @@ class PipelineStepWorker:
     async def _read(self, company_id: Any, version: Any, key: str) -> Any:
         reader = self._reader()
         if reader is None:
-            # try construct from config? return empty
             return ReaderResult(text='', tables=[], page_numbers=[], confidence=None)
-        # Support plain callable ports (deep-module fakes) by adapting them.
         if callable(reader) and not any(
             hasattr(reader, name)
             for name in ('read', 'read_document', 'extract', 'parse', 'extract_text')
@@ -550,20 +548,19 @@ class PipelineStepWorker:
             method = getattr(reader, name, None)
             if callable(method):
                 for attempt in (
-                    lambda m=method: m(company_id, key),
-                    lambda m=method: m(company_id, key, **kwargs),
                     lambda m=method: (
                         m(company_id, source, **kwargs)
                         if source is not None
                         else (_ for _ in ()).throw(TypeError())
                     ),
+                    lambda m=method: m(company_id, key),
+                    lambda m=method: m(company_id, key, **kwargs),
                     lambda m=method: m(company_id, **kwargs),
                 ):
                     try:
                         res = await _awaitv(attempt())  # type: ignore[no-untyped-call]
                         if isinstance(res, ReaderResult):
                             return res
-                        # coerce
                         text = _get(res, 'text', default='')
                         tables = _get(res, 'tables', default=[]) or []
                         pages = _get(res, 'page_numbers', 'pages', default=[]) or []
@@ -654,6 +651,42 @@ class PipelineStepWorker:
         extra.update(kwargs)
         if request is None:
             request = extra
+        # Support context objects (SimpleNamespace/dto) by flattening their
+        # fields into the mapping the rest of the pipeline expects.
+        if request is not None and not isinstance(request, dict):
+            converted = {}
+            for attr in (
+                'company_id',
+                'company',
+                'tenant_id',
+                'version_id',
+                'document_version_id',
+                'id',
+                'document_id',
+                'documentId',
+                'doc_id',
+                'key',
+                'object_key',
+                's3_key',
+                'file_key',
+                'context',
+                'ctx',
+                'step_context',
+                'run_context',
+            ):
+                value = getattr(request, attr, None)
+                if value is not None:
+                    converted[attr] = value
+            envelope = getattr(request, 'envelope', None)
+            if isinstance(envelope, dict):
+                for k, v in envelope.items():
+                    converted.setdefault(k, v)
+            message = getattr(request, 'message', None)
+            if isinstance(message, dict):
+                for k, v in message.items():
+                    converted.setdefault(k, v)
+            if converted:
+                request = converted
         if isinstance(request, dict):
             merged = dict(request)
             merged.update(extra)

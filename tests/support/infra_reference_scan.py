@@ -134,6 +134,9 @@ def referenced_modules(paths: Iterable[Path | str] | None = None) -> set[str]:
 SCAN_INFRA_REFERENCES = scan_infra_references
 INFRA_REFERENCE_MODULES = frozenset(
     {
+        'finsight',
+        'finsight.application.ingest_document',
+        'finsight.composition',
         'finsight.core.config',
         'finsight.core.config.price_table',
         'finsight.entrypoints.api.app',

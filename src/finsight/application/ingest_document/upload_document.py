@@ -118,6 +118,8 @@ class UploadDocument:
             default=None,
         )
         self._queue_port = self._queue
+        self.document_repository = self._document_repository
+        self.queue = self._queue
         self._allowed_categories = None
         self._expires_in = 900
 
@@ -402,7 +404,21 @@ class UploadDocument:
         tx = None
         if self._unit_of_work is not None:
             tx = await self._begin_transaction()
+        created_parent = False
         try:
+            # Record the parent Document before its version so the library can
+            # see the upload and the version foreign key resolves.
+            if self._document_repository is not None:
+                document_id, created_parent = await self._ensure_document(
+                    company_id=company_id,
+                    document_id=document_id,
+                    filename=filename,
+                    category=category_text,
+                    period=period_text,
+                    status=status_text,
+                    upload_type=upload_type_text,
+                )
+
             created_version = version_entity
             if self._document_repository is not None:
                 created = await self._create_document_version(
@@ -494,13 +510,15 @@ class UploadDocument:
             queued_job_id = None
             try:
                 enqueued, queued_job_id = await self._trigger_ingestion(
-                    company_id, document_id, version_id
+                    company_id, document_id, version_id, key
                 )
             except Exception:
                 enqueued = False
                 queued_job_id = None
         except Exception:
             await self._rollback_transaction(tx)
+            if created_parent:
+                await self._discard_document(company_id, document_id)
             raise
 
         result = UploadResult(
@@ -537,7 +555,7 @@ class UploadDocument:
         return result
 
     async def _trigger_ingestion(
-        self, company_id: Any, document_id: Any, version_id: Any
+        self, company_id: Any, document_id: Any, version_id: Any, key: Any = None
     ) -> tuple[bool, Any]:
         queue = self._queue_port if self._queue_port is not None else self._queue
         job_repo = self._job_repository
@@ -556,6 +574,8 @@ class UploadDocument:
             'version_id': version_text,
             'action': 'ingest',
         }
+        if key is not None:
+            job_payload['key'] = str(key)
         job_repo = self._job_repository
         if await self._job_already_exists(job_repo, company_id, version_text):
             return False, None
@@ -621,29 +641,30 @@ class UploadDocument:
         for attempt in attempts:
             try:
                 result = await _await(attempt())  # type: ignore[no-untyped-call]
-                if isinstance(result, dict):
-                    job_id = (
-                        result.get('job_id')
-                        or result.get('jobId')
-                        or result.get('id')
-                        or result.get('message_id')
-                        or result.get('MessageId')
-                    )
-                elif result is not None:
-                    job_id = (
-                        getattr(result, 'job_id', None)
-                        or getattr(result, 'jobId', None)
-                        or getattr(result, 'id', None)
-                    )
-                if job_id is None and isinstance(result, (str, int, uuid.UUID)):
-                    job_id = result
-                if job_id is None:
-                    job_id = version_id
-                return True, job_id
             except TypeError:
                 continue
             except Exception:
-                break
+                # Queue method raised — surface as failure to caller
+                return False, None
+            if isinstance(result, dict):
+                job_id = (
+                    result.get('job_id')
+                    or result.get('jobId')
+                    or result.get('id')
+                    or result.get('message_id')
+                    or result.get('MessageId')
+                )
+            elif result is not None:
+                job_id = (
+                    getattr(result, 'job_id', None)
+                    or getattr(result, 'jobId', None)
+                    or getattr(result, 'id', None)
+                )
+            if job_id is None and isinstance(result, (str, int, uuid.UUID)):
+                job_id = result
+            if job_id is None:
+                job_id = version_id
+            return True, job_id
         return False, None
 
     async def _record_ingestion_job(self, job_repo: Any, company_id: Any, version_id: str) -> None:
@@ -944,6 +965,80 @@ class UploadDocument:
                 return str(attr_name).split('/')[-1].split('\\')[-1]
         # request-based file name
         return 'document.pdf'
+
+    async def _ensure_document(
+        self,
+        *,
+        company_id: Any,
+        document_id: Any,
+        filename: str,
+        category: str,
+        period: str,
+        status: str,
+        upload_type: str,
+    ) -> tuple[Any, bool]:
+        """Create the parent Document, returning ``(document_id, created)``.
+
+        An update targets the existing Document; a new upload always creates
+        one. When the repository cannot persist a parent (a test double), the
+        generated identifier is kept so version creation still works.
+        """
+        repo = self._document_repository
+        if repo is None:
+            return document_id, False
+        creator = getattr(repo, 'create_document', None)
+        if not callable(creator):
+            return document_id, False
+        if upload_type == 'update':
+            getter = getattr(repo, 'get_document', None)
+            if callable(getter):
+                try:
+                    existing = await _await(getter(company_id, document_id))
+                except Exception:
+                    existing = None
+                if existing is not None:
+                    return document_id, False
+        payload = {
+            'id': str(document_id),
+            'filename': filename,
+            'category': category,
+            'period': period,
+            'status': status,
+        }
+        try:
+            created = await _await(creator(company_id, **payload))
+        except TypeError:
+            created = await _await(creator(company_id, payload))
+        actual = _get_attr(created, 'id', 'document_id', default=None)
+        if actual is not None:
+            return DocumentId(str(actual)), True
+        return document_id, True
+
+    async def _discard_document(self, company_id: Any, document_id: Any) -> None:
+        repo = self._document_repository
+        if repo is None:
+            return
+        for name in ('purge_document', 'delete_document'):
+            method = getattr(repo, name, None)
+            if not callable(method):
+                continue
+            try:
+                await _await(method(company_id, document_id))
+            except Exception as exc:
+                # Log the failure but continue to try next method
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    'Failed to discard document %s: %s', document_id, exc
+                )
+                continue
+            return
+        # If no method succeeded, log a warning (don't raise to avoid masking original error)
+        import logging
+
+        logging.getLogger(__name__).warning(
+            'Could not discard document %s: no suitable delete method on repository', document_id
+        )
 
     async def _create_document_version(self, **kwargs: Any) -> Any:
         repo = self._document_repository
