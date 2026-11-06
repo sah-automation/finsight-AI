@@ -67,8 +67,9 @@ async def _sqs_receive(self: Any, *args: Any, **kwargs: Any) -> list[dict[str, A
                 response = await _await_value(response)
             except Exception:
                 response = None
-        except Exception:
+        except Exception as exc:
             response = None
+            _LOGGER.error('SQS receive failed: %s', exc, exc_info=True)
         if isinstance(response, dict):
             # Normalize every empty-response shape from boto3/LocalStack/AWS.
             if 'Messages' in response:
@@ -132,8 +133,9 @@ async def _sqs_receive(self: Any, *args: Any, **kwargs: Any) -> list[dict[str, A
                         if any(k in response for k in ('Body', 'body', 'Message', 'message'))
                         else []
                     )
-        except Exception:
+        except Exception as exc:
             raw_messages = []
+            _LOGGER.error('SQS receive failed: %s', exc, exc_info=True)
 
     # Normalize accumulator to a list (never None).
     if not isinstance(raw_messages, list):

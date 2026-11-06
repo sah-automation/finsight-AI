@@ -359,7 +359,7 @@ async def run_worker(
                 wait_time_seconds=wait_time_seconds,
             )
         except Exception as exc:
-            logger.error('Receive failed: %s', exc)
+            logger.error('Receive failed: %s', exc, exc_info=True)
             messages = []
 
         if not isinstance(messages, list):
