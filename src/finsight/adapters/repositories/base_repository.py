@@ -38,29 +38,49 @@ class BaseRepository:
         )
         self._session = chosen
         self._session_or_engine = chosen
+        self._rls_company_id: Any = None
 
     @property
     def session(self) -> Any:
         return self._session
 
-    async def _execute(self, sql: str, params: dict[str, Any] | None = None) -> Any:
-        """Execute SQL supporting both sync and async SQLAlchemy sessions."""
+    async def _raw_execute(self, sql: str, params: dict[str, Any] | None = None) -> Any:
         session = self._session
         if session is None:
             raise RuntimeError('No database session configured')
+        result = session.execute(text(sql), params or {})
+        if inspect.isawaitable(result):
+            result = await result
+        return result
+
+    async def _execute(self, sql: str, params: dict[str, Any] | None = None, **kwargs: Any) -> Any:
+        session = self._session
+        if session is None:
+            raise RuntimeError('No database session configured')
+        if kwargs.get('company_id') is not None:
+            self._rls_company_id = kwargs.get('company_id')
+        tenant = self._rls_company_id
         try:
-            result = session.execute(text(sql), params or {})
-            if inspect.isawaitable(result):
-                result = await result
+            if tenant is not None:
+                await self._raw_execute(
+                    "SELECT set_config('app.company_id', :company_id, true)",
+                    {'company_id': str(tenant)},
+                )
+            result = await self._raw_execute(sql, params or {})
+            if hasattr(session, 'commit') and callable(getattr(session, 'commit', None)):
+                commit_result = session.commit()
+                if inspect.isawaitable(commit_result):
+                    await commit_result
             return result
         except Exception:
-            if hasattr(session, 'rollback'):
+            if hasattr(session, 'rollback') and callable(getattr(session, 'rollback', None)):
                 try:
                     rollback_result = session.rollback()
                     if inspect.isawaitable(rollback_result):
                         await rollback_result
                 except Exception:
                     pass
+            self._rls_company_id = None
             raise
 
     async def _run(self, sql: str, params: dict[str, Any] | None = None) -> Any:
@@ -96,11 +116,15 @@ class BaseRepository:
         return value
 
     async def _set_rls_context(self, company_id: Any) -> None:
-        """Set ``app.company_id`` for the current transaction (RLS lock)."""
-        await self._execute(
-            "SELECT set_config('app.company_id', :company_id, true)",
-            {'company_id': str(company_id)},
-        )
+        """Stage tenant context so the next ``_execute`` applies it within one tx."""
+        self._rls_company_id = company_id
+        session = self._session
+        if session is not None:
+            try:
+                session_any: Any = session
+                session_any.company_id = company_id
+            except Exception:
+                pass
 
     async def set_rls_context(self, company_id: Any) -> None:
         """Public alias for :meth:`_set_rls_context`."""

@@ -760,6 +760,13 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     )
     if unit_of_work is None:
         unit_of_work = build_unit_of_work(config=config, session=session, **_extra)
+    # Inject the durable unit of work into the already-built onboarding use case.
+    if (
+        onboarding_use_case is not None
+        and getattr(onboarding_use_case, '_unit_of_work', None) is None
+    ):
+        with contextlib.suppress(Exception):
+            onboarding_use_case._unit_of_work = unit_of_work
     reader_registry = provided_deps.get('reader_registry') or build_reader_registry(
         config=config, session=session, **_extra
     )
@@ -972,6 +979,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             config=config,
             session=session,
             partition_manager=partition_manager,
+            partition_metadata_repository=partition_metadata_repository,
             object_storage=object_storage,
             document_repository=document_repository,
             job_repository=job_repository,
