@@ -109,3 +109,133 @@ class TestQueuePortContract:
         a = await queue.send(COMPANY_A, body={'task': 'dup'})
         b = await queue.send(COMPANY_A, body={'task': 'dup'})
         assert str(a) and str(b)
+
+
+class _RaisingSqsClient:
+    def send_message(self, *args: object, **kwargs: object) -> dict:
+        raise RuntimeError('AWS.SimpleQueueService.NonExistentQueue')
+
+
+class _ErrorResponseSqsClient:
+    def send_message(self, *args: object, **kwargs: object) -> dict:
+        return {'error': 'AWS.SimpleQueueService.NonExistentQueue'}
+
+
+class TestQueueSendFailures:
+    """A send that the broker rejected is never reported as success (issue #233)."""
+
+    async def test_raising_client_surfaces_a_failure(self) -> None:
+        queue = SqsQueue(sqs_client=_RaisingSqsClient(), state_machine_arn=None)
+
+        with pytest.raises(RuntimeError, match='SQS send failed'):
+            await queue.send(COMPANY_A, body={'task': 'lost'})
+
+        assert queue._sent == []
+        assert queue._queue_state == {}
+
+    async def test_error_response_is_not_treated_as_success(self) -> None:
+        queue = SqsQueue(sqs_client=_ErrorResponseSqsClient(), state_machine_arn=None)
+
+        with pytest.raises(RuntimeError, match='SQS send failed'):
+            await queue.send(COMPANY_A, body={'task': 'lost'})
+
+        assert queue._sent == []
+        assert queue._queue_state == {}
+
+    async def test_successful_send_records_exactly_one_message(self) -> None:
+        client = FakeSqsClient()
+        queue = SqsQueue(sqs_client=client, state_machine_arn=None)
+
+        await queue.send(COMPANY_A, body={'task': 'kept'})
+
+        assert len(queue._sent) == 1
+        assert len(client.sent) == 1
+
+
+class _HealthySqsClient:
+    """Fake client that simulates successful get_queue_attributes for all queues."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def get_queue_attributes(self, **kwargs: object) -> dict:
+        self.calls.append(kwargs)
+        return {
+            'Attributes': {
+                'QueueArn': f'arn:aws:sqs:local:000000000000:{kwargs.get("QueueUrl", "").split("/")[-1]}'
+            }
+        }
+
+
+class _FailingSqsClient(_HealthySqsClient):
+    """Fake client that fails on the second queue check."""
+
+    call_count = 0
+
+    def get_queue_attributes(self, **kwargs: object) -> dict:
+        self.call_count += 1
+        self.calls.append(kwargs)
+        if self.call_count > 1:
+            raise RuntimeError('queue unavailable')
+        return {
+            'Attributes': {
+                'QueueArn': f'arn:aws:sqs:local:000000000000:{kwargs.get("QueueUrl", "").split("/")[-1]}'
+            }
+        }
+
+
+class TestQueueHealthCheck:
+    """health_check verifies all configured queues are reachable (issue #233)."""
+
+    async def test_health_check_succeeds_when_all_queues_reachable(self) -> None:
+        client = _HealthySqsClient()
+        queue = SqsQueue(
+            sqs_client=client,
+            state_machine_arn=None,
+            ingestion_queue_url='http://localhost:4566/000000000000/ingest',
+            reprocessing_queue_url='http://localhost:4566/000000000000/reprocess',
+            reports_queue_url='http://localhost:4566/000000000000/reports',
+            dead_letter_queue_url='http://localhost:4566/000000000000/dlq',
+        )
+
+        assert await queue.health_check() is True
+        assert len(client.calls) == 4
+
+    async def test_health_check_checks_only_configured_queues(self) -> None:
+        """Only explicitly configured queue URLs are checked; defaults are skipped."""
+        client = _HealthySqsClient()
+        queue = SqsQueue(
+            sqs_client=client,
+            state_machine_arn=None,
+            ingestion_queue_url='http://localhost:4566/000000000000/ingest',
+            # reprocessing, reports not set -> not checked
+            # dead_letter_queue_url not set -> default is skipped
+        )
+
+        assert await queue.health_check() is True
+        # only ingestion (explicitly configured) is checked
+        assert len(client.calls) == 1
+
+    async def test_health_check_fails_when_any_queue_unreachable(self) -> None:
+        client = _FailingSqsClient()
+        queue = SqsQueue(
+            sqs_client=client,
+            state_machine_arn=None,
+            ingestion_queue_url='http://localhost:4566/000000000000/ingest',
+            reprocessing_queue_url='http://localhost:4566/000000000000/reprocess',
+            reports_queue_url='http://localhost:4566/000000000000/reports',
+            dead_letter_queue_url='http://localhost:4566/000000000000/dlq',
+        )
+
+        assert await queue.health_check() is False
+
+    async def test_health_check_fails_when_no_client(self) -> None:
+        queue = SqsQueue(sqs_client=None, state_machine_arn=None)
+
+        assert await queue.health_check() is False
+
+    async def test_health_check_fails_when_no_queue_urls(self) -> None:
+        client = FakeSqsClient()
+        queue = SqsQueue(sqs_client=client, state_machine_arn=None)
+
+        assert await queue.health_check() is False

@@ -1,6 +1,7 @@
 # ruff: noqa: ANN401, BLE001, F403, F405, I001, PLR0911, PLR0912, PLR0913, N806, S110
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -72,31 +73,30 @@ class _SqsQueueMisc:
             logger.warning('Unable to create Step Functions client', exc_info=True)
             return None
 
+    @staticmethod
+    def _is_default_queue_url(queue_url: Any) -> bool:
+        return queue_url in ('https://sqs.test/dlq', 'https://sqs.test/ingest')
+
     async def health_check(self) -> bool:
         """Return True if all explicitly configured SQS queues are reachable."""
-        # Only use explicitly provided client; don't create default boto3 client.
         client = self.sqs_client
         if client is None:
             return False
         get_attributes = getattr(client, 'get_queue_attributes', None)
         if not callable(get_attributes):
             return False
-        # Check all explicitly configured queue URLs (skip default placeholders)
-        default_dlq = 'https://sqs.test/dlq'
-        default_ingest = 'https://sqs.test/ingest'
         for queue_url in (
             self.ingestion_queue_url,
             self.reprocessing_queue_url,
             self.reports_queue_url,
             self.dead_letter_queue_url,
         ):
-            if not queue_url:
-                continue
-            # Skip default placeholder URLs
-            if queue_url in (default_dlq, default_ingest):
+            if not queue_url or self._is_default_queue_url(queue_url):
                 continue
             try:
-                await get_attributes(QueueUrl=str(queue_url), AttributeNames=['QueueArn'])
+                await asyncio.to_thread(
+                    get_attributes, QueueUrl=str(queue_url), AttributeNames=['QueueArn']
+                )
             except Exception:
                 return False
         return True
