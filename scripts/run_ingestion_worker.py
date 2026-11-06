@@ -358,14 +358,6 @@ async def run_worker(
                 max_number_of_messages=max_messages,
                 wait_time_seconds=wait_time_seconds,
             )
-        except TypeError:
-            try:
-                messages = await queue.receive(
-                    max_messages=max_messages,
-                    wait_time_seconds=wait_time_seconds,
-                )
-            except TypeError:
-                messages = await queue.receive(max_messages, wait_time_seconds)
         except Exception as exc:
             logger.error('Receive failed: %s', exc)
             messages = []

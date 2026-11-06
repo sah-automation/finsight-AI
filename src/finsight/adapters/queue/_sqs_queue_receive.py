@@ -70,14 +70,28 @@ async def _sqs_receive(self: Any, *args: Any, **kwargs: Any) -> list[dict[str, A
         except Exception:
             response = None
         if isinstance(response, dict):
-            raw_messages = (
-                response.get('Messages')
-                or response.get('messages')
-                or response.get('message')
-                and [response.get('message')]
-            )
+            # Normalize every empty-response shape from boto3/LocalStack/AWS.
+            if 'Messages' in response:
+                value = response.get('Messages')
+                raw_messages = (
+                    list(value) if isinstance(value, list) else ([] if value is None else [value])
+                )
+            elif 'messages' in response:
+                value = response.get('messages')
+                raw_messages = (
+                    list(value) if isinstance(value, list) else ([] if value is None else [value])
+                )
+            elif 'message' in response:
+                value = response.get('message')
+                raw_messages = (
+                    list(value) if isinstance(value, list) else ([] if value is None else [value])
+                )
+            else:
+                raw_messages = []
         elif isinstance(response, list):
-            raw_messages = response
+            raw_messages = list(response)
+        else:
+            raw_messages = []
         # if client is a fake returning a single dict at top-level
         if not raw_messages and isinstance(response, dict):
             for key in ('Message', 'Body', 'body'):
@@ -89,15 +103,50 @@ async def _sqs_receive(self: Any, *args: Any, **kwargs: Any) -> list[dict[str, A
             response = client.receive(queue_url, max_number, **kwargs)
             response = await _await_value(response)
             if isinstance(response, list):
-                raw_messages = response
+                raw_messages = list(response)
             elif isinstance(response, dict):
-                raw_messages = response.get('Messages') or [response]
+                if 'Messages' in response:
+                    value = response.get('Messages')
+                    raw_messages = (
+                        list(value)
+                        if isinstance(value, list)
+                        else ([] if value is None else [value])
+                    )
+                elif 'messages' in response:
+                    value = response.get('messages')
+                    raw_messages = (
+                        list(value)
+                        if isinstance(value, list)
+                        else ([] if value is None else [value])
+                    )
+                elif 'message' in response or 'Message' in response:
+                    value = response.get('message', response.get('Message'))
+                    raw_messages = (
+                        list(value)
+                        if isinstance(value, list)
+                        else ([] if value is None else [value])
+                    )
+                else:
+                    raw_messages = (
+                        [response]
+                        if any(k in response for k in ('Body', 'body', 'Message', 'message'))
+                        else []
+                    )
         except Exception:
             raw_messages = []
 
+    # Normalize accumulator to a list (never None).
+    if not isinstance(raw_messages, list):
+        raw_messages = list(raw_messages) if raw_messages else []
+
     # fall back to internal queue
     if not raw_messages:
+        if not isinstance(self._queue_state, dict):
+            self._queue_state = {}
         internal = self._queue_state.setdefault(queue_url, [])
+        if internal is None:
+            internal = []
+            self._queue_state[queue_url] = internal
         while internal and len(raw_messages) < max_number:
             raw_messages.append(internal.pop(0))
 
