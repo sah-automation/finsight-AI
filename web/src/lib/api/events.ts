@@ -311,6 +311,7 @@ export async function readSseStream(
 export interface AskQuestionInput {
   question: string;
   threadId?: string | null;
+  companyId?: string | null;
 }
 
 export interface AskStreamOptions {
@@ -335,6 +336,7 @@ export async function streamAskQuestion(
     body: JSON.stringify({
       question: input.question,
       ...(input.threadId ? { thread_id: input.threadId } : {}),
+      ...(input.companyId ? { company_id: input.companyId } : {}),
     }),
     signal: options.signal,
   });

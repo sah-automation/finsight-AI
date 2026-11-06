@@ -330,7 +330,7 @@ export function AskScreen({
     abortRef.current = controller;
 
     try {
-      await streamAskQuestion({ question: trimmed, threadId }, {
+      await streamAskQuestion({ question: trimmed, threadId, companyId: user?.company_id }, {
         signal: controller.signal,
         onEvent: (event: AskEvent) => {
           if (event.type === 'status') {
@@ -392,7 +392,7 @@ export function AskScreen({
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [allowed, streaming, threadId, updateAssistant]);
+  }, [allowed, streaming, threadId, updateAssistant, user]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {

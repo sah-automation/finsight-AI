@@ -394,7 +394,7 @@ async def _http_ask(
         if isinstance(payload, _AskQuestionRequest)
         else payload
     )
-    return await _handle(data, context=context)
+    return await _handle(payload=data, context=context)
 
 
 __all__ = [
@@ -415,6 +415,16 @@ class Ask:
         self.context = context
 
     async def run(self, *args: Any, **kwargs: Any) -> StreamingResponse:
+        # A positional leading dict is the ask payload coming from the
+        # composition/caller seam. Convert it to ``payload=`` so _handle's
+        # routing does not misclassify it as a context (the payload carries
+        # ``company_id``, which ``_is_context`` treats as a context marker).
+        args = tuple(args)
+        kwargs = dict(kwargs)
+        if args and isinstance(args[0], dict) and 'payload' not in kwargs:
+            payload_dict = args[0]
+            args = args[1:]
+            kwargs['payload'] = payload_dict
         if self.use_case is not None:
             kwargs = dict(kwargs)
             kwargs.setdefault('use_case', self.use_case)
@@ -450,7 +460,7 @@ for _r in (router, router_qa, router_question, router_questions):
             if isinstance(payload, _AskQuestionRequest)
             else payload
         )
-        return await _handle(data, context=context)
+        return await _handle(payload=data, context=context)
 
     @_r.post('/', response_model=None, responses=_responses)  # type: ignore[arg-type]
     async def _post_slash(
@@ -461,7 +471,7 @@ for _r in (router, router_qa, router_question, router_questions):
             if isinstance(payload, _AskQuestionRequest)
             else payload
         )
-        return await _handle(data, context=context)
+        return await _handle(payload=data, context=context)
 
 
 ask = _handle
