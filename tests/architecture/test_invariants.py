@@ -256,6 +256,11 @@ OVERSIZED_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'composition',
         'removal_condition': 'Extract session construction into a smaller helper module.',
     },
+    'composition/container.py::build_async_engine': {
+        'reason': 'Async engine construction helper for composition wiring.',
+        'owner': 'composition',
+        'removal_condition': 'Fold into build_session once engine reuse is standardized.',
+    },
     'application/ingest_document/ingestion_pipeline.py::run_pipeline': {
         'reason': 'Pipeline orchestrator derives a terminal status from per-step outcomes.',
         'owner': 'application',

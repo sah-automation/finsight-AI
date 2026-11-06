@@ -12,11 +12,23 @@ class IngestionPipeline(PipelineStepWorker):
 
     async def run_pipeline(self, *args: Any, **kwargs: Any) -> Any:
         results = []
-        for step_name in ('read', 'delta', 'chunk', 'embed', 'save', 'cascade'):
+        for index, step_name in enumerate(('read', 'delta', 'chunk', 'embed', 'save', 'cascade')):
             self.step_name = step_name
             r = await self._handle_request(*args, **kwargs)
             results.append(r)
             self.step_name = 'pipeline'
+            if index == 0:
+                read_result = r if isinstance(r, dict) else None
+                extracted_text = ''
+                rr = read_result.get('reader_result') if isinstance(read_result, dict) else None
+                extracted_text = str(getattr(rr, 'text', '') or '') or ''
+                chunks_now = 0
+                if isinstance(read_result, dict):
+                    maybe = read_result.get('chunks') or read_result.get('chunk_count')
+                    chunks_now = len(maybe) if isinstance(maybe, (list, tuple)) else int(maybe or 0)
+                if not extracted_text.strip() or chunks_now <= 0:
+                    # Do not run downstream commit on a zero-content extraction.
+                    break
         self.step_name = 'pipeline'
 
         # A run is successful only when the read step extracted non-empty text.
@@ -45,7 +57,16 @@ class IngestionPipeline(PipelineStepWorker):
             chunk_count = 0
         if chunk_count <= 0 or not extracted_text.strip():
             status = 'failed'
-
+            if isinstance(read_result, dict):
+                version = read_result.get('version')
+                if version is not None:
+                    vid = getattr(version, 'id', None)
+                    cid = getattr(version, 'company_id', None)
+                    if isinstance(version, dict):
+                        vid = version.get('id', vid)
+                        cid = version.get('company_id', cid)
+                    if cid is not None and vid is not None:
+                        await self._update_state(version, cid, vid, 'failed')
         return {'pipeline': results, 'status': status, 'chunks': chunk_count}
 
     async def run_all(self, *args: Any, **kwargs: Any) -> Any:

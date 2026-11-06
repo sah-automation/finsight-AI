@@ -663,7 +663,11 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             if value is not None:
                 provided_deps[attr] = value
 
-    _extra = {k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS}
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS and k not in _CONFIG_KEYS and k not in {'mode', 'profile', 'set'}
+    }
     company_repository = provided_deps.get('company_repository') or build_company_repository(
         session=session, config=config, **_extra
     )
@@ -3159,7 +3163,7 @@ def get_document_use_case(*args: Any, **kwargs: Any) -> Any:
 build_reprocess = build_reprocess_use_case
 
 
-def _database_url_from_config(config: Any) -> tuple[str, dict[str, Any]]:
+def _database_url_from_config(config: Any) -> tuple[str | None, dict[str, Any] | None]:
     from urllib.parse import quote_plus
 
     vector_store = None
@@ -3167,103 +3171,26 @@ def _database_url_from_config(config: Any) -> tuple[str, dict[str, Any]]:
         vector_store = getattr(config, 'vector_store', None)
         if vector_store is None and isinstance(config, Mapping):
             vector_store = config.get('vector_store')
-    host = 'localhost'
-    port = 5432
-    database = 'test'
-    username = 'test'
-    password = 'test'
-    ssl_mode = 'disable'
-    pool_size = 5
-    max_overflow = 2
-    pool_timeout_seconds = 30
-    pool_recycle_seconds = 3600
-    if vector_store is not None:
-        host = (
-            getattr(
-                vector_store,
-                'host',
-                vector_store.get('host') if isinstance(vector_store, Mapping) else host,
-            )
-            or host
-        )
-        port = (
-            getattr(
-                vector_store,
-                'port',
-                vector_store.get('port') if isinstance(vector_store, Mapping) else port,
-            )
-            or port
-        )
-        database = (
-            getattr(
-                vector_store,
-                'database',
-                vector_store.get('database') if isinstance(vector_store, Mapping) else database,
-            )
-            or database
-        )
-        username = (
-            getattr(
-                vector_store,
-                'username',
-                vector_store.get('username') if isinstance(vector_store, Mapping) else username,
-            )
-            or username
-        )
-        password = (
-            getattr(
-                vector_store,
-                'password',
-                vector_store.get('password') if isinstance(vector_store, Mapping) else password,
-            )
-            or password
-        )
-        ssl_mode = (
-            getattr(
-                vector_store,
-                'ssl_mode',
-                vector_store.get('ssl_mode') if isinstance(vector_store, Mapping) else ssl_mode,
-            )
-            or ssl_mode
-        )
-        pool_size = (
-            getattr(
-                vector_store,
-                'pool_size',
-                vector_store.get('pool_size') if isinstance(vector_store, Mapping) else pool_size,
-            )
-            or pool_size
-        )
-        max_overflow = (
-            getattr(
-                vector_store,
-                'max_overflow',
-                vector_store.get('max_overflow')
-                if isinstance(vector_store, Mapping)
-                else max_overflow,
-            )
-            or max_overflow
-        )
-        pool_timeout_seconds = (
-            getattr(
-                vector_store,
-                'pool_timeout_seconds',
-                vector_store.get('pool_timeout_seconds')
-                if isinstance(vector_store, Mapping)
-                else pool_timeout_seconds,
-            )
-            or pool_timeout_seconds
-        )
-        pool_recycle_seconds = (
-            getattr(
-                vector_store,
-                'pool_recycle_seconds',
-                vector_store.get('pool_recycle_seconds')
-                if isinstance(vector_store, Mapping)
-                else pool_recycle_seconds,
-            )
-            or pool_recycle_seconds
-        )
+    if vector_store is None:
+        return None, None
+
+    def _get(name: str) -> Any:
+        if isinstance(vector_store, Mapping):
+            return vector_store.get(name)
+        return getattr(vector_store, name, None)
+
+    host = _get('host')
+    port = _get('port')
+    database = _get('database')
+    username = _get('username')
+    password = _get('password')
+    if None in (host, port, database, username, password):
+        return None, None
+    ssl_mode = _get('ssl_mode') or 'disable'
+    pool_size = _get('pool_size') or 5
+    max_overflow = _get('max_overflow') or 0
+    pool_timeout_seconds = _get('pool_timeout_seconds') or 30
+    pool_recycle_seconds = _get('pool_recycle_seconds') or 3600
     url = f'postgresql+asyncpg://{quote_plus(str(username))}:{quote_plus(str(password))}@{host!s}:{int(port)}/{database!s}'
     return url, {
         'ssl_mode': str(ssl_mode),
@@ -3309,23 +3236,17 @@ def build_session(*args: Any, **kwargs: Any) -> Any:
         return None
 
     url, pool = _database_url_from_config(config)
-    try:
-        engine = create_async_engine(
-            url,
-            pool_size=pool['pool_size'],
-            max_overflow=pool['max_overflow'],
-            pool_timeout=pool['pool_timeout'],
-            pool_recycle=pool['pool_recycle'],
-        )
-    except Exception:
+    if url is None or pool is None:
         return None
-
-    try:
-        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        session = factory()
-    except Exception:
-        return None
-
+    engine = create_async_engine(
+        url,
+        pool_size=pool['pool_size'],
+        max_overflow=pool['max_overflow'],
+        pool_timeout=pool['pool_timeout'],
+        pool_recycle=pool['pool_recycle'],
+    )
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session = factory()
     # Attach engine/factory for callers that need them.
     session_any: Any = session
     with contextlib.suppress(Exception):
@@ -3369,6 +3290,8 @@ def build_async_engine(*args: Any, **kwargs: Any) -> Any:
     except Exception:
         return None
     url, pool = _database_url_from_config(config)
+    if url is None or pool is None:
+        return None
     try:
         return create_async_engine(
             url,
