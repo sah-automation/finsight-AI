@@ -107,6 +107,42 @@ def _init_sqs_queue(self: Any, *args: Any, **kwargs: Any) -> None:
     if self.dead_letter_queue_url is None:
         self.dead_letter_queue_url = kwargs.get('dead_letter_url') or 'https://sqs.test/dlq'
 
+    # --- AWS endpoint / region ---------------------------------------
+    self.endpoint_url = _first(
+        kwargs,
+        'endpoint_url',
+        'aws_endpoint_url',
+        'queue_endpoint_url',
+        default=None,
+    )
+    if self.endpoint_url is None and self.queue_config is not None:
+        candidate = (
+            self.queue_config.get('endpoint_url')
+            if isinstance(self.queue_config, dict)
+            else getattr(self.queue_config, 'endpoint_url', None)
+        )
+        if candidate:
+            self.endpoint_url = _coerce_str(candidate)
+
+    self.region = _first(kwargs, 'region', 'aws_region', 'region_name', default=None)
+    if self.region is None and self.queue_config is not None:
+        candidate = (
+            self.queue_config.get('region')
+            if isinstance(self.queue_config, dict)
+            else getattr(self.queue_config, 'region', None)
+        )
+        if candidate:
+            self.region = _coerce_str(candidate)
+    if self.region is None and self.config is not None:
+        storage_config = getattr(self.config, 'storage', None)
+        candidate = (
+            storage_config.get('region')
+            if isinstance(storage_config, dict)
+            else getattr(storage_config, 'region', None)
+        )
+        if candidate:
+            self.region = _coerce_str(candidate)
+
     # --- tunables -----------------------------------------------------
     def _int(name: str, *kw: str, default: int) -> int:
         val = _first(kwargs, name, *kw, default=None)

@@ -1,4 +1,6 @@
-from pydantic import Field, model_validator
+from urllib.parse import urlparse
+
+from pydantic import Field, field_validator, model_validator
 
 from .strict_base_model import (
     StrictBaseModel,
@@ -10,11 +12,22 @@ class QueueConfig(StrictBaseModel):
     reprocessing_queue_url: str
     reports_queue_url: str
     dead_letter_queue_url: str
+    endpoint_url: str | None = None
     visibility_timeout_seconds: int = Field(ge=1)
     max_receive_count: int = Field(ge=1, le=10, default=5)
     job_max_receive_count: int | None = Field(ge=1, le=10, default=None)
     batch_size: int = Field(ge=1)
     wait_time_seconds: int = Field(ge=0)
+
+    @field_validator('endpoint_url')
+    @classmethod
+    def _validate_endpoint_url(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        parsed = urlparse(value)
+        if parsed.scheme not in {'http', 'https'} or not parsed.netloc:
+            raise ValueError('endpoint_url must be an http(s) URL')
+        return value
 
     @model_validator(mode='after')
     def _sync_receive_counts(self) -> 'QueueConfig':

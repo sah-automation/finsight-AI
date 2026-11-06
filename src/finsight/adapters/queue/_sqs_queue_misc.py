@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from typing import Any
 
 import boto3  # type: ignore[import-untyped]
 
+from ._sqs_queue_aws_config import _aws_client_kwargs
 from ._sqs_queue_helpers import *
+
+logger = logging.getLogger(__name__)
 
 
 class _SqsQueueMisc:
@@ -44,29 +48,58 @@ class _SqsQueueMisc:
             self._client_cache = self.sqs_client
             return self.sqs_client
         try:
-            client = boto3.client('sqs')
+            client = boto3.client('sqs', **_aws_client_kwargs(self))
             self._client_cache = client
             self.sqs_client = client
             self.client = client
             return client
         except Exception:
+            logger.warning('Unable to create SQS client', exc_info=True)
             return None
 
     def _get_sfn_client(self) -> Any:
         if self.sfn_client is not None:
             return self.sfn_client
-        client = self._get_sqs_client()
-        if client is not None and hasattr(client, 'start_execution'):
-            self.sfn_client = client
-            self.step_functions_client = client
-            return client
+        if self.step_functions_client is not None:
+            self.sfn_client = self.step_functions_client
+            return self.sfn_client
         try:
-            client = boto3.client('stepfunctions')
+            client = boto3.client('stepfunctions', **_aws_client_kwargs(self))
             self.sfn_client = client
             self.step_functions_client = client
             return client
         except Exception:
+            logger.warning('Unable to create Step Functions client', exc_info=True)
             return None
+
+    async def health_check(self) -> bool:
+        """Return True if all explicitly configured SQS queues are reachable."""
+        # Only use explicitly provided client; don't create default boto3 client.
+        client = self.sqs_client
+        if client is None:
+            return False
+        get_attributes = getattr(client, 'get_queue_attributes', None)
+        if not callable(get_attributes):
+            return False
+        # Check all explicitly configured queue URLs (skip default placeholders)
+        default_dlq = 'https://sqs.test/dlq'
+        default_ingest = 'https://sqs.test/ingest'
+        for queue_url in (
+            self.ingestion_queue_url,
+            self.reprocessing_queue_url,
+            self.reports_queue_url,
+            self.dead_letter_queue_url,
+        ):
+            if not queue_url:
+                continue
+            # Skip default placeholder URLs
+            if queue_url in (default_dlq, default_ingest):
+                continue
+            try:
+                await get_attributes(QueueUrl=str(queue_url), AttributeNames=['QueueArn'])
+            except Exception:
+                return False
+        return True
 
     def _queue_url_for(self, queue: Any = None, **kwargs: Any) -> Any:
         if isinstance(queue, str) and queue:

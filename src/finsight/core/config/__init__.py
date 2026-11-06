@@ -1,6 +1,7 @@
 # Config Package - Public API
 # ONLY this module should be imported by other layers for config access.
 
+from .aws_settings import aws_client_settings
 from .loader import (
     ConfigError,
     ConfigLoader,
@@ -105,6 +106,7 @@ __all__ = [
     'SwitchesConfig',
     'TrafficConfig',
     'VectorStoreConfig',
+    'aws_client_settings',
     'get_config',
     'load_config',
     'load_price_table',

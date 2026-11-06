@@ -132,6 +132,9 @@ queue:
   reprocessing_queue_url: "${REPROCESSING_QUEUE_URL}"
   reports_queue_url: "${REPORTS_QUEUE_URL}"
   dead_letter_queue_url: "${DLQ_URL}"
+  # Base AWS endpoint for LocalStack (e.g. http://localhost:4566).
+  # When empty, the adapter derives it from the queue URL.
+  endpoint_url: "${AWS_ENDPOINT_URL:-}"
   visibility_timeout_seconds: 300
   max_receive_count: 3
   batch_size: 10

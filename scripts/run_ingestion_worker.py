@@ -10,6 +10,8 @@ import signal
 from types import SimpleNamespace
 from typing import Any
 
+from dotenv import load_dotenv
+
 logger = logging.getLogger('finsight.ingestion_worker')
 
 try:
@@ -192,9 +194,10 @@ def build_context(envelope_or_message: Any) -> SimpleNamespace:
     if not (
         isinstance(envelope_or_message, dict)
         and any(k in envelope_or_message for k in ('company_id', 'version_id', 'Body', 'body'))
-    ) or (isinstance(envelope_or_message, dict) and (
-        'company_id' not in envelope_or_message and 'Body' in envelope_or_message
-    )):
+    ) or (
+        isinstance(envelope_or_message, dict)
+        and ('company_id' not in envelope_or_message and 'Body' in envelope_or_message)
+    ):
         envelope = parse_message_body(envelope_or_message)
 
     company_id = _pick(envelope, 'company_id', 'companyId', 'company', 'tenant_id', 'tenant')
@@ -392,16 +395,24 @@ async def run(*args: Any, **kwargs: Any) -> None:
 
 
 async def amain(argv: list[str] | None = None) -> int:
+    load_dotenv()
     parser = argparse.ArgumentParser(description='Run the FinSight ingestion worker')
     parser.add_argument('--max-messages', type=int, default=10)
     parser.add_argument('--wait-time-seconds', type=int, default=20)
     parser.add_argument('--poll-interval', type=float, default=1.0)
+    parser.add_argument(
+        '--max-iterations',
+        type=int,
+        default=None,
+        help='Maximum number of poll iterations (for testing)',
+    )
     args = parser.parse_args(argv)
 
     await run_worker(
         max_messages=args.max_messages,
         wait_time_seconds=args.wait_time_seconds,
         poll_interval=args.poll_interval,
+        max_iterations=args.max_iterations,
     )
     return 0
 

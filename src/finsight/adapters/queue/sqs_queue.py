@@ -44,6 +44,8 @@ class SqsQueue(_SqsQueueMisc, QueuePortBase):
     reprocessing_queue_url: Any = None
     reports_queue_url: Any = None
     dead_letter_queue_url: Any = None
+    endpoint_url: str | None = None
+    region: str | None = None
     visibility_timeout_seconds: int = 0
     max_receive_count: int = 0
     job_max_receive_count: int = 0
