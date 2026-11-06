@@ -33,10 +33,17 @@ async def _sqs_send(self: Any, *args: Any, **kwargs: Any) -> Any:
             args = args[1:]
     queue_url = self._queue_url_for(queue_arg, **kwargs)
 
-    # detect positional company
+    # detect positional company (scalar participant only; never a dict/list payload)
     if company_id is None and args:
         first = args[0]
-        if not (isinstance(first, str) and ('://' in first or first.endswith('queue'))):
+        is_queue_selector = isinstance(first, str) and (
+            '://' in first
+            or first.endswith('queue')
+            or first in {'ingestion', 'reports', 'reprocessing', 'dead_letter', 'dlq'}
+        )
+        if not is_queue_selector and not isinstance(
+            first, (dict, list, tuple, set, bytes, bytearray)
+        ):
             company_id = first
             args = args[1:]
     company_str = self._company_id(company_id) if company_id is not None else ''
@@ -87,6 +94,10 @@ async def _sqs_send(self: Any, *args: Any, **kwargs: Any) -> Any:
 
     # call sqs
     client = self._get_sqs_client()
+    if client is None or not hasattr(client, 'send_message'):
+        if company_str and self.concurrency_cap:
+            self._inflight[company_str] = max(0, self._inflight.get(company_str, 0) - 1)
+        raise RuntimeError(f'SQS send failed for {queue_url}: no SQS client configured')
     message_id = None
     response: Any = None
     if client is not None and hasattr(client, 'send_message'):
@@ -114,9 +125,11 @@ async def _sqs_send(self: Any, *args: Any, **kwargs: Any) -> Any:
             except Exception as exc:
                 response = {'error': str(exc)}
         except Exception as exc:
-            if self.raise_on_failure if hasattr(self, 'raise_on_failure') else False:
-                raise
             response = {'error': str(exc)}
+    if isinstance(response, dict) and response.get('error') is not None:
+        if company_str and self.concurrency_cap:
+            self._inflight[company_str] = max(0, self._inflight.get(company_str, 0) - 1)
+        raise RuntimeError(f'SQS send failed for {queue_url}: {response.get("error")}')
     if isinstance(response, dict):
         message_id = (
             response.get('MessageId') or response.get('message_id') or response.get('MessageID')

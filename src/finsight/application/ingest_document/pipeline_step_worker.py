@@ -1549,26 +1549,31 @@ class PipelineStepWorker:
             )
             # supersede previous version atomically
             if self.document_repository is not None and document_id is not None:
-                try:
-                    await _awaitv(
-                        self.document_repository.supersede_previous_versions(
-                            company_id, document_id, keep_version_id=version_id
-                        )
-                    )
-                except TypeError:
+                method = getattr(self.document_repository, 'supersede_previous_versions', None)
+                if callable(method):
                     try:
-                        await _awaitv(
-                            self.document_repository.supersede_previous_versions(
-                                company_id=company_id,
-                                document_id=document_id,
-                                keep_version_id=version_id,
+                        await _awaitv(method(company_id, document_id, keep_version_id=version_id))
+                    except TypeError:
+                        try:
+                            await _awaitv(
+                                method(
+                                    company_id=company_id,
+                                    document_id=document_id,
+                                    keep_version_id=version_id,
+                                )
                             )
-                        )
-                    except Exception:
-                        with contextlib.suppress(Exception):
-                            method = getattr(self.document_repository, 'supersede_version', None)
-                            if callable(method):
-                                await _awaitv(method(company_id, previous_version_id))
+                        except Exception:
+                            with contextlib.suppress(Exception):
+                                fallback = getattr(
+                                    self.document_repository, 'supersede_version', None
+                                )
+                                if callable(fallback):
+                                    await _awaitv(fallback(company_id, previous_version_id))
+                else:
+                    with contextlib.suppress(Exception):
+                        fallback = getattr(self.document_repository, 'supersede_version', None)
+                        if callable(fallback):
+                            await _awaitv(fallback(company_id, previous_version_id))
             # mark the prior version's document-table rows inactive on supersession
             if previous_version_id is not None and str(previous_version_id) != str(version_id):
                 await self._mark_previous_document_tables_inactive(company_id, previous_version_id)

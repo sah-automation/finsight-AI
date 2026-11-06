@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import asyncio
 import json
 import logging
@@ -79,6 +80,22 @@ __all__ = [
 ]
 
 
+def _parse_mapping_text(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not (text.startswith('{') and text.endswith('}')):
+        return None
+    for parser in (json.loads, ast.literal_eval):
+        try:
+            parsed = parser(text)
+        except Exception:
+            continue
+        if isinstance(parsed, dict):
+            return dict(parsed)
+    return None
+
+
 def _coerce_mapping(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return dict(value)
@@ -87,74 +104,144 @@ def _coerce_mapping(value: Any) -> dict[str, Any]:
             text = bytes(value).decode('utf-8')
         except Exception:
             text = str(value)
-        try:
-            parsed = json.loads(text)
-            if isinstance(parsed, dict):
-                return parsed
-        except Exception:
-            return {'body': text}
+        parsed = _parse_mapping_text(text)
+        if parsed is not None:
+            return parsed
         return {'body': text}
     if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, dict):
-                return parsed
-        except Exception:
-            return {'body': value}
+        parsed = _parse_mapping_text(value)
+        if parsed is not None:
+            return parsed
+        return {'body': value}
     return {}
 
 
 def parse_message_body(message: Any) -> dict[str, Any]:
-    """Return the parsed JSON envelope carried by an SQS message."""
+    """Return the parsed (flattened) envelope carried by an SQS message.
+
+    Handles flat, nested (body/message/MessageBody/envelope), wrapped, and
+    stringified (JSON or Python repr) legacy envelopes. Derives nothing here;
+    build_context performs key-path recovery.
+    """
     envelope: dict[str, Any] = {}
-    if isinstance(message, (str, bytes, bytearray)):
-        envelope = _coerce_mapping(message)
-    elif isinstance(message, dict):
-        for key in (
-            'company_id',
-            'document_id',
-            'version_id',
-            'key',
-            'object_key',
-            's3_key',
-            'file_key',
-            'action',
-            'job_id',
-        ):
-            if key in message and message.get(key) is not None:
-                envelope.setdefault(key, message.get(key))
-        for body_key in ('Body', 'body', 'MessageBody', 'message'):
-            if body_key in message and message.get(body_key) is not None:
-                parsed = _coerce_mapping(message.get(body_key))
-                for k, v in parsed.items():
-                    envelope.setdefault(k, v)
-                break
+
+    _ID_KEYS = (
+        'company_id',
+        'companyId',
+        'document_id',
+        'documentId',
+        'doc_id',
+        'version_id',
+        'document_version_id',
+        'versionId',
+        'id',
+        'key',
+        'object_key',
+        's3_key',
+        'file_key',
+        'action',
+        'job_id',
+        'jobId',
+    )
+
+    _WRAPPERS = (
+        'Body',
+        'body',
+        'MessageBody',
+        'message',
+        'payload',
+        'data',
+        'detail',
+        'input',
+        'envelope',
+    )
+
+    def absorb(src: Any, depth: int = 0) -> None:
+        if depth > 8:
+            return
+        if isinstance(src, (str, bytes, bytearray)):
+            parsed = _coerce_mapping(src)
+            # _coerce_mapping returns {'body': ...} for plain strings; only treat
+            # as an envelope when it parsed into a real mapping or has id keys.
+            if isinstance(parsed, dict) and (
+                any(k in parsed for k in _ID_KEYS) or parsed.get('body') != src if False else True
+            ):
+                # Avoid infinite loops: coerce gives body for plain strings.
+                pass
+            if isinstance(parsed, dict) and parsed is not None:
+                # Only absorb parsed dict if it either contains id keys or is not a synthetic body wrapper.
+                if any(k in parsed for k in _ID_KEYS) or not (
+                    len(parsed) == 1 and 'body' in parsed and parsed.get('body') == src
+                    if isinstance(src, str)
+                    else False
+                ):
+                    absorb(parsed, depth + 1)
+                    return
+            # plain string body
+            envelope.setdefault('body', _coerce_str(src))
+            return
+        if not isinstance(src, dict):
+            return
+        for key, value in src.items():
+            if key in _WRAPPERS:
+                absorb(value, depth + 1)
+                continue
+            if isinstance(value, str):
+                parsed = _parse_mapping_text(value)
+                if isinstance(parsed, dict) and any(k in parsed for k in _ID_KEYS):
+                    absorb(parsed, depth + 1)
+                    continue
+            if isinstance(value, dict) and any(k in value for k in _ID_KEYS):
+                absorb(value, depth + 1)
+                continue
+            if value is not None:
+                envelope.setdefault(key, value)
+        # If no ids resolved yet, scan any dict value containing ids.
         if not any(
-            envelope.get(name) is not None for name in ('company_id', 'version_id', 'document_id')
+            envelope.get(k) is not None for k in ('company_id', 'document_id', 'version_id')
         ):
-            for value in message.values():
-                if isinstance(value, dict) and ('company_id' in value or 'version_id' in value):
-                    for k, v in value.items():
-                        envelope.setdefault(k, v)
+            for value in src.values():
+                if isinstance(value, dict) and any(
+                    k in value for k in ('company_id', 'document_id', 'version_id')
+                ):
+                    absorb(value, depth + 1)
                     break
+
+    if isinstance(message, dict) or isinstance(message, (str, bytes, bytearray)):
+        absorb(message, 0)
+    elif hasattr(message, '__dict__') and not isinstance(message, (list, tuple, set)):
+        converted: dict[str, Any] = {}
+        for attr in (
+            _ID_KEYS
+            + _WRAPPERS
+            + ('company', 'tenant', 'ctx', 'context', 'step_context', 'run_context')
+        ):
+            try:
+                val = getattr(message, attr, None)
+            except Exception:
+                val = None
+            if val is not None:
+                converted[attr] = val
+        # also flatten envelope/message attributes
+        env_attr = getattr(message, 'envelope', None)
+        msg_attr = getattr(message, 'message', None)
+        if isinstance(env_attr, dict):
+            converted['envelope'] = env_attr
+        if isinstance(msg_attr, dict):
+            converted['message'] = msg_attr
+        if converted:
+            absorb(converted, 0)
+        else:
+            absorb(_coerce_mapping(str(message)), 0)
     else:
         try:
-            envelope = _coerce_mapping(str(message))
+            absorb(_coerce_mapping(str(message)), 0)
         except Exception:
-            envelope = {}
+            pass
 
+    # Ensure ReceiptHandle style keys from a dict message are present.
     if isinstance(message, dict):
-        for key in (
-            'company_id',
-            'document_id',
-            'version_id',
-            'key',
-            'object_key',
-            's3_key',
-            'file_key',
-            'ReceiptHandle',
-            'receipt_handle',
-        ):
+        for key in ('ReceiptHandle', 'receipt_handle'):
             if key in message and message.get(key) is not None:
                 envelope.setdefault(key, message.get(key))
 
@@ -190,32 +277,25 @@ def _parse_key_local(key: Any) -> dict[str, Any]:
 
 
 def build_context(envelope_or_message: Any) -> SimpleNamespace:
-    envelope = envelope_or_message
-    if not (
-        isinstance(envelope_or_message, dict)
-        and any(k in envelope_or_message for k in ('company_id', 'version_id', 'Body', 'body'))
-    ) or (
-        isinstance(envelope_or_message, dict)
-        and ('company_id' not in envelope_or_message and 'Body' in envelope_or_message)
-    ):
-        envelope = parse_message_body(envelope_or_message)
+    envelope = parse_message_body(envelope_or_message)
 
     company_id = _pick(envelope, 'company_id', 'companyId', 'company', 'tenant_id', 'tenant')
     document_id = _pick(envelope, 'document_id', 'documentId', 'doc_id', 'document')
     version_id = _pick(envelope, 'version_id', 'document_version_id', 'versionId', 'id')
     key = _pick(envelope, 'key', 'object_key', 's3_key', 'file_key')
 
-    if company_id is None and key:
+    # Derive any missing ids from the storage key path (domain storage-key convention).
+    if key:
         try:
             parsed = _parse_key_local(key)
-            company_id = company_id or parsed.get('company_id')
-            document_id = document_id or parsed.get('document_id')
-            version_id = version_id or parsed.get('version_id')
+            if company_id is None:
+                company_id = parsed.get('company_id')
+            if document_id is None:
+                document_id = parsed.get('document_id')
+            if version_id is None:
+                version_id = parsed.get('version_id')
         except Exception:
             pass
-
-    if version_id is None:
-        version_id = str(envelope.get('job_id') or '')
 
     ctx = SimpleNamespace(
         company_id=company_id,
