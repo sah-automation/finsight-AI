@@ -145,9 +145,7 @@ function ingestionState(record: DocumentRecord | DocumentVersionRecord): string 
   const value = text(
     record.ingestion_state ??
       record.ingestionState ??
-      record.state ??
-      record.status ??
-      record.lifecycle_state,
+      record.state,
   );
   if (!value) {
     return 'received';
@@ -159,7 +157,10 @@ function ingestionState(record: DocumentRecord | DocumentVersionRecord): string 
   if (normalized.includes('process')) {
     return 'processing';
   }
-  if (normalized.includes('ready') || normalized.includes('commit')) {
+  if (normalized.includes('commit')) {
+    return 'committed';
+  }
+  if (normalized.includes('ready')) {
     return 'ready';
   }
   if (normalized.includes('store')) {
@@ -185,6 +186,7 @@ function ingestionLabel(state: string): string {
     received: 'Received',
     stored: 'Stored',
     processing: 'Processing',
+    committed: 'Committed',
     ready: 'Ready',
     needs_review: 'Needs review',
     failed: 'Failed',

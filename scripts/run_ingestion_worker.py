@@ -237,6 +237,16 @@ message_to_context = build_context
 def build_pipeline(container: Any = None) -> Any:
     if container is None:
         container = build_container(load_config())
+    # Prefer the wired 'pipeline' entry from the step-functions worker set.
+    worker_set = None
+    if container is not None:
+        worker_set = getattr(container, 'step_functions_worker_set', None)
+        if worker_set is None:
+            worker_set = getattr(container, 'workers', None)
+        if worker_set is not None and hasattr(worker_set, 'get'):
+            candidate = worker_set.get('pipeline')
+            if candidate is not None and hasattr(candidate, 'run_pipeline'):
+                return candidate
     for attr in (
         'ingestion_pipeline',
         'ingestion_worker',
@@ -272,12 +282,25 @@ async def process_message(queue: Any, pipeline: Any, message: Any, **kwargs: Any
         getattr(ctx, 'document_id', None),
         getattr(ctx, 'version_id', None),
     )
-    result = await pipeline.run_pipeline(ctx)
-    if isinstance(result, dict) and str(result.get('status', '')).lower() in {
-        'failed',
-        'error',
-    }:
-        raise RuntimeError(f'Ingestion pipeline failed: {result}')
+    try:
+        result = await pipeline.run_pipeline(ctx)
+    except Exception:
+        if queue is not None and hasattr(queue, 'nack'):
+            _nack_result = queue.nack(message)
+            if hasattr(_nack_result, '__await__'):
+                await _nack_result
+        raise
+
+    status = ''
+    if isinstance(result, dict):
+        status = str(result.get('status', '')).lower()
+    if status in {'failed', 'error', 'needs_review'}:
+        if queue is not None and hasattr(queue, 'nack'):
+            _nack_result = queue.nack(message)
+            if hasattr(_nack_result, '__await__'):
+                await _nack_result
+        # Surface a non-success result without acking the message.
+        return result
     await acknowledge_message(queue, message)
     return result
 

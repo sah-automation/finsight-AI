@@ -381,32 +381,43 @@ class PipelineStepWorker:
     async def _get_version(self, company_id: Any, version_id: Any, document_id: Any = None) -> Any:
         repo = self.document_repository
         if repo is None:
-            v = DocumentVersion(
+            # In-memory/contract path: synthesize a placeholder only when no
+            # repository is wired (explicit session=None tests).
+            return DocumentVersion(
                 company_id=company_id,
                 id=version_id,
                 document_id=document_id,
                 state='stored',
                 extras={},
             )
-            return v
+        had_candidate = False
         for name in ('get_document_version', 'get_version', 'get_document_version_by_id'):
             method = getattr(repo, name, None)
-            if callable(method):
-                for attempt in (
-                    lambda m=method: m(company_id, version_id),
-                    lambda m=method: m(company_id=company_id, version_id=version_id),
-                    lambda m=method: m(company_id=company_id, id=version_id),
-                ):
-                    try:
-                        res = await _awaitv(attempt())  # type: ignore[no-untyped-call]
-                        if res is not None:
-                            return res
-                    except TypeError:
-                        continue
-                    except Exception:
-                        continue
+            if not callable(method):
+                continue
+            had_candidate = True
+            for attempt in (
+                lambda m=method: m(company_id, version_id),
+                lambda m=method: m(company_id=company_id, version_id=version_id),
+                lambda m=method: m(company_id=company_id, id=version_id),
+            ):
+                try:
+                    res = await _awaitv(attempt())  # type: ignore[no-untyped-call]
+                    if res is not None:
+                        return res
+                except TypeError:
+                    continue
+                except Exception:
+                    continue
+        if had_candidate:
+            raise RuntimeError(f'document version {version_id!r} not found in the database')
+        # Fallback for lightweight repositories that do not expose a lookup.
         return DocumentVersion(
-            company_id=company_id, id=version_id, document_id=document_id, state='stored', extras={}
+            company_id=company_id,
+            id=version_id,
+            document_id=document_id,
+            state='stored',
+            extras={},
         )
 
     async def _update_state(

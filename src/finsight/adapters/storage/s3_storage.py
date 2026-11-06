@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import Any, cast
 
 import boto3  # type: ignore[import-untyped]
@@ -61,6 +62,28 @@ class S3Storage(ObjectStorage):
             return client
         except Exception as exc:  # pragma: no cover - boto3 always available
             raise S3Error(f'Unable to create S3 client: {exc}') from exc
+
+    async def health_check(self) -> bool:
+        """Return True if the S3 bucket is reachable."""
+        client = self._get_client()
+        if client is None:
+            return False
+        bucket = self.bucket
+        if not bucket:
+            return False
+        head_bucket = getattr(client, 'head_bucket', None)
+        if not callable(head_bucket):
+            return False
+        try:
+            if inspect.iscoroutinefunction(head_bucket):
+                await head_bucket(Bucket=str(bucket))
+            else:
+                import asyncio
+
+                await asyncio.to_thread(head_bucket, Bucket=str(bucket))
+            return True
+        except Exception:
+            return False
 
     # Allow tests to inject after construction.
     @property

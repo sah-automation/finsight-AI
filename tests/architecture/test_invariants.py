@@ -161,6 +161,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'application',
         'removal_condition': 'Move payload helpers into readers adapters.',
     },
+    'adapters/storage/s3_storage.py': {
+        'reason': 'S3 storage adapter implements presigning, key building, and health checks.',
+        'owner': 'adapters',
+        'removal_condition': 'Extract health check and key helpers when contract tests cover behavior.',
+    },
     'application/ingest_document/upload_document.py': {
         'reason': 'Upload orchestration keeps broad constructor resolution.',
         'owner': 'application',
@@ -245,6 +250,16 @@ OVERSIZED_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'reason': 'Disabled tracer mirrors port signature exactly.',
         'owner': 'adapters',
         'removal_condition': 'Split span configuration object in port.',
+    },
+    'composition/container.py::build_session': {
+        'reason': 'Composition root builds an async DB session from config.',
+        'owner': 'composition',
+        'removal_condition': 'Extract session construction into a smaller helper module.',
+    },
+    'application/ingest_document/ingestion_pipeline.py::run_pipeline': {
+        'reason': 'Pipeline orchestrator derives a terminal status from per-step outcomes.',
+        'owner': 'application',
+        'removal_condition': 'Move status policy into a separate helper when seam stabilizes.',
     },
 }
 # Private helpers currently above the 60-line ratchet. Entries are removed as
@@ -804,6 +819,11 @@ OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'reason': 'Private helper exceeds the 60-line ratchet; pending refactor.',
         'owner': 'entrypoints',
         'removal_condition': 'Split the helper once a focused seam is extracted.',
+    },
+    'composition/container.py::_database_url_from_config': {
+        'reason': 'Private helper builds a DB URL and pool settings from config.',
+        'owner': 'composition',
+        'removal_condition': 'Extract into a typed settings object.',
     },
 }
 

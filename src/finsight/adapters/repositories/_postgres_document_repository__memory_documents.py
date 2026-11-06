@@ -38,6 +38,19 @@ def _memory_documents(
             continue
         if status is not None and str(record.get('status')) != status:
             continue
-        records.append(_Record(record))
+        rec = _Record(record)
+        if 'ingestion_state' not in rec:
+            versions = [
+                v
+                for v in self._versions.get(str(company_id), {}).values()
+                if str(v.get('document_id')) == str(rec.get('id'))
+            ]
+            if versions:
+                versions.sort(
+                    key=lambda v: str(v.get('updated_at') or v.get('created_at') or ''),
+                    reverse=True,
+                )
+                rec['ingestion_state'] = versions[0].get('state')
+        records.append(rec)
     records.sort(key=lambda item: str(item.get('created_at') or ''), reverse=True)
     return records

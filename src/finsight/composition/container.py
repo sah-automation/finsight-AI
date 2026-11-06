@@ -488,10 +488,25 @@ def _build_upload_use_case_impl(*args: Any, **kwargs: Any) -> Any:
             **{k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS},
         )
 
+    document_repository = _existing(kwargs, 'document_repository', 'document_repo', 'documents')
+    if document_repository is None and container is not None:
+        document_repository = getattr(container, 'document_repository', None)
+    if document_repository is None:
+        document_repository = build_document_repository(
+            session=session,
+            config=config,
+            **{k: v for k, v in kwargs.items() if k not in _SESSION_KEYS and k not in _CONFIG_KEYS},
+        )
+
     use_case = provided if provided is not None else kwargs.get('use_case')
     context = _existing(kwargs, 'context', 'request_context', 'ctx')
 
     if use_case is None:
+        if document_repository is None:
+            raise RuntimeError(
+                'upload use case requires a document repository; '
+                'wire one through composition instead of dropping uploads'
+            )
         try:
             from finsight.application.ingest_document import UploadDocument
 
@@ -499,6 +514,7 @@ def _build_upload_use_case_impl(*args: Any, **kwargs: Any) -> Any:
                 use_case = UploadDocument(
                     object_storage=object_storage,
                     partition_manager=partition_manager,
+                    document_repository=document_repository,
                     config=config,
                     **{
                         k: v
@@ -515,6 +531,9 @@ def _build_upload_use_case_impl(*args: Any, **kwargs: Any) -> Any:
                             'object_storage',
                             'storage',
                             's3',
+                            'document_repository',
+                            'document_repo',
+                            'documents',
                         }
                     },
                 )
@@ -601,6 +620,17 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     mode_text = str(mode).strip().lower() or 'standard'
     if mode_text not in ('pilot', 'standard'):
         mode_text = 'standard'
+
+    # Construct a real DB session at the composition root unless one was provided.
+    if session is None and container_arg is not None:
+        session = getattr(container_arg, 'session', None)
+    if session is None and mode_text != 'pilot':
+        session = build_session(config=config)
+        if session is None:
+            raise RuntimeError(
+                'composition root requires a DB session in standard mode; '
+                'pass session=... or mode="pilot" for in-memory fallback'
+            )
 
     provided_deps: dict[str, Any] = {}
     if container_arg is not None:
@@ -929,14 +959,20 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         queue = build_queue(config=config, session=session, **_extra)
 
     if upload_use_case is None:
+        _upload_extra = {
+            k: v
+            for k, v in _extra.items()
+            if k not in {'document_repository', 'document_repo', 'documents'}
+        }
         upload_use_case = build_upload_use_case(
             config=config,
             session=session,
             partition_manager=partition_manager,
             object_storage=object_storage,
+            document_repository=document_repository,
             job_repository=job_repository,
             queue=queue,
-            **_extra,
+            **_upload_extra,
         )
 
     reprocess_use_case = _existing(
@@ -2697,6 +2733,45 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     _create_step(mapping, 'delta_tracking_check', factory.create_delta_tracking_check_step, ())
     _create_step(mapping, 'processing', factory.create_processing_step, ())
 
+    # Register a single 'pipeline' worker reusing the already-built steps.
+    try:
+        from finsight.application.ingest_document.ingestion_pipeline import IngestionPipeline
+
+        _container_for_pipeline = container
+        _pipeline_instance = IngestionPipeline(
+            document_repository=document_repository,
+            document_table_repository=document_table_repository,
+            chunk_repository=chunk_repository,
+            vector_store=vector_store,
+            vector_write=vector_write,
+            metric_repository=metric_repository,
+            reader=reader,
+            page_router=page_router,
+            embedding=embedding,
+            answer_cache=answer_cache,
+            change_event_publisher=change_event_publisher,
+            config=config,
+            unit_of_work=None,
+            queue=queue,
+            job_repository=job_repository,
+            virus_scanner=virus_scanner,
+            object_storage=object_storage,
+            delta_tracking=delta_tracking,
+            container=container,
+            pipeline_worker_set=mapping,
+            workers=None,
+        )
+        if _container_for_pipeline is not None:
+            with contextlib.suppress(Exception):
+                setattr(_pipeline_instance, 'container', _container_for_pipeline)  # noqa: B010
+        mapping['pipeline'] = _pipeline_instance
+        for _alias in ('ingestion', 'ingestion_pipeline', 'pipeline_worker'):
+            mapping.setdefault(_alias, _pipeline_instance)
+    except Exception as exc:
+        import logging
+
+        logging.getLogger(__name__).warning('Failed to create pipeline: %s', exc)
+
     return _WorkerSet(mapping)
 
 
@@ -3082,3 +3157,245 @@ def get_document_use_case(*args: Any, **kwargs: Any) -> Any:
 
 
 build_reprocess = build_reprocess_use_case
+
+
+def _database_url_from_config(config: Any) -> tuple[str, dict[str, Any]]:
+    from urllib.parse import quote_plus
+
+    vector_store = None
+    if config is not None:
+        vector_store = getattr(config, 'vector_store', None)
+        if vector_store is None and isinstance(config, Mapping):
+            vector_store = config.get('vector_store')
+    host = 'localhost'
+    port = 5432
+    database = 'test'
+    username = 'test'
+    password = 'test'
+    ssl_mode = 'disable'
+    pool_size = 5
+    max_overflow = 2
+    pool_timeout_seconds = 30
+    pool_recycle_seconds = 3600
+    if vector_store is not None:
+        host = (
+            getattr(
+                vector_store,
+                'host',
+                vector_store.get('host') if isinstance(vector_store, Mapping) else host,
+            )
+            or host
+        )
+        port = (
+            getattr(
+                vector_store,
+                'port',
+                vector_store.get('port') if isinstance(vector_store, Mapping) else port,
+            )
+            or port
+        )
+        database = (
+            getattr(
+                vector_store,
+                'database',
+                vector_store.get('database') if isinstance(vector_store, Mapping) else database,
+            )
+            or database
+        )
+        username = (
+            getattr(
+                vector_store,
+                'username',
+                vector_store.get('username') if isinstance(vector_store, Mapping) else username,
+            )
+            or username
+        )
+        password = (
+            getattr(
+                vector_store,
+                'password',
+                vector_store.get('password') if isinstance(vector_store, Mapping) else password,
+            )
+            or password
+        )
+        ssl_mode = (
+            getattr(
+                vector_store,
+                'ssl_mode',
+                vector_store.get('ssl_mode') if isinstance(vector_store, Mapping) else ssl_mode,
+            )
+            or ssl_mode
+        )
+        pool_size = (
+            getattr(
+                vector_store,
+                'pool_size',
+                vector_store.get('pool_size') if isinstance(vector_store, Mapping) else pool_size,
+            )
+            or pool_size
+        )
+        max_overflow = (
+            getattr(
+                vector_store,
+                'max_overflow',
+                vector_store.get('max_overflow')
+                if isinstance(vector_store, Mapping)
+                else max_overflow,
+            )
+            or max_overflow
+        )
+        pool_timeout_seconds = (
+            getattr(
+                vector_store,
+                'pool_timeout_seconds',
+                vector_store.get('pool_timeout_seconds')
+                if isinstance(vector_store, Mapping)
+                else pool_timeout_seconds,
+            )
+            or pool_timeout_seconds
+        )
+        pool_recycle_seconds = (
+            getattr(
+                vector_store,
+                'pool_recycle_seconds',
+                vector_store.get('pool_recycle_seconds')
+                if isinstance(vector_store, Mapping)
+                else pool_recycle_seconds,
+            )
+            or pool_recycle_seconds
+        )
+    url = f'postgresql+asyncpg://{quote_plus(str(username))}:{quote_plus(str(password))}@{host!s}:{int(port)}/{database!s}'
+    return url, {
+        'ssl_mode': str(ssl_mode),
+        'pool_size': int(pool_size),
+        'max_overflow': int(max_overflow),
+        'pool_timeout': int(pool_timeout_seconds),
+        'pool_recycle': int(pool_recycle_seconds),
+    }
+
+
+def build_session(*args: Any, **kwargs: Any) -> Any:
+    """Construct an async DB session (engine + async_sessionmaker) from config/env."""
+    provided = None
+    try:
+        provided = resolve_session(*args, **kwargs)
+    except Exception:
+        provided = None
+    if provided is not None:
+        return provided
+
+    config = None
+    try:
+        config = resolve_config(*args, **kwargs)
+    except Exception:
+        config = None
+    # Allow a directly passed config-like positional arg.
+    if config is None:
+        for arg in args:
+            if hasattr(arg, 'vector_store') or hasattr(arg, 'get'):
+                config = arg
+                break
+
+    if config is None:
+        return None
+
+    try:
+        from sqlalchemy.ext.asyncio import (
+            AsyncSession,
+            async_sessionmaker,
+            create_async_engine,
+        )
+    except Exception:
+        return None
+
+    url, pool = _database_url_from_config(config)
+    try:
+        engine = create_async_engine(
+            url,
+            pool_size=pool['pool_size'],
+            max_overflow=pool['max_overflow'],
+            pool_timeout=pool['pool_timeout'],
+            pool_recycle=pool['pool_recycle'],
+        )
+    except Exception:
+        return None
+
+    try:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        session = factory()
+    except Exception:
+        return None
+
+    # Attach engine/factory for callers that need them.
+    session_any: Any = session
+    with contextlib.suppress(Exception):
+        session_any._engine = engine
+        session_any.engine = engine
+        session_any.session_factory = factory
+        session_any.sessionmaker = factory
+        session_any.async_sessionmaker = factory
+    return session
+
+
+def build_db_session(*args: Any, **kwargs: Any) -> Any:
+    return build_session(*args, **kwargs)
+
+
+def build_database_session(*args: Any, **kwargs: Any) -> Any:
+    return build_session(*args, **kwargs)
+
+
+def build_async_session(*args: Any, **kwargs: Any) -> Any:
+    return build_session(*args, **kwargs)
+
+
+def build_async_engine(*args: Any, **kwargs: Any) -> Any:
+    try:
+        provided = resolve_session(*args, **kwargs)
+        if provided is not None and hasattr(provided, 'bind'):
+            return getattr(provided, 'bind', None)
+    except Exception:  # noqa: S110
+        pass
+    config = resolve_config(*args, **kwargs)
+    if config is None:
+        for arg in args:
+            if hasattr(arg, 'vector_store'):
+                config = arg
+                break
+    if config is None:
+        return None
+    try:
+        from sqlalchemy.ext.asyncio import create_async_engine
+    except Exception:
+        return None
+    url, pool = _database_url_from_config(config)
+    try:
+        return create_async_engine(
+            url,
+            pool_size=pool['pool_size'],
+            max_overflow=pool['max_overflow'],
+            pool_timeout=pool['pool_timeout'],
+            pool_recycle=pool['pool_recycle'],
+        )
+    except Exception:
+        return None
+
+
+def build_session_factory(*args: Any, **kwargs: Any) -> Any:
+    try:
+        from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+
+        engine = build_async_engine(*args, **kwargs)
+        if engine is None:
+            return None
+        return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    except Exception:
+        return None
+
+
+def build_engine(*args: Any, **kwargs: Any) -> Any:
+    return build_async_engine(*args, **kwargs)
+
+
+def build_connection(*args: Any, **kwargs: Any) -> Any:
+    return build_session(*args, **kwargs)
