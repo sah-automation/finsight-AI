@@ -7,6 +7,17 @@ from typing import Any
 from .pipeline_step_worker import PipelineStepWorker
 
 
+def _extracted_text_from_read_result(read_result: Any) -> str:
+    """Resolve extracted text from a read step result."""
+    if not isinstance(read_result, dict):
+        return ''
+    rr = read_result.get('reader_result')
+    text = str(getattr(rr, 'text', '') or '')
+    if not text:
+        text = str(read_result.get('text') or read_result.get('extracted_text') or '')
+    return text
+
+
 class IngestionPipeline(PipelineStepWorker):
     step_name = 'pipeline'
 
@@ -19,32 +30,18 @@ class IngestionPipeline(PipelineStepWorker):
             self.step_name = 'pipeline'
             if index == 0:
                 read_result = r if isinstance(r, dict) else None
-                extracted_text = ''
-                rr = read_result.get('reader_result') if isinstance(read_result, dict) else None
-                extracted_text = str(getattr(rr, 'text', '') or '') or ''
-                chunks_now = 0
-                if isinstance(read_result, dict):
-                    maybe = read_result.get('chunks') or read_result.get('chunk_count')
-                    chunks_now = len(maybe) if isinstance(maybe, (list, tuple)) else int(maybe or 0)
-                if not extracted_text.strip() or chunks_now <= 0:
+                extracted_text = _extracted_text_from_read_result(read_result)
+                if not extracted_text.strip():
                     # Do not run downstream commit on a zero-content extraction.
                     break
         self.step_name = 'pipeline'
 
-        # A run is successful only when the read step extracted non-empty text.
+        # A run is successful only when extraction produced text and chunking produced
+        # chunks; status is judged from the read and chunk step results.
         status = 'completed'
         read_result = results[0] if results else None
         chunk_result = results[2] if len(results) > 2 else None
-        extracted_text = ''
-        try:
-            if isinstance(read_result, dict):
-                rr = read_result.get('reader_result')
-                extracted_text = str(getattr(rr, 'text', '') or '')
-                extracted_text = extracted_text or str(
-                    read_result.get('text') or read_result.get('extracted_text') or ''
-                )
-        except Exception:
-            extracted_text = ''
+        extracted_text = _extracted_text_from_read_result(read_result)
         chunk_count = 0
         try:
             if isinstance(chunk_result, dict):
@@ -55,7 +52,7 @@ class IngestionPipeline(PipelineStepWorker):
                     chunk_count = int(value)
         except Exception:
             chunk_count = 0
-        if chunk_count <= 0 or not extracted_text.strip():
+        if len(results) < 6 or chunk_count <= 0 or not extracted_text.strip():
             status = 'failed'
             if isinstance(read_result, dict):
                 version = read_result.get('version')
