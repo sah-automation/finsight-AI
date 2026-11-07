@@ -2623,9 +2623,16 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     if change_event_publisher is None:
         change_event_publisher = build_change_event_publisher(config=config, **_extra0)
 
-    embedding = (
-        None  # No embedding adapter module resolved here; adapters may be passed via kwargs.
-    )
+    embedding = _existing(kwargs, 'embedding', 'embedding_adapter', 'embedder', 'embeddings')
+    if embedding is None:
+        try:
+            from finsight.composition.adapter_stacks import (
+                _build_embedding_stack as _build_embedding_provider,
+            )
+
+            embedding = _build_embedding_provider(config=config, **_extra0)
+        except Exception:
+            embedding = None
     if container is not None:
         document_repository = document_repository or getattr(container, 'document_repository', None)
         document_table_repository = document_table_repository or getattr(
@@ -2769,6 +2776,7 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
             virus_scanner=virus_scanner,
             object_storage=object_storage,
             delta_tracking=delta_tracking,
+            state_store=state_store,
             container=container,
             pipeline_worker_set=mapping,
             workers=None,

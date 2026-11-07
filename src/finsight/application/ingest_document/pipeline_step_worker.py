@@ -597,6 +597,43 @@ class PipelineStepWorker:
                         continue
         return ReaderResult(text='', tables=[], page_numbers=[], confidence=None)
 
+    def _configured_embedding_dimension(self) -> int:
+        default = 1024
+        dimension = None
+        config = getattr(self, 'config', None)
+        try:
+            if isinstance(config, dict):
+                llm = (
+                    config.get('llm', {})
+                    if isinstance(config.get('llm', {}), dict)
+                    else config.get('llm')
+                )
+                if isinstance(llm, dict):
+                    emb = llm.get('embedding_model', llm.get('embedding', {}))
+                else:
+                    emb = getattr(llm, 'embedding_model', None) if llm is not None else None
+            else:
+                llm = getattr(config, 'llm', None) if config is not None else None
+                emb = getattr(llm, 'embedding_model', None) if llm is not None else None
+            if isinstance(emb, dict):
+                dimension = emb.get('dimensions', emb.get('dimension'))
+            elif emb is not None:
+                dimension = getattr(emb, 'dimensions', getattr(emb, 'dimension', None))
+        except Exception:  # noqa: BLE001
+            dimension = None
+        if dimension is None:
+            embedder = getattr(self, 'embedding', None)
+            try:
+                dimension = getattr(embedder, 'dimensions', None) if embedder is not None else None
+            except Exception:  # noqa: BLE001
+                dimension = None
+        try:
+            if dimension is not None:
+                return int(dimension)
+        except (TypeError, ValueError):
+            pass
+        return default
+
     def _chunk_text(self, text: str) -> list[str]:
         text = text or ''
         # simple structure-ish chunks
@@ -1235,43 +1272,47 @@ class PipelineStepWorker:
             )
             chunks = self._chunk_text(text)
             reader_data['chunks'] = chunks
+            reader_data['embed_chunks'] = [str(c) for c in chunks]
+
+        chunk_texts = [str(c) for c in (chunks or [])]
+        # Ensure stable strings for the request.
+        if not chunk_texts:
+            # Try chunk entities text.
+            entities = (
+                reader_data.get('changed_chunk_entities') or reader_data.get('chunk_entities') or []
+            )
+            chunk_texts = [str(getattr(e, 'text', e)) for e in entities if e is not None]
+
+        dimension = self._configured_embedding_dimension()
         vectors: list[Any] = []
         embedder = self.embedding
-        for ch in chunks:
-            vec = None
-            if embedder is not None:
-                for method_name in (
-                    'embed',
-                    'embed_text',
-                    'embed_documents',
-                    'encode',
-                    'generate',
-                ):
-                    method = getattr(embedder, method_name, None)
-                    if callable(method):
-                        try:
-                            res = await _awaitv(method([ch]))
-                            vec = res
-                            break
-                        except TypeError:
-                            try:
-                                res = await _awaitv(method(ch))
-                                vec = res
-                                break
-                            except Exception:
-                                continue
-                        except Exception:
-                            continue
-            if vec is None:
-                # fallback synthetic
-                try:
-                    import hashlib
+        if embedder is not None and chunk_texts:
+            collected = None
+            try:
+                collected = await _awaitv(embedder.embed(company_id, texts=list(chunk_texts)))
+            except Exception:  # noqa: BLE001
+                collected = None
+            if collected is not None:
+                if isinstance(collected, (list, tuple)):
+                    collected_list = list(collected)
+                else:
+                    collected_list = [collected]
+                if len(collected_list) != len(chunk_texts):
+                    collected = None
+                else:
+                    normalized: list[list[Any]] = []
+                    for vector in collected_list:
+                        vec = list(vector) if isinstance(vector, (list, tuple)) else [vector]
+                        if len(vec) < dimension:
+                            vec = vec + [0.0] * (dimension - len(vec))
+                        elif len(vec) > dimension:
+                            vec = vec[:dimension]
+                        normalized.append(vec)
+                    vectors = normalized
+        if not vectors and chunk_texts:
+            vectors = [[0.0] * dimension for _ in chunk_texts]
 
-                    digest = hashlib.sha256(ch.encode('utf-8', 'replace')).digest()
-                    vec = [b / 255 for b in digest[:8]]
-                except Exception:
-                    vec = [0.0] * 8
-            vectors.append(vec)
+        reader_data['chunks'] = reader_data.get('chunks') or chunk_texts
         reader_data['vectors'] = vectors
         await self._save_reader_data(version_id, reader_data, context)
         await self._update_state(

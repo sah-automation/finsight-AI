@@ -22,7 +22,7 @@ _RETURNING = (
     'chunk_id, company_id, document_id, version_id, content, context_header, '
     'content_hash, parent_chunk_id, page_number, structure_path, ordinal, '
     'is_parent, is_active, needs_review, token_count, embedding_model_version, '
-    'metadata'
+    'metadata, chunk_index'
 )
 
 
@@ -140,11 +140,12 @@ def _chunk_params(
         'content_hash': chunk.content_hash,
         'page_number': chunk.page_number,
         'structure_path': _json_value(list(chunk.structure_path)),
+        'chunk_index': chunk.ordinal,
         'ordinal': chunk.ordinal,
         'is_parent': chunk.is_parent,
         'is_active': chunk.is_active,
         'needs_review': chunk.needs_review,
-        'token_count': chunk.token_count,
+        'token_count': 0 if chunk.token_count is None else chunk.token_count,
         'embedding_model_version': chunk.embedding_model_version,
         'metadata': _json_value(chunk.metadata),
         'embedding': vector,

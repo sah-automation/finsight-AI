@@ -23,11 +23,28 @@ class IngestionPipeline(PipelineStepWorker):
 
     async def run_pipeline(self, *args: Any, **kwargs: Any) -> Any:
         results = []
+        # Thread inter-step context explicitly: each step receives the context
+        # produced by the previous step via kwargs["context"]. Never rely on a
+        # module-level dictionary.
+        context = (
+            kwargs.get('context')
+            or kwargs.get('ctx')
+            or kwargs.get('step_context')
+            or kwargs.get('run_context')
+        )
         for index, step_name in enumerate(('read', 'delta', 'chunk', 'embed', 'save', 'cascade')):
             self.step_name = step_name
+            if context is not None:
+                kwargs['context'] = context
+            else:
+                kwargs.pop('context', None)
             r = await self._handle_request(*args, **kwargs)
             results.append(r)
             self.step_name = 'pipeline'
+            if isinstance(r, dict):
+                new_context = r.get('context')
+                if new_context is not None:
+                    context = new_context
             if index == 0:
                 read_result = r if isinstance(r, dict) else None
                 extracted_text = _extracted_text_from_read_result(read_result)
