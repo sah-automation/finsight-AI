@@ -341,8 +341,10 @@ export async function streamAskQuestion(
       ...(input.threadId ? { thread_id: input.threadId } : {}),
       ...(input.companyId ? { company_id: input.companyId } : {}),
       ...(input.role ? { role: input.role } : {}),
-      ...(input.accessScope !== undefined && input.accessScope !== null ? { access_scope: input.accessScope } : {}),
-      ...(input.allowedCategories !== undefined && input.allowedCategories !== null ? { allowed_categories: input.allowedCategories } : {}),
+      ...(() => {
+        const scope = input.accessScope ?? input.allowedCategories ?? null;
+        return scope !== undefined && scope !== null ? { access_scope: scope } : {};
+      })(),
     }),
     signal: options.signal,
   });
