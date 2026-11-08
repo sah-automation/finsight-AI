@@ -96,6 +96,19 @@ def _extract_text(chunk: Any) -> str:
             delta = choices[0].get('delta') if isinstance(choices[0], dict) else None
             if isinstance(delta, dict):
                 content = delta.get('content')
+                if content is None:
+                    content = delta.get('text')
                 if content is not None:
                     return str(content)
-    return '' if chunk is None else str(chunk)
+            if isinstance(choices[0], dict):
+                message = choices[0].get('message')
+                if isinstance(message, dict):
+                    content = message.get('content')
+                    if content is None:
+                        content = message.get('text')
+                    if content is not None:
+                        return str(content)
+                text = choices[0].get('text')
+                if text is not None:
+                    return str(text)
+    return ''
