@@ -33,9 +33,10 @@ class RetryingLLM(LiteLLMGateway):
             kwargs.pop(key, None)
         self.retries = int(kwargs.pop('retries', kwargs.pop('max_retries', 1)) or 0)
         self.delay = float(kwargs.pop('retry_delay', kwargs.pop('delay', 0.01)) or 0.01)
-        super().__init__(*args, **kwargs)
         self.wrapped = wrapped
         self._inner = wrapped
+        if self._inner is None:
+            super().__init__(*args, **kwargs)
 
     async def complete(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         target = self._inner if self._inner is not None else self
@@ -55,9 +56,18 @@ class RetryingLLM(LiteLLMGateway):
         async for item in target.stream(company_id, *args, **kwargs):
             yield item
 
+    async def generate(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
+        return await self.complete(company_id, *args, **kwargs)
+
+    async def chat(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
+        return await self.complete(company_id, *args, **kwargs)
+
     def __getattr__(self, name: str) -> Any:
-        target = self._inner
-        if target is None:
+        try:
+            target = object.__getattribute__(self, '_inner')
+        except AttributeError:
+            raise AttributeError(name) from None
+        if target is None or target is self:
             raise AttributeError(name)
         return getattr(target, name)
 

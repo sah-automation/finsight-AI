@@ -47,10 +47,11 @@ class MeteredLLM(LiteLLMGateway):
             kwargs.pop(key, None)
         metering = _metering_from(kwargs)
         wrapped_args = args_list
-        super().__init__(*wrapped_args, **kwargs)
         self.metering = metering
         self.wrapped = wrapped
         self._inner = wrapped
+        if self._inner is None:
+            super().__init__(*wrapped_args, **kwargs)
 
     def _inner_metering(self) -> Any:
         inner = self._inner
@@ -151,9 +152,18 @@ class MeteredLLM(LiteLLMGateway):
             except Exception as exc:
                 _LOGGER.debug('metered llm stream usage recording failed: %s', exc)
 
+    async def generate(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
+        return await self.complete(company_id, *args, **kwargs)
+
+    async def chat(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
+        return await self.complete(company_id, *args, **kwargs)
+
     def __getattr__(self, name: str) -> Any:
-        target = self._inner
-        if target is None:
+        try:
+            target = object.__getattribute__(self, '_inner')
+        except AttributeError:
+            raise AttributeError(name) from None
+        if target is None or target is self:
             raise AttributeError(name)
         return getattr(target, name)
 

@@ -16,11 +16,11 @@ class CachedLLM(LiteLLMGateway):
         ):
             self.wrapped = args[0]
             args = args[1:]
-        super().__init__(*args, **kwargs)
         if self.wrapped is not None:
             self._inner = self.wrapped
         else:
             self._inner = None
+            super().__init__(*args, **kwargs)
 
     async def complete(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         gateway = self._inner if self._inner is not None else self
@@ -36,6 +36,21 @@ class CachedLLM(LiteLLMGateway):
             return
         async for item in gateway.stream(company_id, *args, **kwargs):
             yield item
+
+    async def generate(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
+        return await self.complete(company_id, *args, **kwargs)
+
+    async def chat(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
+        return await self.complete(company_id, *args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            inner = object.__getattribute__(self, '_inner')
+        except AttributeError:
+            raise AttributeError(name) from None
+        if inner is None or inner is self:
+            raise AttributeError(name)
+        return getattr(inner, name)
 
 
 __all__ = ['CachedLLM']

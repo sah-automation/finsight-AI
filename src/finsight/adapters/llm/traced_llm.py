@@ -47,6 +47,7 @@ class TracedLLM(LiteLLMGateway):
             or kwargs.get('gateway')
             or kwargs.get('llm')
             or kwargs.get('target')
+            or kwargs.get('inner')
         )
         args_list = list(args)
         if self.wrapped is None and args_list:
@@ -56,9 +57,10 @@ class TracedLLM(LiteLLMGateway):
             kwargs.pop(key, None)
         self.tracing = _tracer_from(kwargs, kwargs.get('config'), kwargs.get('container'))
         self.operation = str(kwargs.pop('operation', kwargs.pop('span_name', 'model_generation')))
-        super().__init__(*args_list, **kwargs)
         self._inner = self.wrapped
         self._traced_operation = self.operation
+        if self._inner is None:
+            super().__init__(*args_list, **kwargs)
 
     async def _trace(self, company_id: Any) -> None:
         tracer = self.tracing
@@ -116,9 +118,15 @@ class TracedLLM(LiteLLMGateway):
     async def generate(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         return await self.complete(company_id, *args, **kwargs)
 
+    async def chat(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
+        return await self.complete(company_id, *args, **kwargs)
+
     def __getattr__(self, name: str) -> Any:
-        target = self._inner
-        if target is None:
+        try:
+            target = object.__getattribute__(self, '_inner')
+        except AttributeError:
+            raise AttributeError(name) from None
+        if target is None or target is self:
             raise AttributeError(name)
         return getattr(target, name)
 
