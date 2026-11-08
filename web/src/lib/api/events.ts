@@ -312,6 +312,9 @@ export interface AskQuestionInput {
   question: string;
   threadId?: string | null;
   companyId?: string | null;
+  role?: string | null;
+  accessScope?: string[] | null;
+  allowedCategories?: string[] | null;
 }
 
 export interface AskStreamOptions {
@@ -337,6 +340,9 @@ export async function streamAskQuestion(
       question: input.question,
       ...(input.threadId ? { thread_id: input.threadId } : {}),
       ...(input.companyId ? { company_id: input.companyId } : {}),
+      ...(input.role ? { role: input.role } : {}),
+      ...(input.accessScope !== undefined && input.accessScope !== null ? { access_scope: input.accessScope } : {}),
+      ...(input.allowedCategories !== undefined && input.allowedCategories !== null ? { allowed_categories: input.allowedCategories } : {}),
     }),
     signal: options.signal,
   });

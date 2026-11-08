@@ -330,7 +330,7 @@ export function AskScreen({
     abortRef.current = controller;
 
     try {
-      await streamAskQuestion({ question: trimmed, threadId, companyId: user?.company_id }, {
+      await streamAskQuestion({ question: trimmed, threadId, companyId: user?.company_id, role: user?.role, accessScope: Object.keys(user?.category_permissions ?? {}) }, {
         signal: controller.signal,
         onEvent: (event: AskEvent) => {
           if (event.type === 'status') {

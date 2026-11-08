@@ -122,6 +122,8 @@ export const messages = {
     validationRequired: 'Required',
     allowedTypes: 'Allowed types: PDF, XLSX, XLS, CSV, DOCX.',
     progressLabel: 'Upload progress',
+    storageUnavailable: 'Storage is unavailable. Please try again.',
+    uploadLinkRejected: 'Upload link was rejected. Please try again.',
   },
   settings: {
     empty: 'Settings for this workspace appear here.',

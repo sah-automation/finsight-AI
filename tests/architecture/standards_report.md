@@ -29,11 +29,11 @@ Generated from tests/architecture/test_standards_checklist.py
   - adapters/storage/s3_storage.py: 314 lines
   - adapters/readers/textract_reader.py: 356 lines
   - entrypoints/api/upload.py: 950 lines
-  - entrypoints/api/ask.py: 515 lines
+  - entrypoints/api/ask.py: 520 lines
   - entrypoints/api/feedback.py: 1166 lines
   - entrypoints/api/onboarding.py: 427 lines
   - entrypoints/api/documents.py: 832 lines
-  - entrypoints/api/_shared.py: 701 lines
+  - entrypoints/api/_shared.py: 723 lines
   - entrypoints/api/threads.py: 1178 lines
   - entrypoints/api/source_viewer.py: 784 lines
   - application/reprocess/reprocess.py: 716 lines

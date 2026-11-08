@@ -79,11 +79,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Http List */
-        get: operations["http_list_documents_get"];
+        get?: never;
         put?: never;
         /** Http Create */
         post: operations["http_create_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Http Create */
+        post: operations["http_create_documents__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -101,8 +117,7 @@ export interface paths {
         get: operations["http_get_documents__document_id__get"];
         put?: never;
         post?: never;
-        /** Http Delete */
-        delete: operations["http_delete_documents__document_id__delete"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -136,40 +151,6 @@ export interface paths {
         put?: never;
         /** Submit Route Slash */
         post: operations["_submit_route_slash_feedback__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/onboarding/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health */
-        get: operations["health_onboarding_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/onboarding": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Http Onboard */
-        post: operations["http_onboard_onboarding_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -210,34 +191,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/documents/{document_id}/citations/{citation_id}/source": {
+    "/upload/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Http Source */
-        get: operations["http_source_documents__document_id__citations__citation_id__source_get"];
+        get?: never;
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/documents/{document_id}/citations/{citation_id}/source/original": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Http Original */
-        get: operations["http_original_documents__document_id__citations__citation_id__source_original_get"];
-        put?: never;
-        post?: never;
+        /** Http Upload */
+        post: operations["http_upload_upload__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1728,10 +1692,7 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
-        /**
-         * AskQuestionRequest
-         * @description Typed request model for ask endpoints.
-         */
+        /** AskQuestionRequest */
         _AskQuestionRequest: {
             /** Question */
             question?: string | null;
@@ -1747,8 +1708,18 @@ export interface components {
             thread_id?: string | null;
             /** Threadid */
             threadId?: string | null;
+            /** Role */
+            role?: string | null;
+            /** User Role */
+            user_role?: string | null;
             /** Access Scope */
             access_scope?: unknown;
+            /** Accessscope */
+            accessScope?: unknown;
+            /** Allowed Categories */
+            allowed_categories?: unknown;
+            /** Allowedcategories */
+            allowedCategories?: unknown;
             /** Context */
             context?: unknown;
             /** Use Case */
@@ -1854,10 +1825,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /**
-         * AskQuestionEvent
-         * @description Representative typed SSE question event.
-         */
+        /** AskQuestionEvent */
         AskQuestionEvent: {
             /**
              * Event
@@ -1997,7 +1965,7 @@ export interface operations {
             };
         };
     };
-    http_list_documents_get: {
+    http_create_documents_post: {
         parameters: {
             query?: {
                 context?: unknown;
@@ -2006,7 +1974,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": unknown;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2028,7 +2000,7 @@ export interface operations {
             };
         };
     };
-    http_create_documents_post: {
+    http_create_documents__post: {
         parameters: {
             query?: {
                 context?: unknown;
@@ -2067,39 +2039,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
-            };
-            header?: never;
-            path: {
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    http_delete_documents__document_id__delete: {
-        parameters: {
-            query?: {
-                context?: unknown;
+                company_id?: unknown;
             };
             header?: never;
             path: {
@@ -2201,65 +2141,6 @@ export interface operations {
             };
         };
     };
-    health_onboarding_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-        };
-    };
-    http_onboard_onboarding_post: {
-        parameters: {
-            query?: {
-                context?: unknown;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": unknown;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     health_upload_health_get: {
         parameters: {
             query?: never;
@@ -2317,55 +2198,20 @@ export interface operations {
             };
         };
     };
-    http_source_documents__document_id__citations__citation_id__source_get: {
+    http_upload_upload__post: {
         parameters: {
-            query: {
+            query?: {
                 context?: unknown;
-                kwargs: unknown;
             };
             header?: never;
-            path: {
-                document_id: string;
-                citation_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+        requestBody?: {
+            content: {
+                "application/json": unknown;
             };
         };
-    };
-    http_original_documents__document_id__citations__citation_id__source_original_get: {
-        parameters: {
-            query: {
-                context?: unknown;
-                kwargs: unknown;
-            };
-            header?: never;
-            path: {
-                document_id: string;
-                citation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

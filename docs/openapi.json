@@ -179,45 +179,6 @@
       }
     },
     "/documents": {
-      "get": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Http List",
-        "operationId": "http_list_documents_get",
-        "parameters": [
-          {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Http List Documents Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "documents"
@@ -248,9 +209,55 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
                 "schema": {
-                  "title": "Response Http Create Documents Post"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Http Create",
+        "operationId": "http_create_documents__post",
+        "parameters": [
+          {
+            "name": "context",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "title": "Context"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -291,53 +298,13 @@
             "schema": {
               "title": "Context"
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Http Get Documents  Document Id  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Http Delete",
-        "operationId": "http_delete_documents__document_id__delete",
-        "parameters": [
-          {
-            "name": "document_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Document Id"
-            }
           },
           {
-            "name": "context",
+            "name": "company_id",
             "in": "query",
             "required": false,
             "schema": {
-              "title": "Context"
+              "title": "Company Id"
             }
           }
         ],
@@ -346,9 +313,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "title": "Response Http Delete Documents  Document Id  Delete"
-                }
+                "schema": {}
               }
             }
           },
@@ -497,83 +462,6 @@
         }
       }
     },
-    "/onboarding/health": {
-      "get": {
-        "tags": [
-          "onboarding"
-        ],
-        "summary": "Health",
-        "operationId": "health_onboarding_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Health Onboarding Health Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/onboarding": {
-      "post": {
-        "tags": [
-          "onboarding"
-        ],
-        "summary": "Http Onboard",
-        "operationId": "http_onboard_onboarding_post",
-        "parameters": [
-          {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Http Onboard Onboarding Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/upload/health": {
       "get": {
         "tags": [
@@ -630,9 +518,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "title": "Response Http Upload Upload Post"
-                }
+                "schema": {}
               }
             }
           },
@@ -649,32 +535,14 @@
         }
       }
     },
-    "/documents/{document_id}/citations/{citation_id}/source": {
-      "get": {
+    "/upload/": {
+      "post": {
         "tags": [
-          "source_viewer"
+          "upload"
         ],
-        "summary": "Http Source",
-        "operationId": "http_source_documents__document_id__citations__citation_id__source_get",
+        "summary": "Http Upload",
+        "operationId": "http_upload_upload__post",
         "parameters": [
-          {
-            "name": "document_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Document Id"
-            }
-          },
-          {
-            "name": "citation_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Citation Id"
-            }
-          },
           {
             "name": "context",
             "in": "query",
@@ -682,91 +550,23 @@
             "schema": {
               "title": "Context"
             }
-          },
-          {
-            "name": "kwargs",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "title": "Kwargs"
-            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "title": "Response Http Source Documents  Document Id  Citations  Citation Id  Source Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/documents/{document_id}/citations/{citation_id}/source/original": {
-      "get": {
-        "tags": [
-          "source_viewer"
-        ],
-        "summary": "Http Original",
-        "operationId": "http_original_documents__document_id__citations__citation_id__source_original_get",
-        "parameters": [
-          {
-            "name": "document_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Document Id"
-            }
-          },
-          {
-            "name": "citation_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Citation Id"
-            }
-          },
-          {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          },
-          {
-            "name": "kwargs",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "title": "Kwargs"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Http Original Documents  Document Id  Citations  Citation Id  Source Original Get"
-                }
+                "schema": {}
               }
             }
           },
@@ -4681,8 +4481,39 @@
             ],
             "title": "Threadid"
           },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "user_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Role"
+          },
           "access_scope": {
             "title": "Access Scope"
+          },
+          "accessScope": {
+            "title": "Accessscope"
+          },
+          "allowed_categories": {
+            "title": "Allowed Categories"
+          },
+          "allowedCategories": {
+            "title": "Allowedcategories"
           },
           "context": {
             "title": "Context"
@@ -4692,8 +4523,7 @@
           }
         },
         "type": "object",
-        "title": "AskQuestionRequest",
-        "description": "Typed request model for ask endpoints."
+        "title": "AskQuestionRequest"
       },
       "_FeedbackModel": {
         "properties": {
@@ -4910,7 +4740,6 @@
         "title": "FeedbackRequest"
       },
       "AskQuestionEvent": {
-        "description": "Representative typed SSE question event.",
         "properties": {
           "event": {
             "description": "SSE event name.",

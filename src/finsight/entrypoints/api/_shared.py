@@ -192,7 +192,18 @@ def _flatten(obj: Any) -> dict[str, Any]:
         'question': ('question', 'query', 'q', 'text', 'user_question', 'ask', 'prompt'),
         'company_id': ('company_id', 'companyId', 'company', 'tenant_id', 'tenantId', 'tenant'),
         'role': ('role', 'user_role', 'roleId'),
-        'access_scope': ('access_scope', 'accessScope', 'scope', 'access', 'permission_scope'),
+        'access_scope': (
+            'access_scope',
+            'accessScope',
+            'scope',
+            'access',
+            'permission_scope',
+            'allowed_categories',
+            'allowedCategories',
+            'document_categories',
+            'allowed_document_categories',
+            'categories',
+        ),
         'user_id': ('user_id', 'userId', 'user', 'uid'),
         'thread_id': ('thread_id', 'threadId', 'thread', 'chat_id', 'conversation_id', 'id'),
         'feedback_id': ('feedback_id', 'feedbackId', 'id'),
@@ -299,6 +310,8 @@ def _build_frozen_request_context(data: dict[str, Any], context: Any) -> Any:
             return context
 
         role = data.get('role')
+        if role is None:
+            role = data.get('user_role') or data.get('userRole')
         if role is None and context is not None:
             role = _context_lookup(context, 'role', 'user_role', 'roleId')
         if role is None:
@@ -331,9 +344,18 @@ def _build_frozen_request_context(data: dict[str, Any], context: Any) -> Any:
             if isinstance(perms, dict):
                 permissions = perms
 
-        if 'access_scope' in data:
-            access_scope = data.get('access_scope')
-            omitted = access_scope is None
+        _scope_keys = (
+            'access_scope',
+            'allowed_categories',
+            'allowedCategories',
+            'document_categories',
+            'allowed_document_categories',
+            'categories',
+        )
+        _provided_scope_key = next((key for key in _scope_keys if key in data), None)
+        if _provided_scope_key is not None:
+            access_scope = data.get(_provided_scope_key)
+            omitted = False
         else:
             access_scope = None
             if context is not None:

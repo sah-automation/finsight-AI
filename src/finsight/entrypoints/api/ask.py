@@ -359,7 +359,7 @@ def _normalize_event(raw: Any) -> tuple[str, dict[str, Any]]:
 
 
 class _AskQuestionRequest(BaseModel):
-    model_config = ConfigDict(title='AskQuestionRequest')
+    model_config = ConfigDict(title='AskQuestionRequest', populate_by_name=True)
 
     question: str | None = None
     query: str | None = None
@@ -368,7 +368,12 @@ class _AskQuestionRequest(BaseModel):
     companyId: str | None = None  # noqa: N815
     thread_id: str | None = None
     threadId: str | None = None  # noqa: N815
+    role: str | None = None
+    user_role: str | None = None  # noqa: N815
     access_scope: Any = None
+    accessScope: Any = None  # noqa: N815
+    allowed_categories: Any = None
+    allowedCategories: Any = None  # noqa: N815
     context: Any = None
     use_case: Any = None
 
