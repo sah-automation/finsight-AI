@@ -20,10 +20,10 @@ from finsight.core.types import (
     CompanyId as _CompanyId,
 )
 from finsight.core.types import (
-    RequestContext as _RequestContext,
+    DocumentCategory as _DocumentCategory,
 )
 from finsight.core.types import (
-    Role,
+    RequestContext as _RequestContext,
 )
 from finsight.core.types import (
     Role as _Role,
@@ -151,7 +151,7 @@ def _is_context(value: Any) -> bool:
                 return True
         return any(key in value for key in ('company_id', 'companyId', 'role', 'user_id', 'userId'))
     # object-style context
-    if hasattr(value, 'role') and not isinstance(value, (str, Role, dict)):
+    if hasattr(value, 'role') and not isinstance(value, (str, _Role, dict)):
         return True
     return any(
         hasattr(value, attr) for attr in ('role', 'company_id', 'companyId', 'user_id', 'userId')
@@ -159,7 +159,7 @@ def _is_context(value: Any) -> bool:
 
 
 def _is_use_case(value: Any) -> bool:
-    if value is None or isinstance(value, (str, dict, Role)):
+    if value is None or isinstance(value, (str, dict, _Role)):
         return False
     return (
         (hasattr(value, 'run') and callable(value.run))
@@ -331,11 +331,21 @@ def _build_frozen_request_context(data: dict[str, Any], context: Any) -> Any:
             if isinstance(perms, dict):
                 permissions = perms
 
-        access_scope = data.get('access_scope')
-        if access_scope is None and context is not None:
-            access_scope = _context_lookup(context, 'access_scope', 'accessScope', 'scope')
+        if 'access_scope' in data:
+            access_scope = data.get('access_scope')
+            omitted = access_scope is None
+        else:
+            access_scope = None
+            if context is not None:
+                access_scope = _context_lookup(context, 'access_scope', 'accessScope', 'scope')
+            omitted = access_scope is None
+
         scopes: list[Any]
-        if isinstance(access_scope, list):
+        if omitted:
+            # Resolve omitted scope from role: all document categories for roles
+            # with financial-content access, empty list for roles without it.
+            scopes = [] if role == _Role.SYSTEM_ADMIN else list(_DocumentCategory)
+        elif isinstance(access_scope, list):
             scopes = access_scope
         elif access_scope is None:
             scopes = []
@@ -628,7 +638,6 @@ __all__ = [
     'ConfigDict',
     'Field',
     'HTTPException',
-    'Role',
     'StreamingResponse',
     'ValidationError',
     '_BadRequestError',

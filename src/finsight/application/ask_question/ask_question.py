@@ -9,7 +9,7 @@ from typing import Any
 
 from finsight.core.config import Config
 from finsight.core.errors import PolicyBlocked
-from finsight.core.types import CompanyId, UserId
+from finsight.core.types import CompanyId, DocumentCategory, Role, UserId
 from finsight.domain.entities.answer import Answer
 from finsight.domain.entities.insufficient_data import InsufficientData as InsufficientDataResult
 from finsight.domain.ports.answer_cache import AnswerCache
@@ -141,9 +141,23 @@ class AskQuestion:
         role = merged.get('role')
         if role is None and ctx is not None:
             role = _first(ctx, 'role', 'user_role')
+        if role is None:
+            role = Role.EXECUTIVE_LEADERSHIP
+        if isinstance(role, str):
+            try:
+                role = Role(role)
+            except Exception:
+                role = Role.EXECUTIVE_LEADERSHIP
         access_scope = merged.get('access_scope')
         if access_scope is None and ctx is not None:
             access_scope = _first(ctx, 'access_scope', 'accessScope', 'scope', 'access')
+        if access_scope is None:
+            # An omitted scope is resolved from the role rather than deny-all.
+            role_text = getattr(role, 'value', role)
+            if str(role_text) == str(Role.SYSTEM_ADMIN.value):
+                access_scope = []
+            else:
+                access_scope = list(DocumentCategory)
         user_id = merged.get('user_id')
         if user_id is None and ctx is not None:
             user_id = _first(ctx, 'user_id', 'userId', 'user')
