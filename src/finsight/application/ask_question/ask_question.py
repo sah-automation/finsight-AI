@@ -28,6 +28,7 @@ from finsight.domain.services.input_gate import InputGate
 from finsight.domain.services.input_gate_result import InputGateResult
 from finsight.domain.services.model_router import ModelRouter
 from finsight.domain.services.output_gate import OutputGate
+from finsight.domain.services.output_gate import extract_numbers as _extract_numbers
 from finsight.domain.value_objects.citation import Citation as _CitationVO
 
 from .models import UnavailableResult
@@ -485,8 +486,12 @@ class AskQuestion:
             )
 
         await self._trace(company_id, 'output_gate')
+        cited_chunk_numbers = self._extract_cited_chunk_numbers(reranked, citations)
         verification = self._output_verifier.check(
-            answer=text, citations=citations, calculated_results=calculated_numbers
+            answer=text,
+            citations=citations,
+            calculated_results=calculated_numbers,
+            cited_chunk_numbers=cited_chunk_numbers,
         )
         if not verification.passed:
             return InsufficientDataResult(
@@ -734,6 +739,104 @@ class AskQuestion:
             seen.add(key)
             deduped.append(c)
         return deduped
+
+    _CHUNK_TEXT_KEYS = (
+        'text',
+        'content',
+        'chunk_text',
+        'page_content',
+        'text_content',
+        'chunk',
+        'snippet',
+        'body',
+        'passage',
+        'page_text',
+        'context_header',
+    )
+
+    def _chunk_text(self, candidate: Any) -> str:
+        if candidate is None:
+            return ''
+        if isinstance(candidate, str):
+            return candidate
+        if isinstance(candidate, dict):
+            for key in self._CHUNK_TEXT_KEYS:
+                value = candidate.get(key)
+                if value is not None and str(value).strip():
+                    return str(value)
+        for key in self._CHUNK_TEXT_KEYS:
+            value = getattr(candidate, key, None)
+            if value is not None and str(value).strip():
+                return str(value)
+        return ''
+
+    def _candidate_key(self, candidate: Any) -> tuple[str, str, str]:
+        document_id = _first(
+            candidate, 'document_id', 'documentId', 'doc_id', 'document', 'id', default=None
+        )
+        if document_id is None:
+            document_id = ''
+        version = _first(
+            candidate,
+            'document_version',
+            'version',
+            'version_id',
+            'document_version_id',
+            default=None,
+        )
+        if version is None:
+            version = ''
+        chunk_id = _first(
+            candidate, 'chunk_id', 'chunk', 'chunkId', 'table_id', 'table', default=None
+        )
+        if chunk_id is None:
+            chunk_id = ''
+        return (str(document_id), str(version), str(chunk_id))
+
+    def _citation_key(self, citation: Any) -> tuple[str, str, str]:
+        document_id = getattr(citation, 'document_id', None)
+        if document_id is None:
+            document_id = _first(citation, 'document_id', default=None)
+        if document_id is None:
+            document_id = ''
+        version = getattr(citation, 'document_version', None)
+        if version is None:
+            version = getattr(citation, 'version', None)
+        if version is None:
+            version = getattr(citation, 'document_version_id', None)
+        if version is None:
+            version = getattr(citation, 'version_id', None)
+        if version is None:
+            version = _first(citation, 'document_version', default=None)
+        if version is None:
+            version = ''
+        chunk_id = getattr(citation, 'chunk_id', None)
+        if chunk_id is None:
+            chunk_id = getattr(citation, 'chunk', None)
+        if chunk_id is None:
+            chunk_id = _first(citation, 'chunk_id', default=None)
+        if chunk_id is None:
+            chunk_id = ''
+        return (str(document_id), str(version), str(chunk_id))
+
+    def _extract_cited_chunk_numbers(self, candidates: Any, citations: Any) -> list[Any]:
+        candidate_list = list(candidates or [])
+        citation_list = list(citations or [])
+        cited_keys = {self._citation_key(cit) for cit in citation_list}
+        numbers: list[Any] = []
+        only_empty_keys = bool(cited_keys) and cited_keys == {('', '', '')}
+        for index, candidate in enumerate(candidate_list):
+            if only_empty_keys:
+                if index >= len(citation_list):
+                    continue
+            elif cited_keys and self._candidate_key(candidate) not in cited_keys:
+                continue
+            numbers.extend(_extract_numbers(self._chunk_text(candidate)))
+        # Fall back to positional alignment when identifiers are missing.
+        if not numbers and citation_list:
+            for candidate in candidate_list[: len(citation_list)]:
+                numbers.extend(_extract_numbers(self._chunk_text(candidate)))
+        return numbers
 
     def _cache_ttl(self) -> int:
         if hasattr(self._cache, 'ttl_seconds'):

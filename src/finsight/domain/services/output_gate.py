@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from ._output_gate_math import _extract_numbers
 from ._output_gate_operations import _OutputGateOperations
 from .output_verification_result import OutputVerificationResult
 
 
 class OutputGate(_OutputGateOperations):
     """Pure output verification service."""
+
+
+# Public, stable entry point for extracting numeric values from arbitrary text.
+extract_numbers = _extract_numbers
 
 
 def verify_output(*args: Any, **kwargs: Any) -> OutputVerificationResult:
@@ -41,5 +46,6 @@ __all__ = [
     'OutputVerification',
     'OutputVerificationResult',
     'OutputVerifier',
+    'extract_numbers',
     'verify_output',
 ]

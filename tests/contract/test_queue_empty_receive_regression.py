@@ -52,5 +52,3 @@ async def test_null_internal_accumulator_is_safe() -> None:
     messages = await queue.receive()
     assert isinstance(messages, list)
     assert messages == []
-
-
