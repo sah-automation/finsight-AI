@@ -2,7 +2,6 @@ from collections.abc import Mapping
 
 from pydantic import model_validator
 
-from ._runtime_model_identity import derive_runtime_model_identity
 from .access_config import AccessConfig
 from .answer_check_config import AnswerCheckConfig
 from .app_config import AppConfig
@@ -29,6 +28,7 @@ from .queue_config import QueueConfig
 from .readers_config import ReadersConfig
 from .reranker_config import RerankerConfig
 from .retrieval_config import RetrievalConfig
+from .runtime_model_identity_deriver import derive_runtime_model_identity
 from .scale_config import ScaleConfig
 from .security_config import SecurityConfig
 from .storage_config import StorageConfig

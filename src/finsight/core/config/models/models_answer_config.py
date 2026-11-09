@@ -21,8 +21,4 @@ class ModelsAnswerConfig(StrictBaseModel):
             chain = [primary, *fallbacks]
             if len(set(chain)) != len(chain):
                 raise ValueError(f'all models in the {name} chain must be different')
-            if 'self_hosted' not in fallbacks[-1]:
-                raise ValueError(
-                    f'fallback 3 in the {name} chain must be a self-hosted, in-region model'
-                )
         return self

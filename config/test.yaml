@@ -11,6 +11,17 @@ switches:
 
 models:
   region: "us-east-1"
+  answer:
+    primary: "gemini-3.8-flash"
+    primary_fallbacks:
+      - "nvidia_nim/meta/llama-3.1-70b-instruct"
+      - "groq/llama-3.3-70b-versatile"
+      - "self_hosted/open_model_small"
+    cheap: "groq/llama-3.1-8b-instant"
+    cheap_fallbacks:
+      - "nvidia_nim/meta/llama-3.1-8b-instruct"
+      - "gemini-3.6-flash"
+      - "self_hosted/open_model_small"
   rerank:
     primary: "cohere/test"
   approved_models:
