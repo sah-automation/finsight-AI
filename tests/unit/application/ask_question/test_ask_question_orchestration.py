@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+import pytest
+
 from finsight.application.ask_question import AskQuestion
 from finsight.core.config.loader import load_config
 from finsight.core.types import CompanyId, RequestContext, Role, TraceId, UserId
@@ -13,6 +15,7 @@ from finsight.core.types import CompanyId, RequestContext, Role, TraceId, UserId
 class _LLM:
     def __init__(self, answer: str | None = 'Margins fell because costs rose.') -> None:
         self.answer = answer
+        self.calls: list[dict[str, Any]] = []
 
     async def complete(
         self,
@@ -22,6 +25,7 @@ class _LLM:
         question: Any = None,
         **kwargs: Any,
     ) -> Any:
+        self.calls.append({'messages': messages, 'prompt': prompt, 'question': question, **kwargs})
         if self.answer is None:
             return None
 
@@ -82,11 +86,10 @@ class _Tracing:
         return None
 
 
-def test_ask_question_success_path() -> None:
-    _cfg = load_config('test')
-    orchestrator = AskQuestion(
-        config=_cfg,
-        llm_gateway=_LLM(),
+def _build_orchestrator(llm: _LLM) -> AskQuestion:
+    return AskQuestion(
+        config=load_config('test'),
+        llm_gateway=llm,
         embedding_provider=_Embedding(),
         hybrid_search=_Search(),
         reranker=_Reranker(),
@@ -96,7 +99,10 @@ def test_ask_question_success_path() -> None:
         tracing=_Tracing(),
         signing_key='secret-key-1234567890',
     )
-    _ctx = RequestContext(
+
+
+def _context() -> RequestContext:
+    return RequestContext(
         company_id=CompanyId('co1'),
         user_id=UserId('u1'),
         role=Role.EXECUTIVE_LEADERSHIP,
@@ -104,35 +110,34 @@ def test_ask_question_success_path() -> None:
         permissions={},
         access_scope=[],
     )
-    result = asyncio.run(orchestrator.run(_ctx, 'Why did margins fall?'))
+
+
+def test_ask_question_success_path() -> None:
+    orchestrator = _build_orchestrator(_LLM())
+    result = asyncio.run(orchestrator.run(_context(), 'Why did margins fall?'))
     assert getattr(result, 'answer', None) == 'Margins fell because costs rose.'
     citations = getattr(result, 'citations', [])
     assert len(citations) == 1
 
 
 def test_ask_question_unavailable_path() -> None:
-    _cfg = load_config('test')
-    orchestrator = AskQuestion(
-        config=_cfg,
-        llm_gateway=_LLM(answer=None),
-        embedding_provider=_Embedding(),
-        hybrid_search=_Search(),
-        reranker=_Reranker(),
-        metric_repository=_Metrics(),
-        answer_cache=_Cache(),
-        waiting_line=_Waiting(),
-        tracing=_Tracing(),
-        signing_key='secret-key-1234567890',
-    )
-    _ctx = RequestContext(
-        company_id=CompanyId('co1'),
-        user_id=UserId('u1'),
-        role=Role.EXECUTIVE_LEADERSHIP,
-        trace_id=TraceId('t1'),
-        permissions={},
-        access_scope=[],
-    )
-    result = asyncio.run(orchestrator.run(_ctx, 'Why did margins fall?'))
+    orchestrator = _build_orchestrator(_LLM(answer=None))
+    result = asyncio.run(orchestrator.run(_context(), 'Why did margins fall?'))
     assert getattr(result, 'answer', None) in (None, '')
     class_name = type(result).__name__
     assert 'Unavailable' in class_name or getattr(result, 'answer', None) is None
+
+
+@pytest.mark.parametrize(
+    ('question', 'expected_chain'),
+    [
+        ('What happened to revenue?', 'cheap'),
+        ('Calculate the total margin', 'primary'),
+    ],
+)
+def test_ask_question_passes_router_tier_to_gateway(question: str, expected_chain: str) -> None:
+    llm = _LLM()
+    asyncio.run(_build_orchestrator(llm).run(_context(), question))
+
+    assert llm.calls
+    assert llm.calls[-1]['chain'] == expected_chain

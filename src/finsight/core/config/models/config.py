@@ -1,5 +1,8 @@
+from collections.abc import Mapping
+
 from pydantic import model_validator
 
+from ._runtime_model_identity import derive_runtime_model_identity
 from .access_config import AccessConfig
 from .answer_check_config import AnswerCheckConfig
 from .app_config import AppConfig
@@ -71,6 +74,13 @@ class Config(StrictBaseModel):
     cache: CacheConfig | None = None
     edge: EdgeConfig | None = None
     scale: ScaleConfig | None = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def _derive_runtime_models(cls, data: object) -> object:
+        if isinstance(data, Mapping):
+            return derive_runtime_model_identity(data)
+        return data
 
     @model_validator(mode='after')
     def validate_production_rules(self) -> 'Config':

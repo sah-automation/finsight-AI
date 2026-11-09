@@ -475,7 +475,7 @@ class TestConfigValidation:
                     del os.environ[key]
 
     def test_fallback_model_limit(self, tmp_path) -> None:
-        """Test that max 3 fallback models enforced."""
+        """Test that max 3 fallback models enforced on the declared chain."""
         config_dir = tmp_path / 'config'
         config_dir.mkdir()
 
@@ -487,22 +487,14 @@ class TestConfigValidation:
         )
         (config_dir / 'schema.yaml').write_text(yaml.dump(schema))
 
-        # Create 4 fallback models
-        fallbacks = []
-        for i in range(4):
-            fallbacks.append(
-                {
-                    'provider': 'litellm',
-                    'model_id': f'model-{i}',
-                    'max_tokens': 4096,
-                    'temperature': 0.0,
-                    'timeout_seconds': 30,
-                    'max_retries': 2,
-                    'retry_base_delay_seconds': 1.0,
+        env_config = {
+            'app': {'environment': 'development'},
+            'models': {
+                'answer': {
+                    'primary_fallbacks': [f'model-{i}' for i in range(4)],
                 }
-            )
-
-        env_config = {'app': {'environment': 'development'}, 'llm': {'fallback_models': fallbacks}}
+            },
+        }
         (config_dir / 'dev.yaml').write_text(yaml.dump(env_config))
 
         os.environ['VECTOR_DB_HOST'] = 'localhost'

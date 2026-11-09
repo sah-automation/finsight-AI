@@ -9,6 +9,7 @@ Schema and environment-specific config files.
 - `dev.yaml`, `test.yaml`, `staging.yaml`, `prod.yaml` - environment values
 
 **Rules:**
+- `models.*` is the single source of truth for model identity; `llm.*` and `reranker.*` hold tuning only
 - Only `core/config` reads these files
 - Config is typed, frozen, validated at startup
 - Missing/unknown values stop the app (no silent fallback)

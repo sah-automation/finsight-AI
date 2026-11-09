@@ -440,10 +440,15 @@ class AskQuestion:
 
         await self._trace(company_id, 'model_generation')
         messages = self._build_messages(question, candidates=reranked)
+        chain = getattr(route, 'tier', None) if route is not None else None
         llm_result = None
         try:
             llm_result = await self._llm.complete(
-                company_id, messages=messages, prompt=question, question=question
+                company_id,
+                messages=messages,
+                prompt=question,
+                question=question,
+                chain=chain,
             )
         except TypeError:
             try:

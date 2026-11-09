@@ -16,7 +16,6 @@ models:
 llm:
   primary_model:
     provider: "litellm"
-    model_id: "gemini-3.8-flash"
     max_tokens: 4096
     temperature: 0.0
     timeout_seconds: 30
@@ -24,7 +23,6 @@ llm:
     retry_base_delay_seconds: 1.0
   fallback_models:
     - provider: "litellm"
-      model_id: "nvidia_nim/meta/llama-3.1-70b-instruct"
       max_tokens: 4096
       temperature: 0.0
       timeout_seconds: 20
@@ -32,7 +30,6 @@ llm:
       retry_base_delay_seconds: 1.0
   embedding_model:
     provider: "litellm"
-    model_id: "gemini-embedding-001"
     dimensions: 1024
     batch_size: 10
     timeout_seconds: 30
@@ -108,7 +105,6 @@ queue:
 
 reranker:
   provider: "cohere"
-  model: "rerank-english-v3.0"
   top_n: 20
   timeout_seconds: 10
   max_retries: 2

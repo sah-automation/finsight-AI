@@ -1,4 +1,4 @@
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from .embedding_model_config import EmbeddingModelConfig
 from .model_config import ModelConfig
@@ -12,6 +12,8 @@ from .strict_base_model import (
 class LlmConfig(StrictBaseModel):
     primary_model: ModelConfig
     fallback_models: list[ModelConfig]
+    cheap_model: ModelConfig | None = None
+    cheap_fallback_models: list[ModelConfig] = Field(default_factory=list)
     embedding_model: EmbeddingModelConfig
     router: RouterConfig | None = None
 
