@@ -11,12 +11,14 @@ switches:
 
 models:
   region: "us-east-1"
+  rerank:
+    primary: "cohere/test"
   approved_models:
-    - model_id: "gemini/gemini-1.5-pro"
+    - model_id: "gemini-3.8-flash"
       regions: ["us-east-1", "us-west-2", "us"]
-    - model_id: "gemini/gemini-1.5-flash"
+    - model_id: "gemini-3.6-flash"
       regions: ["us-east-1", "us-west-2", "us"]
-    - model_id: "gemini/text-embedding-004"
+    - model_id: "gemini-embedding-001"
       regions: ["us-east-1", "us-west-2", "us"]
     - model_id: "groq/llama-3.3-70b-versatile"
       regions: ["us-east-1", "us-west-2", "us"]
@@ -50,7 +52,7 @@ models:
 llm:
   primary_model:
     provider: "litellm"
-    model_id: "test/primary"
+    model_id: "gemini-3.8-flash"
     max_tokens: 4096
     temperature: 0.0
     timeout_seconds: 30
@@ -58,14 +60,14 @@ llm:
     retry_base_delay_seconds: 1.0
   fallback_models:
     - provider: "litellm"
-      model_id: "test/fallback-1"
+      model_id: "nvidia_nim/meta/llama-3.1-70b-instruct"
       max_tokens: 4096
       temperature: 0.0
       timeout_seconds: 30
       max_retries: 2
       retry_base_delay_seconds: 1.0
     - provider: "litellm"
-      model_id: "test/fallback-2"
+      model_id: "gemini-3.6-flash"
       max_tokens: 4096
       temperature: 0.0
       timeout_seconds: 30
@@ -73,7 +75,7 @@ llm:
       retry_base_delay_seconds: 1.0
   embedding_model:
     provider: "litellm"
-    model_id: "test/embedding"
+    model_id: "gemini-embedding-001"
     dimensions: 1024
     batch_size: 10
     timeout_seconds: 30

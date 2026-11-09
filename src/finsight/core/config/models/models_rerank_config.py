@@ -4,7 +4,7 @@ from .strict_base_model import StrictBaseModel
 
 
 class ModelsRerankConfig(StrictBaseModel):
-    primary: str = 'nvidia_nim/llama-3.2-nv-rerankqa-1b-v2'
+    primary: str
     timeout_ms: int = Field(ge=100, le=1000, default=600)
     on_failure: str = 'search_order'
 

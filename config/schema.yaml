@@ -19,13 +19,80 @@ switches:
   prompt_cache_enabled: true
   answer_cache_enabled: true
 
+
+# ============================================================
+# Models Configuration (approved & priced model policy)
+# ============================================================
+models:
+  region: "us-east-1"
+  answer:
+    primary: "gemini-3.8-flash"
+    primary_fallbacks:
+      - "nvidia_nim/meta/llama-3.1-70b-instruct"
+      - "groq/llama-3.3-70b-versatile"
+      - "self_hosted/open_model_small"
+    cheap: "groq/llama-3.1-8b-instant"
+    cheap_fallbacks:
+      - "nvidia_nim/meta/llama-3.1-8b-instruct"
+      - "gemini-3.6-flash"
+      - "self_hosted/open_model_small"
+  failover_on:
+    - "timeout"
+    - "first_word_timeout"
+    - "rate_limit"
+    - "server_error"
+    - "provider_unavailable"
+  embedding:
+    primary: "gemini-embedding-001"
+    version: "v1"
+    dimensions: 1024
+    retry_attempts: 3
+    retry_wait_seconds: 2
+  rerank:
+    primary: "cohere/rerank-english-v3.0"
+    timeout_ms: 600
+    on_failure: "search_order"
+  timeout_seconds: 20
+  first_token_timeout_seconds: 4.0
+  backup_request_enabled: true
+  backup_request_after_seconds: 2.5
+  prompt_cache_enabled: true
+  max_output_tokens: 1000
+  monthly_budget_per_company: 50
+  approved_models:
+    - model_id: "gemini-3.8-flash"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini-3.6-flash"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini-embedding-001"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/llama-3.3-70b-versatile"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/llama-3.1-8b-instant"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/meta/llama-3.1-70b-instruct"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/meta/llama-3.1-8b-instruct"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/llama-3.2-nv-rerankqa-1b-v2"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "self_hosted/open_model_small"
+      regions: ["us-east-1", "us-west-2", "us", "in-region"]
+    - model_id: "self_hosted/cross_encoder_small"
+      regions: ["us-east-1", "us-west-2", "us", "in-region"]
+    - model_id: "cohere/rerank-english-v3.0"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "cohere/rerank-multilingual-v3.0"
+      regions: ["us-east-1", "us-west-2", "us"]
+
+
 # ============================================================
 # LLM Configuration
 # ============================================================
 llm:
   primary_model:
     provider: "litellm"
-    model_id: "gemini/gemini-1.5-pro"
+    model_id: "gemini-3.8-flash"
     max_tokens: 8192
     temperature: 0.0
     timeout_seconds: 60
@@ -41,7 +108,7 @@ llm:
       retry_base_delay_seconds: 1.0
   embedding_model:
     provider: "litellm"
-    model_id: "gemini/text-embedding-004"
+    model_id: "gemini-embedding-001"
     dimensions: 1024
     batch_size: 100
     timeout_seconds: 30

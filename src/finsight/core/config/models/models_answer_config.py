@@ -1,25 +1,13 @@
-from pydantic import Field, model_validator
+from pydantic import model_validator
 
 from .strict_base_model import StrictBaseModel
 
 
 class ModelsAnswerConfig(StrictBaseModel):
-    primary: str = 'gemini/gemini-1.5-pro'
-    primary_fallbacks: list[str] = Field(
-        default_factory=lambda: [
-            'nvidia_nim/meta/llama-3.1-70b-instruct',
-            'groq/llama-3.3-70b-versatile',
-            'self_hosted/open_model_small',
-        ]
-    )
-    cheap: str = 'groq/llama-3.1-8b-instant'
-    cheap_fallbacks: list[str] = Field(
-        default_factory=lambda: [
-            'nvidia_nim/meta/llama-3.1-8b-instruct',
-            'gemini/gemini-1.5-flash',
-            'self_hosted/open_model_small',
-        ]
-    )
+    primary: str
+    primary_fallbacks: list[str]
+    cheap: str
+    cheap_fallbacks: list[str]
 
     @model_validator(mode='after')
     def validate_chains(self) -> 'ModelsAnswerConfig':

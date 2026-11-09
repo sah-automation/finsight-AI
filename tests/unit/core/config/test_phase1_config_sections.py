@@ -17,6 +17,8 @@ from finsight.core.config import (
     LambdaConfig,
     MeteringConfig,
     ModelsConfig,
+    ModelsEmbeddingConfig,
+    ModelsRerankConfig,
     ProtectionConfig,
     ScaleConfig,
     TrafficConfig,
@@ -51,9 +53,10 @@ def test_lambda_defaults() -> None:
 
 
 def test_models_defaults() -> None:
-    section = ModelsConfig()
-    assert section.embedding.dimensions == 1024
-    assert section.rerank.timeout_ms == 600
+    assert ModelsConfig.model_fields['timeout_seconds'].default == 20
+    assert ModelsConfig.model_fields['answer'].is_required() is True
+    assert ModelsEmbeddingConfig.model_fields['dimensions'].default == 1024
+    assert ModelsRerankConfig.model_fields['timeout_ms'].default == 600
 
 
 def test_cache_defaults() -> None:

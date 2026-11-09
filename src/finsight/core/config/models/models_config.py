@@ -4,10 +4,10 @@ from collections.abc import Mapping
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 
-from .approved_model_config import ApprovedModelConfig
-from .models_answer_config import ModelsAnswerConfig
-from .models_embedding_config import ModelsEmbeddingConfig
-from .models_rerank_config import ModelsRerankConfig
+from .approved_model_config import ApprovedModelConfig  # noqa: TC001
+from .models_answer_config import ModelsAnswerConfig  # noqa: TC001
+from .models_embedding_config import ModelsEmbeddingConfig  # noqa: TC001
+from .models_rerank_config import ModelsRerankConfig  # noqa: TC001
 from .strict_base_model import StrictBaseModel
 
 _REQUIRED_FAILOVER_CONDITIONS = {
@@ -17,39 +17,9 @@ _REQUIRED_FAILOVER_CONDITIONS = {
     'server_error',
 }
 
-_DEFAULT_APPROVED_MODELS = [
-    {'model_id': 'gemini/gemini-1.5-pro', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'gemini/gemini-1.5-flash', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'gemini/text-embedding-004', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'groq/llama-3.3-70b-versatile', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'groq/llama-3.1-8b-instant', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {
-        'model_id': 'nvidia_nim/meta/llama-3.1-70b-instruct',
-        'regions': ['us-east-1', 'us-west-2', 'us'],
-    },
-    {
-        'model_id': 'nvidia_nim/meta/llama-3.1-8b-instruct',
-        'regions': ['us-east-1', 'us-west-2', 'us'],
-    },
-    {
-        'model_id': 'nvidia_nim/llama-3.2-nv-rerankqa-1b-v2',
-        'regions': ['us-east-1', 'us-west-2', 'us'],
-    },
-    {
-        'model_id': 'self_hosted/open_model_small',
-        'regions': ['us-east-1', 'us-west-2', 'us', 'in-region'],
-    },
-    {
-        'model_id': 'self_hosted/cross_encoder_small',
-        'regions': ['us-east-1', 'us-west-2', 'us', 'in-region'],
-    },
-    {'model_id': 'cohere/rerank-english-v3.0', 'regions': ['us-east-1', 'us-west-2', 'us']},
-    {'model_id': 'cohere/rerank-multilingual-v3.0', 'regions': ['us-east-1', 'us-west-2', 'us']},
-]
-
 
 class ModelsConfig(StrictBaseModel):
-    answer: ModelsAnswerConfig = Field(default_factory=ModelsAnswerConfig)
+    answer: ModelsAnswerConfig
     failover_on: list[str] = Field(
         default_factory=lambda: [
             'timeout',
@@ -59,8 +29,8 @@ class ModelsConfig(StrictBaseModel):
             'provider_unavailable',
         ]
     )
-    embedding: ModelsEmbeddingConfig = Field(default_factory=ModelsEmbeddingConfig)
-    rerank: ModelsRerankConfig = Field(default_factory=ModelsRerankConfig)
+    embedding: ModelsEmbeddingConfig
+    rerank: ModelsRerankConfig
     timeout_seconds: int = Field(ge=1, default=20)
     first_token_timeout_seconds: float = Field(ge=0.1, le=5.0, default=4.0)
     backup_request_enabled: bool = True
@@ -69,9 +39,7 @@ class ModelsConfig(StrictBaseModel):
     max_output_tokens: int = Field(ge=1, default=1000)
     monthly_budget_per_company: int = Field(ge=0, default=50)
     approved_models: list[ApprovedModelConfig] = Field(
-        default_factory=lambda: [
-            ApprovedModelConfig.model_validate(item) for item in _DEFAULT_APPROVED_MODELS
-        ],
+        min_length=1,
         validation_alias=AliasChoices(
             'approved_models',
             'approved_model_list',

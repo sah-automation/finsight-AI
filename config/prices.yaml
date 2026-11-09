@@ -81,12 +81,12 @@ llm_models:
     output: 0.00
 
   # D9 pilot models
-  "gemini/gemini-1.5-pro":
-    input: 1.25
-    output: 5.00
-  "gemini/gemini-1.5-flash":
-    input: 0.075
-    output: 0.30
+  "gemini-3.6-flash":
+    input: 0.75
+    output: 3.75
+  "gemini-3.8-flash":
+    input: 0.75
+    output: 3.75
   "groq/llama-3.3-70b-versatile":
     input: 0.59
     output: 0.79
@@ -105,7 +105,7 @@ llm_models:
 
 # Embedding Models (per 1M tokens)
 embedding_models:
-  "gemini/text-embedding-004":
+  "gemini-embedding-001":
     input: 0.00001
   "amazon/titan-embed-text-v2:0":
     input: 0.02
