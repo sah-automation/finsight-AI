@@ -22,14 +22,16 @@ if TYPE_CHECKING:
 
 _UPSERT_CHUNK_SQL = (
     f'INSERT INTO {_TABLE} '
-    '(company_id, chunk_id, document_id, version_id, chunk_index, content_hash, '
-    'embedding_model_version, embedding, is_active, updated_at) '
-    'VALUES (:company_id, :chunk_id, :document_id, :version_id, :chunk_index, :content_hash, '
-    ':embedding_model_version, CAST(:embedding AS vector), FALSE, now()) '
+    '(company_id, chunk_id, document_id, version_id, chunk_index, content, context_header, '
+    'content_hash, embedding_model_version, embedding, is_active, updated_at) '
+    'VALUES (:company_id, :chunk_id, :document_id, :version_id, :chunk_index, :content, :context_header, '
+    ':content_hash, :embedding_model_version, CAST(:embedding AS vector), FALSE, now()) '
     'ON CONFLICT (company_id, chunk_id) DO UPDATE SET '
     'document_id = EXCLUDED.document_id, '
     'version_id = EXCLUDED.version_id, '
     'chunk_index = EXCLUDED.chunk_index, '
+    'content = EXCLUDED.content, '
+    'context_header = EXCLUDED.context_header, '
     'content_hash = EXCLUDED.content_hash, '
     'embedding_model_version = EXCLUDED.embedding_model_version, '
     'embedding = EXCLUDED.embedding, '
@@ -51,6 +53,8 @@ def _write_memory(
         'chunk_id': _text(chunk.chunk_id),
         'document_id': _text(chunk.document_id),
         'version_id': version_id,
+        'content': chunk.text,
+        'context_header': chunk.context_header,
         'content_hash': chunk.content_hash,
         'embedding_model_version': model,
         'embedding': vector,
@@ -72,6 +76,8 @@ def _write_params(
         'document_id': _text(chunk.document_id),
         'version_id': version_id,
         'chunk_index': chunk.ordinal,
+        'content': chunk.text,
+        'context_header': chunk.context_header,
         'content_hash': chunk.content_hash,
         'embedding_model_version': model,
         'embedding': _vector_literal(vector),
