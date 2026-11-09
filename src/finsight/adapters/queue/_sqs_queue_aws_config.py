@@ -74,7 +74,9 @@ def _aws_client_kwargs(queue: Any) -> dict[str, Any]:
     if getattr(queue, 'region', None) is None:
         logger.warning('No queue region configured; using AWS region %s', region_name)
 
-    kwargs: dict[str, Any] = {'region_name': str(region_name)}
+    kwargs: dict[str, Any] = {}
+    if region_name:
+        kwargs['region_name'] = str(region_name)
     if endpoint_url:
         kwargs['endpoint_url'] = str(endpoint_url)
 

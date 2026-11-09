@@ -148,10 +148,10 @@ caches:
     refresh_ahead_seconds: 300
 
 queue:
-  ingestion_queue_url: "https://sqs.test/ingest"
-  reprocessing_queue_url: "https://sqs.test/reprocess"
-  reports_queue_url: "https://sqs.test/reports"
-  dead_letter_queue_url: "https://sqs.test/dlq"
+  ingestion_queue_url: "http://localhost:4566/000000000000/ingest"
+  reprocessing_queue_url: "http://localhost:4566/000000000000/reprocess"
+  reports_queue_url: "http://localhost:4566/000000000000/reports"
+  dead_letter_queue_url: "http://localhost:4566/000000000000/dlq"
   visibility_timeout_seconds: 300
   max_receive_count: 3
   batch_size: 10

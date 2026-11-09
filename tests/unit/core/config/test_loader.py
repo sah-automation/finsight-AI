@@ -93,7 +93,7 @@ class TestConfigLoader:
         assert config.vector_store.database == 'test'
         assert config.storage.documents_bucket in ['documents', 'test-docs']
         assert config.queue.ingestion_queue_url in (
-            'http://localhost:4566/000000000000/ingestion',
+            'http://localhost:4566/000000000000/ingest',
             'https://sqs.test/ingest',
         )
 

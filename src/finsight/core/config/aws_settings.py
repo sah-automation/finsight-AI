@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import os
 
-from finsight.core.config.loader import ConfigError
-
 
 def aws_client_settings() -> dict[str, str]:
     """Return boto3 client keyword arguments sourced from the environment.
@@ -20,12 +18,10 @@ def aws_client_settings() -> dict[str, str]:
     are configured.
     """
     region = os.environ.get('AWS_REGION') or os.environ.get('AWS_DEFAULT_REGION')
-    if not region:
-        raise ConfigError('AWS_REGION or AWS_DEFAULT_REGION must be set')
 
-    settings: dict[str, str] = {
-        'region_name': region,
-    }
+    settings: dict[str, str] = {}
+    if region:
+        settings['region_name'] = region
 
     endpoint_url = os.environ.get('AWS_ENDPOINT_URL')
     if endpoint_url:

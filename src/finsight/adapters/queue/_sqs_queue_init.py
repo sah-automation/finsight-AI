@@ -65,7 +65,7 @@ def _init_sqs_queue(self: Any, *args: Any, **kwargs: Any) -> None:
 
     # --- queue urls ---------------------------------------------------
     def _qc(name: str, *kw_names: str, default: str | None = None) -> str | None:
-        val = _first(kwargs, *kw_names, default=None)
+        val = _first(kwargs, name, *kw_names, default=None)
         if val is not None:
             return _coerce_str(val)
         if self.queue_config is not None:
