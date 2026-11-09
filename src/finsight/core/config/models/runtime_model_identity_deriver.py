@@ -23,26 +23,34 @@ class RuntimeModelIdentityDeriver:
         if not models:
             return dict(data)
 
-        answer = self._mapping(models.get('answer'))
-        embedding = self._mapping(models.get('embedding'))
-        rerank = self._mapping(models.get('rerank'))
-
         result = dict(data)
         llm = dict(self._mapping(data.get('llm')))
-        if answer:
-            llm = self._derive_answer_identity(llm, answer)
-        embedding_id = self._identity(embedding.get('primary'))
-        if embedding_id is not None:
-            llm['embedding_model'] = self._with_identity(
-                self._mapping(llm.get('embedding_model')), embedding_id
-            )
+
+        llm = self._derive_llm_identity(llm, models)
         if 'llm' in data or llm:
             result['llm'] = llm
 
-        rerank_id = self._identity(rerank.get('primary'))
+        rerank_id = self._identity(self._mapping(models.get('rerank')).get('primary'))
         if rerank_id is not None:
             result['reranker'] = self._derive_reranker_identity(
                 self._mapping(data.get('reranker')), rerank_id
+            )
+        return result
+
+    def _derive_llm_identity(
+        self, llm: Mapping[str, Any], models: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        """Derive LLM model identity from models.answer and models.embedding."""
+        result = dict(llm)
+        answer = self._mapping(models.get('answer'))
+        embedding = self._mapping(models.get('embedding'))
+
+        if answer:
+            result = self._derive_answer_identity(result, answer)
+        embedding_id = self._identity(embedding.get('primary'))
+        if embedding_id is not None:
+            result['embedding_model'] = self._with_identity(
+                self._mapping(result.get('embedding_model')), embedding_id
             )
         return result
 

@@ -440,7 +440,7 @@ class AskQuestion:
 
         await self._trace(company_id, 'model_generation')
         messages = self._build_messages(question, candidates=reranked)
-        chain = getattr(route, 'tier', None) if route is not None else None
+        chain = route.tier if route is not None else None
         llm_result = None
         try:
             llm_result = await self._llm.complete(
