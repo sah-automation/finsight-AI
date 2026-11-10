@@ -21,7 +21,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _build_provider_call(
-    self: Any,
     model: dict[str, Any],
     messages: list[dict[str, Any]],
     params: dict[str, Any],
@@ -65,7 +64,7 @@ async def _open_stream(
                 resolver = getattr(_main, '_resolve_acompletion', None)
                 if callable(resolver):
                     fn = resolver()
-            kwargs, provider_params = _build_provider_call(self, model, messages, params, timeout)
+            kwargs, provider_params = _build_provider_call(model, messages, params, timeout)
             if self.prompt_cache_enabled:
                 kwargs.setdefault('stream_options', {'include_usage': True})
             result = (

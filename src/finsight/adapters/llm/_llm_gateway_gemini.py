@@ -49,7 +49,7 @@ def _apply_gemini_3_sampling_guidance(
     Gemini primary racing a non-Gemini backup — see only their own variant.
     """
     adjusted = list(messages)
-    guidance = f'{GEMINI_3_SAMPLING_GUIDANCE}'
+    guidance = GEMINI_3_SAMPLING_GUIDANCE
     for index, message in enumerate(adjusted):
         if message.get('role') == 'system':
             content = str(message.get('content') or '').rstrip()
