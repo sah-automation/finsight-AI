@@ -10,20 +10,78 @@ from finsight.domain.value_objects.reader_result import ReaderResult
 
 from .pipeline_step_worker import PipelineStepWorker, _awaitv, _get
 
-# Default chars per token approximation (same as ModelRouter default)
-_CHARS_PER_TOKEN = 4
+
+def _get_chars_per_token(config: Any) -> int:
+    """Get chars_per_token from config, defaulting to 4 (ModelRouter default)."""
+    if config is None:
+        return 4
+    # Check nested config structures
+    ingestion = getattr(config, 'ingestion', None) or (
+        config.get('ingestion', {}) if isinstance(config, dict) else {}
+    )
+    if ingestion and 'chars_per_token' in ingestion:
+        try:
+            return int(ingestion['chars_per_token'])
+        except (TypeError, ValueError):
+            pass
+    # Also check llm.embedding_model.chars_per_token
+    llm = getattr(config, 'llm', None) or (
+        config.get('llm', {}) if isinstance(config, dict) else {}
+    )
+    if llm:
+        emb = llm.get('embedding_model', llm.get('embedding', {})) if isinstance(llm, dict) else {}
+        if isinstance(emb, dict) and 'chars_per_token' in emb:
+            try:
+                return int(emb['chars_per_token'])
+            except (TypeError, ValueError):
+                pass
+    # Check ModelRouter-style kwargs
+    if hasattr(config, 'chars_per_token'):
+        try:
+            return int(config.chars_per_token)
+        except (TypeError, ValueError):
+            pass
+    return 4
 
 
-def _estimate_token_count(text: str) -> int:
+def _estimate_token_count(text: str, chars_per_token: int) -> int:
     """Estimate token count from text using character-based approximation.
 
-    Uses 4 characters per token as a rough approximation, consistent with
-    the ModelRouter default. This provides a reasonable estimate without
-    requiring a tokenizer dependency.
+    Uses the provided chars_per_token ratio (default 4 chars/token).
+    Returns 0 for empty text, otherwise ceiling division.
     """
     if not text:
         return 0
-    return max(1, (len(text) + _CHARS_PER_TOKEN - 1) // _CHARS_PER_TOKEN)
+    return max(1, (len(text) + chars_per_token - 1) // chars_per_token)
+
+
+def _extract_text(reader_result: Any) -> str:
+    """Extract text from reader_result (ReaderResult or dict)."""
+    try:
+        if isinstance(reader_result, ReaderResult):
+            return reader_result.text
+        text: Any = _get(reader_result, 'text', default=None)
+        if text is None:
+            return str(reader_result or '')
+        return str(text)
+    except Exception:  # noqa: BLE001
+        return str(reader_result or '')
+
+
+def _resolve_document_id(version: Any, document_id: Any) -> Any:
+    """Resolve document_id from version or fall back to provided document_id or version_id."""
+    resolved = _get(version, 'document_id', 'documentId', default=None) or document_id
+    if resolved is None:
+        return version
+    return resolved
+
+
+def _get_page_numbers(reader_result: Any) -> list[Any]:
+    """Get page_numbers from reader_result."""
+    page_numbers: Any = getattr(reader_result, 'page_numbers', None)
+    if page_numbers is None:
+        return list(_get(reader_result, 'page_numbers', 'pages', default=[]) or [])
+    return list(page_numbers)
 
 
 class ChunkStepOperations(PipelineStepWorker):
@@ -41,32 +99,18 @@ class ChunkStepOperations(PipelineStepWorker):
         version: Any,
         ctx: Any,
     ) -> tuple[list[str], list[ChunkEntity]]:
-        text = ''
-        try:
-            if isinstance(reader_result, ReaderResult):
-                text = reader_result.text
-            else:
-                text = _get(reader_result, 'text', default=None)
-                if text is None:
-                    text = str(reader_result or '')
-        except Exception:  # noqa: BLE001
-            text = str(reader_result or '')
+        text = _extract_text(reader_result)
         chunks = self._chunk_text(str(text or ''))
         try:
             ctx.chunks = chunks
         except Exception:  # noqa: BLE001
             if isinstance(ctx, dict):
                 ctx['chunks'] = chunks
-        resolved_document_id = (
-            _get(version, 'document_id', 'documentId', default=None) or document_id
-        )
-        if resolved_document_id is None:
-            resolved_document_id = version_id
-        page_numbers = getattr(reader_result, 'page_numbers', None)
-        if page_numbers is None:
-            page_numbers = _get(reader_result, 'page_numbers', 'pages', default=[]) or []
+        resolved_document_id = _resolve_document_id(version, document_id)
+        page_numbers = _get_page_numbers(reader_result)
         chunk_entities = []
         occurrence_counts: dict[tuple[tuple[str, ...], str], int] = {}
+        chars_per_token = _get_chars_per_token(self.config)
         for index, chunk_text in enumerate(chunks):
             structure_path = ()
             occurrence_key = (structure_path, chunk_text)
@@ -86,7 +130,7 @@ class ChunkStepOperations(PipelineStepWorker):
                         occurrence=occurrence,
                         structure_path=structure_path,
                         page_number=page_number,
-                        token_count=_estimate_token_count(chunk_text),
+                        token_count=_estimate_token_count(chunk_text, chars_per_token),
                     )
                 )
             except Exception:  # noqa: BLE001
