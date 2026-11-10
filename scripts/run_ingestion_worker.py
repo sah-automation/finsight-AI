@@ -270,6 +270,14 @@ def parse_message_body(message: Any) -> dict[str, Any]:
 parse_message = parse_message_body
 
 
+def _coerce_str(value: Any) -> str:
+    if value is None:
+        return ''
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value).decode('utf-8', 'replace')
+    return str(value)
+
+
 def _pick(envelope: dict[str, Any], *keys: str) -> Any:
     for key in keys:
         if key in envelope and envelope.get(key) is not None:
@@ -452,6 +460,7 @@ async def process_message(queue: Any, pipeline: Any, message: Any, **kwargs: Any
                 if hasattr(nack_result, '__await__'):
                     await nack_result
             return None
+        logger.exception('Failed to process message %r', message)
         if queue is not None and hasattr(queue, 'nack'):
             _nack_result = queue.nack(message)
             if hasattr(_nack_result, '__await__'):

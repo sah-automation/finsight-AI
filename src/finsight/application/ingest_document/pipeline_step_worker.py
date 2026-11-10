@@ -114,7 +114,9 @@ def _is_missing_object_error(exc: Exception) -> bool:
     if code is not None and not callable(code) and str(code) in _MISSING_OBJECT_CODES:
         return True
     text = str(exc).lower()
-    return '(404)' in text or 'does not exist' in text
+    return (
+        '(404)' in text or 'does not exist' in text or 'nosuchkey' in text or 'no such key' in text
+    )
 
 
 def _config_delta_tracking(config: Any, kwargs: dict[str, Any]) -> bool:

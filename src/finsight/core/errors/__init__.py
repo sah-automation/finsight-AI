@@ -130,9 +130,29 @@ class DocumentTooLargeError(UserFacingError):
 class DocumentVersionNotFoundError(DocumentError):
     """Referenced document version does not exist (permanent failure)."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+        retryable: bool = False,
+    ) -> None:
+        super().__init__(message, code=code, details=details, retryable=False)
+
 
 class SourceObjectNotFoundError(DocumentError):
     """Referenced source object is missing from object storage (permanent failure)."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+        retryable: bool = False,
+    ) -> None:
+        super().__init__(message, code=code, details=details, retryable=False)
 
 
 # Ingestion
