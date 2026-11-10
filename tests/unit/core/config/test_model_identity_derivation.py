@@ -111,15 +111,15 @@ def test_derivation_follows_a_changed_chain() -> None:
         'nvidia_nim/meta/llama-3.1-70b-instruct',
         'self_hosted/open_model_small',
     ]
-    data['models']['answer']['primary'] = 'gemini-3.6-flash'
+    data['models']['answer']['primary'] = 'gemini/gemini-3.6-flash'
     data['models']['answer']['primary_fallbacks'] = changed_fallbacks
 
     config = Config.model_validate(data)
     gateway = LiteLLMGateway(config=config)
 
-    declared = ['gemini-3.6-flash', *changed_fallbacks]
+    declared = ['gemini/gemini-3.6-flash', *changed_fallbacks]
     assert [item['model_id'] for item in gateway.chains['primary']] == declared
-    assert config.llm.primary_model.model_id == 'gemini-3.6-flash'
+    assert config.llm.primary_model.model_id == 'gemini/gemini-3.6-flash'
     assert [item.model_id for item in config.llm.fallback_models] == changed_fallbacks
 
 

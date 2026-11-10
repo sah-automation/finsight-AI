@@ -12,7 +12,7 @@ switches:
 models:
   region: "us-east-1"
   answer:
-    primary: "gemini-3.8-flash"
+    primary: "gemini/gemini-3.8-flash"
     primary_fallbacks:
       - "nvidia_nim/meta/llama-3.1-70b-instruct"
       - "groq/llama-3.3-70b-versatile"
@@ -20,14 +20,14 @@ models:
     cheap: "groq/llama-3.1-8b-instant"
     cheap_fallbacks:
       - "nvidia_nim/meta/llama-3.1-8b-instruct"
-      - "gemini-3.6-flash"
+      - "gemini/gemini-3.6-flash"
       - "self_hosted/open_model_small"
   rerank:
     primary: "cohere/test"
   approved_models:
-    - model_id: "gemini-3.8-flash"
+    - model_id: "gemini/gemini-3.8-flash"
       regions: ["us-east-1", "us-west-2", "us"]
-    - model_id: "gemini-3.6-flash"
+    - model_id: "gemini/gemini-3.6-flash"
       regions: ["us-east-1", "us-west-2", "us"]
     - model_id: "gemini/gemini-embedding-001"
       regions: ["us-east-1", "us-west-2", "us"]

@@ -75,7 +75,7 @@ def _system_content(call: dict[str, Any]) -> str:
 
 @pytest.mark.parametrize(
     ('model_id', 'temperature'),
-    [('gemini-3.8-flash', 0.0), ('gemini-3.6-flash', 0.2)],
+    [('gemini/gemini-3.8-flash', 0.0), ('gemini/gemini-3.6-flash', 0.2)],
 )
 def test_gemini_3_provider_call_omits_deprecated_sampling_params(
     model_id: str, temperature: float
@@ -90,7 +90,7 @@ def test_gemini_3_provider_call_omits_deprecated_sampling_params(
 
 
 @pytest.mark.parametrize(
-    'model_id', ['gemini-3.8-flash', 'gemini-3.6-flash', 'vertex_ai/gemini-3.4-pro']
+    'model_id', ['gemini/gemini-3.8-flash', 'gemini/gemini-3.6-flash', 'vertex_ai/gemini-3.4-pro']
 )
 def test_gemini_3_system_instructions_carry_determinism_guidance(model_id: str) -> None:
     call = _complete(model_id)

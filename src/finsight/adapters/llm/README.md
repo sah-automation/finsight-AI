@@ -23,8 +23,8 @@ LiteLLM gateway, router, and fallbacks.
 **Gemini 3+ model family (issue #262):**
 
 For Gemini 3+ model ids (detected from the resolved model id of each chain
-entry by `_llm_gateway_gemini.py`, e.g. `gemini-3.8-flash` or
-`gemini-3.6-flash`), the gateway omits the deprecated
+entry by `_llm_gateway_gemini.py`, e.g. `gemini/gemini-3.8-flash` or
+`gemini/gemini-3.6-flash`), the gateway omits the deprecated
 `temperature`/`top_p`/`top_k` parameters from the provider call — LiteLLM
 warns they are "planned for removal; move sampling guidance into the system
 instructions instead" — and appends determinism wording ("answer

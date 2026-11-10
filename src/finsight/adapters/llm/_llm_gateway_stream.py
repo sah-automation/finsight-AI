@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, PLR0912, PLR0913, PLR0917, PLR2004, TRY300, S110, RUF059, PLC0415
+# ruff: noqa: BLE001, PLR0912, PLR0913, PLR0917, PLR2004, TRY300, RUF059, PLC0415
 """LLM gateway streaming helpers."""
 
 from __future__ import annotations
@@ -8,6 +8,8 @@ import inspect
 import logging
 import time
 from typing import Any
+
+from finsight.core.logging import get_trace_id
 
 from ._llm_gateway_gemini import (
     _apply_gemini_3_sampling_guidance,
@@ -59,11 +61,9 @@ async def _open_stream(
         try:
             fn = self.completion_func
             if not callable(fn):
-                import finsight.adapters.llm.lite_llm_gateway as _main
+                from finsight.adapters.llm.lite_llm_gateway import _resolve_acompletion as _resolver
 
-                resolver = getattr(_main, '_resolve_acompletion', None)
-                if callable(resolver):
-                    fn = resolver()
+                fn = _resolver()
             kwargs, provider_params = _build_provider_call(model, messages, params, timeout)
             if self.prompt_cache_enabled:
                 kwargs.setdefault('stream_options', {'include_usage': True})
@@ -95,6 +95,12 @@ async def _open_stream(
             return model, stream, first, None
         except Exception as exc:
             last_error = exc
+            _LOGGER.warning(
+                '[llm] per-model call failed for %s',
+                str(model.get('model_id') or model.get('model')),
+                exc_info=exc,
+                extra={'trace_id': get_trace_id()},
+            )
             if attempt < retries:
                 await asyncio.sleep(delay)
     return (
@@ -201,8 +207,13 @@ async def _stream_chain(
         try:
             async for chunk in rest_stream:
                 yield _to_chunk(chunk, model_id, stream_chunk_cls)
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOGGER.warning(
+                '[llm] stream failed for model %s',
+                model_id,
+                exc_info=exc,
+                extra={'trace_id': get_trace_id()},
+            )
         return
     unavailable = 'We are temporarily unavailable. Please try again.'
     yield stream_chunk_cls(unavailable, model='unavailable', model_name='unavailable', type='error')
