@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 import pytest
@@ -44,7 +45,12 @@ class _Search:
 
 
 class _Embedding:
+    def __init__(self, broken: bool = False) -> None:
+        self._broken = broken
+
     async def embed(self, *args: Any, **kwargs: Any) -> Any:
+        if self._broken:
+            raise RuntimeError('embedding provider unavailable')
         return [0.1, 0.2]
 
 
@@ -86,11 +92,17 @@ class _Tracing:
         return None
 
 
-def _build_orchestrator(llm: _LLM) -> AskQuestion:
+def _build_orchestrator(
+    llm: _LLM,
+    *,
+    embedding_provider: Any | None = None,
+) -> AskQuestion:
+    if embedding_provider is None:
+        embedding_provider = _Embedding()
     return AskQuestion(
         config=load_config('test'),
         llm_gateway=llm,
-        embedding_provider=_Embedding(),
+        embedding_provider=embedding_provider,
         hybrid_search=_Search(),
         reranker=_Reranker(),
         metric_repository=_Metrics(),
@@ -126,6 +138,26 @@ def test_ask_question_unavailable_path() -> None:
     assert getattr(result, 'answer', None) in (None, '')
     class_name = type(result).__name__
     assert 'Unavailable' in class_name or getattr(result, 'answer', None) is None
+
+
+def test_embed_degradation_warns_with_exception(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An embed failure must be logged with the exception before degrading."""
+    orchestrator = _build_orchestrator(_LLM(), embedding_provider=_Embedding(broken=True))
+
+    with caplog.at_level(logging.WARNING, logger='finsight.application.ask_question'):
+        result = asyncio.run(orchestrator.run(_context(), 'Why did margins fall?'))
+
+    records = [
+        r
+        for r in caplog.records
+        if r.levelno == logging.WARNING and 'embedding' in r.message.lower()
+    ]
+    assert records
+    assert [r.exc_info for r in records] != [None] * len(records)
+    # Degradation contract unchanged: the flow still produces an answer.
+    assert getattr(result, 'answer', None) == 'Margins fell because costs rose.'
 
 
 @pytest.mark.parametrize(
