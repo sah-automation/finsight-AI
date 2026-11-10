@@ -12,6 +12,34 @@ from ._llm_gateway_config import _as_model_dict, _first, _resolve_config
 _LOGGER = logging.getLogger(__name__)
 
 
+_LLM_GATEWAY_MODEL_KEY = 'model_id'
+
+
+def _gateway_model_id(self: Any) -> str:
+    """Return the gateway's configured model id for metering and pricing.
+
+    The default chain's primary model is the priced identity that metering
+    decorators record, replacing unpriced service-name fallbacks (issue #261).
+    """
+    inner = self.__dict__.get('_inner')
+    if inner is not None and inner is not self:
+        value = getattr(inner, 'model_id', None)
+        if value is not None:
+            return str(value)
+    chains = self.__dict__.get('chains') or {}
+    chain = chains.get(self.__dict__.get('default_chain_name') or '')
+    if chain is None:
+        chain = next(iter(chains.values()), None)
+    first = chain[0] if chain else None
+    if isinstance(first, dict):
+        value = first.get(_LLM_GATEWAY_MODEL_KEY)
+    else:
+        value = getattr(first, _LLM_GATEWAY_MODEL_KEY, None)
+    if value is not None:
+        return str(value)
+    raise AttributeError('model_id')
+
+
 def _init_llm_gateway(self: Any, *args: Any, **kwargs: Any) -> None:
     self.config = _resolve_config(*args, **kwargs)
     self.company_id_default = kwargs.get('company_id')

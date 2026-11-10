@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from finsight.domain.ports.llm_gateway import LLMGateway as LLMGatewayPort
 
-from ._llm_gateway_init import _init_llm_gateway
+from ._llm_gateway_init import _gateway_model_id, _init_llm_gateway
 from ._llm_gateway_public import _complete, _stream
 from ._llm_gateway_stream import _attempt_step, _open_stream, _stream_chain, _to_chunk
 from ._llm_gateway_usage import (
@@ -109,6 +109,9 @@ class LiteLLMGateway(LLMGatewayPort):
     _open_stream = _open_stream
     _attempt_step = _attempt_step
     _stream_chain_helper = staticmethod(_stream_chain)
+
+    # Configured model identity, exposed for metering decorators (issue #261).
+    model_id = property(_gateway_model_id)
 
     async def stream(self, company_id: object = None, *args: Any, **kwargs: Any) -> Any:
 
