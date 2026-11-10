@@ -30,6 +30,7 @@ def create_app() -> FastAPI:
         version='0.1.0',
         description='FinSight AI backend API contract',
     )
+    _install_root_health(app)
     _include_routers(app)
     _install_ask_event_schema(app)
     return app
@@ -53,6 +54,14 @@ def _include_routers(app: FastAPI) -> None:
     for module in (ask, current_user, threads, feedback):
         for extra in getattr(module, 'EXTRA_ROUTERS', ()):
             app.include_router(extra)
+
+
+def _install_root_health(app: FastAPI) -> None:
+    """Expose a stable root-level health endpoint for external probes."""
+
+    @app.get('/health')
+    async def _root_health() -> dict[str, str]:
+        return {'status': 'ok'}
 
 
 def _install_ask_event_schema(app: FastAPI) -> None:

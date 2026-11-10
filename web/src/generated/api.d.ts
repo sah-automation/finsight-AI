@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Root Health */
+        get: operations["_root_health_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ask/health": {
         parameters: {
             query?: never;
@@ -1849,6 +1866,28 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    _root_health_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
     _health_ask_health_get: {
         parameters: {
             query?: never;
@@ -2321,6 +2360,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -2352,6 +2392,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -2383,6 +2424,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -3185,6 +3227,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3216,6 +3259,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3247,6 +3291,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -3302,6 +3347,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3333,6 +3379,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3364,6 +3411,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -3419,6 +3467,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3450,6 +3499,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3481,6 +3531,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -3536,6 +3587,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3567,6 +3619,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3598,6 +3651,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -3653,6 +3707,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3684,6 +3739,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3715,6 +3771,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -3770,6 +3827,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3801,6 +3859,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3832,6 +3891,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -3887,6 +3947,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3918,6 +3979,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -3949,6 +4011,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -4004,6 +4067,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -4035,6 +4099,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -4066,6 +4131,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -4121,6 +4187,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -4152,6 +4219,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -4183,6 +4251,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {
@@ -4238,6 +4307,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -4269,6 +4339,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -4300,6 +4371,7 @@ export interface operations {
         parameters: {
             query?: {
                 context?: unknown;
+                company_id?: string | null;
             };
             header?: never;
             path: {

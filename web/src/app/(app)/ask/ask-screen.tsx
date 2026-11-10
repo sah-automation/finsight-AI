@@ -245,10 +245,18 @@ export function AskScreen({
 
   useEffect(() => {
     if (documentCountState !== undefined) return;
+    const companyId = user?.company_id;
+    if (!companyId) return;
     let alive = true;
     void (async () => {
       try {
-        const response = await fetch(`${API_BASE_PATH}/documents`, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+        const response = await fetch(`${API_BASE_PATH}/documents`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ action: 'list', company_id: companyId }),
+        });
         if (!response.ok) return;
         const payload = await response.json().catch(() => null);
         const list = recordList(payload);
@@ -260,7 +268,7 @@ export function AskScreen({
       }
     })();
     return () => { alive = false; };
-  }, [documentCountState]);
+  }, [documentCountState, user?.company_id]);
 
   const scopeLine = useMemo(() => {
     if (documentCountState !== undefined) return `Searching ${documentCountState} documents, latest versions only`;
@@ -271,9 +279,11 @@ export function AskScreen({
     let alive = true;
     const loadThreads = async () => {
       if (threads.length > 0) return;
+      const companyId = user?.company_id;
+      if (!companyId) return;
       try {
         for (const endpoint of [`${API_BASE_PATH}/chat/threads`, `${API_BASE_PATH}/threads`]) {
-          const response = await fetch(endpoint, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+          const response = await fetch(`${endpoint}?company_id=${encodeURIComponent(String(companyId))}`, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
           if (!response.ok) continue;
           const payload = await response.json().catch(() => null);
           const list = recordList(payload);
@@ -302,7 +312,7 @@ export function AskScreen({
     return () => {
       alive = false;
     };
-  }, [threads.length]);
+  }, [threads.length, user?.company_id]);
 
   const updateAssistant = useCallback((updater: (current: ThreadMessage) => ThreadMessage) => {
     setMessagesList((prev) => {
@@ -468,9 +478,13 @@ export function AskScreen({
       setMessagesList(thread.messages);
       return;
     }
+    const companyId = user?.company_id;
+    if (!companyId) {
+      return;
+    }
     try {
       for (const endpoint of [`${API_BASE_PATH}/chat/threads/${encodeURIComponent(String(threadIdValue))}`, `${API_BASE_PATH}/threads/${encodeURIComponent(String(threadIdValue))}`]) {
-        const response = await fetch(endpoint, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+        const response = await fetch(`${endpoint}?company_id=${encodeURIComponent(String(companyId))}`, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
         if (!response.ok) continue;
         const payload = await response.json().catch(() => null);
         const record = payload && typeof payload === 'object' ? (payload as JsonRecord) : {};
@@ -486,7 +500,7 @@ export function AskScreen({
     } catch {
       if (thread.question ?? thread.title) setMessagesList([{ id: 'user-reopened', role: 'user', question: (thread.question ?? thread.title) as string, citations: [], figures: [] }] as ThreadMessage[]);
     }
-  }, []);
+  }, [user?.company_id]);
 
   const openSource = useCallback((citation: CitationRecord) => {
     setSelectedCitation(citation);

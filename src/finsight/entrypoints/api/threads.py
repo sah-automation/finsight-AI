@@ -1020,13 +1020,13 @@ EXTRA_ROUTERS = (
 )
 
 
-async def _http_list(context: Any = None) -> Any:
-    result = await _handle(context=context)
+async def _http_list(context: Any = None, company_id: str | None = None) -> Any:
+    result = await _handle(context=context, company_id=company_id)
     return result
 
 
-async def _http_get(thread_id: str, context: Any = None) -> Any:
-    result = await _handle(thread_id=thread_id, context=context)
+async def _http_get(thread_id: str, context: Any = None, company_id: str | None = None) -> Any:
+    result = await _handle(thread_id=thread_id, context=context, company_id=company_id)
     if result is None:
         raise _NotFoundError()
     return result
@@ -1128,16 +1128,16 @@ for _r in (router, *EXTRA_ROUTERS):
         return {'status': 'ok'}
 
     @_r.get('')
-    async def _list_route(context: Any = None) -> Any:
-        return await _http_list(context=context)
+    async def _list_route(context: Any = None, company_id: str | None = None) -> Any:
+        return await _http_list(context=context, company_id=company_id)
 
     @_r.get('/')
-    async def _list_route_slash(context: Any = None) -> Any:
-        return await _http_list(context=context)
+    async def _list_route_slash(context: Any = None, company_id: str | None = None) -> Any:
+        return await _http_list(context=context, company_id=company_id)
 
     @_r.get('/{thread_id}')
-    async def _get_route(thread_id: str, context: Any = None) -> Any:
-        return await _http_get(thread_id=thread_id, context=context)
+    async def _get_route(thread_id: str, context: Any = None, company_id: str | None = None) -> Any:
+        return await _http_get(thread_id=thread_id, context=context, company_id=company_id)
 
 
 __all__ = [
