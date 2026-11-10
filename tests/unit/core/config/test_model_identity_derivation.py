@@ -107,8 +107,8 @@ def test_gateway_completes_with_the_cheap_chain() -> None:
 def test_derivation_follows_a_changed_chain() -> None:
     data = _loaded_config_data()
     changed_fallbacks = [
-        'groq/llama-3.3-70b-versatile',
-        'nvidia_nim/meta/llama-3.1-70b-instruct',
+        'groq/openai/gpt-oss-120b',
+        'nvidia_nim/google/gemma-4-31b-it',
         'self_hosted/open_model_small',
     ]
     data['models']['answer']['primary'] = 'gemini/gemini-3.6-flash'

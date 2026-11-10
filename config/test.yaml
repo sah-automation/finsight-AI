@@ -12,32 +12,38 @@ switches:
 models:
   region: "us-east-1"
   answer:
-    primary: "gemini/gemini-3.8-flash"
+    primary: "gemini/gemini-3.6-flash"
     primary_fallbacks:
-      - "nvidia_nim/meta/llama-3.1-70b-instruct"
-      - "groq/llama-3.3-70b-versatile"
+      - "groq/openai/gpt-oss-120b"
+      - "nvidia_nim/google/gemma-4-31b-it"
       - "self_hosted/open_model_small"
-    cheap: "groq/llama-3.1-8b-instant"
+    cheap: "groq/openai/gpt-oss-20b"
     cheap_fallbacks:
-      - "nvidia_nim/meta/llama-3.1-8b-instruct"
-      - "gemini/gemini-3.6-flash"
+      - "gemini/gemini-3.1-flash-lite"
+      - "groq/openai/gpt-oss-120b"
       - "self_hosted/open_model_small"
   rerank:
     primary: "cohere/test"
   approved_models:
-    - model_id: "gemini/gemini-3.8-flash"
-      regions: ["us-east-1", "us-west-2", "us"]
     - model_id: "gemini/gemini-3.6-flash"
       regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/gemini-3.5-flash-lite"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/gemini-3.1-flash-lite"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/openai/gpt-oss-120b"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/openai/gpt-oss-20b"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/qwen/qwen3.8-27b"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/nvidia/nemotron-3.5-bolt-e4b"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/google/gemma-4-31b-it"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/gemini-3.8-flash"
+      regions: ["us-east-1", "us-west-2", "us"]
     - model_id: "gemini/gemini-embedding-001"
-      regions: ["us-east-1", "us-west-2", "us"]
-    - model_id: "groq/llama-3.3-70b-versatile"
-      regions: ["us-east-1", "us-west-2", "us"]
-    - model_id: "groq/llama-3.1-8b-instant"
-      regions: ["us-east-1", "us-west-2", "us"]
-    - model_id: "nvidia_nim/meta/llama-3.1-70b-instruct"
-      regions: ["us-east-1", "us-west-2", "us"]
-    - model_id: "nvidia_nim/meta/llama-3.1-8b-instruct"
       regions: ["us-east-1", "us-west-2", "us"]
     - model_id: "nvidia_nim/llama-3.2-nv-rerankqa-1b-v2"
       regions: ["us-east-1", "us-west-2", "us"]

@@ -75,7 +75,12 @@ def _system_content(call: dict[str, Any]) -> str:
 
 @pytest.mark.parametrize(
     ('model_id', 'temperature'),
-    [('gemini/gemini-3.8-flash', 0.0), ('gemini/gemini-3.6-flash', 0.2)],
+    [
+        ('gemini/gemini-3.8-flash', 0.0),
+        ('gemini/gemini-3.6-flash', 0.2),
+        ('gemini/gemini-3.5-flash-lite', 0.2),
+        ('gemini/gemini-3.1-flash-lite', 0.2),
+    ],
 )
 def test_gemini_3_provider_call_omits_deprecated_sampling_params(
     model_id: str, temperature: float
@@ -90,7 +95,14 @@ def test_gemini_3_provider_call_omits_deprecated_sampling_params(
 
 
 @pytest.mark.parametrize(
-    'model_id', ['gemini/gemini-3.8-flash', 'gemini/gemini-3.6-flash', 'vertex_ai/gemini-3.4-pro']
+    'model_id',
+    [
+        'gemini/gemini-3.8-flash',
+        'gemini/gemini-3.6-flash',
+        'gemini/gemini-3.5-flash-lite',
+        'gemini/gemini-3.1-flash-lite',
+        'vertex_ai/gemini-3.4-pro',
+    ],
 )
 def test_gemini_3_system_instructions_carry_determinism_guidance(model_id: str) -> None:
     call = _complete(model_id)
@@ -103,7 +115,15 @@ def test_gemini_3_system_instructions_carry_determinism_guidance(model_id: str) 
 
 @pytest.mark.parametrize(
     ('model_id', 'temperature'),
-    [('groq/llama-3.3-70b-versatile', 0.2), ('self_hosted/open_model_small', 0.0)],
+    [
+        ('groq/llama-3.3-70b-versatile', 0.2),
+        ('groq/llama-3.1-8b-instant', 0.0),
+        ('groq/openai/gpt-oss-120b', 0.2),
+        ('groq/openai/gpt-oss-20b', 0.0),
+        ('nvidia_nim/nvidia/nemotron-3.5-bolt-e4b', 0.0),
+        ('nvidia_nim/google/gemma-4-31b-it', 0.0),
+        ('self_hosted/open_model_small', 0.0),
+    ],
 )
 def test_non_gemini_provider_call_keeps_configured_sampling_params(
     model_id: str, temperature: float
@@ -116,7 +136,18 @@ def test_non_gemini_provider_call_keeps_configured_sampling_params(
     assert 'top_k' not in call
 
 
-@pytest.mark.parametrize('model_id', ['groq/llama-3.3-70b-versatile', 'groq/llama-3.1-8b-instant'])
+@pytest.mark.parametrize(
+    'model_id',
+    [
+        'groq/llama-3.3-70b-versatile',
+        'groq/llama-3.1-8b-instant',
+        'groq/openai/gpt-oss-120b',
+        'groq/openai/gpt-oss-20b',
+        'nvidia_nim/nvidia/nemotron-3.5-bolt-e4b',
+        'nvidia_nim/google/gemma-4-31b-it',
+        'self_hosted/open_model_small',
+    ],
+)
 def test_non_gemini_system_instructions_are_unchanged(model_id: str) -> None:
     call = _complete(model_id)
 
