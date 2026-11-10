@@ -9,10 +9,44 @@ import logging
 import time
 from typing import Any
 
+from ._llm_gateway_gemini import (
+    _apply_gemini_3_sampling_guidance,
+    _is_gemini_3,
+    _without_deprecated_sampling,
+)
 from ._llm_gateway_messages import _extract_text
 from ._llm_gateway_usage import _alert_fallback_3, _record_usage
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _build_provider_call(
+    self: Any,
+    model: dict[str, Any],
+    messages: list[dict[str, Any]],
+    params: dict[str, Any],
+    timeout: float,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Build the provider call kwargs and the effective caller parameters.
+
+    Gemini 3+ deprecates ``temperature``/``top_p``/``top_k`` (issue #262): the
+    gateway keeps them out of the provider call and folds determinism guidance
+    into the system instructions instead. Other model families are untouched.
+    """
+    kwargs: dict[str, Any] = {
+        'model': model.get('model_id') or model.get('model'),
+        'messages': messages,
+        'stream': True,
+        'max_tokens': model.get('max_tokens'),
+        'temperature': model.get('temperature'),
+        'timeout': timeout,
+    }
+    provider_params = params
+    if _is_gemini_3(kwargs['model']):
+        kwargs.pop('temperature', None)
+        kwargs['messages'] = _apply_gemini_3_sampling_guidance(messages)
+        provider_params = _without_deprecated_sampling(params)
+    return kwargs, provider_params
 
 
 async def _open_stream(
@@ -31,20 +65,15 @@ async def _open_stream(
                 resolver = getattr(_main, '_resolve_acompletion', None)
                 if callable(resolver):
                     fn = resolver()
-            kwargs: dict[str, Any] = {
-                'model': model.get('model_id') or model.get('model'),
-                'messages': messages,
-                'stream': True,
-                'max_tokens': model.get('max_tokens'),
-                'temperature': model.get('temperature'),
-                'timeout': timeout,
-            }
+            kwargs, provider_params = _build_provider_call(self, model, messages, params, timeout)
             if self.prompt_cache_enabled:
                 kwargs.setdefault('stream_options', {'include_usage': True})
             result = (
                 fn(**kwargs)
-                if not params
-                else fn(**{**kwargs, **{k: v for k, v in params.items() if k not in kwargs}})
+                if not provider_params
+                else fn(
+                    **{**kwargs, **{k: v for k, v in provider_params.items() if k not in kwargs}}
+                )
             )
             if inspect.isawaitable(result):
                 result = await result
