@@ -13,6 +13,7 @@ from ._rerank_operations import (
     _call_scorer,
     _fallback,
     _init_reranker,
+    _metering_model_id,
     _parse,
     _rerank,
     _result,
@@ -28,6 +29,11 @@ class CohereReranker(RerankerPort):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         _init_reranker(self, *args, **kwargs)
+
+    @property
+    def model_id(self) -> str:
+        """Provider-qualified model identity used for metering and pricing."""
+        return _metering_model_id(self)
 
     async def rerank(self, company_id: object, *args: Any, **kwargs: Any) -> Any:
         return await _rerank(self, company_id, *args, **kwargs)

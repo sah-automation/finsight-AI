@@ -85,6 +85,20 @@ def _init_reranker(self: Any, *args: Any, **kwargs: Any) -> None:
     )
 
 
+def _metering_model_id(self: Any) -> str:
+    """Provider-qualified model id (``{provider}/{model}``) used for metering.
+
+    The price table and approved-model rules key the provider-qualified id,
+    while the provider-facing wire name keeps its prefix-stripped form. Only
+    metering and pricing consumers use this id (issue #261).
+    """
+    provider = _text(getattr(self, 'provider', '') or '')
+    model = _text(getattr(self, 'model', '') or '')
+    if provider and model and not model.startswith(f'{provider}/'):
+        return f'{provider}/{model}'
+    return model or provider
+
+
 async def _rerank(self: Any, company_id: object, *args: Any, **kwargs: Any) -> Any:
     company = _company(company_id)
     values: dict[str, Any] = dict(kwargs)
