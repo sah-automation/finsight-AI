@@ -116,7 +116,9 @@ def test_metered_stacks_record_priced_model_identities() -> None:
     )
 
     assert metering.records, 'metered stacks must record usage rows'
-    by_service = {str(record.service): record for record in metering.records}
+    by_service: dict[str, list[Any]] = {}
+    for record in metering.records:
+        by_service.setdefault(str(record.service), []).append(record)
     assert set(by_service) == {'llm', 'embedding', 'rerank'}
     expected_models = {
         'llm': config.llm.primary_model.model_id,
@@ -124,7 +126,11 @@ def test_metered_stacks_record_priced_model_identities() -> None:
         'rerank': config.models.rerank.primary,
     }
     for service, model_id in expected_models.items():
-        record = by_service[service]
-        assert record.model == model_id, f'{service} rows must record the priced id {model_id!r}'
-        assert record.cost is not None, f'{service} rows must have a priced cost'
-        metering.price_table.cost_for(str(record.model), record.units or 1)
+        rows = by_service[service]
+        assert rows, f'metered {service} path must record at least one usage row'
+        for record in rows:  # every recorded row, not just the first per service
+            assert record.model == model_id, (
+                f'{service} rows must record the priced id {model_id!r}'
+            )
+            assert record.cost is not None, f'{service} rows must have a priced cost'
+            metering.price_table.cost_for(str(record.model), record.units or 1)

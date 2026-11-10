@@ -70,9 +70,7 @@ class MeteredLLM(LiteLLMGateway):
         if self._inner_metering() is metering:
             return
         target: Any = metering
-        model = (
-            getattr(self._inner, 'model_id', None) or getattr(self._inner, 'model', None) or 'llm'
-        )
+        model = getattr(self._inner, 'model_id', None) or 'llm'
         try:
             method = None
             for name in (

@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from types import SimpleNamespace
 from typing import Any
 
 from finsight.adapters.rerank.cohere_reranker import CohereReranker
 from finsight.adapters.rerank.metered_reranker import MeteredReranker
 from finsight.adapters.rerank.retrying_reranker import RetryingReranker
+from finsight.core.config.loader import load_config
 from finsight.core.config.price_table import load_price_table
-
-QUALIFIED_MODEL = 'cohere/rerank-english-v3.0'  # priced in config/prices.yaml
 
 
 class RecordingMetering:
@@ -31,30 +29,21 @@ class _OkScorer:
         ]
 
 
-def _config() -> SimpleNamespace:
-    return SimpleNamespace(
-        provider='cohere',
-        model='rerank-english-v3.0',
-        top_n=5,
-        timeout_seconds=5,
-        max_retries=0,
-        batch_size=10,
-    )
-
-
 def test_reranker_exposes_qualified_metering_identity() -> None:
-    provider = CohereReranker(config=_config(), client=_OkScorer())
+    config = load_config('test')
+    provider = CohereReranker(config=config, client=_OkScorer())
 
-    # The provider-facing wire name keeps its stripped prefix ...
-    assert provider.model == 'rerank-english-v3.0'
+    # The provider-facing wire name keeps its prefix-stripped form ...
+    assert provider.model == config.reranker.model
     # ... but the metering identity is the provider-qualified, priced id.
-    assert provider.model_id == QUALIFIED_MODEL
+    assert provider.model_id == config.models.rerank.primary
     load_price_table().cost_for(provider.model_id, 1)
 
 
 def test_metered_rerank_records_the_qualified_model_id() -> None:
+    config = load_config('test')
     metering = RecordingMetering()
-    provider = CohereReranker(config=_config(), client=_OkScorer())
+    provider = CohereReranker(config=config, client=_OkScorer())
     metered = MeteredReranker(RetryingReranker(provider), metering=metering)
 
     asyncio.run(
@@ -68,5 +57,5 @@ def test_metered_rerank_records_the_qualified_model_id() -> None:
     assert metering.records, 'MeteredReranker must record usage around rerank()'
     record = metering.records[0]
     assert record['kwargs'].get('service') == 'rerank'
-    assert record['kwargs'].get('model') == QUALIFIED_MODEL
+    assert record['kwargs'].get('model') == config.models.rerank.primary
     load_price_table().cost_for(str(record['kwargs'].get('model')), 1)

@@ -8,9 +8,8 @@ from typing import Any
 from finsight.adapters.llm.lite_llm_gateway import LiteLLMGateway
 from finsight.adapters.llm.metered_llm import MeteredLLM
 from finsight.adapters.llm.retrying_llm import RetryingLLM
+from finsight.core.config.loader import load_config
 from finsight.core.config.price_table import load_price_table
-
-MODEL_ID = 'gemini-3.8-flash'  # priced in config/prices.yaml
 
 
 class RecordingMetering:
@@ -26,21 +25,26 @@ async def _ok_completion(**kwargs: Any) -> list[dict[str, Any]]:
 
 
 def test_retrying_llm_exposes_the_gateway_model_id() -> None:
-    provider = LiteLLMGateway(completion_func=_ok_completion, model=MODEL_ID, max_retries=0)
+    config = load_config('test')
+    model_id = config.llm.primary_model.model_id
+    provider = LiteLLMGateway(completion_func=_ok_completion, model=model_id, max_retries=0)
     retry = RetryingLLM(provider, retries=1)
 
-    assert retry.model_id == MODEL_ID
+    assert retry.model_id == model_id
+    # The recorded identity must be priced (issue #261).
+    load_price_table().cost_for(retry.model_id, 1)
 
 
 def test_metered_llm_records_the_real_model_not_the_llm_fallback() -> None:
+    config = load_config('test')
+    model_id = config.llm.primary_model.model_id
     metering = RecordingMetering()
-    provider = LiteLLMGateway(completion_func=_ok_completion, model=MODEL_ID, max_retries=0)
+    provider = LiteLLMGateway(completion_func=_ok_completion, model=model_id, max_retries=0)
     metered = MeteredLLM(RetryingLLM(provider, retries=1), metering=metering)
 
     asyncio.run(metered.complete('company-a', prompt='question'))
 
     assert metering.records, 'MeteredLLM must record usage around complete()'
     model = metering.records[0]['kwargs'].get('model')
-    assert model == MODEL_ID
-    # The recorded identity must be priced (issue #261).
+    assert model == model_id
     load_price_table().cost_for(str(model), 1)

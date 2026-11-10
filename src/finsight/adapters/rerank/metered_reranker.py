@@ -74,11 +74,7 @@ class MeteredReranker:
                     method = candidate
                     break
             if method is not None:
-                model = (
-                    getattr(self._inner, 'model_id', None)
-                    or getattr(self._inner, 'model', None)
-                    or 'rerank'
-                )
+                model = getattr(self._inner, 'model_id', None) or 'rerank'
                 try:
                     result = method(
                         company_id,

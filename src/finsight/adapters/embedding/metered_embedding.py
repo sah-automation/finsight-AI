@@ -60,11 +60,7 @@ class MeteredEmbedding(LiteLLMEmbedding):
             trace_id = str(uuid.uuid4())
         if metering is None or self._inner_metering() is metering or company_id is None:
             return
-        model = (
-            getattr(self._inner, 'model_id', None)
-            or getattr(self._inner, 'model', None)
-            or 'embedding'
-        )
+        model = getattr(self._inner, 'model_id', None) or 'embedding'
         try:
             method = None
             for name in (
