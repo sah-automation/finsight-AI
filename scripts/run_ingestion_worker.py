@@ -7,6 +7,7 @@ import ast
 import asyncio
 import json
 import logging
+import os
 import signal
 from types import SimpleNamespace
 from typing import Any
@@ -34,6 +35,21 @@ try:
     from finsight.application.ingest_document import IngestionPipeline as _IngestionPipeline
 except Exception:  # pragma: no cover
     _IngestionPipeline = None
+
+try:
+    from finsight.core.errors import (
+        DocumentVersionNotFoundError as _DocumentVersionNotFoundError,
+    )
+    from finsight.core.errors import (
+        SourceObjectNotFoundError as _SourceObjectNotFoundError,
+    )
+except Exception:  # pragma: no cover
+    _DocumentVersionNotFoundError = None
+    _SourceObjectNotFoundError = None
+
+_PERMANENT_MISSING_RESOURCE_ERRORS = tuple(
+    err for err in (_DocumentVersionNotFoundError, _SourceObjectNotFoundError) if err is not None
+)
 
 
 def load_config(*args: Any, **kwargs: Any) -> Any:
@@ -69,12 +85,15 @@ __all__ = [
     'build_queue',
     'create_context',
     'create_queue',
+    'ingestion_dlq_on_max_retries',
+    'ingestion_max_retries',
     'load_config',
     'main',
     'message_to_context',
     'parse_message',
     'parse_message_body',
     'process_message',
+    'receive_count_of',
     'run',
     'run_worker',
 ]
@@ -353,6 +372,48 @@ def acknowledge_message(queue: Any, message: Any) -> Any:
     return queue.ack(message)
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(str(raw).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {'1', 'true', 'yes', 'on', 'y'}
+
+
+def ingestion_max_retries() -> int:
+    """Max delivery attempts before a permanently-missing resource is DLQ'd."""
+    return _env_int('INGESTION_MAX_RETRIES', 3)
+
+
+def ingestion_dlq_on_max_retries() -> bool:
+    """Whether to send permanently-missing resources to the DLQ at max retries."""
+    return _env_bool('INGESTION_DLQ_ON_MAX_RETRIES', True)
+
+
+def receive_count_of(message: Any) -> int:
+    """Best-effort extraction of the delivery count for a message."""
+    rc = None
+    if isinstance(message, dict):
+        rc = message.get('ReceiveCount', message.get('receive_count'))
+    if rc is None and hasattr(message, 'ReceiveCount'):
+        rc = getattr(message, 'ReceiveCount', None)
+    if rc is None and hasattr(message, 'receive_count'):
+        rc = getattr(message, 'receive_count', None)
+    try:
+        return int(rc) if rc is not None else 1
+    except (TypeError, ValueError):
+        return 1
+
+
 async def process_message(queue: Any, pipeline: Any, message: Any, **kwargs: Any) -> Any:
     """Process a single SQS message end to end."""
     ctx = build_context(message)
@@ -364,7 +425,33 @@ async def process_message(queue: Any, pipeline: Any, message: Any, **kwargs: Any
     )
     try:
         result = await pipeline.run_pipeline(ctx)
-    except Exception:
+    except Exception as exc:
+        if _PERMANENT_MISSING_RESOURCE_ERRORS and isinstance(
+            exc, _PERMANENT_MISSING_RESOURCE_ERRORS
+        ):
+            logger.warning(
+                'Permanent missing resource while processing message %r: %s: %s',
+                message,
+                type(exc).__name__,
+                exc,
+            )
+            max_retries = ingestion_max_retries()
+            receive_count = receive_count_of(message)
+            dlq_on_max = ingestion_dlq_on_max_retries()
+            if (
+                receive_count >= max_retries
+                and dlq_on_max
+                and queue is not None
+                and hasattr(queue, 'dead_letter')
+            ):
+                dl_result = queue.dead_letter(message)
+                if hasattr(dl_result, '__await__'):
+                    await dl_result
+            elif queue is not None and hasattr(queue, 'nack'):
+                nack_result = queue.nack(message)
+                if hasattr(nack_result, '__await__'):
+                    await nack_result
+            return None
         if queue is not None and hasattr(queue, 'nack'):
             _nack_result = queue.nack(message)
             if hasattr(_nack_result, '__await__'):

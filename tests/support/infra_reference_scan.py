@@ -140,6 +140,7 @@ INFRA_REFERENCE_MODULES = frozenset(
         'finsight.composition',
         'finsight.core.config',
         'finsight.core.config.price_table',
+        'finsight.core.errors',
         'finsight.core.types',
         'finsight.entrypoints.api.app',
         'finsight.entrypoints.api.main',
