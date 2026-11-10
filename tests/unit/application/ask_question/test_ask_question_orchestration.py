@@ -155,7 +155,7 @@ def test_embed_degradation_warns_with_exception(
         if r.levelno == logging.WARNING and 'embedding' in r.message.lower()
     ]
     assert records
-    assert [r.exc_info for r in records] != [None] * len(records)
+    assert all(r.exc_info is not None for r in records)
     # Degradation contract unchanged: the flow still produces an answer.
     assert getattr(result, 'answer', None) == 'Margins fell because costs rose.'
 

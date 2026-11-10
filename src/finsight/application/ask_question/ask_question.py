@@ -10,6 +10,7 @@ from typing import Any
 
 from finsight.core.config import Config
 from finsight.core.errors import PolicyBlocked
+from finsight.core.logging import get_trace_id
 from finsight.core.types import CompanyId, DocumentCategory, Role, UserId
 from finsight.domain.entities.answer import Answer
 from finsight.domain.entities.insufficient_data import InsufficientData as InsufficientDataResult
@@ -626,19 +627,23 @@ class AskQuestion:
         return record
 
     async def _embed(self, company_id: Any, question: str) -> Any:
+        def _log_degradation(exc: Exception) -> None:
+            _LOGGER.warning(
+                'embedding unavailable; degrading to keyword-only search',
+                exc_info=exc,
+                extra={'trace_id': get_trace_id()},
+            )
+
         try:
             return await self._embedding.embed(company_id, text=question)
         except TypeError:
             try:
                 return await self._embedding.embed(company_id, question)
             except Exception as exc:
-                _LOGGER.warning(
-                    'embedding unavailable; degrading to keyword-only search',
-                    exc_info=exc,
-                )
+                _log_degradation(exc)
                 return None
         except Exception as exc:
-            _LOGGER.warning('embedding unavailable; degrading to keyword-only search', exc_info=exc)
+            _log_degradation(exc)
             return None
 
     def _build_messages(

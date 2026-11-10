@@ -34,7 +34,8 @@ def test_retries_exhausted_warning_carries_exception(
         asyncio.run(outer.embed('co1', text='why did margins fall?'))
 
     records = [r for r in caplog.records if 'embedding retries exceeded' in r.message]
-    assert [r.exc_info for r in records] != [None] * len(records)
+    assert records
+    assert all(r.exc_info is not None for r in records)
 
 
 def test_retries_exhausted_warning_alert_extras_preserved(
