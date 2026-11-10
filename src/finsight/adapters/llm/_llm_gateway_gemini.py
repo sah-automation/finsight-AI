@@ -22,6 +22,9 @@ _DEPRECATED_SAMPLING_KEYS = frozenset({'temperature', 'top_p', 'top_k'})
 
 _GEMINI_VERSION_PATTERN = re.compile(r'gemini[-_ ]?(\d+)', re.IGNORECASE)
 
+# The Gemini 3+ family: major version 3 and later.
+_GEMINI_3_MAJOR = 3
+
 
 def _is_gemini_3(model_id: Any) -> bool:
     """Return True when ``model_id`` belongs to the Gemini 3+ family."""
@@ -31,7 +34,7 @@ def _is_gemini_3(model_id: Any) -> bool:
     if match is None:
         return False
     try:
-        return int(match.group(1)) >= 3
+        return int(match.group(1)) >= _GEMINI_3_MAJOR
     except ValueError:
         return False
 
