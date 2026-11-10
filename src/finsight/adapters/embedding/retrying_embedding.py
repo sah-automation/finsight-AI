@@ -46,6 +46,7 @@ class RetryingEmbedding:
             try:
                 _LOGGER.warning(
                     'embedding retries exceeded',
+                    exc_info=last_error,
                     extra={
                         'embedding_retries': self.retries + 1,
                         'embedding_retries_exceeded': self.retries + 1,
