@@ -10,6 +10,21 @@ from finsight.domain.value_objects.reader_result import ReaderResult
 
 from .pipeline_step_worker import PipelineStepWorker, _awaitv, _get
 
+# Default chars per token approximation (same as ModelRouter default)
+_CHARS_PER_TOKEN = 4
+
+
+def _estimate_token_count(text: str) -> int:
+    """Estimate token count from text using character-based approximation.
+
+    Uses 4 characters per token as a rough approximation, consistent with
+    the ModelRouter default. This provides a reasonable estimate without
+    requiring a tokenizer dependency.
+    """
+    if not text:
+        return 0
+    return max(1, (len(text) + _CHARS_PER_TOKEN - 1) // _CHARS_PER_TOKEN)
+
 
 class ChunkStepOperations(PipelineStepWorker):
     chunk_repository: Any
@@ -71,6 +86,7 @@ class ChunkStepOperations(PipelineStepWorker):
                         occurrence=occurrence,
                         structure_path=structure_path,
                         page_number=page_number,
+                        token_count=_estimate_token_count(chunk_text),
                     )
                 )
             except Exception:  # noqa: BLE001

@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 _UPSERT_CHUNK_SQL = (
     f'INSERT INTO {_TABLE} '
     '(company_id, chunk_id, document_id, version_id, chunk_index, content, context_header, '
-    'content_hash, embedding_model_version, embedding, is_active, updated_at) '
+    'content_hash, embedding_model_version, embedding, token_count, is_active, updated_at) '
     'VALUES (:company_id, :chunk_id, :document_id, :version_id, :chunk_index, :content, :context_header, '
-    ':content_hash, :embedding_model_version, CAST(:embedding AS vector), FALSE, now()) '
+    ':content_hash, :embedding_model_version, CAST(:embedding AS vector), :token_count, FALSE, now()) '
     'ON CONFLICT (company_id, chunk_id) DO UPDATE SET '
     'document_id = EXCLUDED.document_id, '
     'version_id = EXCLUDED.version_id, '
@@ -35,6 +35,7 @@ _UPSERT_CHUNK_SQL = (
     'content_hash = EXCLUDED.content_hash, '
     'embedding_model_version = EXCLUDED.embedding_model_version, '
     'embedding = EXCLUDED.embedding, '
+    'token_count = EXCLUDED.token_count, '
     'is_active = FALSE, '
     'updated_at = now()'
 )
@@ -81,6 +82,7 @@ def _write_params(
         'content_hash': chunk.content_hash,
         'embedding_model_version': model,
         'embedding': _vector_literal(vector),
+        'token_count': 0 if chunk.token_count is None else chunk.token_count,
     }
 
 
