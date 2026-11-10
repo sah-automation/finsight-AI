@@ -129,6 +129,8 @@ async def _embed_batch(self: Any, texts: list[str]) -> list[list[float]]:
                 'input': texts,
                 'timeout': self.timeout,
             }
+            if self.dimensions:
+                kwargs['dimensions'] = self.dimensions
             result = fn(**kwargs)
             if inspect.isawaitable(result):
                 result = await result

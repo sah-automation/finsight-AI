@@ -43,7 +43,7 @@ models:
     - "server_error"
     - "provider_unavailable"
   embedding:
-    primary: "gemini-embedding-001"
+    primary: "gemini/gemini-embedding-001"
     version: "v1"
     dimensions: 1024
     retry_attempts: 3
@@ -64,7 +64,7 @@ models:
       regions: ["us-east-1", "us-west-2", "us"]
     - model_id: "gemini-3.6-flash"
       regions: ["us-east-1", "us-west-2", "us"]
-    - model_id: "gemini-embedding-001"
+    - model_id: "gemini/gemini-embedding-001"
       regions: ["us-east-1", "us-west-2", "us"]
     - model_id: "groq/llama-3.3-70b-versatile"
       regions: ["us-east-1", "us-west-2", "us"]

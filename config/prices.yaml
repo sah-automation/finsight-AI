@@ -105,7 +105,7 @@ llm_models:
 
 # Embedding Models (per 1M tokens)
 embedding_models:
-  "gemini-embedding-001":
+  "gemini/gemini-embedding-001":
     input: 0.00001
   "amazon/titan-embed-text-v2:0":
     input: 0.02
