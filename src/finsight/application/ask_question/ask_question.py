@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 import uuid
 from typing import Any
 
@@ -32,6 +33,8 @@ from finsight.domain.services.output_gate import extract_numbers as _extract_num
 from finsight.domain.value_objects.citation import Citation as _CitationVO
 
 from .models import UnavailableResult
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _text(value: Any) -> str:
@@ -628,9 +631,14 @@ class AskQuestion:
         except TypeError:
             try:
                 return await self._embedding.embed(company_id, question)
-            except Exception:
+            except Exception as exc:
+                _LOGGER.warning(
+                    'embedding unavailable; degrading to keyword-only search',
+                    exc_info=exc,
+                )
                 return None
-        except Exception:
+        except Exception as exc:
+            _LOGGER.warning('embedding unavailable; degrading to keyword-only search', exc_info=exc)
             return None
 
     def _build_messages(
