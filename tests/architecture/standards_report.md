@@ -25,7 +25,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/container.py: 3340 lines
   - composition/step_deps.py: 328 lines
   - composition/composition_container.py: 611 lines
-  - core/errors/__init__.py: 338 lines
+  - core/errors/__init__.py: 348 lines
   - adapters/storage/s3_storage.py: 314 lines
   - adapters/readers/textract_reader.py: 356 lines
   - entrypoints/api/upload.py: 950 lines

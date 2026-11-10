@@ -8,7 +8,11 @@ import uuid
 from collections.abc import Mapping
 from typing import Any
 
-from finsight.core.errors import DatabaseError
+from finsight.core.errors import (
+    DatabaseError,
+    DocumentVersionNotFoundError,
+    SourceObjectNotFoundError,
+)
 from finsight.core.types import CompanyId, DocumentId
 from finsight.domain.entities.chunk import Chunk
 from finsight.domain.entities.document_version import DocumentVersion
@@ -78,6 +82,39 @@ def _parse_key(key: Any) -> dict[str, Any]:
         result['document_id'] = parts[2]
         result['version_id'] = parts[4]
     return result
+
+
+# Storage error codes / message fragments that mean the object is permanently
+# gone rather than transiently unreadable.
+_MISSING_OBJECT_CODES = frozenset(
+    {'NoSuchKey', 'NoSuchBucket', 'ObjectNotFound', 'NotFound', '404'}
+)
+
+
+def _is_missing_object_error(exc: Exception) -> bool:
+    """Return True when an object storage failure means the object is gone.
+
+    Matches botocore-shaped ``ClientError`` payloads (``response['Error']``
+    with a ``NoSuchKey``/``NoSuchBucket``/``404`` code), exceptions exposing a
+    matching ``code`` attribute, ``FileNotFoundError`` from local storage
+    adapters, and the S3 "does not exist" message. Transient transport errors
+    (connection resets, timeouts) must not match: those keep the existing
+    empty-read degradation instead of failing the message permanently.
+    """
+    if isinstance(exc, FileNotFoundError):
+        return True
+    response = getattr(exc, 'response', None)
+    if isinstance(response, dict):
+        error = response.get('Error')
+        if isinstance(error, dict):
+            code = error.get('Code')
+            if code is not None and str(code) in _MISSING_OBJECT_CODES:
+                return True
+    code = getattr(exc, 'code', None)
+    if code is not None and not callable(code) and str(code) in _MISSING_OBJECT_CODES:
+        return True
+    text = str(exc).lower()
+    return '(404)' in text or 'does not exist' in text
 
 
 def _config_delta_tracking(config: Any, kwargs: dict[str, Any]) -> bool:
@@ -410,7 +447,9 @@ class PipelineStepWorker:
                 except Exception:
                     continue
         if had_candidate:
-            raise RuntimeError(f'document version {version_id!r} not found in the database')
+            raise DocumentVersionNotFoundError(
+                f'document version {version_id!r} not found in the database'
+            )
         # Fallback for lightweight repositories that do not expose a lookup.
         return DocumentVersion(
             company_id=company_id,
@@ -542,6 +581,10 @@ class PipelineStepWorker:
             if inspect.isawaitable(source):
                 source = await source
         except Exception as exc:  # noqa: BLE001
+            if _is_missing_object_error(exc):
+                raise SourceObjectNotFoundError(
+                    f'source object for company {company_id!s} key {key} not found in object storage'
+                ) from exc
             failed = True
             import logging
 

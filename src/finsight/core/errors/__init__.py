@@ -127,6 +127,14 @@ class DocumentTooLargeError(UserFacingError):
     """Document exceeds size limit."""
 
 
+class DocumentVersionNotFoundError(DocumentError):
+    """Referenced document version does not exist (permanent failure)."""
+
+
+class SourceObjectNotFoundError(DocumentError):
+    """Referenced source object is missing from object storage (permanent failure)."""
+
+
 # Ingestion
 class InvalidStateTransitionError(FinSightError, ValueError):
     """Raised when an entity refuses an illegal state transition."""
@@ -305,6 +313,7 @@ __all__ = [
     'DocumentNotFoundError',
     'DocumentProcessingError',
     'DocumentTooLargeError',
+    'DocumentVersionNotFoundError',
     'DocumentVersionTransitionError',
     'DynamoDBError',
     'EmbeddingError',
@@ -328,6 +337,7 @@ __all__ = [
     'RetryableError',
     'S3Error',
     'SQSError',
+    'SourceObjectNotFoundError',
     'TextractError',
     'TokenExpiredError',
     'UnsupportedFormatError',
