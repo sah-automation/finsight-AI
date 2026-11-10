@@ -135,10 +135,14 @@ SCAN_INFRA_REFERENCES = scan_infra_references
 INFRA_REFERENCE_MODULES = frozenset(
     {
         'finsight',
+        'finsight.adapters.partitions.partition_manager',
+        'finsight.adapters.repositories',
+        'finsight.adapters.repositories.company_repository',
         'finsight.application.ingest_document',
         'finsight.composition',
         'finsight.core.config',
         'finsight.core.config.price_table',
+        'finsight.core.types',
         'finsight.entrypoints.api.app',
         'finsight.entrypoints.api.main',
     }

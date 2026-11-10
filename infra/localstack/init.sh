@@ -35,6 +35,11 @@ for queue in "${QUEUES[@]}"; do
   awslocal sqs create-queue --queue-name "${queue}" >/dev/null 2>&1 || true
 done
 
+# Purge all queues to ensure clean state (idempotent)
+for queue in "${QUEUES[@]}"; do
+  awslocal sqs purge-queue --queue-url "http://localhost:4566/000000000000/${queue}" >/dev/null 2>&1 || true
+done
+
 for table in "${TABLES[@]}"; do
   awslocal dynamodb create-table \
     --table-name "${table}" \
