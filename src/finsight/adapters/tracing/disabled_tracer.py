@@ -176,7 +176,16 @@ class DisabledTracer(TracingPort):
             if key in kwargs and isinstance(kwargs.get(key), Mapping):
                 raw_attributes = kwargs.pop(key)
                 break
-        kwargs['attributes'] = raw_attributes if isinstance(raw_attributes, Mapping) else {}
+        attrs = dict(raw_attributes) if isinstance(raw_attributes, Mapping) else {}
+        try:
+            _vals = _active_switch_values(self._config)
+            if _vals:
+                attrs.setdefault('active_switch_values', _vals)
+                attrs.setdefault('active_switches', _vals)
+                attrs.setdefault('switches', _vals)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.debug('active switch values unavailable: %s', exc)
+        kwargs['attributes'] = attrs
         span = Span(company_id=company_id, **kwargs)
         self._spans.append(span)
         return span

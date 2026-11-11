@@ -27,6 +27,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/composition_container.py: 611 lines
   - core/errors/__init__.py: 368 lines
   - core/config/models/config.py: 308 lines
+  - adapters/tracing/tracing_adapter.py: 306 lines
   - adapters/storage/s3_storage.py: 314 lines
   - adapters/readers/textract_reader.py: 356 lines
   - entrypoints/api/upload.py: 950 lines
@@ -40,7 +41,6 @@ Generated from tests/architecture/test_standards_checklist.py
   - application/reprocess/reprocess.py: 716 lines
   - application/delete_document/delete_document.py: 999 lines
   - application/update_document/update_document.py: 1363 lines
-  - application/ingest_document/upload_document.py: 1157 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths

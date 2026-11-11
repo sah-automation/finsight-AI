@@ -101,6 +101,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'core config',
         'removal_condition': 'Split validation into per-section validators when config model exceeds 320 lines.',
     },
+    'adapters/tracing/tracing_adapter.py': {
+        'reason': 'Tracing adapter bundles span emission, sanitization and make_span paths.',
+        'owner': 'adapters',
+        'removal_condition': 'Extract make_span helpers when adapter exceeds 320 lines.',
+    },
     'adapters/readers/textract_reader.py': {
         'reason': 'Textract adapter bundles sync/async polling and response parsing.',
         'owner': 'adapters',

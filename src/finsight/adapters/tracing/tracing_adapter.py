@@ -13,6 +13,7 @@ from finsight.domain.value_objects.span import Span, company_to_trace_attribute
 from ._tracing_backend import record_tracing_backend_span, resolve_tracing_backend
 from ._tracing_config import (
     TRACING_ALIAS_NAMES,
+    _active_switch_values,
     _config_switches,
     _ensure_standard_span_attributes,
     _first,
@@ -239,7 +240,16 @@ class TracingAdapter(TracingPort):
             if key in kwargs and isinstance(kwargs.get(key), Mapping):
                 raw_attributes = kwargs.pop(key)
                 break
-        kwargs['attributes'] = _sanitize_attributes(raw_attributes)
+        merged_attributes = dict(raw_attributes) if isinstance(raw_attributes, Mapping) else {}
+        try:
+            _vals = _active_switch_values(self.config)
+            if _vals:
+                merged_attributes.setdefault('active_switch_values', _vals)
+                merged_attributes.setdefault('active_switches', _vals)
+                merged_attributes.setdefault('switches', _vals)
+        except Exception as exc:
+            _LOGGER.debug('active switch values unavailable: %s', exc)
+        kwargs['attributes'] = _sanitize_attributes(merged_attributes)
         if 'active' not in kwargs and 'enabled' not in kwargs:
             kwargs['active'] = self.enabled
         return Span(company_id=company_id, **kwargs)
