@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
-import yaml
-
 # CDK constructs are accepted as opaque objects to avoid over-coupling this stack.
 from aws_cdk import Stack
 from aws_cdk import aws_apigateway as apigw
@@ -14,23 +9,12 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from constructs import Construct
 
+from stacks.env_config import load_env_config
+
 PLACEHOLDER_CODE = """\
 def handler(event, context):
     raise RuntimeError('build dist/lambda/api.zip before deploying')
 """
-
-_ENVS_FILE = Path(__file__).resolve().parent.parent / 'config' / 'envs.yaml'
-
-
-def _load_env_config(env_name: str) -> dict[str, Any]:
-    """Load one environment's settings from config/envs.yaml."""
-    loaded = yaml.safe_load(_ENVS_FILE.read_text(encoding='utf-8')) or {}
-    if not isinstance(loaded, dict) or env_name not in loaded:
-        raise ValueError(f'Unknown environment {env_name!r}; expected one of {sorted(loaded)}')
-    config = loaded[env_name]
-    if not isinstance(config, dict):
-        raise TypeError(f'Environment {env_name!r} must be a mapping')
-    return config
 
 
 def _app_environment(env_name: str) -> str:
@@ -40,7 +24,7 @@ def _app_environment(env_name: str) -> str:
     selects ``config/{environment}.yaml`` from it, so the CDK name (``dev``)
     must not be passed through verbatim (issue #276).
     """
-    environment = _load_env_config(env_name).get('environment')
+    environment = load_env_config(env_name).get('environment')
     if not isinstance(environment, str) or not environment:
         raise ValueError(f'Environment {env_name!r} is missing an "environment" value')
     return environment

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-import yaml
 from aws_cdk import RemovalPolicy, Stack
 from aws_cdk import aws_cognito as cognito
 from constructs import Construct
 
-_ENVS_FILE = Path(__file__).resolve().parent.parent / 'config' / 'envs.yaml'
+from stacks.env_config import load_env_config
+
 _REMOVAL_POLICIES = {
     'retain': RemovalPolicy.RETAIN,
     'destroy': RemovalPolicy.DESTROY,
@@ -15,10 +13,7 @@ _REMOVAL_POLICIES = {
 
 
 def _removal_policy(env_name: str) -> RemovalPolicy:
-    loaded = yaml.safe_load(_ENVS_FILE.read_text(encoding='utf-8')) or {}
-    if not isinstance(loaded, dict) or env_name not in loaded:
-        raise ValueError(f'Unknown environment {env_name!r}')
-    name = str(loaded[env_name]['removal_policy']).lower()
+    name = str(load_env_config(env_name)['removal_policy']).lower()
     if name not in _REMOVAL_POLICIES:
         raise ValueError(f'Unknown removal_policy {name!r}')
     return _REMOVAL_POLICIES[name]

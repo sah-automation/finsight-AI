@@ -10,7 +10,8 @@ import copy
 
 import aws_cdk as cdk
 from aws_cdk.assertions import Template
-from stacks.data import DataStack, _load_env_config
+from stacks.data import DataStack
+from stacks.env_config import load_env_config
 from stacks.network import NetworkStack
 
 TABLE_NAMES = {
@@ -108,7 +109,7 @@ def test_cache_tables_have_ttl_and_tenant_sort_keys() -> None:
 
 
 def test_customer_managed_key_mode_uses_one_kms_key_for_data() -> None:
-    env_config = copy.deepcopy(_load_env_config('dev'))
+    env_config = copy.deepcopy(load_env_config('dev'))
     env_config['key_mode'] = 'kms_customer'
 
     app = cdk.App()

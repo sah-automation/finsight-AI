@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-import yaml
 from aws_cdk import Duration, RemovalPolicy, Stack
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
@@ -13,12 +11,12 @@ from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 from stacks.cors_config import _resolve_cors_allowed_origins
+from stacks.env_config import load_env_config
 
 _REMOVAL_POLICIES = {
     'retain': RemovalPolicy.RETAIN,
     'destroy': RemovalPolicy.DESTROY,
 }
-_ENVS_FILE = Path(__file__).resolve().parent.parent / 'config' / 'envs.yaml'
 
 # CORS is required for browser PUT/GET/HEAD requests against presigned S3
 # upload URLs.  Origins are resolved from environment config (see
@@ -26,17 +24,6 @@ _ENVS_FILE = Path(__file__).resolve().parent.parent / 'config' / 'envs.yaml'
 _CORS_ALLOWED_HEADERS = ['*']
 _CORS_EXPOSED_HEADERS = ['ETag']
 _CORS_MAX_AGE_SECONDS = 3000
-
-
-def _load_env_config(env_name: str) -> dict[str, Any]:
-    """Load one environment's data settings from config/envs.yaml."""
-    loaded = yaml.safe_load(_ENVS_FILE.read_text(encoding='utf-8')) or {}
-    if not isinstance(loaded, dict) or env_name not in loaded:
-        raise ValueError(f'Unknown environment {env_name!r}; expected one of {sorted(loaded)}')
-    config = loaded[env_name]
-    if not isinstance(config, dict):
-        raise TypeError(f'Environment {env_name!r} must be a mapping')
-    return config
 
 
 def _required(config: dict[str, Any], key: str) -> object:
@@ -136,7 +123,7 @@ class DataStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        config = env_config if env_config is not None else _load_env_config(env_name)
+        config = env_config if env_config is not None else load_env_config(env_name)
         removal_policy = _removal_policy(config)
         data_config = _required_section(config, 'data')
         point_in_time_recovery = bool(_required(data_config, 'point_in_time_recovery'))
