@@ -1,5 +1,8 @@
 dev:
   name: dev
+  # Application ENVIRONMENT value the config loader validates (it accepts
+  # development/test/staging/production and maps them to config/*.yaml).
+  environment: development
   removal_policy: destroy
   key_mode: aws_managed
   data:
@@ -8,6 +11,7 @@ dev:
     aurora_deletion_protection: false
 staging:
   name: staging
+  environment: staging
   removal_policy: destroy
   key_mode: aws_managed
   data:
@@ -16,6 +20,7 @@ staging:
     aurora_deletion_protection: false
 prod:
   name: prod
+  environment: production
   removal_policy: retain
   key_mode: aws_managed
   data:

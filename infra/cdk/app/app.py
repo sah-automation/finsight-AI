@@ -74,6 +74,9 @@ def main() -> None:
         env_name=env_name,
         messaging=msg,
     )
+    observability = ObservabilityStack(
+        app, f'FinSight-{env_name}-Observability', env=env, env_name=env_name
+    )
     ComputeStack(
         app,
         f'FinSight-{env_name}-Compute',
@@ -85,8 +88,8 @@ def main() -> None:
         auth=auth,
         lambda_zip=_lambda_asset(),
         step_functions=step_functions,
+        observability=observability,
     )
-    ObservabilityStack(app, f'FinSight-{env_name}-Observability', env=env, env_name=env_name)
 
     app.synth()
 

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
+import yaml
+
 # CDK constructs are accepted as opaque objects to avoid over-coupling this stack.
 from aws_cdk import Stack
 from aws_cdk import aws_apigateway as apigw
@@ -13,6 +18,32 @@ PLACEHOLDER_CODE = """\
 def handler(event, context):
     raise RuntimeError('build dist/lambda/api.zip before deploying')
 """
+
+_ENVS_FILE = Path(__file__).resolve().parent.parent / 'config' / 'envs.yaml'
+
+
+def _load_env_config(env_name: str) -> dict[str, Any]:
+    """Load one environment's settings from config/envs.yaml."""
+    loaded = yaml.safe_load(_ENVS_FILE.read_text(encoding='utf-8')) or {}
+    if not isinstance(loaded, dict) or env_name not in loaded:
+        raise ValueError(f'Unknown environment {env_name!r}; expected one of {sorted(loaded)}')
+    config = loaded[env_name]
+    if not isinstance(config, dict):
+        raise TypeError(f'Environment {env_name!r} must be a mapping')
+    return config
+
+
+def _app_environment(env_name: str) -> str:
+    """Map a CDK environment name (dev/prod) to the loader's ENVIRONMENT value.
+
+    The config loader only accepts ``development|test|staging|production`` and
+    selects ``config/{environment}.yaml`` from it, so the CDK name (``dev``)
+    must not be passed through verbatim (issue #276).
+    """
+    environment = _load_env_config(env_name).get('environment')
+    if not isinstance(environment, str) or not environment:
+        raise ValueError(f'Environment {env_name!r} is missing an "environment" value')
+    return environment
 
 
 class ComputeStack(Stack):
@@ -32,11 +63,13 @@ class ComputeStack(Stack):
         workflow: object = None,
         workflows: object = None,
         state_machine: object = None,
+        observability: object = None,
         **kwargs: object,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         self.env_name = env_name
+        self.observability = observability
 
         # Basic execution role. Least privilege is tightened below.
         role = iam.Role(
@@ -64,6 +97,19 @@ class ComputeStack(Stack):
         if vpc is not None:
             lambda_kwargs['vpc'] = vpc
 
+        # Observability environment (issue #276): OTLP export to the
+        # CloudWatch Logs OTLP endpoint, plus the application environment the
+        # config loader validates. The endpoint is the AWS-documented pattern
+        # (https://logs.{region}.amazonaws.com/v1/logs) with the region taken
+        # from the stack, so no account or region is hard-coded (ADR-0002).
+        # ``AWS_REGION`` is intentionally *not* declared here: the Lambda
+        # runtime reserves and injects it automatically, so it is already
+        # present at runtime.
+        lambda_kwargs['environment'] = {
+            'OTLP_ENDPOINT': f'https://logs.{self.region}.amazonaws.com/v1/logs',
+            'ENVIRONMENT': _app_environment(env_name),
+        }
+
         self.api_fn = lambda_.Function(
             self,
             f'ApiFunction{env_name}',
@@ -80,6 +126,10 @@ class ComputeStack(Stack):
         self._grant_scoped_permissions(
             role, data, messaging, auth, step_functions, workflow, workflows, state_machine
         )
+
+        # Observability: allow the runtime to put structured span records on
+        # the Observability log group (issue #276).
+        self._grant_observability_permissions(role)
 
         # API Gateway with Cognito authorization.
         self.rest_api = apigw.RestApi(
@@ -121,6 +171,15 @@ class ComputeStack(Stack):
         else:
             self.authorizer = None
             self.cognito_authorizer = None
+
+    def _grant_observability_permissions(self, role: object) -> None:
+        """Grant the runtime role write access to the Observability log group."""
+
+        log_group = getattr(self.observability, 'log_group', None) if self.observability else None
+        if log_group is not None and hasattr(log_group, 'grant_write'):
+            # grant_write = logs:CreateLogStream + logs:PutLogEvents on this
+            # log group only (scoped to the Observability group).
+            log_group.grant_write(role)
 
     def _grant_scoped_permissions(  # noqa: PLR0912
         self,
