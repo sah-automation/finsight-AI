@@ -7,9 +7,10 @@ from collections.abc import Mapping
 from typing import Any
 
 from finsight.domain.ports.tracing_port import TracingPort
-from finsight.domain.value_objects.span import Span, company_to_trace_attribute
+from finsight.domain.value_objects.span import Span
 
 from ._tracing_config import _active_switch_values
+from ._tracing_redaction import _sanitize_attributes
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,6 +84,9 @@ class DisabledTracer(TracingPort):
         except Exception as exc:  # noqa: BLE001
             _LOGGER.debug('active switch values unavailable: %s', exc)
 
+        # Apply the sensitive-field redaction blocklist as a safety net.
+        merged_attributes = _sanitize_attributes(merged_attributes)
+
         # Create minimal span
         span = Span(
             company_id=company_id,
@@ -98,15 +102,6 @@ class DisabledTracer(TracingPort):
             mode=effective_mode,
             minimal=effective_minimal,
         )
-
-        # Ensure company identifiers are represented as non-sensitive attributes
-        try:
-            company_attr = company_to_trace_attribute(company_id)
-            if isinstance(company_attr, Mapping):
-                for key, value in company_attr.items():
-                    span.attributes.setdefault(str(key), value)
-        except Exception as exc:  # noqa: BLE001
-            _LOGGER.debug('company trace attribute conversion failed: %s', exc)
 
         # Store span for records/emitted_spans access
         self._spans.append(span)
@@ -185,7 +180,7 @@ class DisabledTracer(TracingPort):
                 attrs.setdefault('switches', _vals)
         except Exception as exc:  # noqa: BLE001
             _LOGGER.debug('active switch values unavailable: %s', exc)
-        kwargs['attributes'] = attrs
+        kwargs['attributes'] = _sanitize_attributes(attrs)
         span = Span(company_id=company_id, **kwargs)
         self._spans.append(span)
         return span

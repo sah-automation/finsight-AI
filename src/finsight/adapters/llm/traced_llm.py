@@ -1,4 +1,4 @@
-# ruff: noqa: BLE001, PLR0912, PLR0915
+# ruff: noqa: PLR0911, BLE001, PLR0912, PLR0915
 """Traced LLM decorator (outermost in the decorator stack)."""
 
 from __future__ import annotations
@@ -6,6 +6,7 @@ from __future__ import annotations
 import inspect
 import logging
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from .lite_llm_gateway import LiteLLMGateway
@@ -115,6 +116,7 @@ class TracedLLM(LiteLLMGateway):
         started: float,
         result: Any = None,
         first_token_latency_ms: float | None = None,
+        request: Any = None,
     ) -> None:
         tracer = self.tracing
         if tracer is None:
@@ -250,6 +252,20 @@ class TracedLLM(LiteLLMGateway):
             attributes['estimated_cost_usd'] = estimated_cost
             attributes['cost'] = estimated_cost
 
+            # Full content capture (gated behind llm_content_capture_enabled).
+            if _content_capture_enabled(self):
+                try:
+                    req_messages = _extract_request_messages(request)
+                    if req_messages is not None:
+                        attributes['genai.request.messages'] = req_messages
+                    resp_text = _extract_response_text(result)
+                    if resp_text is not None:
+                        attributes['genai.response.messages'] = [
+                            {'role': 'assistant', 'content': resp_text}
+                        ]
+                except Exception as exc:
+                    _LOGGER.debug('content capture failed: %s', exc)
+
             try:
                 sig = inspect.signature(method)
                 accepts = 'attributes' in sig.parameters or any(
@@ -279,7 +295,7 @@ class TracedLLM(LiteLLMGateway):
             result = await target.complete(company_id, *args, **kwargs)
             return result
         finally:
-            await self._emit_span(cid, started, result=result)
+            await self._emit_span(cid, started, result=result, request=(args, dict(kwargs)))
 
     async def stream(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         cid = company_id if company_id is not None else kwargs.get('company_id')
@@ -298,7 +314,11 @@ class TracedLLM(LiteLLMGateway):
             if first_token_at is not None:
                 first_token_latency_ms = (first_token_at - started) * 1000.0
             await self._emit_span(
-                cid, started, result=last_item, first_token_latency_ms=first_token_latency_ms
+                cid,
+                started,
+                result=last_item,
+                first_token_latency_ms=first_token_latency_ms,
+                request=(args, dict(kwargs)),
             )
 
     async def generate(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
@@ -339,7 +359,12 @@ def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:
             return {}
     result: dict[str, Any] = {}
     try:
-        for field in getattr(switches, 'model_fields', {}) or {}:
+        _model_fields = (
+            getattr(type(switches), 'model_fields', None)
+            or getattr(switches, 'model_fields', None)
+            or {}
+        )
+        for field in _model_fields:
             result[str(field)] = getattr(switches, field, None)
     except Exception:  # noqa: S110
         pass
@@ -370,9 +395,7 @@ def _standard_attributes(obj: Any, company_id: Any) -> dict[str, Any]:
         attrs['model_name'] = model
         attrs['model'] = model
     # active switch values (best effort)
-    switches = getattr(inner, 'config', None) or getattr(obj, '_config', None)
-    if isinstance(getattr(obj, '_kwargs', None), dict):
-        switches = switches or getattr(obj, '_kwargs', {}).get('config')
+    switches = _find_config(obj)
     try:
         vals = _active_switch_values(switches if switches is not None else obj)
         if vals:
@@ -393,6 +416,121 @@ def _standard_attributes(obj: Any, company_id: Any) -> dict[str, Any]:
         for k, v in attrs.items()
         if v is not None or k in ('cache_hit', 'retry_count', 'queue_wait', 'duration')
     }
+
+
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {'true', 'yes', '1', 'on', 'enabled'}
+    if value is None:
+        return False
+    try:
+        return bool(value)
+    except Exception:
+        return False
+
+
+def _find_config(obj: Any) -> Any:
+    seen: set[int] = set()
+    cur: Any = obj
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        cfg = getattr(cur, 'config', None)
+        if cfg is not None:
+            return cfg
+        cur = (
+            getattr(cur, '_inner', None)
+            or getattr(cur, 'wrapped', None)
+            or getattr(cur, '_wrapped', None)
+        )
+    tracer = getattr(obj, 'tracing', None)
+    if tracer is not None and tracer is not obj:
+        return _find_config(tracer)
+    return None
+
+
+def _content_capture_enabled(obj: Any) -> bool:
+    cfg = _find_config(obj)
+    if cfg is None:
+        return False
+    switches = getattr(cfg, 'switches', None)
+    if switches is None and isinstance(cfg, dict):
+        switches = cfg.get('switches')
+    if switches is None:
+        switches = cfg
+    if isinstance(switches, dict):
+        return _truthy(switches.get('llm_content_capture_enabled', False))
+    return _truthy(getattr(switches, 'llm_content_capture_enabled', False))
+
+
+def _extract_request_messages(request: Any) -> list[dict[str, Any]] | None:
+    if not request:
+        return None
+    args: tuple[Any, ...] = ()
+    kwargs: dict[str, Any] = {}
+    if isinstance(request, tuple) and len(request) == 2:  # noqa: PLR2004
+        args, kwargs = request[0], request[1] if isinstance(request[1], dict) else {}
+    elif isinstance(request, dict):
+        kwargs = request
+    if not isinstance(kwargs, dict):
+        kwargs = {}
+    messages = kwargs.get('messages')
+    if isinstance(messages, list) and messages:
+        return [dict(m) if isinstance(m, Mapping) else {'content': m} for m in messages]
+    prompt = kwargs.get('prompt')
+    if prompt is None:
+        prompt = kwargs.get('question')
+    if prompt is None and args:
+        first = args[0] if args else None
+        if isinstance(first, str):
+            prompt = first
+        elif isinstance(first, list):
+            messages = first
+            if messages:
+                return [dict(m) if isinstance(m, Mapping) else {'content': m} for m in messages]
+    if prompt is None:
+        return None
+    return [{'role': 'user', 'content': prompt}]
+
+
+def _extract_response_text(result: Any) -> str | None:
+    if result is None:
+        return None
+    if isinstance(result, str):
+        return result
+    if isinstance(result, Mapping):
+        for key in ('content', 'text', 'answer', 'response'):
+            value = result.get(key)
+            if isinstance(value, str):
+                return value
+        for key in ('delta', 'message'):
+            value = result.get(key)
+            if isinstance(value, Mapping):
+                text = _extract_response_text(value)
+                if text:
+                    return text
+        choices = result.get('choices')
+        if isinstance(choices, list) and choices:
+            return _extract_response_text(choices[0])
+    if isinstance(result, (list, tuple)):
+        pieces: list[str] = []
+        for item in result:
+            text = _extract_response_text(item)
+            if text:
+                pieces.append(text)
+        if pieces:
+            return ''.join(pieces)
+    content = getattr(result, 'content', None)
+    if isinstance(content, str):
+        return content
+    text = getattr(result, 'text', None)
+    if isinstance(text, str):
+        return text
+    try:
+        return str(result)
+    except Exception:
+        return None
 
 
 __all__ = ['TracedLLM']

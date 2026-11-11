@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import logging
 import time
+from collections.abc import Mapping
 from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,6 +92,7 @@ class TracedReranker:
         company_id: Any,
         started: float,
         result: Any = None,
+        request: Any = None,
     ) -> None:
         tracer = self.tracing
         if tracer is None:
@@ -174,6 +176,16 @@ class TracedReranker:
             attributes['estimated_cost_usd'] = estimated_cost
             attributes['cost'] = estimated_cost
 
+            if _content_capture_enabled(self):
+                try:
+                    query, candidates = _extract_rerank_content(request)
+                    if query is not None:
+                        attributes['genai.rerank.query'] = query
+                    if candidates is not None:
+                        attributes['genai.rerank.candidates'] = candidates
+                except Exception as exc:
+                    _LOGGER.debug('content capture failed: %s', exc)
+
             try:
                 sig = inspect.signature(method)
                 accepts = 'attributes' in sig.parameters or any(
@@ -203,7 +215,7 @@ class TracedReranker:
             result = await target.rerank(company_id, *args, **kwargs)
             return result
         finally:
-            await self._emit_span(cid, started, result=result)
+            await self._emit_span(cid, started, result=result, request=(args, dict(kwargs)))
 
     def __getattr__(self, name: str) -> Any:
         target = self._inner
@@ -242,7 +254,12 @@ def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:
             return {}
     result: dict[str, Any] = {}
     try:
-        for field in getattr(switches, 'model_fields', {}) or {}:
+        _model_fields = (
+            getattr(type(switches), 'model_fields', None)
+            or getattr(switches, 'model_fields', None)
+            or {}
+        )
+        for field in _model_fields:
             result[str(field)] = getattr(switches, field, None)
     except Exception:  # noqa: S110
         pass
@@ -272,11 +289,7 @@ def _standard_attributes(obj: Any, company_id: Any) -> dict[str, Any]:
     if model is not None:
         attrs['model_name'] = model
         attrs['model'] = model
-    switches = None
-    if isinstance(getattr(obj, '_kwargs', None), dict):
-        switches = obj._kwargs.get('config')
-    if switches is None:
-        switches = getattr(inner, 'config', None) or getattr(obj, '_config', None)
+    switches = _find_config(obj)
     try:
         vals = _active_switch_values(switches if switches is not None else obj)
         if vals:
@@ -298,6 +311,90 @@ def _standard_attributes(obj: Any, company_id: Any) -> dict[str, Any]:
         for k, v in attrs.items()
         if v is not None or k in ('cache_hit', 'retry_count', 'queue_wait', 'duration')
     }
+
+
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {'true', 'yes', '1', 'on', 'enabled'}
+    if value is None:
+        return False
+    try:
+        return bool(value)
+    except Exception:
+        return False
+
+
+def _find_config(obj: Any) -> Any:
+    seen: set[int] = set()
+    cur: Any = obj
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        cfg = getattr(cur, 'config', None)
+        if cfg is not None:
+            return cfg
+        cur = (
+            getattr(cur, '_inner', None)
+            or getattr(cur, 'wrapped', None)
+            or getattr(cur, '_wrapped', None)
+        )
+    tracer = getattr(obj, 'tracing', None)
+    if tracer is not None and tracer is not obj:
+        return _find_config(tracer)
+    return None
+
+
+def _content_capture_enabled(obj: Any) -> bool:
+    cfg = _find_config(obj)
+    if cfg is None:
+        return False
+    switches = getattr(cfg, 'switches', None)
+    if switches is None and isinstance(cfg, dict):
+        switches = cfg.get('switches')
+    if switches is None:
+        switches = cfg
+    if isinstance(switches, dict):
+        return _truthy(switches.get('llm_content_capture_enabled', False))
+    return _truthy(getattr(switches, 'llm_content_capture_enabled', False))
+
+
+def _extract_rerank_content(request: Any) -> tuple[Any, Any]:
+    if not request:
+        return (None, None)
+    args: tuple[Any, ...] = ()
+    kwargs: dict[str, Any] = {}
+    if isinstance(request, tuple) and len(request) == 2:  # noqa: PLR2004
+        args, kwargs = request[0], request[1] if isinstance(request[1], dict) else {}
+    elif isinstance(request, dict):
+        kwargs = request
+    if not isinstance(kwargs, dict):
+        kwargs = {}
+    query = kwargs.get('query')
+    if query is None:
+        query = kwargs.get('question')
+    if query is None and args:
+        for a in args:
+            if isinstance(a, str):
+                query = a
+                break
+    candidates = kwargs.get('candidates')
+    if candidates is None:
+        candidates = kwargs.get('documents')
+    if candidates is None:
+        candidates = kwargs.get('results')
+    if candidates is None:
+        candidates = kwargs.get('chunks')
+    if candidates is None and len(args) > 1:
+        for a in args[1:]:
+            if isinstance(a, (list, tuple)):
+                candidates = list(a)
+                break
+    if isinstance(candidates, tuple):
+        candidates = list(candidates)
+    if isinstance(candidates, list):
+        candidates = [dict(c) if isinstance(c, Mapping) else c for c in candidates]
+    return (query, candidates)
 
 
 __all__ = ['TracedReranker']

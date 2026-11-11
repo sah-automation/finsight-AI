@@ -130,7 +130,12 @@ def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:
         return {}
     result: dict[str, Any] = {}
     try:
-        for field in getattr(switches, 'model_fields', {}) or {}:
+        _model_fields = (
+            getattr(type(switches), 'model_fields', None)
+            or getattr(switches, 'model_fields', None)
+            or {}
+        )
+        for field in _model_fields:
             value = getattr(switches, field, None)
             result[str(field)] = value
     except Exception:
