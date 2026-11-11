@@ -1,7 +1,12 @@
+# ruff: noqa: PLR0912, PLR0915
 from __future__ import annotations
 
 import inspect
+import logging
+import time
 from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _resolve_wrapped(kwargs: dict[str, Any], args: list[Any]) -> Any:
@@ -77,13 +82,128 @@ class TracedReranker:
                 result = method(company_id, self.operation)
             if inspect.isawaitable(result):
                 await result
-        except Exception:
+        except Exception as exc:
+            _LOGGER.debug('tracer call failed: %s', exc)
+            return
+
+    async def _emit_span(
+        self,
+        company_id: Any,
+        started: float,
+        result: Any = None,
+    ) -> None:
+        tracer = self.tracing
+        if tracer is None:
+            return
+        try:
+            method = None
+            for name in (
+                'start_span',
+                'span',
+                'emit_span',
+                'trace',
+                'trace_operation',
+                'record_span',
+                'emit',
+                'record',
+            ):
+                candidate = getattr(tracer, name, None)
+                if callable(candidate):
+                    method = candidate
+                    break
+            if method is None:
+                return
+            duration_ms = (time.perf_counter() - started) * 1000.0
+            attributes = _standard_attributes(self, company_id)
+            attributes['duration'] = duration_ms
+            attributes['duration_ms'] = duration_ms
+
+            inner = getattr(self, '_inner', None)
+            retry_count = 0
+            for candidate in (inner, getattr(inner, '_inner', None)):
+                if candidate is None:
+                    continue
+                for attr in ('retry_count', 'retries'):
+                    value = getattr(candidate, attr, None)
+                    if isinstance(value, int):
+                        retry_count = max(retry_count, value)
+            attributes.setdefault('retry_count', retry_count)
+            attributes.setdefault('retries', retry_count)
+
+            cache_hit = False
+            for candidate in (inner, getattr(inner, '_inner', None), result):
+                if candidate is None:
+                    continue
+                value = getattr(candidate, 'cache_hit', None)
+                if isinstance(value, bool):
+                    cache_hit = cache_hit or value
+            attributes['cache_hit'] = cache_hit
+
+            fallback_tags: list[Any] = []
+            fallback_3_used = False
+            if isinstance(getattr(result, 'trace', None), dict):
+                fallback_tags = result.trace.get('fallback_tags', fallback_tags) or fallback_tags
+                fallback_3_used = bool(result.trace.get('reranker_fallback', False))
+            if getattr(result, 'fallback', False):
+                fallback_tags = fallback_tags or ['reranker_fallback']
+            attributes['fallback_tags'] = fallback_tags
+            attributes['fallback_3_used'] = fallback_3_used
+            attributes['rerank_fallback'] = bool(getattr(result, 'fallback', False))
+
+            queue_wait = 0
+            for source in (inner, getattr(inner, '_inner', None)):
+                if source is None:
+                    continue
+                for attr in ('queue_wait', 'queue_wait_ms'):
+                    value = getattr(source, attr, None)
+                    if isinstance(value, (int, float)):
+                        queue_wait = max(queue_wait, int(value))
+            attributes['queue_wait'] = queue_wait
+            attributes['queue_wait_ms'] = queue_wait
+
+            estimated_cost = None
+            for source in (inner, getattr(inner, '_inner', None)):
+                if source is None:
+                    continue
+                rows = getattr(source, 'usage_rows', None)
+                if isinstance(rows, list) and rows:
+                    last_row = rows[-1]
+                    if isinstance(last_row, dict):
+                        estimated_cost = last_row.get('estimated_cost', last_row.get('cost'))
+            attributes['estimated_cost'] = estimated_cost
+            attributes['estimated_cost_usd'] = estimated_cost
+            attributes['cost'] = estimated_cost
+
+            try:
+                sig = inspect.signature(method)
+                accepts = 'attributes' in sig.parameters or any(
+                    p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+                )
+            except (TypeError, ValueError):
+                accepts = True
+            if accepts:
+                try:
+                    result_span = method(company_id, self.operation, attributes=attributes)
+                except TypeError:
+                    result_span = method(company_id, self.operation)
+            else:
+                result_span = method(company_id, self.operation)
+            if inspect.isawaitable(result_span):
+                await result_span
+        except Exception as exc:
+            _LOGGER.debug('span emission failed: %s', exc)
             return
 
     async def rerank(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        await self._trace(company_id if company_id is not None else kwargs.get('company_id'))
+        cid = company_id if company_id is not None else kwargs.get('company_id')
         target = self._inner if self._inner is not None else self
-        return await target.rerank(company_id, *args, **kwargs)
+        started = time.perf_counter()
+        result = None
+        try:
+            result = await target.rerank(company_id, *args, **kwargs)
+            return result
+        finally:
+            await self._emit_span(cid, started, result=result)
 
     def __getattr__(self, name: str) -> Any:
         target = self._inner
@@ -132,11 +252,23 @@ def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:
 def _standard_attributes(obj: Any, company_id: Any) -> dict[str, Any]:
     attrs: dict[str, Any] = {'step': getattr(obj, 'operation', None)}
     inner = getattr(obj, '_inner', None)
-    model = (
-        getattr(inner, 'model_id', None)
-        or getattr(inner, 'model', None)
-        or getattr(obj, 'model', None)
-    )
+    model = None
+    _seen: set[int] = set()
+    _cur = inner
+    while _cur is not None and id(_cur) not in _seen:
+        _seen.add(id(_cur))
+        _mid = getattr(_cur, 'model_id', None)
+        if _mid not in (None, 'default', 'default-embedding', 'default-llm'):
+            model = _mid
+            break
+        _m = getattr(_cur, 'model', None)
+        if _m not in (None,):
+            model = _m
+            break
+        _cur = getattr(_cur, '_inner', None) or getattr(_cur, 'wrapped', None)
+    if model is None:
+        model = getattr(obj, 'model', None)
+
     if model is not None:
         attrs['model_name'] = model
         attrs['model'] = model

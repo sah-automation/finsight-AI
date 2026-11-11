@@ -106,6 +106,21 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'adapters',
         'removal_condition': 'Extract make_span helpers when adapter exceeds 320 lines.',
     },
+    'adapters/llm/traced_llm.py': {
+        'reason': 'Traced LLM decorator bundles span emission and enrichment for complete/stream calls.',
+        'owner': 'adapters',
+        'removal_condition': 'Extract span enrichment helpers when decorator exceeds 320 lines.',
+    },
+    'adapters/embedding/traced_embedding.py': {
+        'reason': 'Traced embedding decorator bundles span emission and enrichment for embed calls.',
+        'owner': 'adapters',
+        'removal_condition': 'Extract span enrichment helpers when decorator exceeds 320 lines.',
+    },
+    'adapters/rerank/traced_reranker.py': {
+        'reason': 'Traced reranker decorator bundles span emission and enrichment for rerank calls.',
+        'owner': 'adapters',
+        'removal_condition': 'Extract span enrichment helpers when decorator exceeds 320 lines.',
+    },
     'adapters/readers/textract_reader.py': {
         'reason': 'Textract adapter bundles sync/async polling and response parsing.',
         'owner': 'adapters',
@@ -449,6 +464,26 @@ OVERSIZED_PRIVATE_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'reason': 'Private helper exceeds the 60-line ratchet; pending refactor.',
         'owner': 'adapters',
         'removal_condition': 'Split the helper once a focused seam is extracted.',
+    },
+    'adapters/tracing/_tracing_redaction.py::_sanitize_attributes': {
+        'reason': 'Redaction helper extended for LLM token and latency metrics.',
+        'owner': 'adapters',
+        'removal_condition': 'Split redaction helpers once metric allow-list is stable.',
+    },
+    'adapters/llm/traced_llm.py::_emit_span': {
+        'reason': 'Private helper enriches LLM spans with post-call timing and usage data.',
+        'owner': 'adapters',
+        'removal_condition': 'Split span enrichment helpers once contract tests guard behavior.',
+    },
+    'adapters/embedding/traced_embedding.py::_emit_span': {
+        'reason': 'Private helper enriches embedding spans with post-call timing and usage data.',
+        'owner': 'adapters',
+        'removal_condition': 'Split span enrichment helpers once contract tests guard behavior.',
+    },
+    'adapters/rerank/traced_reranker.py::_emit_span': {
+        'reason': 'Private helper enriches rerank spans with post-call timing and usage data.',
+        'owner': 'adapters',
+        'removal_condition': 'Split span enrichment helpers once contract tests guard behavior.',
     },
     'application/ask_question/ask_question.py::_build_citations': {
         'reason': 'Private helper exceeds the 60-line ratchet; pending refactor.',

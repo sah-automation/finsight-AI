@@ -36,6 +36,23 @@ _SENSITIVE_NAME_TOKENS: tuple[str, ...] = (
 )
 
 
+# Metric keys that are safe to keep on spans even though their names contain
+# sensitive substrings. These are aggregates (counts/latencies), never content.
+_TOKEN_METRIC_KEYS: frozenset[str] = frozenset(
+    {
+        'first_token_latency_ms',
+        'tokens_prompt',
+        'tokens_completion',
+        'tokens_total',
+        'prompt_tokens',
+        'completion_tokens',
+        'total_tokens',
+        'input_tokens',
+        'output_tokens',
+        'token_count',
+    }
+)
+
 _PII_VALUE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'),
     re.compile(r'\b\d{3}-\d{2}-\d{4}\b'),
@@ -65,6 +82,18 @@ def _sanitize_attributes(attributes: Any) -> dict[str, Any]:
     def _sanitize(key: Any, value: Any) -> tuple[bool, Any]:
         key_text = str(key)
         lowered = key_text.lower()
+        # Allow-list LLM token-count and latency metrics. Their names contain
+        # substrings ("token", "prompt") that would otherwise trip the
+        # sensitive-name blocklist, but the values are aggregates, not content.
+        if lowered in _TOKEN_METRIC_KEYS:
+            if isinstance(value, Mapping):
+                metric_cleaned: dict[str, Any] = {}
+                for nested_key, nested_value in value.items():
+                    keep, sanitized = _sanitize(nested_key, nested_value)
+                    if keep:
+                        metric_cleaned[str(nested_key)] = sanitized
+                return True, metric_cleaned
+            return True, value
         if any(token in lowered for token in _SENSITIVE_NAME_TOKENS):
             return False, None
         if 'url' in lowered:

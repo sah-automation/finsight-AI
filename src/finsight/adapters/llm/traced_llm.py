@@ -1,12 +1,16 @@
-# ruff: noqa: BLE001
+# ruff: noqa: BLE001, PLR0912, PLR0915
 """Traced LLM decorator (outermost in the decorator stack)."""
 
 from __future__ import annotations
 
 import inspect
+import logging
+import time
 from typing import Any
 
 from .lite_llm_gateway import LiteLLMGateway
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _resolve_wrapped(kwargs: dict[str, Any], args: tuple[Any, ...]) -> tuple[Any, tuple[Any, ...]]:
@@ -101,19 +105,201 @@ class TracedLLM(LiteLLMGateway):
                 result = method(company_id, self.operation)
             if inspect.isawaitable(result):
                 await result
-        except Exception:
+        except Exception as exc:
+            _LOGGER.debug('tracer call failed: %s', exc)
+            return
+
+    async def _emit_span(
+        self,
+        company_id: Any,
+        started: float,
+        result: Any = None,
+        first_token_latency_ms: float | None = None,
+    ) -> None:
+        tracer = self.tracing
+        if tracer is None:
+            return
+        try:
+            method = None
+            for name in (
+                'start_span',
+                'span',
+                'emit_span',
+                'trace',
+                'trace_operation',
+                'record_span',
+                'emit',
+                'record',
+            ):
+                candidate = getattr(tracer, name, None)
+                if callable(candidate):
+                    method = candidate
+                    break
+            if method is None:
+                return
+            duration_ms = (time.perf_counter() - started) * 1000.0
+            attributes = _standard_attributes(self, company_id)
+            attributes['duration'] = duration_ms
+            attributes['duration_ms'] = duration_ms
+            if first_token_latency_ms is not None:
+                attributes['first_token_latency_ms'] = first_token_latency_ms
+
+            inner = getattr(self, '_inner', None)
+            retry_count = 0
+            for candidate in (inner, getattr(inner, '_inner', None)):
+                if candidate is None:
+                    continue
+                for attr in ('retry_count', 'retries'):
+                    value = getattr(candidate, attr, None)
+                    if isinstance(value, int):
+                        retry_count = max(retry_count, value)
+            attributes.setdefault('retry_count', retry_count)
+            attributes.setdefault('retries', retry_count)
+
+            cache_hit = False
+            for candidate in (inner, getattr(inner, '_inner', None), result):
+                if candidate is None:
+                    continue
+                value = getattr(candidate, 'cache_hit', None)
+                if isinstance(value, bool):
+                    cache_hit = cache_hit or value
+                if isinstance(candidate, dict):
+                    value = candidate.get('cache_hit')
+                    if isinstance(value, bool):
+                        cache_hit = cache_hit or value
+            attributes['cache_hit'] = cache_hit
+
+            tokens_prompt = 0
+            tokens_completion = 0
+            tokens_total = 0
+            for source in (result, inner, getattr(inner, '_inner', None)):
+                if source is None:
+                    continue
+                for prompt_key in ('tokens_prompt', 'prompt_tokens', 'input_tokens'):
+                    value = getattr(source, prompt_key, None)
+                    if value is None and isinstance(source, dict):
+                        value = source.get(prompt_key)
+                    if isinstance(value, int):
+                        tokens_prompt = max(tokens_prompt, value)
+                for completion_key in ('tokens_completion', 'completion_tokens', 'output_tokens'):
+                    value = getattr(source, completion_key, None)
+                    if value is None and isinstance(source, dict):
+                        value = source.get(completion_key)
+                    if isinstance(value, int):
+                        tokens_completion = max(tokens_completion, value)
+                for total_key in ('tokens_total', 'total_tokens'):
+                    value = getattr(source, total_key, None)
+                    if value is None and isinstance(source, dict):
+                        value = source.get(total_key)
+                    if isinstance(value, int):
+                        tokens_total = max(tokens_total, value)
+            if tokens_total == 0:
+                tokens_total = tokens_prompt + tokens_completion
+            attributes['tokens_prompt'] = tokens_prompt
+            attributes['tokens_completion'] = tokens_completion
+            attributes['tokens_total'] = tokens_total
+            attributes['prompt_tokens'] = tokens_prompt
+            attributes['completion_tokens'] = tokens_completion
+            attributes['total_tokens'] = tokens_total
+
+            fallback_tags: list[Any] = []
+            fallback_3_used = False
+            fallback_model_used = None
+            for source in (inner, getattr(inner, '_inner', None)):
+                if source is None:
+                    continue
+                tags = getattr(source, '_tags', None)
+                if isinstance(tags, list):
+                    fallback_tags = tags
+                fallback_3_used = fallback_3_used or bool(getattr(source, 'fallback_3_used', False))
+                trace = getattr(source, '_last_trace', None)
+                if isinstance(trace, dict):
+                    fallback_3_used = fallback_3_used or bool(trace.get('fallback_3_used'))
+                    fallback_model_used = fallback_model_used or trace.get('fallback_3_model')
+            if isinstance(result, dict):
+                trace = result.get('trace')
+                if isinstance(trace, dict):
+                    fallback_tags = fallback_tags or trace.get('fallback_tags', [])
+                    fallback_3_used = fallback_3_used or bool(trace.get('fallback_3_used'))
+            attributes['fallback_tags'] = fallback_tags
+            attributes['fallback_3_used'] = fallback_3_used
+            if fallback_model_used is not None:
+                attributes['fallback_model_used'] = fallback_model_used
+
+            queue_wait = 0
+            for source in (inner, getattr(inner, '_inner', None)):
+                if source is None:
+                    continue
+                for attr in ('queue_wait', 'queue_wait_ms'):
+                    value = getattr(source, attr, None)
+                    if isinstance(value, (int, float)):
+                        queue_wait = max(queue_wait, int(value))
+            attributes['queue_wait'] = queue_wait
+            attributes['queue_wait_ms'] = queue_wait
+
+            estimated_cost = None
+            for source in (inner, getattr(inner, '_inner', None)):
+                if source is None:
+                    continue
+                rows = getattr(source, 'usage_rows', None)
+                if isinstance(rows, list) and rows:
+                    last_row = rows[-1]
+                    if isinstance(last_row, dict):
+                        estimated_cost = last_row.get('estimated_cost', last_row.get('cost'))
+            attributes['estimated_cost'] = estimated_cost
+            attributes['estimated_cost_usd'] = estimated_cost
+            attributes['cost'] = estimated_cost
+
+            try:
+                sig = inspect.signature(method)
+                accepts = 'attributes' in sig.parameters or any(
+                    p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+                )
+            except (TypeError, ValueError):
+                accepts = True
+            if accepts:
+                try:
+                    result_span = method(company_id, self.operation, attributes=attributes)
+                except TypeError:
+                    result_span = method(company_id, self.operation)
+            else:
+                result_span = method(company_id, self.operation)
+            if inspect.isawaitable(result_span):
+                await result_span
+        except Exception as exc:
+            _LOGGER.debug('span emission failed: %s', exc)
             return
 
     async def complete(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        await self._trace(company_id if company_id is not None else kwargs.get('company_id'))
+        cid = company_id if company_id is not None else kwargs.get('company_id')
         target = self._inner if self._inner is not None else self
-        return await target.complete(company_id, *args, **kwargs)
+        started = time.perf_counter()
+        result = None
+        try:
+            result = await target.complete(company_id, *args, **kwargs)
+            return result
+        finally:
+            await self._emit_span(cid, started, result=result)
 
     async def stream(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
-        await self._trace(company_id if company_id is not None else kwargs.get('company_id'))
+        cid = company_id if company_id is not None else kwargs.get('company_id')
         target = self._inner if self._inner is not None else self
-        async for item in target.stream(company_id, *args, **kwargs):
-            yield item
+        started = time.perf_counter()
+        first_token_at: float | None = None
+        last_item: Any = None
+        try:
+            async for item in target.stream(company_id, *args, **kwargs):
+                if first_token_at is None:
+                    first_token_at = time.perf_counter()
+                last_item = item
+                yield item
+        finally:
+            first_token_latency_ms = None
+            if first_token_at is not None:
+                first_token_latency_ms = (first_token_at - started) * 1000.0
+            await self._emit_span(
+                cid, started, result=last_item, first_token_latency_ms=first_token_latency_ms
+            )
 
     async def generate(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         return await self.complete(company_id, *args, **kwargs)
@@ -163,11 +349,23 @@ def _active_switch_values(switches_or_config: Any) -> dict[str, Any]:
 def _standard_attributes(obj: Any, company_id: Any) -> dict[str, Any]:
     attrs: dict[str, Any] = {'step': getattr(obj, 'operation', None)}
     inner = getattr(obj, '_inner', None)
-    model = (
-        getattr(inner, 'model_id', None)
-        or getattr(inner, 'model', None)
-        or getattr(obj, 'model', None)
-    )
+    model = None
+    _seen: set[int] = set()
+    _cur = inner
+    while _cur is not None and id(_cur) not in _seen:
+        _seen.add(id(_cur))
+        _mid = getattr(_cur, 'model_id', None)
+        if _mid not in (None, 'default', 'default-embedding', 'default-llm'):
+            model = _mid
+            break
+        _m = getattr(_cur, 'model', None)
+        if _m not in (None,):
+            model = _m
+            break
+        _cur = getattr(_cur, '_inner', None) or getattr(_cur, 'wrapped', None)
+    if model is None:
+        model = getattr(obj, 'model', None)
+
     if model is not None:
         attrs['model_name'] = model
         attrs['model'] = model
