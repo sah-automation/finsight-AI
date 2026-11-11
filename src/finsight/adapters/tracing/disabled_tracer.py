@@ -9,6 +9,8 @@ from typing import Any
 from finsight.domain.ports.tracing_port import TracingPort
 from finsight.domain.value_objects.span import Span, company_to_trace_attribute
 
+from ._tracing_config import _active_switch_values
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -72,6 +74,14 @@ class DisabledTracer(TracingPort):
 
         # Add standard minimal attributes
         merged_attributes.setdefault('step', passed_name or operation)
+        try:
+            _vals = _active_switch_values(self._config)
+            if _vals:
+                merged_attributes.setdefault('active_switch_values', _vals)
+                merged_attributes.setdefault('active_switches', _vals)
+                merged_attributes.setdefault('switches', _vals)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.debug('active switch values unavailable: %s', exc)
 
         # Create minimal span
         span = Span(

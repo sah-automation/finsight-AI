@@ -79,6 +79,16 @@ class Config(StrictBaseModel):
     @classmethod
     def _derive_runtime_models(cls, data: object) -> object:
         if isinstance(data, Mapping):
+            switches = data.get('switches')
+            if isinstance(switches, Mapping) and any(
+                k not in switches
+                for k in (
+                    'detailed_tracing_enabled',
+                    'usage_metering_enabled',
+                    'llm_content_capture_enabled',
+                )
+            ):
+                raise ValueError('missing required switch')
             return derive_runtime_model_identity(data)
         return data
 

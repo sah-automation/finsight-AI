@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import FastAPI
 
 from finsight.composition import build_container, providers
 from finsight.core.config.loader import load_config
+from finsight.core.logging import set_switch_values
 from finsight.entrypoints.api import (
     ask,
     current_user,
@@ -22,7 +24,19 @@ from finsight.entrypoints.api import (
 
 def create_app() -> FastAPI:
     """Build the container, wire the providers, and assemble the FastAPI app."""
-    container = build_container(load_config())
+    config = load_config()
+    container = build_container(config)
+
+    switches = getattr(config, 'switches', None)
+    if switches is not None and hasattr(switches, 'model_dump'):
+        values = switches.model_dump()
+    elif isinstance(switches, dict):
+        values = dict(switches)
+    else:
+        values = {}
+    set_switch_values(values)
+    logging.getLogger(__name__).info('Active switch values: %s', values)
+
     providers.init(container)
 
     app = FastAPI(

@@ -96,6 +96,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'core platform',
         'removal_condition': 'Split into per-domain error modules when registry exceeds 450 lines.',
     },
+    'core/config/models/config.py': {
+        'reason': 'Config validation aggregates all cross-section rules for Phase 1.',
+        'owner': 'core config',
+        'removal_condition': 'Split validation into per-section validators when config model exceeds 320 lines.',
+    },
     'adapters/readers/textract_reader.py': {
         'reason': 'Textract adapter bundles sync/async polling and response parsing.',
         'owner': 'adapters',

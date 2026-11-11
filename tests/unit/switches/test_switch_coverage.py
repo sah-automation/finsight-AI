@@ -31,6 +31,7 @@ SWITCH_TO_TEST_FILE = {
     'detailed_tracing_enabled': 'test_tracing_switch.py',
     'waiting_line_enabled': 'test_waiting_line_switch.py',
     'usage_metering_enabled': 'test_metering_switch.py',
+    'llm_content_capture_enabled': 'test_llm_content_capture_switch.py',
 }
 
 

@@ -19,3 +19,4 @@ class SwitchesConfig(StrictBaseModel):
     usage_metering_enabled: bool = True
     per_sentence_citation_check: bool = True
     parallel_retrieval_enabled: bool = True
+    llm_content_capture_enabled: bool = True
