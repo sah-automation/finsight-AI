@@ -75,7 +75,11 @@ metering:
 observability:
   log_level: "DEBUG"
   trace_sample_rate: 1.0
-  otlp_endpoint: ""
+  # Dev traces flow through the local redacting OTel collector
+  # (docker-compose.test.yml, OTLP HTTP on 4318), which deletes blocklisted
+  # span attributes and exports to Arize Phoenix (UI: http://localhost:6006).
+  # Do not point this straight at Phoenix - that would bypass redaction.
+  otlp_endpoint: "http://localhost:4318/v1/traces"
   alerts:
     fallback_model_3_used: true
     reranker_down: true
