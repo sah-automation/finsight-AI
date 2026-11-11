@@ -6,6 +6,8 @@ import logging
 import time
 from typing import Any
 
+from finsight.core.logging import get_trace_id
+
 from .lite_llm_embedding import LiteLLMEmbedding
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,7 +77,9 @@ class TracedEmbedding(LiteLLMEmbedding):
                 accepts = True
             if accepts:
                 try:
-                    result = method(company_id, self.operation, attributes=attributes)
+                    result = method(
+                        company_id, self.operation, trace_id=get_trace_id(), attributes=attributes
+                    )
                 except TypeError:
                     result = method(company_id, self.operation)
             else:
@@ -193,7 +197,9 @@ class TracedEmbedding(LiteLLMEmbedding):
                 accepts = True
             if accepts:
                 try:
-                    result_span = method(company_id, self.operation, attributes=attributes)
+                    result_span = method(
+                        company_id, self.operation, trace_id=get_trace_id(), attributes=attributes
+                    )
                 except TypeError:
                     result_span = method(company_id, self.operation)
             else:

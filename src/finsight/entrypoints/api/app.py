@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from finsight.composition import build_container, providers
 from finsight.core.config.loader import load_config
@@ -20,6 +21,8 @@ from finsight.entrypoints.api import (
     threads,
     upload,
 )
+from finsight.entrypoints.api.correlation_middleware import CorrelationMiddleware
+from finsight.entrypoints.api.readiness import build_readiness_report
 
 
 def create_app() -> FastAPI:
@@ -44,10 +47,36 @@ def create_app() -> FastAPI:
         version='0.1.0',
         description='FinSight AI backend API contract',
     )
-    _install_root_health(app)
+    _install_app_wiring(app, container)
     _include_routers(app)
     _install_ask_event_schema(app)
     return app
+
+
+def _install_app_wiring(app: FastAPI, container: Any) -> None:
+    app.state.container = container
+    app.state.tracing = getattr(container, 'tracing', None)
+    app.add_middleware(
+        CorrelationMiddleware,  # type: ignore[arg-type]
+        tracing=getattr(container, 'tracing', None),
+        container=container,
+    )
+    _install_root_health(app)
+    _install_ready_endpoint(app)
+
+
+def _install_ready_endpoint(app: FastAPI) -> None:
+    """Expose a distinct readiness endpoint that probes dependencies."""
+
+    @app.get('/ready')
+    async def _root_ready(request: Request) -> JSONResponse:
+        container = getattr(getattr(request, 'app', None), 'state', None)
+        container = getattr(container, 'container', None) if container is not None else None
+        if container is None:
+            container = getattr(app.state, 'container', None)
+        report = await build_readiness_report(container)
+        status_code = 200 if bool(report.get('ready', False)) else 503
+        return JSONResponse(report, status_code=status_code)
 
 
 def _include_routers(app: FastAPI) -> None:
