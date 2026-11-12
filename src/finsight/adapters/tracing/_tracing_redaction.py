@@ -122,8 +122,9 @@ def _sanitize_attributes(attributes: Any) -> dict[str, Any]:
             return True, cleaned_list
         if _looks_sensitive_text(value):
             return False, None
-        # Convert company identifiers embedded in attributes.
-        if 'company' in lowered:
+        # Convert company identifiers embedded in attributes, but never
+        # re-hash the already-hashed wire-safe attributes.
+        if 'company' in lowered and lowered not in {'company_hash', 'company_present'}:
             try:
                 return True, company_to_trace_attribute(value)
             except Exception as exc:

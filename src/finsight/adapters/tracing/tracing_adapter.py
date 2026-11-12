@@ -61,12 +61,12 @@ class TracingAdapter(TracingPort):
 
         raw_enabled = _first(
             kwargs,
-            'enabled',
-            'active',
             'detailed_tracing_enabled',
             'detailed_tracing',
             'tracing_enabled',
             'tracing',
+            'enabled',
+            'active',
             default=None,
         )
         self.enabled = _resolve_switch_enabled(self.config, raw_enabled)
@@ -160,6 +160,13 @@ class TracingAdapter(TracingPort):
     @property
     def tracer(self) -> Any:
         return self.otel_tracer
+
+    def export_span(self, span: Any) -> None:
+        if self._otel is not None:
+            try:
+                self._otel.export_span(span)
+            except Exception as exc:  # pragma: no cover - defensive
+                _LOGGER.debug('OTLP export failed: %s', exc)
 
     def flush(self) -> None:
         if self._otel is not None:

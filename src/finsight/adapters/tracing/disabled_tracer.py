@@ -140,6 +140,42 @@ class DisabledTracer(TracingPort):
             **kwargs,
         )
 
+    @property
+    def otel(self) -> None:
+        return None
+
+    @property
+    def otel_exporter(self) -> None:
+        return None
+
+    @property
+    def otel_provider(self) -> None:
+        return None
+
+    @property
+    def otel_processor(self) -> None:
+        return None
+
+    @property
+    def otel_tracer(self) -> None:
+        return None
+
+    @property
+    def exporter(self) -> None:
+        return None
+
+    @property
+    def provider(self) -> None:
+        return None
+
+    @property
+    def processor(self) -> None:
+        return None
+
+    @property
+    def tracer(self) -> None:
+        return None
+
     def flush(self) -> None:
         return None
 

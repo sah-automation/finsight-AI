@@ -27,7 +27,7 @@ Generated from tests/architecture/test_standards_checklist.py
   - composition/composition_container.py: 611 lines
   - core/errors/__init__.py: 368 lines
   - core/config/models/config.py: 308 lines
-  - adapters/tracing/tracing_adapter.py: 393 lines
+  - adapters/tracing/tracing_adapter.py: 400 lines
   - adapters/llm/traced_llm.py: 555 lines
   - adapters/embedding/traced_embedding.py: 416 lines
   - adapters/storage/s3_storage.py: 314 lines

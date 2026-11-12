@@ -14,6 +14,8 @@ import random
 from collections.abc import Mapping
 from typing import Any
 
+from ._tracing_redaction import _sanitize_attributes as _redact_attributes
+
 _LOGGER = logging.getLogger(__name__)
 
 _OTEL_AVAILABLE = True
@@ -87,6 +89,13 @@ def _otel_value(value: Any) -> Any:
 
 def _otel_attributes(attributes: Any) -> dict[str, Any]:
     cleaned: dict[str, Any] = {}
+    if not isinstance(attributes, Mapping):
+        return cleaned
+    # Apply the application redaction blocklist as a safety net.
+    try:
+        attributes = _redact_attributes(attributes)
+    except Exception:
+        pass
     if not isinstance(attributes, Mapping):
         return cleaned
     for key, value in attributes.items():
@@ -217,7 +226,7 @@ class _OtelSpanExporter:
                 or getattr(span, 'operation', None)
                 or 'span'
             )
-            attributes = _otel_attributes(getattr(span, 'attributes', {}) or {})
+            attributes = _otel_attributes(_redact_attributes(getattr(span, 'attributes', {}) or {}))
 
             otel_span = self._tracer.start_span(str(name), context=context, attributes=attributes)
             try:

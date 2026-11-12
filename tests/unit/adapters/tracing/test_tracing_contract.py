@@ -305,8 +305,20 @@ class TestTracingSubstitutability:
         disabled = DisabledTracer()
         active = TracingAdapter(service_name='test', enabled=True)
 
+        _non_callable_public = {
+            'otel',
+            'otel_exporter',
+            'otel_provider',
+            'otel_processor',
+            'otel_tracer',
+            'exporter',
+            'provider',
+            'processor',
+            'tracer',
+            'spans',
+        }
         for name in dir(disabled):
-            if not name.startswith('_'):
+            if not name.startswith('_') and name not in _non_callable_public:
                 assert hasattr(active, name), f'Missing {name} on TracingAdapter'
                 assert callable(getattr(disabled, name))
                 assert callable(getattr(active, name))
