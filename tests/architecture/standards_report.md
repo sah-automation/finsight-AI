@@ -45,7 +45,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
   - Unit: 108
-  - Contract: 29
+  - Contract: 32
   - Switch: 17
 
 ---
