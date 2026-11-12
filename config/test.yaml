@@ -194,7 +194,7 @@ observability:
   log_format: "json"
   trace_sample_rate: 1.0
   service_name: "finsight-ai"
-  otlp_endpoint: ""
+  otlp_endpoint: "http://localhost:4318/v1/traces"
   otlp_headers: {}
   alerts:
     fallback_model_3_used: true

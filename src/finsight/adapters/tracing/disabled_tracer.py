@@ -140,6 +140,18 @@ class DisabledTracer(TracingPort):
             **kwargs,
         )
 
+    def flush(self) -> None:
+        return None
+
+    def force_flush(self) -> None:
+        return None
+
+    def shutdown(self) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
     def _filtered(self, company_id: Any = None) -> list[Span]:
         if company_id is None:
             return list(self._spans)

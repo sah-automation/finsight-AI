@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import atexit
 import logging
 from collections.abc import Mapping
 from typing import Any
@@ -22,6 +23,7 @@ from ._tracing_config import (
     _resolve_config,
     _resolve_switch_enabled,
 )
+from ._tracing_otel import _OtelSpanExporter
 from ._tracing_redaction import (
     _sanitize_attributes,
 )
@@ -89,6 +91,24 @@ class TracingAdapter(TracingPort):
 
         self._spans: list[Span] = []
 
+        # OpenTelemetry / OTLP export (adapter concern). Only enabled when
+        # detailed tracing is enabled; never reads env vars directly.
+        self._otel: Any = None
+        if self.enabled:
+            self._otel = _OtelSpanExporter(
+                endpoint=self.otlp_endpoint,
+                headers=self.otlp_headers,
+                sample_rate=self.trace_sample_rate,
+                service_name=self.service_name,
+            )
+        else:
+            self._otel = None
+        if self._otel is not None and getattr(self._otel, 'enabled', False):
+            try:
+                atexit.register(self.shutdown)
+            except Exception as exc:  # pragma: no cover - defensive
+                _LOGGER.debug('atexit registration failed: %s', exc)
+
     def _filtered(self, company_id: Any = None) -> list[Span]:
         if company_id is None:
             return list(self._spans)
@@ -101,6 +121,66 @@ class TracingAdapter(TracingPort):
 
     def records(self, company_id: Any = None) -> list[dict[str, Any]]:
         return [span.to_dict() for span in self._filtered(company_id)]
+
+    # ---- OTLP export helpers (fail-open) ----
+
+    @property
+    def otel(self) -> Any:
+        return self._otel
+
+    @property
+    def otel_exporter(self) -> Any:
+        return getattr(self._otel, 'exporter', None) if self._otel is not None else None
+
+    @property
+    def otel_provider(self) -> Any:
+        return getattr(self._otel, 'provider', None) if self._otel is not None else None
+
+    @property
+    def otel_processor(self) -> Any:
+        return getattr(self._otel, 'processor', None) if self._otel is not None else None
+
+    @property
+    def otel_tracer(self) -> Any:
+        return getattr(self._otel, 'tracer', None) if self._otel is not None else None
+
+    # Common aliases for the underlying exporter/processor.
+    @property
+    def exporter(self) -> Any:
+        return self.otel_exporter
+
+    @property
+    def provider(self) -> Any:
+        return self.otel_provider
+
+    @property
+    def processor(self) -> Any:
+        return self.otel_processor
+
+    @property
+    def tracer(self) -> Any:
+        return self.otel_tracer
+
+    def flush(self) -> None:
+        if self._otel is not None:
+            try:
+                self._otel.flush()
+            except Exception as exc:  # pragma: no cover - defensive
+                _LOGGER.debug('OTLP flush failed: %s', exc)
+
+    def force_flush(self) -> None:
+        self.flush()
+
+    def shutdown(self) -> None:
+        if self._otel is not None:
+            try:
+                self._otel.shutdown()
+            except Exception as exc:  # pragma: no cover - defensive
+                _LOGGER.debug('OTLP shutdown failed: %s', exc)
+            self._otel = None
+
+    def close(self) -> None:
+        self.shutdown()
 
     def emitted_spans(self, company_id: Any = None) -> list[Span]:
         return self._filtered(company_id)
@@ -218,6 +298,13 @@ class TracingAdapter(TracingPort):
         self._spans.append(span)
 
         await record_tracing_backend_span(self._backend, span, _LOGGER)
+
+        # Export over OTLP/HTTP (fail-open). Only active spans leave process.
+        if self._otel is not None and effective_active:
+            try:
+                self._otel.export_span(span)
+            except Exception as exc:  # pragma: no cover - defensive
+                _LOGGER.debug('OTLP export failed: %s', exc)
 
         try:
             _LOGGER.info(
