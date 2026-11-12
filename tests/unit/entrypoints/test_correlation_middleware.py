@@ -294,9 +294,16 @@ def test_ready_is_distinct_from_health_and_reports_dependencies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     container = SimpleNamespace()
-    monkeypatch.setattr(app_module, 'load_config', lambda: None)
+    config = SimpleNamespace(
+        observability=SimpleNamespace(
+            log_level='INFO', log_format='json', service_name='finsight-ai'
+        ),
+        switches=None,
+    )
+    monkeypatch.setattr(app_module, 'load_config', lambda: config)
     monkeypatch.setattr(app_module, 'build_container', lambda *_args, **_kwargs: container)
     monkeypatch.setattr(app_module.providers, 'init', lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(app_module, 'configure_logging', lambda **_kwargs: None)
 
     client = TestClient(app_module.create_app())
 

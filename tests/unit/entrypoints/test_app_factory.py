@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 from finsight.entrypoints.api import app as app_module
@@ -17,13 +18,20 @@ def test_create_app_initialises_providers_with_the_built_container(
     container = object()
     captured: dict[str, Any] = {}
 
-    monkeypatch.setattr(app_module, 'load_config', lambda: None)
+    config = SimpleNamespace(
+        observability=SimpleNamespace(
+            log_level='INFO', log_format='json', service_name='finsight-ai'
+        ),
+        switches=None,
+    )
+    monkeypatch.setattr(app_module, 'load_config', lambda: config)
     monkeypatch.setattr(app_module, 'build_container', lambda *_args, **_kwargs: container)
     monkeypatch.setattr(
         app_module.providers,
         'init',
         lambda value: captured.setdefault('value', value),
     )
+    monkeypatch.setattr(app_module, 'configure_logging', lambda **_kwargs: None)
 
     app_module.create_app()
 

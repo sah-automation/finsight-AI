@@ -9,8 +9,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from finsight.composition import build_container, providers
+from finsight.core.config.loader import ConfigError as LoaderConfigError
 from finsight.core.config.loader import load_config
-from finsight.core.logging import set_switch_values
+from finsight.core.errors import ConfigError as CoreConfigError
+from finsight.core.logging import configure_logging, set_switch_values
 from finsight.entrypoints.api import (
     ask,
     current_user,
@@ -25,9 +27,26 @@ from finsight.entrypoints.api.correlation_middleware import CorrelationMiddlewar
 from finsight.entrypoints.api.readiness import build_readiness_report
 
 
+class _LoggingConfigError(CoreConfigError, LoaderConfigError, ValueError):
+    """Raised when observability logging configuration is missing/invalid."""
+
+
+def _initialise_logging(config: Any) -> None:
+    observability = getattr(config, 'observability', None)
+    if observability is None:
+        raise _LoggingConfigError('Missing observability configuration')
+    configure_logging(
+        level=getattr(observability, 'log_level', None),
+        format_type=getattr(observability, 'log_format', None),
+        service_name=getattr(observability, 'service_name', None),
+    )
+
+
 def create_app() -> FastAPI:
     """Build the container, wire the providers, and assemble the FastAPI app."""
     config = load_config()
+    _initialise_logging(config)
+
     container = build_container(config)
 
     switches = getattr(config, 'switches', None)
@@ -38,7 +57,7 @@ def create_app() -> FastAPI:
     else:
         values = {}
     set_switch_values(values)
-    logging.getLogger(__name__).info('Active switch values: %s', values)
+    logging.getLogger(__name__).info('Active switch values: %s', values, extra={'switches': values})
 
     providers.init(container)
 

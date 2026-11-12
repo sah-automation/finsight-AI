@@ -17,9 +17,6 @@ from .redaction import redact_sensitive_fields
 if TYPE_CHECKING:
     from types import TracebackType
 
-# Context variables for trace propagation live in .context so the correlation
-# middleware can bind them without importing this module's private helpers.
-
 
 class TraceFormatter(JsonFormatter):
     """JSON formatter that includes trace context."""
@@ -36,12 +33,11 @@ class TraceFormatter(JsonFormatter):
         with contextlib.suppress(TypeError, ValueError, AttributeError):
             super().add_fields(log_record, record, message_dict)
 
-        # Add trace context
-        if 'timestamp' not in log_record:
+        if log_record.get('timestamp') is None:
             log_record['timestamp'] = datetime.now(UTC).isoformat()
-        if 'level' not in log_record:
+        if log_record.get('level') is None:
             log_record['level'] = record.levelname
-        if 'logger' not in log_record:
+        if log_record.get('logger') is None:
             log_record['logger'] = record.name
 
         trace_id = _trace_id.get()
@@ -96,39 +92,49 @@ def configure_logging(*args: Any, **kwargs: Any) -> Any:
     return _configure_logging_impl(*args, **kwargs)
 
 
-def _configure_logging_impl(
-    level: str = 'INFO',
-    format_type: str = 'json',
-    service_name: str = 'finsight-ai',
+def _configure_logging_impl(  # noqa: PLR0912
+    level: Any = 'INFO',
+    format_type: Any = 'json',
+    service_name: Any = 'finsight-ai',
 ) -> None:
     """Configure root logger. Call once at startup."""
+    if isinstance(level, str):
+        level_name = level.upper()
+        level_map = logging.getLevelNamesMapping()
+        if level_name not in level_map:
+            raise ValueError(f'Invalid log level: {level!r}')
+        level_value = level_map[level_name]
+    elif isinstance(level, int):
+        if level not in logging.getLevelNamesMapping().values():
+            raise ValueError(f'Invalid log level: {level!r}')
+        level_value = level
+    else:
+        raise TypeError(f'Invalid log level: {level!r}')
+    if hasattr(format_type, 'value'):
+        format_type = format_type.value
+    if not isinstance(format_type, str):
+        raise TypeError(f'Invalid log format: {format_type!r}')
+    format_name = format_type.strip().lower()
+    if format_name not in {'json', 'text'}:
+        raise ValueError(f'Invalid log format: {format_type!r}')
+    if not isinstance(service_name, str):
+        raise TypeError('Invalid service name: must be a string')
+    if not service_name.strip():
+        raise ValueError('Invalid service name: must be a non-empty string')
+    service_name = service_name.strip()
     root = logging.getLogger()
-    root.setLevel(level)
-
-    # Clear existing handlers
+    root.setLevel(level_value)
     for handler in root.handlers[:]:
         root.removeHandler(handler)
 
     handler = logging.StreamHandler(sys.stdout)
     handler.set_name(service_name)
 
-    formatter: logging.Formatter
-    if format_type == 'json':
-        with contextlib.suppress(TypeError, ValueError, AttributeError):
-            candidate: logging.Formatter = TraceFormatter(
-                '%(timestamp)s %(level)s %(logger)s %(message)s',
-                rename_fields={'levelname': 'level'},
-            )
-            handler.setFormatter(candidate)
-            handler.set_name(service_name)
-            root.addHandler(handler)
-            logging.getLogger('boto3').setLevel(logging.WARNING)
-            logging.getLogger('botocore').setLevel(logging.WARNING)
-            logging.getLogger('urllib3').setLevel(logging.WARNING)
-            logging.getLogger('asyncpg').setLevel(logging.WARNING)
-            logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
-            return
-        formatter = TraceFormatter()
+    if format_name == 'json':
+        formatter: logging.Formatter = TraceFormatter(
+            '%(timestamp)s %(level)s %(logger)s %(message)s',
+            rename_fields={'levelname': 'level'},
+        )
     else:
         formatter = TextFormatter(
             '%(asctime)s %(levelname)-8s %(name)s %(message)s',
@@ -138,7 +144,6 @@ def _configure_logging_impl(
     handler.setFormatter(formatter)
     root.addHandler(handler)
 
-    # Reduce noise from third-party loggers
     logging.getLogger('boto3').setLevel(logging.WARNING)
     logging.getLogger('botocore').setLevel(logging.WARNING)
     logging.getLogger('urllib3').setLevel(logging.WARNING)
@@ -149,11 +154,6 @@ def _configure_logging_impl(
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance."""
     return logging.getLogger(name)
-
-
-# ============================================================
-# Trace Context Management
-# ============================================================
 
 
 def set_trace_id(trace_id: str | None = None) -> str:
