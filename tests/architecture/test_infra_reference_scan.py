@@ -53,9 +53,11 @@ class TestInfraReferenceScan:
         assert set(INFRA_REFERENCE_ALLOWLIST) == set(INFRA_REFERENCE_MODULES)
 
     @pytest.mark.architecture
-    def test_main_handler_mismatch_recorded_as_finding(self) -> None:
-        assert handler_mismatch_exists() is True
-        assert any('handler' in finding.lower() for finding in INFRA_REFERENCE_FINDINGS)
+    def test_main_handler_mismatch_resolved(self) -> None:
+        # Issue #287 made the CDK-declared handler resolvable, so the recorded
+        # mismatch is no longer present.
+        assert handler_mismatch_exists() is False
+        assert not any('handler' in finding.lower() for finding in INFRA_REFERENCE_FINDINGS)
 
     @pytest.mark.architecture
     def test_deleting_referenced_module_fails_import(

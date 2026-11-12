@@ -132,6 +132,12 @@ class ObservabilityStack(Stack):
             removal_policy=retention,
         )
 
+        # Log stream the API Lambda writes OTLP spans to. CloudWatch Logs OTLP
+        # ingestion requires routing headers naming both the destination log
+        # group and stream; the stream is created on first PutLogEvents by the
+        # Lambda execution role (scoped to this group via grant_write).
+        self.log_stream_name = f'finsight-{env_name}-api'
+
         thresholds = _load_alert_thresholds(env_name)
         namespace = f'FinSight/{env_name}'
         period = Duration.minutes(5)
@@ -278,3 +284,17 @@ class ObservabilityStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
+
+    def otlp_routing_headers(self) -> dict[str, str]:
+        """OTLP routing headers targeting this stack's Observability log group.
+
+        CloudWatch Logs OTLP ingestion requires ``x-aws-logs-group`` and
+        ``x-aws-logs-stream`` headers naming the destination. Values are the
+        synthesized log-group name and a deterministic stream name, so the
+        deployed Lambda can export spans straight to CloudWatch Logs.
+        """
+
+        return {
+            'x-aws-logs-group': self.log_group.log_group_name,
+            'x-aws-logs-stream': self.log_stream_name,
+        }

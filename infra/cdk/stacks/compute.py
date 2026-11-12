@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 # CDK constructs are accepted as opaque objects to avoid over-coupling this stack.
 from aws_cdk import Stack
 from aws_cdk import aws_apigateway as apigw
@@ -89,10 +91,26 @@ class ComputeStack(Stack):
         # ``AWS_REGION`` is intentionally *not* declared here: the Lambda
         # runtime reserves and injects it automatically, so it is already
         # present at runtime.
-        lambda_kwargs['environment'] = {
+        environment: dict[str, str] = {
             'OTLP_ENDPOINT': f'https://logs.{self.region}.amazonaws.com/v1/logs',
             'ENVIRONMENT': _app_environment(env_name),
         }
+
+        # OTLP routing headers (issue #287): CloudWatch Logs OTLP ingestion
+        # requires ``x-aws-logs-group`` and ``x-aws-logs-stream`` naming the
+        # destination Observability log group and stream. Wired from the
+        # cross-stack observability construct; serialized as JSON so the
+        # runtime can rebuild the header map from config without reading env
+        # directly (adapters never read os.environ).
+        observability_headers: dict[str, str] = {}
+        if observability is not None:
+            routing = getattr(observability, 'otlp_routing_headers', None)
+            if callable(routing):
+                observability_headers = routing()
+        if observability_headers:
+            environment['OTLP_HEADERS'] = json.dumps(observability_headers)
+
+        lambda_kwargs['environment'] = environment
 
         self.api_fn = lambda_.Function(
             self,

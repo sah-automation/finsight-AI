@@ -158,9 +158,11 @@ HANDLER_MISMATCH_FINDING = (
     "CDK API function handler is 'finsight.entrypoints.api.main.handler', but "
     "'finsight.entrypoints.api.main' defines no 'handler' callable."
 )
+# The handler mismatch above was resolved by issue #287 (handler now exists on
+# the module), so there are no outstanding infra reference findings.
 CDK_HANDLER_MISMATCH_FINDING = HANDLER_MISMATCH_FINDING
 MAIN_HANDLER_MISMATCH_FINDING = HANDLER_MISMATCH_FINDING
-INFRA_REFERENCE_FINDINGS = (HANDLER_MISMATCH_FINDING,)
+INFRA_REFERENCE_FINDINGS: tuple[str, ...] = ()
 FINDINGS = INFRA_REFERENCE_FINDINGS
 KNOWN_INFRA_FINDINGS = INFRA_REFERENCE_FINDINGS
 KNOWN_FINDINGS = KNOWN_INFRA_FINDINGS

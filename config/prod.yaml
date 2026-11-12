@@ -70,6 +70,7 @@ observability:
   log_level: "INFO"
   trace_sample_rate: 1.0
   otlp_endpoint: "${OTLP_ENDPOINT}"
+  otlp_headers: ${OTLP_HEADERS}
   alerts:
     fallback_model_3_used: true
     reranker_down: true

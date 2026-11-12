@@ -22,5 +22,6 @@ def test_allowlist_recorded() -> None:
     assert INFRA_REFERENCE_ALLOWLIST
 
 
-def test_main_handler_mismatch_is_finding() -> None:
-    assert handler_mismatch_exists() is True
+def test_main_handler_mismatch_is_resolved() -> None:
+    # Issue #287 made the CDK-declared handler resolvable.
+    assert handler_mismatch_exists() is False
