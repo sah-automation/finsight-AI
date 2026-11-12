@@ -191,9 +191,34 @@ class TracedLLM(LiteLLMGateway):
             tokens_prompt = 0
             tokens_completion = 0
             tokens_total = 0
+
+            def _consider(mapping: Any) -> None:
+                nonlocal tokens_prompt, tokens_completion, tokens_total
+                if not isinstance(mapping, dict):
+                    return
+                for prompt_key in ('tokens_prompt', 'prompt_tokens', 'input_tokens'):
+                    value = mapping.get(prompt_key)
+                    if isinstance(value, int):
+                        tokens_prompt = max(tokens_prompt, value)
+                for completion_key in ('tokens_completion', 'completion_tokens', 'output_tokens'):
+                    value = mapping.get(completion_key)
+                    if isinstance(value, int):
+                        tokens_completion = max(tokens_completion, value)
+                for total_key in ('tokens_total', 'total_tokens'):
+                    value = mapping.get(total_key)
+                    if isinstance(value, int):
+                        tokens_total = max(tokens_total, value)
+
             for source in (result, inner, getattr(inner, '_inner', None)):
                 if source is None:
                     continue
+                # usage_rows written by the gateway carry token counts.
+                rows = getattr(source, 'usage_rows', None)
+                if isinstance(rows, list) and rows:
+                    last_row = rows[-1]
+                    if isinstance(last_row, dict):
+                        _consider(last_row)
+                # Direct attributes.
                 for prompt_key in ('tokens_prompt', 'prompt_tokens', 'input_tokens'):
                     value = getattr(source, prompt_key, None)
                     if value is None and isinstance(source, dict):
@@ -212,6 +237,35 @@ class TracedLLM(LiteLLMGateway):
                         value = source.get(total_key)
                     if isinstance(value, int):
                         tokens_total = max(tokens_total, value)
+                # Nested usage dict/object.
+                usage = None
+                if isinstance(source, dict):
+                    usage = (
+                        source.get('usage')
+                        or source.get('token_usage')
+                        or source.get('usage_metadata')
+                    )
+                else:
+                    for attr in ('usage', 'token_usage', 'usage_metadata'):
+                        val = getattr(source, attr, None)
+                        if val is not None:
+                            usage = val
+                            break
+                if isinstance(usage, dict):
+                    _consider(usage)
+                elif usage is not None:
+                    umap = {}
+                    for attr in (
+                        'prompt_tokens',
+                        'completion_tokens',
+                        'total_tokens',
+                        'input_tokens',
+                        'output_tokens',
+                    ):
+                        val = getattr(usage, attr, None)
+                        if val is not None:
+                            umap[attr] = val
+                    _consider(umap)
             if tokens_total == 0:
                 tokens_total = tokens_prompt + tokens_completion
             attributes['tokens_prompt'] = tokens_prompt

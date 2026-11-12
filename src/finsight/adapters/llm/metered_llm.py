@@ -1,10 +1,11 @@
-# ruff: noqa: BLE001, PLC0415
+# ruff: noqa: BLE001
 """Metered LLM decorator (records usage around an inner LLM gateway)."""
 
 from __future__ import annotations
 
 import inspect
 import logging
+import uuid
 from typing import Any
 
 from .lite_llm_gateway import LiteLLMGateway
@@ -59,11 +60,37 @@ class MeteredLLM(LiteLLMGateway):
             return None
         return getattr(inner, 'metering', None)
 
-    async def _record_metering(self, company_id: Any, trace_id: Any = None) -> None:
-        import uuid
+    def _token_units(self) -> int:
+        units = 1
+        for source in (self._inner, getattr(self._inner, '_inner', None)):
+            if source is None:
+                continue
+            rows = getattr(source, 'usage_rows', None)
+            if isinstance(rows, list) and rows:
+                last_row = rows[-1]
+                if isinstance(last_row, dict):
+                    for key in ('units', 'tokens_total', 'total_tokens'):
+                        value = last_row.get(key)
+                        if isinstance(value, int) and value > 0:
+                            units = value
+                            break
+                    if units == 1:
+                        prompt = 0
+                        completion = 0
+                        for key in ('tokens_prompt', 'prompt_tokens'):
+                            value = last_row.get(key)
+                            if isinstance(value, int):
+                                prompt = max(prompt, value)
+                        for key in ('tokens_completion', 'completion_tokens'):
+                            value = last_row.get(key)
+                            if isinstance(value, int):
+                                completion = max(completion, value)
+                        if prompt + completion > 0:
+                            units = prompt + completion
+        return units if units and units > 0 else 1
 
-        if trace_id is None:
-            trace_id = str(uuid.uuid4())
+    async def _record_metering(self, company_id: Any, trace_id: Any = None) -> None:
+        trace_id = trace_id or str(uuid.uuid4())
         metering = self.metering
         if metering is None or company_id is None:
             return
@@ -71,6 +98,7 @@ class MeteredLLM(LiteLLMGateway):
             return
         target: Any = metering
         model = getattr(self._inner, 'model_id', None) or 'llm'
+        units = self._token_units()
         try:
             method = None
             for name in (
@@ -94,7 +122,7 @@ class MeteredLLM(LiteLLMGateway):
                         service='llm',
                         model=model,
                         model_name=model,
-                        units=1,
+                        units=units,
                         estimated_cost=None,
                         cost=None,
                         trace_id=trace_id,
@@ -103,14 +131,19 @@ class MeteredLLM(LiteLLMGateway):
                     )
                 except TypeError:
                     try:
-                        result = method(company_id, service='llm', units=1, trace_id=trace_id)
+                        result = method(company_id, service='llm', units=units, trace_id=trace_id)
                     except TypeError:
-                        result = method(company_id, service='llm', units=1)
+                        result = method(company_id, service='llm', units=units)
                 if inspect.isawaitable(result):
                     await result
             elif callable(target):
                 result = target(
-                    {'company_id': company_id, 'service': 'llm', 'units': 1, 'trace_id': trace_id}
+                    {
+                        'company_id': company_id,
+                        'service': 'llm',
+                        'units': units,
+                        'trace_id': trace_id,
+                    }
                 )
                 if inspect.isawaitable(result):
                     await result

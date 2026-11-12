@@ -1,23 +1,89 @@
-# ruff: noqa: BLE001, PLR2004, TRY300
+# ruff: noqa: BLE001, PLR2004, PLR0913, PLR0917, TRY300
 """LLM gateway usage and chain helpers."""
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
 
+def _extract_token_counts(usage: Any) -> tuple[int, int, int]:
+    """Return (prompt, completion, total) token counts parsed from a usage payload."""
+    if not isinstance(usage, Mapping):
+        usage = {}
+    prompt_tokens = 0
+    completion_tokens = 0
+    total_tokens = 0
+    for key in (
+        'prompt_tokens',
+        'promptTokens',
+        'input_tokens',
+        'inputTokens',
+        'tokens_prompt',
+    ):
+        if usage.get(key) is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                prompt_tokens = max(prompt_tokens, int(usage[key]))
+    for key in (
+        'completion_tokens',
+        'completionTokens',
+        'output_tokens',
+        'outputTokens',
+        'tokens_completion',
+    ):
+        if usage.get(key) is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                completion_tokens = max(completion_tokens, int(usage[key]))
+    for key in ('total_tokens', 'totalTokens', 'tokens_total', 'total'):
+        if usage.get(key) is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                total_tokens = max(total_tokens, int(usage[key]))
+    if total_tokens == 0:
+        total_tokens = prompt_tokens + completion_tokens
+    return prompt_tokens, completion_tokens, total_tokens
+
+
+def _coerce_units(units: Any, total_tokens: int) -> int:
+    """Coerce billed units, preferring real token counts over the placeholder unit."""
+    if total_tokens > 0 and (units is None or units == 1):
+        units = total_tokens
+    if not isinstance(units, int) or units is None or units <= 0:
+        try:
+            units = int(units)
+        except (TypeError, ValueError):
+            units = 1
+        if units <= 0:
+            units = total_tokens if total_tokens > 0 else 1
+    return int(units)
+
+
 async def _record_usage(
-    self: Any, model_id: str, company_id: Any, trace_id: Any = None, units: int = 1
+    self: Any,
+    model_id: str,
+    company_id: Any,
+    trace_id: Any = None,
+    units: int = 1,
+    usage: Any = None,
 ) -> None:
+    prompt_tokens, completion_tokens, total_tokens = _extract_token_counts(usage)
+    units = _coerce_units(units, total_tokens)
+
     row = {
         'company_id': company_id,
         'service': 'llm',
         'units': units,
+        'tokens_prompt': prompt_tokens,
+        'prompt_tokens': prompt_tokens,
+        'tokens_completion': completion_tokens,
+        'completion_tokens': completion_tokens,
+        'tokens_total': total_tokens,
+        'total_tokens': total_tokens,
         'estimated_cost': None,
         'cost': None,
         'model': model_id,
@@ -25,6 +91,7 @@ async def _record_usage(
         'trace_id': trace_id,
         'trace': trace_id,
         'trace_identifier': trace_id,
+        'usage': dict(usage) if isinstance(usage, Mapping) and usage else {},
     }
     async with self._usage_lock:
         self.usage_rows.append(row)

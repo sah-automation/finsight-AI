@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import logging
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from finsight.core.logging import get_trace_id
@@ -183,6 +185,69 @@ def _to_chunk(chunk: Any, model_id: str, stream_chunk_cls: Any) -> Any:
     return stream_chunk_cls(_extract_text(chunk), model=model_id, model_name=model_id, raw=chunk)
 
 
+def _extract_usage(chunk: Any) -> dict[str, Any]:
+    """Extract a usage dict from a provider chunk (dict or object)."""
+    if chunk is None:
+        return {}
+    usage = None
+    if isinstance(chunk, Mapping):
+        for key in ('usage', 'token_usage', 'usage_metadata'):
+            if chunk.get(key) is not None:
+                usage = chunk.get(key)
+                break
+        if usage is None and any(
+            chunk.get(k) is not None for k in ('prompt_tokens', 'completion_tokens', 'total_tokens')
+        ):
+            usage = chunk
+    else:
+        for attr in ('usage', 'token_usage', 'usage_metadata'):
+            val = getattr(chunk, attr, None)
+            if val is not None:
+                usage = val
+                break
+        if usage is None and any(
+            getattr(chunk, k, None) is not None
+            for k in ('prompt_tokens', 'completion_tokens', 'total_tokens')
+        ):
+            usage = chunk
+    if usage is None:
+        return {}
+    if isinstance(usage, Mapping):
+        return {str(k): v for k, v in usage.items()}
+    result: dict[str, Any] = {}
+    for attr in (
+        'prompt_tokens',
+        'input_tokens',
+        'completion_tokens',
+        'output_tokens',
+        'total_tokens',
+    ):
+        val = getattr(usage, attr, None)
+        if val is not None:
+            result[attr] = val
+    return result
+
+
+def _usage_total(usage: dict[str, Any]) -> int:
+    for key in ('total_tokens', 'tokens_total', 'total'):
+        if usage.get(key) is not None:
+            try:
+                return int(usage[key])
+            except (TypeError, ValueError):
+                pass
+    prompt = 0
+    completion = 0
+    for key in ('prompt_tokens', 'input_tokens', 'tokens_prompt'):
+        if usage.get(key) is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                prompt = max(prompt, int(usage[key]))
+    for key in ('completion_tokens', 'output_tokens', 'tokens_completion'):
+        if usage.get(key) is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                completion = max(completion, int(usage[key]))
+    return prompt + completion
+
+
 async def _stream_chain(
     self: Any,
     chain: list[dict[str, Any]],
@@ -203,17 +268,29 @@ async def _stream_chain(
         model_id = str(chosen_model.get('model_id') or chosen_model.get('model'))
         if len(chain) >= 3 and model_id == str(chain[-1].get('model_id') or chain[-1].get('model')):
             _alert_fallback_3(self, model_id, company_id)
-        await _record_usage(self, model_id, company_id, trace_id=trace_id, units=1)
-        yield _to_chunk(first_chunk, model_id, stream_chunk_cls)
+        usage_acc: dict[str, Any] = {}
         try:
-            async for chunk in rest_stream:
-                yield _to_chunk(chunk, model_id, stream_chunk_cls)
-        except Exception as exc:
-            _LOGGER.warning(
-                '[llm] stream failed for model %s',
-                model_id,
-                exc_info=exc,
-                extra={'trace_id': get_trace_id()},
+            usage_acc.update(_extract_usage(first_chunk))
+            first_text = _extract_text(first_chunk)
+            if first_text:
+                yield _to_chunk(first_chunk, model_id, stream_chunk_cls)
+            try:
+                async for chunk in rest_stream:
+                    usage_acc.update(_extract_usage(chunk))
+                    text = _extract_text(chunk)
+                    if text:
+                        yield _to_chunk(chunk, model_id, stream_chunk_cls)
+            except Exception as exc:
+                _LOGGER.warning(
+                    '[llm] stream failed for model %s',
+                    model_id,
+                    exc_info=exc,
+                    extra={'trace_id': get_trace_id()},
+                )
+        finally:
+            units = max(_usage_total(usage_acc), 1)
+            await _record_usage(
+                self, model_id, company_id, trace_id=trace_id, units=units, usage=usage_acc
             )
         return
     unavailable = 'We are temporarily unavailable. Please try again.'
