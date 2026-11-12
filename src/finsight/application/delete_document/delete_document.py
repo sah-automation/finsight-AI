@@ -8,6 +8,7 @@ import inspect
 from datetime import UTC, datetime
 from typing import Any
 
+from finsight.application._step_span import run_traced_step
 from finsight.core.errors import ValidationError
 from finsight.core.types import CompanyId, DocumentId
 
@@ -207,38 +208,7 @@ class DeleteDocument:
         kwargs.setdefault('action', 'schedule')
         return self._run(request, kwargs)
 
-    async def _trace(self, company_id: Any, operation: str) -> None:
-        tracer = self._tracing
-        if tracer is None:
-            return
-        try:
-            import inspect
-
-            method = None
-            for name in (
-                'start_span',
-                'span',
-                'emit_span',
-                'trace',
-                'trace_operation',
-                'record_span',
-                'emit',
-                'record',
-            ):
-                candidate = getattr(tracer, name, None)
-                if callable(candidate):
-                    method = candidate
-                    break
-            if method is None:
-                return
-            result = method(company_id, operation)
-            if inspect.isawaitable(result):
-                await result
-        except Exception:
-            return
-
     async def _run(self, request: Any = None, extra: dict[str, Any] | None = None) -> DeleteResult:
-        await self._trace('deletion', 'deletion')
         extra = extra or {}
         # normalise request input
         request = self._normalise(request, extra)
@@ -295,7 +265,12 @@ class DeleteDocument:
 
         # purge expired action
         if action in ('purge_expired', 'purge-expired', 'expired'):
-            return await self._step_purge_expired(company_id, retention_days)
+            return await run_traced_step(  # type: ignore[no-any-return]
+                self._tracing,
+                company_id,
+                'purge_expired',
+                lambda: self._step_purge_expired(company_id, retention_days),
+            )
 
         # determine already deleted
         already_deleted = False
@@ -319,66 +294,95 @@ class DeleteDocument:
                 already_deleted = getattr(doc, 'deleted_at', None) is not None
 
         if action in ('schedule',):
-            return await self._step_schedule_purge(
-                company_id, document_id, retention_days, already_deleted
+            return await run_traced_step(  # type: ignore[no-any-return]
+                self._tracing,
+                company_id,
+                'schedule_purge',
+                lambda: self._step_schedule_purge(
+                    company_id, document_id, retention_days, already_deleted
+                ),
             )
 
         if action in ('restore',):
-            return await self._step_restore(
-                company_id, document_id, retention_days, already_deleted, deleted_by, reason
+            return await run_traced_step(  # type: ignore[no-any-return]
+                self._tracing,
+                company_id,
+                'restore',
+                lambda: self._step_restore(
+                    company_id, document_id, retention_days, already_deleted, deleted_by, reason
+                ),
             )
 
         if action in ('purge', 'permanent', 'hard_delete', 'hard'):
-            return await self._step_purge(
-                company_id, document_id, retention_days, deleted_by, reason
+            return await run_traced_step(  # type: ignore[no-any-return]
+                self._tracing,
+                company_id,
+                'purge',
+                lambda: self._step_purge(
+                    company_id, document_id, retention_days, deleted_by, reason
+                ),
             )
 
         # default soft delete action
-        deleted = False
-        if repo is not None:
-            # soft delete method preference
-            for method_name in ('soft_delete_document', 'delete_document', 'soft_delete', 'delete'):
-                method = getattr(repo, method_name, None)
-                if not callable(method):
-                    continue
-                attempts = (
-                    lambda m=method: m(
-                        company_id,
-                        document_id,
-                        deleted_by=deleted_by,
-                        reason=reason,
-                        retention_days=retention_days,
-                        deleted_retention_days=retention_days,
-                    ),
-                    lambda m=method: m(
-                        company_id, document_id, deleted_by=deleted_by, reason=reason
-                    ),
-                    lambda m=method: m(company_id, document_id, deleted_by=deleted_by),
-                    lambda m=method: m(company_id, document_id, reason=reason),
-                    lambda m=method: m(company_id, document_id),
-                )
-                for attempt in attempts:
-                    try:
-                        result = await _await(attempt())  # type: ignore[no-untyped-call]
-                        if method_name == 'delete_document':
-                            # delete_document may purge if permanent kw not set? adapter default soft delete
-                            pass
-                        deleted = result is not False
-                        if result is False:
-                            deleted = already_deleted
-                        break
-                    except TypeError:
+        async def _soft_delete() -> Any:
+            deleted = False
+            if repo is not None:
+                # soft delete method preference
+                for method_name in (
+                    'soft_delete_document',
+                    'delete_document',
+                    'soft_delete',
+                    'delete',
+                ):
+                    method = getattr(repo, method_name, None)
+                    if not callable(method):
                         continue
-                    except Exception:
-                        deleted = already_deleted
+                    attempts = (
+                        lambda m=method: m(
+                            company_id,
+                            document_id,
+                            deleted_by=deleted_by,
+                            reason=reason,
+                            retention_days=retention_days,
+                            deleted_retention_days=retention_days,
+                        ),
+                        lambda m=method: m(
+                            company_id, document_id, deleted_by=deleted_by, reason=reason
+                        ),
+                        lambda m=method: m(company_id, document_id, deleted_by=deleted_by),
+                        lambda m=method: m(company_id, document_id, reason=reason),
+                        lambda m=method: m(company_id, document_id),
+                    )
+                    for attempt in attempts:
+                        try:
+                            result = await _await(attempt())  # type: ignore[no-untyped-call]
+                            if method_name == 'delete_document':
+                                # delete_document may purge if permanent kw not set? adapter default soft delete
+                                pass
+                            deleted = result is not False
+                            if result is False:
+                                deleted = already_deleted
+                            break
+                        except TypeError:
+                            continue
+                        except Exception:
+                            deleted = already_deleted
+                            break
+                    if deleted:
                         break
-                if deleted:
-                    break
             if not deleted:
                 deleted = already_deleted
+            return deleted
+
+        deleted = await run_traced_step(self._tracing, company_id, 'soft_delete', _soft_delete)
 
         # schedule purge
-        enqueued = await self._schedule_purge(company_id, document_id, retention_days)
+        enqueued = await run_traced_step(
+            self._tracing,
+            company_id,
+            'schedule_purge',
+            lambda: self._schedule_purge(company_id, document_id, retention_days),
+        )
 
         # cache clear
         cache_cleared = False

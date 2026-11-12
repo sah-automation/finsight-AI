@@ -8,6 +8,7 @@ import logging
 import uuid
 from typing import Any
 
+from finsight.application._step_span import run_traced_step
 from finsight.core.config import Config
 from finsight.core.errors import PolicyBlocked
 from finsight.core.logging import get_trace_id
@@ -228,24 +229,12 @@ class AskQuestion:
         except Exception:
             return await heavy()
 
-    async def _trace(self, company_id: Any, operation: str) -> None:
-        tracer = self._tracing
-        try:
-            method = getattr(tracer, 'start_span', None)
-            if method is None:
-                method = getattr(tracer, 'span', None)
-            if method is None:
-                return
-            res = method(company_id, operation)
-            if inspect.isawaitable(res):
-                await res
-        except Exception:
-            return
-
     async def _input_gate_step(self, question: str, company_id: Any) -> str:
-        await self._trace(company_id, 'input_gate')
+        async def _check() -> InputGateResult:
+            return self._input_gate.check(question, company_id=company_id)
+
         gate_result: InputGateResult
-        gate_result = self._input_gate.check(question, company_id=company_id)
+        gate_result = await run_traced_step(self._tracing, company_id, 'input_gate', _check)
         if isinstance(gate_result, InputGateResult):
             allowed = gate_result.allowed
             normalized = gate_result.normalized_question or gate_result.question or question
@@ -311,75 +300,87 @@ class AskQuestion:
         user_id: Any,
         stamp: Any,
     ) -> Any:
-        await self._trace(company_id, 'waiting_line')
-        understand_result = self._understand(question)
-        calc_intent = False
-        if isinstance(understand_result, dict):
-            calc_intent = bool(
-                understand_result.get('calculation_intent')
-                or understand_result.get('calculation')
-                or understand_result.get('requires_calculation')
-            )
+        async def _waiting() -> Any:
+            understand_result = self._understand(question)
+            calc_intent = False
+            if isinstance(understand_result, dict):
+                calc_intent = bool(
+                    understand_result.get('calculation_intent')
+                    or understand_result.get('calculation')
+                    or understand_result.get('requires_calculation')
+                )
+            embedding = await self._embed(company_id, question)
+            return understand_result, calc_intent, embedding
 
-        embedding = await self._embed(company_id, question)
+        _understand_result, calc_intent, embedding = await run_traced_step(
+            self._tracing, company_id, 'waiting_line', _waiting
+        )
 
-        await self._trace(company_id, 'calculation')
-        metrics_list: list[Any] = []
-        try:
-            metrics_list = await self._metrics.list_metrics(company_id) or []
-        except TypeError:
+        async def _calculation() -> Any:
+            metrics_list: list[Any] = []
             try:
-                metrics_list = await self._metrics.list_metrics(company_id=company_id) or []
+                metrics_list = await self._metrics.list_metrics(company_id) or []
+            except TypeError:
+                try:
+                    metrics_list = await self._metrics.list_metrics(company_id=company_id) or []
+                except Exception:
+                    metrics_list = []
             except Exception:
                 metrics_list = []
-        except Exception:
-            metrics_list = []
-        calculated_numbers: list[Any] = []
-        calc_result = None
-        try:
-            calc_result = await self._calculator.calculate(
-                metrics=metrics_list, operation='sum', company_id=company_id
-            )
-        except TypeError:
+            calculated_numbers: list[Any] = []
+            calc_result = None
             try:
                 calc_result = await self._calculator.calculate(
-                    metrics_list, operation='sum', company_id=company_id
+                    metrics=metrics_list, operation='sum', company_id=company_id
                 )
+            except TypeError:
+                try:
+                    calc_result = await self._calculator.calculate(
+                        metrics_list, operation='sum', company_id=company_id
+                    )
+                except Exception:
+                    calc_result = None
             except Exception:
                 calc_result = None
-        except Exception:
-            calc_result = None
-        if calc_result is not None:
-            vals = getattr(calc_result, 'values', None)
-            if vals is not None:
-                calculated_numbers.extend(list(vals))
-            val = getattr(calc_result, 'value', None)
-            if val is not None:
-                calculated_numbers.append(val)
+            if calc_result is not None:
+                vals = getattr(calc_result, 'values', None)
+                if vals is not None:
+                    calculated_numbers.extend(list(vals))
+                val = getattr(calc_result, 'value', None)
+                if val is not None:
+                    calculated_numbers.append(val)
+            return metrics_list, calculated_numbers
 
-        await self._trace(company_id, 'search')
-        candidates: list[Any] = []
-        try:
-            candidates = (
-                await self._search.search(
-                    company_id,
-                    query=question,
-                    embedding=embedding,
-                    access_scope=access_scope,
-                    role=role,
-                )
-                or []
-            )
-        except TypeError:
+        _metrics_list, calculated_numbers = await run_traced_step(
+            self._tracing, company_id, 'calculation', _calculation
+        )
+
+        async def _search() -> Any:
+            candidates: list[Any] = []
             try:
                 candidates = (
-                    await self._search.search(company_id, question, embedding=embedding) or []
+                    await self._search.search(
+                        company_id,
+                        query=question,
+                        embedding=embedding,
+                        access_scope=access_scope,
+                        role=role,
+                    )
+                    or []
                 )
+            except TypeError:
+                try:
+                    candidates = (
+                        await self._search.search(company_id, question, embedding=embedding) or []
+                    )
+                except Exception:
+                    candidates = []
             except Exception:
                 candidates = []
-        except Exception:
-            candidates = []
-        candidates = _as_list(candidates)
+            return _as_list(candidates)
+
+        raw_candidates = await run_traced_step(self._tracing, company_id, 'search', _search)
+        candidates = raw_candidates
         if candidates and isinstance(candidates[0], dict) and 'results' in candidates[0]:
             candidates = _as_list(candidates[0].get('results'))
         if candidates and hasattr(candidates[0], 'results'):
@@ -388,27 +389,37 @@ class AskQuestion:
             except Exception:
                 pass
 
-        await self._trace(company_id, 'rerank')
-        reranker_available = True
-        reranked = candidates
-        try:
-            reranked = (
-                await self._reranker.rerank(company_id, query=question, candidates=candidates)
-                or candidates
-            )
-            reranked = _as_list(reranked)
-        except Exception:
+        async def _rerank() -> Any:
+            reranker_available = True
             reranked = candidates
-            reranker_available = False
-        if not reranked:
-            reranked = candidates
+            try:
+                reranked = (
+                    await self._reranker.rerank(company_id, query=question, candidates=candidates)
+                    or candidates
+                )
+                reranked = _as_list(reranked)
+            except Exception:
+                reranked = candidates
+                reranker_available = False
+            if not reranked:
+                reranked = candidates
+            return reranked, reranker_available
 
-        await self._trace(company_id, 'evidence')
-        evidence = None
-        try:
-            evidence = self._evidence_checker.check(reranked, reranker_available=reranker_available)
-        except Exception:
+        reranked, reranker_available = await run_traced_step(
+            self._tracing, company_id, 'rerank', _rerank
+        )
+
+        async def _evidence() -> Any:
             evidence = None
+            try:
+                evidence = self._evidence_checker.check(
+                    reranked, reranker_available=reranker_available
+                )
+            except Exception:
+                evidence = None
+            return evidence
+
+        evidence = await run_traced_step(self._tracing, company_id, 'evidence', _evidence)
         sufficient = True
         if evidence is not None:
             sufficient_val = getattr(evidence, 'sufficient', None)
@@ -442,25 +453,30 @@ class AskQuestion:
             if isinstance(route, dict):
                 model_id = model_id or route.get('model') or route.get('model_id')
 
-        await self._trace(company_id, 'model_generation')
-        messages = self._build_messages(question, candidates=reranked)
-        chain = route.tier if route is not None else None
-        llm_result = None
-        try:
-            llm_result = await self._llm.complete(
-                company_id,
-                messages=messages,
-                prompt=question,
-                question=question,
-                chain=chain,
-            )
-        except TypeError:
+        async def _model_generation() -> Any:
+            messages = self._build_messages(question, candidates=reranked)
+            chain = route.tier if route is not None else None
+            llm_result = None
             try:
-                llm_result = await self._llm.complete(company_id, messages)
+                llm_result = await self._llm.complete(
+                    company_id,
+                    messages=messages,
+                    prompt=question,
+                    question=question,
+                    chain=chain,
+                )
+            except TypeError:
+                try:
+                    llm_result = await self._llm.complete(company_id, messages)
+                except Exception:
+                    llm_result = None
             except Exception:
                 llm_result = None
-        except Exception:
-            llm_result = None
+            return messages, llm_result
+
+        _messages, llm_result = await run_traced_step(
+            self._tracing, company_id, 'model_generation', _model_generation
+        )
         if llm_result is None:
             return UnavailableResult(company_id=company_id, question=question)
 
@@ -494,14 +510,17 @@ class AskQuestion:
                 reason='no_citations', company_id=company_id, question=question
             )
 
-        await self._trace(company_id, 'output_gate')
-        cited_chunk_numbers = self._extract_cited_chunk_numbers(reranked, citations)
-        verification = self._output_verifier.check(
-            answer=text,
-            citations=citations,
-            calculated_results=calculated_numbers,
-            cited_chunk_numbers=cited_chunk_numbers,
-        )
+        async def _output_gate() -> Any:
+            cited_chunk_numbers = self._extract_cited_chunk_numbers(reranked, citations)
+            verification = self._output_verifier.check(
+                answer=text,
+                citations=citations,
+                calculated_results=calculated_numbers,
+                cited_chunk_numbers=cited_chunk_numbers,
+            )
+            return verification
+
+        verification = await run_traced_step(self._tracing, company_id, 'output_gate', _output_gate)
         if not verification.passed:
             return InsufficientDataResult(
                 reason=getattr(verification, 'reason', None) or 'output_check_failed',

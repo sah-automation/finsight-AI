@@ -7,6 +7,7 @@ import inspect
 import uuid
 from typing import Any
 
+from finsight.application._step_span import run_traced_step
 from finsight.core.errors import ValidationError
 from finsight.core.types import CompanyId, DocumentId
 from finsight.domain.entities.document_version import DocumentVersion
@@ -118,6 +119,17 @@ class UploadDocument:
             default=None,
         )
         self._queue_port = self._queue
+        self._tracing = _get_attr(
+            kwargs,
+            'tracing',
+            'tracer',
+            'tracing_port',
+            'span_tracer',
+            'span_tracing',
+            'trace',
+            'tracing_adapter',
+            default=None,
+        )
         self.document_repository = self._document_repository
         self.queue = self._queue
         self._allowed_categories = None
@@ -308,7 +320,12 @@ class UploadDocument:
                 raise ValidationError('replaces_document_id is required for update uploads.')
 
         # Partition-existence gate.
-        await self._ensure_partition(company_id)
+        await run_traced_step(
+            self._tracing,
+            company_id,
+            'partition_check',
+            lambda: self._ensure_partition(company_id),
+        )
 
         # Determine filename.
         filename = self._resolve_filename(file_raw)
@@ -409,30 +426,40 @@ class UploadDocument:
             # Record the parent Document before its version so the library can
             # see the upload and the version foreign key resolves.
             if self._document_repository is not None:
-                document_id, created_parent = await self._ensure_document(
-                    company_id=company_id,
-                    document_id=document_id,
-                    filename=filename,
-                    category=category_text,
-                    period=period_text,
-                    status=status_text,
-                    upload_type=upload_type_text,
+                document_id, created_parent = await run_traced_step(
+                    self._tracing,
+                    company_id,
+                    'ensure_document',
+                    lambda: self._ensure_document(
+                        company_id=company_id,
+                        document_id=document_id,
+                        filename=filename,
+                        category=category_text,
+                        period=period_text,
+                        status=status_text,
+                        upload_type=upload_type_text,
+                    ),
                 )
 
             created_version = version_entity
             if self._document_repository is not None:
-                created = await self._create_document_version(
-                    company_id=company_id,
-                    version_entity=version_entity,
-                    document_id=document_id,
-                    version_number=version_number,
-                    category=category_text,
-                    period=period_text,
-                    status=status_text,
-                    upload_type=upload_type_text,
-                    replaces=replaces_raw,
-                    filename=filename,
-                    file_hash=file_hash,
+                created = await run_traced_step(
+                    self._tracing,
+                    company_id,
+                    'create_document_version',
+                    lambda: self._create_document_version(
+                        company_id=company_id,
+                        version_entity=version_entity,
+                        document_id=document_id,
+                        version_number=version_number,
+                        category=category_text,
+                        period=period_text,
+                        status=status_text,
+                        upload_type=upload_type_text,
+                        replaces=replaces_raw,
+                        filename=filename,
+                        file_hash=file_hash,
+                    ),
                 )
                 if created is not None:
                     created_version = created
@@ -467,27 +494,33 @@ class UploadDocument:
                     pass
                 if key is None:
                     key = f'{company_id}/documents/{document_id}/versions/{version_id}/{filename}'
-                try:
-                    presigned = await _await(
-                        storage.generate_presigned_upload_url(
-                            company_id,
-                            key=key,
-                            expires_in=expires_in,
-                            content_type=content_type,
-                            document_id=document_id,
-                            version_id=version_id,
-                            filename=filename,
-                        )
-                    )
-                except TypeError:
+
+                async def _presigned() -> Any:
                     try:
-                        presigned = await _await(
+                        return await _await(
                             storage.generate_presigned_upload_url(
-                                company_id, key, expires_in=expires_in
+                                company_id,
+                                key=key,
+                                expires_in=expires_in,
+                                content_type=content_type,
+                                document_id=document_id,
+                                version_id=version_id,
+                                filename=filename,
                             )
                         )
-                    except Exception:
-                        presigned = None
+                    except TypeError:
+                        try:
+                            return await _await(
+                                storage.generate_presigned_upload_url(
+                                    company_id, key, expires_in=expires_in
+                                )
+                            )
+                        except Exception:
+                            return None
+
+                presigned = await run_traced_step(
+                    self._tracing, company_id, 'presigned_link', _presigned
+                )
                 try:
                     bucket = _get_attr(presigned, 'bucket', default=None)
                     if bucket is None:
@@ -509,8 +542,11 @@ class UploadDocument:
             enqueued = False
             queued_job_id = None
             try:
-                enqueued, queued_job_id = await self._trigger_ingestion(
-                    company_id, document_id, version_id, key
+                enqueued, queued_job_id = await run_traced_step(
+                    self._tracing,
+                    company_id,
+                    'trigger_ingestion',
+                    lambda: self._trigger_ingestion(company_id, document_id, version_id, key),
                 )
             except Exception:
                 enqueued = False

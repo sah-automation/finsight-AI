@@ -7,6 +7,7 @@ import contextlib
 import inspect
 from typing import Any
 
+from finsight.application._step_span import run_traced_step
 from finsight.core.errors import ValidationError
 from finsight.core.types import CompanyId
 from finsight.domain.services.document_stamp import DocumentStamp
@@ -192,41 +193,10 @@ class Reprocess:
     def batch(self, request: Any = None, **kwargs: Any) -> Any:
         return self._run(request, kwargs)
 
-    async def _trace(self, company_id: Any, operation: str) -> None:
-        tracer = self._tracing
-        if tracer is None:
-            return
-        try:
-            import inspect
-
-            method = None
-            for name in (
-                'start_span',
-                'span',
-                'emit_span',
-                'trace',
-                'trace_operation',
-                'record_span',
-                'emit',
-                'record',
-            ):
-                candidate = getattr(tracer, name, None)
-                if callable(candidate):
-                    method = candidate
-                    break
-            if method is None:
-                return
-            result = method(company_id, operation)
-            if inspect.isawaitable(result):
-                await result
-        except Exception:
-            return
-
     async def _run(
         self, request: Any = None, extra: dict[str, Any] | None = None
     ) -> ReprocessResult:
         extra = extra or {}
-        await self._trace('reprocess', 'reprocess')
         request = self._normalise(request, extra)
 
         # company ids
@@ -361,7 +331,12 @@ class Reprocess:
             for cid_text in batch:
                 cid = CompanyId(cid_text)
                 try:
-                    await self._process_company(cid, delta_tracking, dry_run)
+                    await run_traced_step(
+                        self._tracing,
+                        cid,
+                        'process_company',
+                        lambda cid=cid: self._process_company(cid, delta_tracking, dry_run),
+                    )
                 except Exception:
                     failed_all.append(cid_text)
                     continue

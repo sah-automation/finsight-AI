@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from finsight.application._step_span import run_traced_step
+
 from ._request_to_context import _build_source_viewer_context
 from ._result import build_source_viewer_result
 from .source_viewer_context import SourceViewerContext
@@ -77,9 +79,14 @@ class SourceViewer:
     async def _run_steps(self, context: SourceViewerContext) -> str:
         for operation, attribute in _STEP_ORDER:
             step = getattr(self, f'_{attribute}')
-            await self._trace(context.company_id, operation)
+
+            async def _run_step(op: str = operation, s: Any = step) -> Any:
+                return await s.run(context)
+
             try:
-                result = await step.run(context)
+                result = await run_traced_step(
+                    self._tracing, context.company_id, operation, _run_step
+                )
             except Exception as exc:  # noqa: BLE001, pragma: no cover
                 result = StepResult.stop_with_error(context, exc)
             if not isinstance(result, StepResult):
@@ -91,7 +98,14 @@ class SourceViewer:
         return 'success'
 
     async def _run_audit(self, context: SourceViewerContext, outcome: str) -> None:
-        await self._trace(context.company_id, 'audit')
+        await run_traced_step(
+            self._tracing,
+            context.company_id,
+            'audit',
+            lambda: self._run_audit_step(context, outcome),
+        )
+
+    async def _run_audit_step(self, context: SourceViewerContext, outcome: str) -> None:
         context.outcome = outcome
         try:
             await self._audit_step.run(context)
@@ -106,13 +120,3 @@ class SourceViewer:
         if context is None:
             return _build_source_viewer_context(**kwargs)
         return _build_source_viewer_context(context, **kwargs)
-
-    async def _trace(self, company_id: Any, operation: str) -> None:
-        if self._tracing is None:
-            return
-        try:
-            result = self._tracing.start_span(company_id, operation)
-            if hasattr(result, '__await__'):
-                await result
-        except Exception as exc:
-            logger.debug('tracing step failed', exc_info=exc)
