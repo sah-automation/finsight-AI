@@ -176,6 +176,22 @@ def test_redaction_is_case_insensitive() -> None:
     assert not remaining, f'uppercase blocklisted fields leaked: {sorted(remaining)}'
 
 
+def test_redaction_deletes_genai_convention_content_keys() -> None:
+    """OTel GenAI semantic-convention content keys must never reach Phoenix.
+
+    gen_ai.prompt.* / gen_ai.completion.* carry full prompt and response
+    content but contain no blocklist token, so the collector deletes them by
+    prefix. The application's own capture keys use the 'genai.' spelling.
+    """
+    sample = {
+        'gen_ai.prompt.0.content': 'leaky prompt',
+        'gen_ai.completion.0.content': 'leaky completion',
+        'GEN_AI.PROMPT.1.content': 'leaky uppercase',
+    }
+    remaining = _apply_redaction_actions(sample, _redaction_actions())
+    assert not remaining, f'GenAI convention content keys leaked: {sorted(remaining)}'
+
+
 def test_redaction_preserves_aggregate_and_content_capture_attributes() -> None:
     survivors = (
         *TOKEN_METRIC_ATTRIBUTES,

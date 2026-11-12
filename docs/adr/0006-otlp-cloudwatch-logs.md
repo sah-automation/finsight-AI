@@ -44,10 +44,13 @@ Spans are exported with **OTLP to the CloudWatch Logs OTLP endpoint**:
   silently breaks an alarm and must fail a test.
 - The log group `/aws/lambda/finsight-{env}` carries a retention policy
   (one month; prod retains on delete), so trace data has a bounded keep time.
-- Local development keeps `observability.otlp_endpoint` empty and uses the
-  OTel collector in docker-compose. A local Arize Phoenix viewer is a separate
-  work item (#280) and changes only where dev spans are sent, not the port,
-  schema or production path.
+- Local development sends spans through the OTel collector in docker-compose
+  (`observability.otlp_endpoint: http://localhost:4318/v1/traces`, set by
+  #280). The collector deletes blocklisted span attributes and exports to a
+  local Arize Phoenix viewer (SQLite mode, UI on 6006); dev does not point at
+  Phoenix directly because that would bypass collector redaction. This
+  changes only where dev spans are sent, not the port, schema or production
+  path.
 
 ## Consequences
 
