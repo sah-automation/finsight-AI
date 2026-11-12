@@ -222,7 +222,9 @@ def test_phoenix_service_runs_sqlite_mode_in_local_stack() -> None:
     assert not any(str(item).startswith('PHOENIX_SQL_DATABASE_URL=') for item in environment), (
         'phoenix must run in SQLite mode (no external database URL)'
     )
-    assert '6006:6006' in (phoenix.get('ports') or []), 'phoenix UI/OTLP HTTP must be published'
+    assert any(str(port).endswith(':6006') for port in (phoenix.get('ports') or [])), (
+        'phoenix UI/OTLP HTTP must be published on container port 6006'
+    )
     volumes = phoenix.get('volumes') or []
     assert any(str(volume).endswith(':/mnt/data') for volume in volumes), (
         'phoenix SQLite data directory must be a mounted volume'
