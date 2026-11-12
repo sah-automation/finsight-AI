@@ -151,16 +151,29 @@ class TracedLLM(LiteLLMGateway):
                 attributes['first_token_latency_ms'] = first_token_latency_ms
 
             inner = getattr(self, '_inner', None)
-            retry_count = 0
-            for candidate in (inner, getattr(inner, '_inner', None)):
-                if candidate is None:
-                    continue
+            actual_retry_count: int | None = None
+            configured_retries = 0
+            seen: set[int] = set()
+            candidate = inner
+            while candidate is not None and id(candidate) not in seen:
+                seen.add(id(candidate))
+                actual = getattr(candidate, 'last_retry_count', None)
+                if isinstance(actual, int):
+                    actual_retry_count = (
+                        actual if actual_retry_count is None else max(actual_retry_count, actual)
+                    )
                 for attr in ('retry_count', 'retries'):
                     value = getattr(candidate, attr, None)
                     if isinstance(value, int):
-                        retry_count = max(retry_count, value)
-            attributes.setdefault('retry_count', retry_count)
-            attributes.setdefault('retries', retry_count)
+                        configured_retries = max(configured_retries, value)
+                candidate = getattr(candidate, '_inner', None) or getattr(
+                    candidate, 'wrapped', None
+                )
+            retry_count = (
+                actual_retry_count if actual_retry_count is not None else configured_retries
+            )
+            attributes['retry_count'] = retry_count
+            attributes['retries'] = retry_count
 
             cache_hit = False
             for candidate in (inner, getattr(inner, '_inner', None), result):

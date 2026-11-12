@@ -58,6 +58,7 @@ async def _open_stream(
     timeout = float(model.get('timeout_seconds', self.timeout) or self.timeout)
     last_error: Exception | None = None
     for attempt in range(retries + 1):
+        self.last_retry_count = attempt
         try:
             fn = self.completion_func
             if not callable(fn):

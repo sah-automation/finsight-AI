@@ -137,6 +137,7 @@ def _init_llm_gateway(self: Any, *args: Any, **kwargs: Any) -> None:
     self._tags = []
     self._last_trace = {}
     self.usage_rows = []
+    self.last_retry_count = 0
     self._usage_lock = asyncio.Lock()
 
     self.chains = {}

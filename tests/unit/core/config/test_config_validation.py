@@ -237,6 +237,20 @@ class TestAccessAndPermissionRules:
             _make(data)
 
 
+class TestSwitchFailLoudRules:
+    def test_missing_required_switch_rejected(self) -> None:
+        data = _base_config()
+        data['switches'].pop('llm_content_capture_enabled')
+        with pytest.raises(ValidationError, match='missing required switch'):
+            _make(data)
+
+    def test_misspelled_switch_rejected(self) -> None:
+        data = _base_config()
+        data['switches']['llm_content_capture_enable'] = True
+        with pytest.raises(ValidationError):
+            _make(data)
+
+
 class TestSourceViewerSigningKey:
     def test_raises_when_missing(self) -> None:
         data = _base_config()

@@ -109,15 +109,6 @@ def _extract_identity(request: Request) -> tuple[Any, Any, Any]:
         user_id = _coalesce(user_id, _attr(state, 'user_id', 'userId', 'sub', 'user'))
         role = _coalesce(role, _attr(state, 'role', 'role_id', 'roleId'))
 
-    headers = getattr(request, 'headers', {}) or {}
-    company_id = _coalesce(
-        company_id,
-        headers.get(_HEADER_COMPANY_ID),
-        headers.get('x-company_id'),
-    )
-    user_id = _coalesce(user_id, headers.get(_HEADER_USER_ID), headers.get('x-user_id'))
-    role = _coalesce(role, headers.get(_HEADER_ROLE), headers.get('x-user-role'))
-
     scope = getattr(request, 'scope', {}) or {}
     candidates: list[Any] = []
     for key in (
@@ -134,7 +125,7 @@ def _extract_identity(request: Request) -> tuple[Any, Any, Any]:
     ):
         if key in scope:
             candidates.append(scope[key])
-    if 'user' in (getattr(request, 'scope', {}) or {}):
+    if 'user' in scope:
         with contextlib.suppress(Exception):
             candidates.append(request.user)
 
@@ -143,7 +134,20 @@ def _extract_identity(request: Request) -> tuple[Any, Any, Any]:
         claims_list.extend(_find_claims(candidate))
     claims_list.extend(_find_claims(scope))
 
-    return _apply_claims(company_id, user_id, role, claims_list)
+    company_id, user_id, role = _apply_claims(company_id, user_id, role, claims_list)
+
+    # Client-supplied identity headers are a local-development fallback only:
+    # authoritative state/claims above always win.
+    headers = getattr(request, 'headers', {}) or {}
+    company_id = _coalesce(
+        company_id,
+        headers.get(_HEADER_COMPANY_ID),
+        headers.get('x-company_id'),
+    )
+    user_id = _coalesce(user_id, headers.get(_HEADER_USER_ID), headers.get('x-user_id'))
+    role = _coalesce(role, headers.get(_HEADER_ROLE), headers.get('x-user-role'))
+
+    return company_id, user_id, role
 
 
 __all__ = ['extract_identity']

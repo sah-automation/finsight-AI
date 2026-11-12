@@ -26,10 +26,12 @@ with production alarms attached (ADR-0006).
   `step`, `company`, `duration`, `active_switch_values`, `model_name`,
   `retry_count`, `cache_hit`, `queue_wait` and `company_hash`
   (`STANDARD_SPAN_ATTRIBUTES`). The tracing adapter fills sensible defaults
-  when call sites omit them — `retry_count` from `retries`, `duration` from
-  `duration_ms`, `cache_hit` false, `queue_wait` from `queue_wait_ms`, and a
-  snapshot of all switch values from config — so partial call sites still
-  produce a complete span.
+  when call sites omit them — `cache_hit` false, `duration` from
+  `duration_ms`, `queue_wait` from `queue_wait_ms`, and a snapshot of all
+  switch values from config — so partial call sites still produce a complete
+  span. `retry_count` and `retries` report the retries that actually happened:
+  each retry loop records `last_retry_count`, and the traced decorators prefer
+  that over the configured retry budget.
 - **Hashed company identity.** Company identifiers are converted to trace
   attributes before anything is stored: `company_hash` (SHA-256 of the id) and
   `company_present`. Raw company ids are never placed in span attributes.

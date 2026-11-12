@@ -59,6 +59,7 @@ def _init_reranker(self: Any, *args: Any, **kwargs: Any) -> None:
     self.max_retries = int(
         _first(kwargs, 'max_retries', default=_config_value(config, 'max_retries', default=0)) or 0
     )
+    self.last_retry_count = 0
     self.enabled = bool(
         _first(
             kwargs,
@@ -174,7 +175,8 @@ async def _score(
 
 async def _score_batch(self: Any, company: str, question: str, batch: list[Any]) -> list[float]:
     last_error: Exception | None = None
-    for _attempt in range(self.max_retries + 1):
+    for attempt in range(self.max_retries + 1):
+        self.last_retry_count = attempt
         try:
             response = await asyncio.wait_for(
                 _call_scorer(self, company, question, batch), timeout=self.timeout_seconds

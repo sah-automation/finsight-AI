@@ -33,6 +33,7 @@ class RetryingLLM(LiteLLMGateway):
             kwargs.pop(key, None)
         self.retries = int(kwargs.pop('retries', kwargs.pop('max_retries', 1)) or 0)
         self.delay = float(kwargs.pop('retry_delay', kwargs.pop('delay', 0.01)) or 0.01)
+        self.last_retry_count = 0
         self.wrapped = wrapped
         self._inner = wrapped
         if self._inner is None:
@@ -41,7 +42,8 @@ class RetryingLLM(LiteLLMGateway):
     async def complete(self, company_id: Any = None, *args: Any, **kwargs: Any) -> Any:
         target = self._inner if self._inner is not None else self
         last_error: Exception | None = None
-        for _ in range(self.retries + 1):
+        for attempt in range(self.retries + 1):
+            self.last_retry_count = attempt
             try:
                 return await target.complete(company_id, *args, **kwargs)
             except Exception as exc:

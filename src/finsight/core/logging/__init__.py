@@ -6,23 +6,19 @@ import contextlib
 import logging
 import sys
 import uuid
-from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from pythonjsonlogger.json import JsonFormatter
 
+from .context import _company_id, _span_name, _switch_values, _trace_id, _user_id
 from .redaction import redact_sensitive_fields
 
 if TYPE_CHECKING:
     from types import TracebackType
 
-# Context variables for trace propagation
-_trace_id: ContextVar[str | None] = ContextVar('trace_id', default=None)
-_company_id: ContextVar[str | None] = ContextVar('company_id', default=None)
-_user_id: ContextVar[str | None] = ContextVar('user_id', default=None)
-_span_name: ContextVar[str | None] = ContextVar('span_name', default=None)
-_switch_values: ContextVar[dict[str, Any] | None] = ContextVar('switch_values', default=None)
+# Context variables for trace propagation live in .context so the correlation
+# middleware can bind them without importing this module's private helpers.
 
 
 class TraceFormatter(JsonFormatter):

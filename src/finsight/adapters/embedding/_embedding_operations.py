@@ -79,6 +79,7 @@ def _init_embedding(self: Any, *args: Any, **kwargs: Any) -> None:
         if max_retries is None and isinstance(embedding_cfg, dict):
             max_retries = embedding_cfg.get('max_retries', embedding_cfg.get('retry_attempts'))
     self.max_retries = int(max_retries) if max_retries is not None else 3
+    self.last_retry_count = 0
 
     retry_wait = _first(
         kwargs,
@@ -120,6 +121,7 @@ async def _embed_batch(self: Any, texts: list[str]) -> list[list[float]]:
     delay = self.retry_wait
     last_error: Exception | None = None
     for attempt in range(attempts):
+        self.last_retry_count = attempt
         try:
             fn = self.embedding_func
             if not callable(fn):

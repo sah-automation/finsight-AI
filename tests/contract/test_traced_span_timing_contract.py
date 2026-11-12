@@ -236,9 +236,9 @@ def test_traced_reranker_retry_count_is_real_when_retries_happen(
     spans = tracer.emitted_spans(COMPANY)  # type: ignore[attr-defined]
     assert len(spans) == 1
     attributes = spans[0].attributes
-    # The retry count reflects real retry behaviour (configured retries > 0).
-    assert isinstance(attributes.get('retry_count'), int)
-    assert isinstance(attributes.get('retries'), int)
+    # Exactly one retry happened, even though two were configured.
+    assert attributes['retry_count'] == 1
+    assert attributes['retries'] == 1
 
 
 # ===== No tracer: calls still succeed (metering unchanged) =====
