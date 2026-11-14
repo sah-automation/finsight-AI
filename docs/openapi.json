@@ -28,6 +28,22 @@
         }
       }
     },
+    "/ready": {
+      "get": {
+        "summary": " Root Ready",
+        "operationId": "_root_ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/ask/health": {
       "get": {
         "tags": [
