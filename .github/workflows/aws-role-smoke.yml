@@ -1,0 +1,61 @@
+name: AWS Role Smoke Check
+
+# Stage B trust-chain proof: manually assume the AWS deployment role through
+# GitHub OIDC and print the assumed identity. Creates nothing; deploys nothing.
+# Fails loudly when the role cannot be assumed so trust problems surface here,
+# not during the first real deploy.
+"on":
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "GitHub Environment whose AWS_ROLE_ARN / AWS_REGION to use"
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+        required: true
+        default: dev
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  assume-role:
+    name: Assume deploy role via OIDC
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Configure AWS credentials from GitHub OIDC
+        id: aws
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 900
+          role-session-name: finsight-aws-role-smoke
+
+      - name: Prove the assumed identity (STS)
+        env:
+          EXPECTED_ARN: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          identity="$(aws sts get-caller-identity --output json)"
+          echo "$identity"
+          arn="$(echo "$identity" | jq -er '.Arn')"
+
+          case "$arn" in
+            *":assumed-role/"*) : ;;
+            *) echo "::error::Expected an assumed-role ARN, got: $arn" && exit 1 ;;
+          esac
+
+          account="$(echo "$identity" | jq -er '.Account')"
+          expected_account="$(echo "$EXPECTED_ARN" | cut -d: -f5)"
+          if [ "$account" != "$expected_account" ]; then
+            echo "::error::Assumed identity account $account does not match the configured role account $expected_account"
+            exit 1
+          fi
+
+          echo "::notice::OIDC trust chain verified: assumed role ARN $arn in account $account (environment: ${{ inputs.environment }})"
