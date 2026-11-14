@@ -58,4 +58,11 @@ jobs:
             exit 1
           fi
 
+          expected_role="$(echo "$EXPECTED_ARN" | cut -d: -f6 | cut -d/ -f2)"
+          assumed_role="$(echo "$arn" | cut -d/ -f2)"
+          if [ "$assumed_role" != "$expected_role" ]; then
+            echo "::error::Assumed role '$assumed_role' does not match the configured role '$expected_role'"
+            exit 1
+          fi
+
           echo "::notice::OIDC trust chain verified: assumed role ARN $arn in account $account (environment: ${{ inputs.environment }})"
