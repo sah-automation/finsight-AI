@@ -66,15 +66,20 @@ expected role in the expected account. It creates nothing and deploys nothing.
 
 ### Production reviewer rule
 
-The `production` environment carries the reviewer rule definition
-(`PRODUCTION_REQUIRED_REVIEWER`, `PRODUCTION_REQUIRED_APPROVALS`) but no
-`required_reviewers` protection rule, so nothing is gated while no real users
-exist. Turning manual approval on is a single call:
+The `production` environment carries the reviewer rule as a definition —
+`PRODUCTION_REQUIRED_REVIEWER=sah-automation` and `PRODUCTION_REQUIRED_APPROVALS=1`
+— but no `required_reviewers` protection rule is attached, so nothing is gated
+while no real users exist. Turning manual approval on is a single call (the
+reviewer id is the repository owner):
 
 ```bash
 gh api --method PUT repos/sah-automation/finsight-AI/environments/production \
-  --input '{"reviewers":[{"type":"User","id":<reviewer-id>}]}'
+  -f reviewers='[{"type":"User","id":266460128}]'
 ```
+
+GitHub's rulesets API on this instance only accepts `branch`, `tag` and `push`
+targets, so the rule is defined on the environment itself rather than as a
+repository ruleset.
 
 ### Application secrets
 
