@@ -36,14 +36,25 @@ Target account: `069632763967` (region `us-east-1`).
 | IAM deployment role | `arn:aws:iam::069632763967:role/finsight-deploy-role` | Trust policy scoped to this repo's `dev`/`staging`/`production` environments |
 | Role permissions | `finsight-deploy-policy` (customer managed) | Deliberately light; tightened in Stage C |
 | GitHub Environments | `dev`, `staging`, `production` | Each holds `AWS_ROLE_ARN` + `AWS_REGION` environment variables |
-| Billing budget | `finsight-monthly-budget` (monthly, USD) | Amount comes from `alerts.monthly_budget_usd` in `infra/cdk/config/envs.yaml` |
-| Cost anomaly monitor | `finsight-cost-anomaly` (per service) + `finsight-cost-anomaly-subscription` | Subscribed by email; threshold from the same config value |
+| Billing budget | `finsight-monthly-budget` (monthly, USD) | Amount comes from `alerts.monthly_budget_usd` in `infra/cdk/config/envs.yaml`, applied by `scripts/apply_billing_guardrails.py` |
+| Cost anomaly monitor | `finsight-cost-anomaly` (per service) + `finsight-cost-anomaly-subscription` | Subscribed by email; threshold comes from `alerts.anomaly_threshold_usd` in the same file |
 | OIDC smoke workflow | `.github/workflows/aws-role-smoke.yml` | Manual trigger; proves GitHub can assume the role |
 | OIDC identity provider | **not created** | Blocked by the organization's service control policies (see below) |
 
-The budget threshold is configuration, not code: change
-`alerts.monthly_budget_usd` in `infra/cdk/config/envs.yaml` and re-apply the
-budget. Nothing else holds the number.
+The budget threshold is configuration, not code: `alerts.monthly_budget_usd` in
+`infra/cdk/config/envs.yaml` is the only place the amount is written down, and
+`scripts/apply_billing_guardrails.py` reads it through the same loader the CDK
+stacks use and applies it to AWS. Changing the threshold is a config change
+plus one run of that script:
+
+```bash
+uv run python scripts/apply_billing_guardrails.py --env prod
+```
+
+The script is idempotent (it replaces an existing budget, reuses the anomaly
+monitor, never creates a second subscription) and it reads every resource back
+before reporting, so its output states what exists in the account rather than
+what was requested.
 
 ### Verifying the plumbing
 
@@ -67,10 +78,10 @@ expected role in the expected account. It creates nothing and deploys nothing.
 ### Production reviewer rule
 
 The `production` environment carries the reviewer rule as a definition —
-`PRODUCTION_REQUIRED_REVIEWER=sah-automation` and `PRODUCTION_REQUIRED_APPROVALS=1`
-— but no `required_reviewers` protection rule is attached, so nothing is gated
-while no real users exist. Turning manual approval on is a single call (the
-reviewer id is the repository owner):
+`PRODUCTION_REQUIRED_REVIEWER=266460128` (the repository owner's user id) and
+`PRODUCTION_REQUIRED_APPROVALS=1` — but no `required_reviewers` protection rule
+is attached, so nothing is gated while no real users exist. Turning manual
+approval on is a single call that uses the recorded id verbatim:
 
 ```bash
 gh api --method PUT repos/sah-automation/finsight-AI/environments/production \
@@ -136,18 +147,21 @@ aws ssm put-parameter \
   --name /finsight/dev/neon/database_url \
   --type SecureString \
   --value file://<local-file-holding-the-connection-string>
-aws ssm describe-parameters --parameter-filters "Name=BeginWith,/finsight"
+aws ssm describe-parameters \
+  --parameter-filters "Key=Name,Option=BeginsWith,Values=/finsight"
 
 # 4. Budget email notifications — enable billing alerts, then re-apply the
 #    budget so the subscriber sticks. AWS silently drops budget notifications
 #    when billing-alert preferences are off.
 aws billing update-billing-preferences --features BILLING_ALERTS
-aws budgets create-budget --account-id 069632763967 \
-  --budget file://budget.json \
-  --notifications-with-subscribers file://budget-subscribers.json
-aws budgets describe-budget --account-id 069632763967 \
-  --budget-name finsight-monthly-budget
+uv run python scripts/apply_billing_guardrails.py --env prod
 ```
+
+Step 4 re-applies the budget from `infra/cdk/config/envs.yaml` — the same
+script that applies it today, so the amount never lives outside the config
+file. The script replaces an existing budget (AWS rejects a second budget with
+the same name), reuses the anomaly monitor, and prints a warning when the
+budget still carries no email subscriber.
 
 Steps 1–3 need `iam:CreateOpenIDConnectProvider`, `cloudformation:*` and
 `ssm:PutParameter` respectively; step 4 needs the billing-preference actions.

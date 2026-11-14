@@ -6,7 +6,11 @@ dev:
   removal_policy: destroy
   key_mode: aws_managed
   alerts:
+    # Billing guardrails, applied by scripts/apply_billing_guardrails.py.
+    # The amounts live here so the threshold changes by config, not code.
     monthly_budget_usd: 5
+    anomaly_threshold_usd: 5
+    # PLACEHOLDER: the owner replaces this with the real alert mailbox.
     notification_email: test@gmail.com
   data:
     point_in_time_recovery: false
@@ -19,6 +23,7 @@ staging:
   key_mode: aws_managed
   alerts:
     monthly_budget_usd: 5
+    anomaly_threshold_usd: 5
     notification_email: test@gmail.com
   data:
     point_in_time_recovery: false
@@ -30,10 +35,11 @@ prod:
   removal_policy: retain
   key_mode: aws_managed
   alerts:
-    # Monthly AWS spend guardrail. The budget alarm is created from this value;
-    # changing the threshold later is a config change, not a code change.
+    # Monthly AWS spend guardrail. The budget alarm is created against this
+    # value; changing the threshold later is a config change, not a code change.
     monthly_budget_usd: 5
-    # Billing budget and Cost Explorer anomaly notifications go here.
+    anomaly_threshold_usd: 5
+    # PLACEHOLDER: the owner replaces this with the real alert mailbox.
     notification_email: test@gmail.com
   data:
     point_in_time_recovery: true

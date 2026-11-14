@@ -6,12 +6,30 @@ file path, YAML parsing, and fail-loudly error handling live in one place.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 ENVS_FILE = Path(__file__).resolve().parent.parent / 'config' / 'envs.yaml'
+
+_ALERTS_KEYS = frozenset({'monthly_budget_usd', 'anomaly_threshold_usd', 'notification_email'})
+
+
+@dataclass(frozen=True)
+class AlertsConfig:
+    """Billing guardrail settings for one environment.
+
+    Money is carried as ``Decimal`` so the configured amount is never turned
+    into a float on the way to AWS.
+    """
+
+    monthly_budget_usd: Decimal
+    anomaly_threshold_usd: Decimal
+    notification_email: str
 
 
 def load_envs() -> dict[str, Any]:
@@ -33,30 +51,49 @@ def load_env_config(env_name: str) -> dict[str, Any]:
     return config
 
 
-def load_alerts_config(env_name: str) -> dict[str, Any]:
+def _read_amount(alerts: Mapping[str, Any], key: str, env_name: str) -> Decimal:
+    raw = alerts.get(key)
+    if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
+        raise TypeError(f'Environment {env_name!r} alerts.{key} must be a number, got {raw!r}')
+    try:
+        amount = Decimal(str(raw))
+    except InvalidOperation as exc:
+        raise ValueError(
+            f'Environment {env_name!r} alerts.{key} must be a positive number, got {raw!r}'
+        ) from exc
+    if not amount.is_finite() or amount <= 0:
+        raise ValueError(
+            f'Environment {env_name!r} alerts.{key} must be a positive number, got {raw!r}'
+        )
+    return amount
+
+
+def load_alerts_config(env_name: str, config: Mapping[str, Any] | None = None) -> AlertsConfig:
     """Return the billing-guardrail alerts settings for one environment.
 
-    Fails loudly when the ``alerts`` section is missing, the monthly budget is
-    not a positive number, or the notification email is absent — a silent
-    fallback here would drop spend guardrails without anyone noticing.
+    Fails loudly when the ``alerts`` section is missing, an unknown key is
+    present, an amount is not a positive number, or the notification email is
+    absent — a silent fallback here would drop spend guardrails without anyone
+    noticing. The environment settings can be injected so callers (and tests)
+    pass in what they need instead of reading a hidden global.
     """
-    config = load_env_config(env_name)
-    if 'alerts' not in config:
+    env_config = load_env_config(env_name) if config is None else dict(config)
+    if 'alerts' not in env_config:
         raise ValueError(
             f'Environment {env_name!r} is missing an alerts section; '
-            f'expected monthly_budget_usd and notification_email'
+            f'expected monthly_budget_usd, anomaly_threshold_usd and notification_email'
         )
-    alerts = config['alerts']
-    if not isinstance(alerts, dict):
+    alerts = env_config['alerts']
+    if not isinstance(alerts, Mapping):
         raise TypeError(
             f'Environment {env_name!r} alerts section must be a mapping, '
             f'got {type(alerts).__name__}'
         )
-    budget = alerts.get('monthly_budget_usd')
-    if isinstance(budget, bool) or not isinstance(budget, (int, float)) or budget <= 0:
+    unknown = sorted(set(alerts) - _ALERTS_KEYS)
+    if unknown:
         raise ValueError(
-            f'Environment {env_name!r} alerts.monthly_budget_usd must be a '
-            f'positive number, got {budget!r}'
+            f'Environment {env_name!r} alerts section has unknown key(s) {unknown}; '
+            f'expected only {sorted(_ALERTS_KEYS)}'
         )
     email = alerts.get('notification_email')
     if not isinstance(email, str) or not email.strip() or '@' not in email:
@@ -64,4 +101,8 @@ def load_alerts_config(env_name: str) -> dict[str, Any]:
             f'Environment {env_name!r} alerts.notification_email must be a '
             f'non-empty email address, got {email!r}'
         )
-    return {'monthly_budget_usd': budget, 'notification_email': email.strip()}
+    return AlertsConfig(
+        monthly_budget_usd=_read_amount(alerts, 'monthly_budget_usd', env_name),
+        anomaly_threshold_usd=_read_amount(alerts, 'anomaly_threshold_usd', env_name),
+        notification_email=email.strip(),
+    )
