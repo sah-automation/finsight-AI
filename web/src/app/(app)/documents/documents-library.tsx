@@ -330,7 +330,7 @@ export function DocumentsLibrary({
         setLoading(false);
       }
     },
-    [router, user?.company_id],
+    [router, user],
   );
 
   useEffect(() => {
@@ -432,7 +432,7 @@ export function DocumentsLibrary({
     } finally {
       setDetailLoading(false);
     }
-  }, [user?.company_id]);
+  }, [user]);
 
   const executeMutation = useCallback(
     async (document: DocumentRecord, type: 'delete' | 'purge' | 'restore') => {
@@ -504,7 +504,7 @@ export function DocumentsLibrary({
         setConfirmAction(null);
       }
     },
-    [loadDocuments, view, user?.company_id],
+    [loadDocuments, view, user],
   );
 
   const toggleSort = (column: 'name' | 'updated' | 'period' | 'category') => {
