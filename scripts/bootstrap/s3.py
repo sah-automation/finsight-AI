@@ -87,12 +87,20 @@ def _build_s3_client(config: Any) -> Any:
 async def upload_fixtures_to_s3(config: Any, records: list[dict[str, Any]]) -> None:
     """Upload fixture files to S3.
 
-    When LocalStack is not reachable (e.g. Migrations job runs Postgres only),
-    this function logs a warning and returns without error so the bootstrap
-    can complete for the database steps.
+    When LocalStack is not reachable (e.g. Migrations job runs Postgres only)
+    or when no S3 endpoint is configured at all, this function logs a warning
+    and returns without error so the bootstrap can complete for the database
+    steps.
     """
     settings = aws_client_settings()
     endpoint_url = settings.get('endpoint_url')
+
+    # Skip if no S3 endpoint is configured (e.g. Migrations job has no LocalStack)
+    if not endpoint_url:
+        logger.warning('No S3 endpoint configured; skipping S3 fixture uploads')
+        return
+
+    # Skip if LocalStack is configured but not reachable
     if _is_local_endpoint(endpoint_url) and not _localstack_reachable(str(endpoint_url)):
         logger.warning(
             'LocalStack S3 endpoint %s not reachable; skipping S3 fixture uploads',
