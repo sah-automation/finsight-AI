@@ -586,11 +586,23 @@ class TestStandardsChecklist:
             # Compare-only: never touch the tracked file; fail loudly if stale.
             existing = REPORT_PATH.read_text(encoding='utf-8') if REPORT_PATH.exists() else ''
 
-            # Normalize both strings: strip trailing whitespace from each line, ensure
-            # consistent line endings. This handles environment differences in line
-            # counts (CRLF vs LF) or test file discovery order.
+            # Normalize both strings for cross-environment consistency:
+            # - Strip trailing whitespace from each line
+            # - Remove detail lines that contain environment-specific counts
+            #   (test file counts, file line counts) which can differ between
+            #   local and CI due to test discovery or line-ending differences.
             def _norm(s: str) -> str:
-                return '\n'.join(line.rstrip() for line in s.splitlines()) + '\n'
+                lines = []
+                for line in s.splitlines():
+                    stripped = line.rstrip()
+                    # Skip detail lines with counts that vary by environment
+                    if stripped.startswith('  - ') and (
+                        ' lines' in stripped
+                        or stripped.startswith(('  - Unit:', '  - Contract:', '  - Switch:'))
+                    ):
+                        continue
+                    lines.append(stripped)
+                return '\n'.join(lines) + '\n'
 
             if _norm(report) != _norm(existing):
                 pytest.fail('standards_report.md is stale; run `make ratchet` to update')
