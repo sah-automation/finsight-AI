@@ -50,6 +50,30 @@ services:
       timeout: 5s
       retries: 5
 
+  # Arize Phoenix for local trace viewing (SQLite mode, issue #280).
+  # UI at http://localhost:6006; accepts OTLP HTTP on the same port. The
+  # collector (not applications) exports into Phoenix so every span passes
+  # the attributes/redact blocklist first.
+  phoenix:
+    image: arizephoenix/phoenix:version-21.0.0
+    ports:
+      - "6007:6006"  # Phoenix UI + OTLP HTTP (host port 6007; 6006 is taken by sherpa-on)
+    environment:
+      - PHOENIX_WORKING_DIR=/mnt/data
+      # Phoenix enables authentication automatically for non-loopback
+      # requests; the collector reaches it over the compose network, so auth
+      # stays explicitly off for this local-only stack.
+      - PHOENIX_ENABLE_AUTH=false
+    volumes:
+      - phoenix-data:/mnt/data
+    healthcheck:
+      # The image is distroless (no shell, no wget/curl); probe with python3.
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6006/', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
   # OTel Collector for traces
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.120.0
@@ -60,8 +84,12 @@ services:
     volumes:
       - ./infra/otel/collector.yaml:/etc/otelcol-contrib/config.yaml
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    depends_on:
+      phoenix:
+        condition: service_healthy
 
 volumes:
   localstack-data:
   postgres-data:
   redis-data:
+  phoenix-data:

@@ -1,0 +1,62 @@
+tests/architecture/test_invariant_helpers.py ...........                 [ 33%]
+tests/architecture/test_invariants.py ..............................     [100%]
+
+============================== 45 passed in 0.80s ==============================
+uv run pytest tests/unit/switches -v --tb=short -m "switch"
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-8.4.2, pluggy-1.7.0
+rootdir: /Users/home/Dev/Projects/FinSight-AI
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0, timeout-2.4.0, asyncio-1.4.0, Faker-40.43.0, mock-3.17.0, anyio-4.15.1, platformdirs-4.13.5
+timeout: 60.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 33 items
+
+tests/unit/switches/test_answer_cache_switch.py ss                       [  6%]
+tests/unit/switches/test_backup_request_switch.py ss                     [ 12%]
+tests/unit/switches/test_citation_check_switch.py ss                     [ 18%]
+tests/unit/switches/test_delta_tracking_switch.py ..                     [ 24%]
+tests/unit/switches/test_metering_switch.py ss                           [ 30%]
+tests/unit/switches/test_ocr_fallback_switch.py ss                       [ 36%]
+tests/unit/switches/test_page_router_switch.py ..                        [ 42%]
+tests/unit/switches/test_parallel_retrieval_switch.py ss                 [ 48%]
+tests/unit/switches/test_parallel_steps_switch.py ss                     [ 54%]
+tests/unit/switches/test_prompt_cache_switch.py ss                       [ 60%]
+tests/unit/switches/test_reranker_switch.py ss                           [ 66%]
+tests/unit/switches/test_role_cache_switch.py ss                         [ 72%]
+tests/unit/switches/test_switch_coverage.py ...                          [ 81%]
+tests/unit/switches/test_textract_switch.py ss                           [ 87%]
+tests/unit/switches/test_tracing_switch.py ss                            [ 93%]
+tests/unit/switches/test_virus_scan_switch.py ..                         [100%]
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/unit/switches/test_answer_cache_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_answer_cache_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_backup_request_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_backup_request_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_citation_check_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_citation_check_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_metering_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_metering_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_ocr_fallback_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_ocr_fallback_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_parallel_retrieval_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_parallel_retrieval_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_parallel_steps_switch.py:12: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_parallel_steps_switch.py:16: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_prompt_cache_switch.py:12: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_prompt_cache_switch.py:16: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_reranker_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_reranker_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_role_cache_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_role_cache_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_textract_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_textract_switch.py:20: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_tracing_switch.py:15: Not yet implemented
+SKIPPED [1] tests/unit/switches/test_tracing_switch.py:20: Not yet implemented
+======================== 9 passed, 24 skipped in 0.20s =========================
+✓ All test suites passed
+
+--- make test exit code: 0 (all suites passed) ---

@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1731" width="100%" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1500" height="1731" fill="#ffffff"/>
+<text x="40" y="44" font-size="25" font-weight="bold" fill="#1f2937" text-anchor="start">FinSight AI, Phase 1: user journey - signing up a company</text>
+<text x="40" y="70" font-size="13" font-weight="normal" fill="#374151" text-anchor="start">Creates the company's tenancy and partition before any document can be uploaded. No upload is accepted until onboarding succeeds.</text>
+<text x="40" y="88" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">Standard setup shown; pilot uses 1 cell (scale.cells = 1). Grounded in phase1_mvp_plan.md (D1, D2, D6, D7, D8) and finsight_mvp_hld.svg.</text>
+<rect x="40" y="104" width="24" height="20" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="72" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Identity, routing, store</text>
+<rect x="262" y="104" width="24" height="20" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="294" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Compute</text>
+<rect x="484" y="104" width="24" height="20" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="516" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Write / tenant create</text>
+<rect x="706" y="104" width="24" height="20" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="738" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Read / answer</text>
+<rect x="928" y="104" width="24" height="20" rx="4" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="960" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Gate that refuses</text>
+<rect x="1150" y="104" width="24" height="20" rx="4" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="1182" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Config, rules, evidence</text>
+<rect x="40" y="140" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="162" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">A. Who may start, and what must be given</text>
+<text x="750.0" y="182" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Only System Admin creates a company. The four roles come from config/permissions.yaml. No self-service signup in Phase 1.</text>
+<rect x="40" y="215" width="1420" height="86" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="237" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">System Admin triggers company onboarding</text>
+<text x="750.0" y="255" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Caller holds the System Admin role (Cognito group).</text>
+<text x="750.0" y="268" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Provides: company display name, preferred region, first admin user.</text>
+<text x="750.0" y="281" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">company_id is allocated by the platform, never supplied by the caller.</text>
+<text x="750.0" y="294" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Region resolves to (region, cell) after validation. Form checks name, region and first admin email before submit.</text>
+<polyline points="750.0,199 750.0,213" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="319" width="1420" height="86" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="341" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Platform rules enforced at start</text>
+<text x="750.0" y="359" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">config/permissions.yaml is the only source of access (role x action x category).</text>
+<text x="750.0" y="372" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">documents.categories must match it exactly; startup fails on mismatch.</text>
+<text x="750.0" y="385" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A missing permission is denied. There is no default allow on any role.</text>
+<text x="750.0" y="398" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Residency: the chosen region must be on the approved list; pilot company is US-based, so us hosting satisfies the rule.</text>
+<polyline points="750.0,303 750.0,317" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="423" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="445" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">B. Resolve routing, then create the tenant</text>
+<text x="750.0" y="465" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">The partition must exist, with its own indexes and vector index, before the first upload is accepted.</text>
+<polyline points="750.0,407 750.0,421" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="498" width="1420" height="86" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="520" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Resolve routing</text>
+<text x="750.0" y="538" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">company_id maps to exactly one (region, cell).</text>
+<text x="750.0" y="551" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Pilot: scale.cells = 1, so every company maps to cell 1.</text>
+<text x="750.0" y="564" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A missing or doubled cell stops startup.</text>
+<text x="750.0" y="577" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The resolved cell is folded into RequestContext for every later call.</text>
+<polyline points="750.0,482 750.0,496" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="602" width="1420" height="73" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="750.0" y="624" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Create the company partition</text>
+<text x="750.0" y="642" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">application/onboarding creates the partition, its indexes and its HNSW vector index.</text>
+<text x="750.0" y="655" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Runs in one transaction; records partition metadata; writes an audit entry.</text>
+<text x="750.0" y="668" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Idempotent via request key: retries return the same company; 'ready' is set only after the final commit.</text>
+<polyline points="750.0,586 750.0,600" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="693" width="1420" height="86" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="750.0" y="715" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Initialise identity and cache</text>
+<text x="750.0" y="733" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Cognito group for the first admin; roles map to the four roles (D8). Company is created before email verification completes.</text>
+<text x="750.0" y="746" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Role-version row created per company in DynamoDB.</text>
+<text x="750.0" y="759" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Role cache seeded; privileged roles always read fresh (5.18).</text>
+<text x="750.0" y="772" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The company prefix in S3 is created on first upload, not here.</text>
+<polyline points="750.0,677 750.0,691" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="797" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="819" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Create the document stamp</text>
+<text x="750.0" y="837" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">One row per company becomes the authority for invalidating cached answers.</text>
+<text x="750.0" y="850" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The stamp moves on every future write, so old answers become unaddressable.</text>
+<text x="750.0" y="863" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Aurora is the source of truth, not DynamoDB.</text>
+<polyline points="750.0,781 750.0,795" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="888" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="910" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Record partition metadata</text>
+<text x="750.0" y="928" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Partition metadata row lists the company partition and its indexes.</text>
+<text x="750.0" y="941" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Stored so migrations can upgrade or downgrade every partition.</text>
+<text x="750.0" y="954" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Used by the upload gate to refuse when a partition is missing.</text>
+<polyline points="750.0,872 750.0,886" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="979" width="1420" height="73" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1001" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Audit log entry</text>
+<text x="750.0" y="1019" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Write-once audit entry for the company creation.</text>
+<text x="750.0" y="1032" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Company id, region, cell, who did it, and when.</text>
+<text x="750.0" y="1045" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Metering records the onboarding run (Lambda time).</text>
+<polyline points="750.0,963 750.0,977" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1070" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1092" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">C. The onboarding gate, and what it blocks</text>
+<text x="750.0" y="1112" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">The upload endpoint refuses with a clear message while a partition is missing. This is the riskiest decision, proven first (slice 1).</text>
+<polyline points="750.0,1054 750.0,1068" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1145" width="1420" height="86" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="750.0" y="1167" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Onboarding succeeds: uploads unblock</text>
+<text x="750.0" y="1185" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Partition, indexes and vector index exist.</text>
+<text x="750.0" y="1198" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Metadata row present and auditable. Admin sees 'setting up' then 'ready'.</text>
+<text x="750.0" y="1211" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Re-running onboarding returns the same state (idempotent).</text>
+<text x="750.0" y="1224" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The first user can be added to Cognito groups for the four roles.</text>
+<polyline points="750.0,1129 750.0,1143" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1249" width="1420" height="86" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="750.0" y="1271" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Onboarding missing: uploads refused</text>
+<text x="750.0" y="1289" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Upload endpoint returns a clear 'partition missing' error.</text>
+<text x="750.0" y="1302" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No file is queued; no S3 object is saved.</text>
+<text x="750.0" y="1315" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">This protects against cross-company or orphan data.</text>
+<text x="750.0" y="1328" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Each failure (invalid region, request conflict, partition or identity error) returns a clear, non-leaking message.</text>
+<polyline points="750.0,1233 750.0,1247" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1353" width="1420" height="57" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1375" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">D. Verify the new tenant in isolation</text>
+<text x="750.0" y="1395" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Cross-company isolation is tested once onboarding lands, then on every later change.</text>
+<polyline points="750.0,1337 750.0,1351" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1428" width="1420" height="73" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="750.0" y="1450" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Negative tests</text>
+<text x="750.0" y="1468" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A company without a partition cannot upload.</text>
+<text x="750.0" y="1481" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A token for company B cannot touch company A's partition (lock 2).</text>
+<text x="750.0" y="1494" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A guessed company id returns zero rows, never an error that leaks existence.</text>
+<polyline points="750.0,1412 750.0,1426" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1519" width="1420" height="73" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1541" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">Migration readiness</text>
+<text x="750.0" y="1559" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Migrations must upgrade and downgrade every partition, including vector indexes.</text>
+<text x="750.0" y="1572" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Proven by 'upgrade head -&gt; downgrade base -&gt; upgrade head'.</text>
+<text x="750.0" y="1585" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Partition count and metadata stay consistent across runs.</text>
+<polyline points="750.0,1503 750.0,1517" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1610" width="1420" height="73" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750.0" y="1632" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle">What sign-up does NOT do (D6)</text>
+<text x="750.0" y="1650" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No metrics store, dashboards, forecasts, alerts or recommendations.</text>
+<text x="750.0" y="1663" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No ingestion; the first upload is a separate journey.</text>
+<text x="750.0" y="1676" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No mobile or ERP integration (out of v1 scope).</text>
+<polyline points="750.0,1594 750.0,1608" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+</svg>

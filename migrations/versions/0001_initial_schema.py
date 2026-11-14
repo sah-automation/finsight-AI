@@ -173,10 +173,10 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop the core schema in reverse dependency order."""
-    op.drop_table('audit_logs')
-    op.drop_table('answers')
-    op.drop_table('metrics')
-    op.drop_table('document_chunks')
-    op.drop_table('documents')
-    op.drop_table('users')
-    op.drop_table('companies')
+    op.execute('DROP TABLE IF EXISTS audit_logs CASCADE')
+    op.execute('DROP TABLE IF EXISTS answers CASCADE')
+    op.execute('DROP TABLE IF EXISTS metrics CASCADE')
+    op.execute('DROP TABLE IF EXISTS document_chunks CASCADE')
+    op.execute('DROP TABLE IF EXISTS documents CASCADE')
+    op.execute('DROP TABLE IF EXISTS users CASCADE')
+    op.execute('DROP TABLE IF EXISTS companies CASCADE')

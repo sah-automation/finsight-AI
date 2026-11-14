@@ -87,6 +87,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -104,6 +106,8 @@ jobs:
 
       - name: Run architecture tests
         run: uv run pytest tests/architecture -v --tb=short
+        env:
+          CHECK_EXCEPTION_FRESHNESS: "1"
 
   unit-tests:
     name: Unit Tests
@@ -137,6 +141,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -154,6 +160,17 @@ jobs:
 
       - name: Run coverage gate
         run: make coverage
+
+      - name: Run high-risk package ratchets
+        run: make coverage-domain coverage-application
+
+      - name: Fetch PR base for changed-line coverage
+        if: github.event_name == 'pull_request'
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Run changed-line coverage ratchet
+        if: github.event_name == 'pull_request'
+        run: make coverage-diff DIFF_COVERAGE_BASE=origin/${{ github.base_ref }}
 
       - name: Upload coverage
         uses: actions/upload-artifact@v7
@@ -286,6 +303,9 @@ jobs:
         run: |
           ENVIRONMENT=test uv run alembic downgrade base
           ENVIRONMENT=test uv run alembic upgrade head
+
+      - name: Run migration round-trip test
+        run: ENVIRONMENT=test uv run pytest tests/integration/test_migration_roundtrip.py -v --tb=short -m "integration"
 
       - name: Stop Postgres
         if: always()

@@ -20,6 +20,14 @@ Test organization mirroring src structure.
 - `pytest tests/architecture` - AST invariants (company_id, Decimal money, env reads, naming)
 - `pytest tests/security -m security` - tenant isolation, permissions, cache keys, evidence, PII, secret scope
 - `pytest tests/unit/switches` - every switch has ON and OFF tests
+- Placeholder guard (issue #74) - a suite declared by a CI job fails when it has no
+  non-skipped tests; reported by the shared conftest.
+
+**Placeholder-only suites (tracked until replaced):**
+- `tests/integration/` - placeholder-only; blocked by first adapter integration test.
+- `tests/golden/` - scoring harness landed; runs on pilot and standard configs (issue #77).
+- `tests/security/test_prompt_injection.py` - tracked placeholder; blocked by input
+  gate (issues #74/#80).
 
 **Rules:**
 - Every new class ships with tests in same PR

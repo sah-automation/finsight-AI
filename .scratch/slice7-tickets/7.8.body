@@ -1,0 +1,19 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Build the source viewer as a side panel beside chat and bottom sheet on small screens. Render server-provided text and tables with highlight information, scroll to the highlight with surrounding context, show document title, category, period, version, status, and page indicator, multi-citation Next/Previous navigation with J/K shortcuts, newer-version banner, unavailable or lost-access message, copy citation and report-wrong-source footer controls, and Open full document action when available. The viewer must be keyboard accessible with visible focus ring and close on Esc.
+
+## Acceptance criteria
+
+- [ ] Cited text is highlighted, or cited tables render as real tables with relevant cell or row highlighting
+- [ ] Viewer scrolls to the highlight and supports surrounding context
+- [ ] Next/Previous and J/K move through multiple citations on one chip
+- [ ] Newer-version banner appears when the cited version is not the latest
+- [ ] Unavailable or lost-access sources show the non-leaking not-available message
+- [ ] Copy citation and report wrong source controls work from the footer
+- [ ] Open full document calls only the original-file endpoint when permitted
+- [ ] Keyboard navigation, visible focus, Esc close, and mobile bottom sheet work
+- [ ] All states (loading, empty, error, success) are handled and tested

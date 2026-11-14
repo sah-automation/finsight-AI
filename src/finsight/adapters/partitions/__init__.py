@@ -1,0 +1,1 @@
+"""Partition management adapters."""

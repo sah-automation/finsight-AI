@@ -112,7 +112,7 @@ documents:
     - budget
     - contract
     - board_report
-  upload_types: [new, update, delete]
+  upload_types: [new, update]
   delta_tracking: true         # true = on update, skip unchanged pages and chunks. false = full reprocess (see 5.25)
   duplicate_check: true        # same file, or same company, category and period, suggests Update
   version_retention_days: 365  # old versions kept for audit. Set with the client
@@ -288,7 +288,7 @@ The traffic numbers (`lambda_reserved_concurrency`, `db_pool_size_per_function`,
 | `queue_max_wait_seconds` must be between 1 and 30 | Waiting always ends in a clear message |
 | `access.roles` must list every role, and each one needs a full entry (every action and every document category) in `permissions_file`. An unknown role or a missing entry stops startup | No role with undefined access |
 | `documents.categories` must not be empty and must match the categories in `permissions_file` exactly | Every category has a defined access rule |
-| `upload_types` must be `new`, `update` and `delete` | No unknown upload type |
+| `upload_types` must be `new` and `update` | Upload no longer carries a delete action; document lifecycle actions (`delete`, `restore`, `purge`) belong to the document library |
 | `delta_tracking: true` needs `chunk_strategy: structure_recursive` | Stable chunk ids are needed to find what changed |
 | `version_retention_days` must be 30 or more, and `deleted_retention_days` 1 or more | Old versions and deletions can always be audited |
 | `table_reader` must match a registered reader | No unknown readers |

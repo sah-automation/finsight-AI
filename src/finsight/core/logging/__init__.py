@@ -6,29 +6,25 @@ import contextlib
 import logging
 import sys
 import uuid
-from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from pythonjsonlogger.json import JsonFormatter
 
+from .context import _company_id, _span_name, _switch_values, _trace_id, _user_id
 from .redaction import redact_sensitive_fields
 
 if TYPE_CHECKING:
     from types import TracebackType
 
-# Context variables for trace propagation
-_trace_id: ContextVar[str | None] = ContextVar('trace_id', default=None)
-_company_id: ContextVar[str | None] = ContextVar('company_id', default=None)
-_user_id: ContextVar[str | None] = ContextVar('user_id', default=None)
-_span_name: ContextVar[str | None] = ContextVar('span_name', default=None)
-_switch_values: ContextVar[dict[str, Any] | None] = ContextVar('switch_values', default=None)
-
 
 class TraceFormatter(JsonFormatter):
     """JSON formatter that includes trace context."""
 
-    def add_fields(
+    def add_fields(self, *args: Any, **kwargs: Any) -> Any:
+        return self._add_fields_impl(*args, **kwargs)
+
+    def _add_fields_impl(
         self,
         log_record: dict[str, Any],
         record: logging.LogRecord,
@@ -37,12 +33,11 @@ class TraceFormatter(JsonFormatter):
         with contextlib.suppress(TypeError, ValueError, AttributeError):
             super().add_fields(log_record, record, message_dict)
 
-        # Add trace context
-        if 'timestamp' not in log_record:
+        if log_record.get('timestamp') is None:
             log_record['timestamp'] = datetime.now(UTC).isoformat()
-        if 'level' not in log_record:
+        if log_record.get('level') is None:
             log_record['level'] = record.levelname
-        if 'logger' not in log_record:
+        if log_record.get('logger') is None:
             log_record['logger'] = record.name
 
         trace_id = _trace_id.get()
@@ -93,39 +88,53 @@ class TextFormatter(logging.Formatter):
         return base
 
 
-def configure_logging(
-    level: str = 'INFO',
-    format_type: str = 'json',
-    service_name: str = 'finsight-ai',
+def configure_logging(*args: Any, **kwargs: Any) -> Any:
+    return _configure_logging_impl(*args, **kwargs)
+
+
+def _configure_logging_impl(  # noqa: PLR0912
+    level: Any = 'INFO',
+    format_type: Any = 'json',
+    service_name: Any = 'finsight-ai',
 ) -> None:
     """Configure root logger. Call once at startup."""
+    if isinstance(level, str):
+        level_name = level.upper()
+        level_map = logging.getLevelNamesMapping()
+        if level_name not in level_map:
+            raise ValueError(f'Invalid log level: {level!r}')
+        level_value = level_map[level_name]
+    elif isinstance(level, int):
+        if level not in logging.getLevelNamesMapping().values():
+            raise ValueError(f'Invalid log level: {level!r}')
+        level_value = level
+    else:
+        raise TypeError(f'Invalid log level: {level!r}')
+    if hasattr(format_type, 'value'):
+        format_type = format_type.value
+    if not isinstance(format_type, str):
+        raise TypeError(f'Invalid log format: {format_type!r}')
+    format_name = format_type.strip().lower()
+    if format_name not in {'json', 'text'}:
+        raise ValueError(f'Invalid log format: {format_type!r}')
+    if not isinstance(service_name, str):
+        raise TypeError('Invalid service name: must be a string')
+    if not service_name.strip():
+        raise ValueError('Invalid service name: must be a non-empty string')
+    service_name = service_name.strip()
     root = logging.getLogger()
-    root.setLevel(level)
-
-    # Clear existing handlers
+    root.setLevel(level_value)
     for handler in root.handlers[:]:
         root.removeHandler(handler)
 
     handler = logging.StreamHandler(sys.stdout)
     handler.set_name(service_name)
 
-    formatter: logging.Formatter
-    if format_type == 'json':
-        with contextlib.suppress(TypeError, ValueError, AttributeError):
-            candidate: logging.Formatter = TraceFormatter(
-                '%(timestamp)s %(level)s %(logger)s %(message)s',
-                rename_fields={'levelname': 'level'},
-            )
-            handler.setFormatter(candidate)
-            handler.set_name(service_name)
-            root.addHandler(handler)
-            logging.getLogger('boto3').setLevel(logging.WARNING)
-            logging.getLogger('botocore').setLevel(logging.WARNING)
-            logging.getLogger('urllib3').setLevel(logging.WARNING)
-            logging.getLogger('asyncpg').setLevel(logging.WARNING)
-            logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
-            return
-        formatter = TraceFormatter()
+    if format_name == 'json':
+        formatter: logging.Formatter = TraceFormatter(
+            '%(timestamp)s %(level)s %(logger)s %(message)s',
+            rename_fields={'levelname': 'level'},
+        )
     else:
         formatter = TextFormatter(
             '%(asctime)s %(levelname)-8s %(name)s %(message)s',
@@ -135,7 +144,6 @@ def configure_logging(
     handler.setFormatter(formatter)
     root.addHandler(handler)
 
-    # Reduce noise from third-party loggers
     logging.getLogger('boto3').setLevel(logging.WARNING)
     logging.getLogger('botocore').setLevel(logging.WARNING)
     logging.getLogger('urllib3').setLevel(logging.WARNING)
@@ -146,11 +154,6 @@ def configure_logging(
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance."""
     return logging.getLogger(name)
-
-
-# ============================================================
-# Trace Context Management
-# ============================================================
 
 
 def set_trace_id(trace_id: str | None = None) -> str:
@@ -270,3 +273,23 @@ def trace_context(
 ) -> TraceContext:
     """Create a trace context manager."""
     return TraceContext(trace_id, company_id, user_id, span_name, switches)
+
+
+__all__ = [
+    'TextFormatter',
+    'TraceContext',
+    'TraceFormatter',
+    'configure_logging',
+    'get_company_id',
+    'get_logger',
+    'get_span_name',
+    'get_switch_values',
+    'get_trace_id',
+    'get_user_id',
+    'set_company_id',
+    'set_span_name',
+    'set_switch_values',
+    'set_trace_id',
+    'set_user_id',
+    'trace_context',
+]

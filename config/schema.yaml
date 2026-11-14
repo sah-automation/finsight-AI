@@ -8,80 +8,123 @@
 app:
   name: "finsight-ai"
   version: "0.1.0"
-  environment: "development"  # development, staging, production
+  environment: "development"
 
 # ============================================================
 # Feature Switches (both paths must exist and be tested)
 # ============================================================
 switches:
-  # LLM & Retrieval
-  reranker_enabled: true
+  parallel_steps: true
   backup_request_enabled: true
-  parallel_retrieval_enabled: true
-  per_sentence_citation_check: true
-
-  # Ingestion
-  async_textract_enabled: true
-  ocr_fallback_enabled: true
-
-  # Caching
+  prompt_cache_enabled: true
   answer_cache_enabled: true
-  role_cache_enabled: true
-
-  # Observability
   detailed_tracing_enabled: true
   usage_metering_enabled: true
+  llm_content_capture_enabled: true
+
+
+# ============================================================
+# Models Configuration (approved & priced model policy)
+# ============================================================
+models:
+  region: "us-east-1"
+  answer:
+    primary: "groq/openai/gpt-oss-120b"
+    primary_fallbacks:
+      - "gemini/gemini-3.6-flash"
+      - "nvidia_nim/google/gemma-4-31b-it"
+      - "self_hosted/open_model_small"
+    cheap: "groq/openai/gpt-oss-20b"
+    cheap_fallbacks:
+      - "gemini/gemini-3.1-flash-lite"
+      - "groq/openai/gpt-oss-120b"
+      - "self_hosted/open_model_small"
+  failover_on:
+    - "timeout"
+    - "first_word_timeout"
+    - "rate_limit"
+    - "server_error"
+    - "provider_unavailable"
+  embedding:
+    primary: "gemini/gemini-embedding-001"
+    version: "v1"
+    dimensions: 1024
+    retry_attempts: 3
+    retry_wait_seconds: 2
+  rerank:
+    primary: "cohere/rerank-english-v3.0"
+    timeout_ms: 600
+    on_failure: "search_order"
+  timeout_seconds: 20
+  first_token_timeout_seconds: 4.0
+  backup_request_enabled: true
+  backup_request_after_seconds: 2.5
+  prompt_cache_enabled: true
+  max_output_tokens: 1000
+  monthly_budget_per_company: 50
+  approved_models:
+    - model_id: "gemini/gemini-3.6-flash"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/gemini-3.5-flash-lite"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/gemini-3.1-flash-lite"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/openai/gpt-oss-120b"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/openai/gpt-oss-20b"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "groq/qwen/qwen3.8-27b"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/nvidia/nemotron-3.5-bolt-e4b"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/google/gemma-4-31b-it"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/gemini-3.8-flash"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "gemini/gemini-embedding-001"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "nvidia_nim/llama-3.2-nv-rerankqa-1b-v2"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "self_hosted/open_model_small"
+      regions: ["us-east-1", "us-west-2", "us", "in-region"]
+    - model_id: "self_hosted/cross_encoder_small"
+      regions: ["us-east-1", "us-west-2", "us", "in-region"]
+    - model_id: "cohere/rerank-english-v3.0"
+      regions: ["us-east-1", "us-west-2", "us"]
+    - model_id: "cohere/rerank-multilingual-v3.0"
+      regions: ["us-east-1", "us-west-2", "us"]
+
 
 # ============================================================
 # LLM Configuration
 # ============================================================
 llm:
-  # Primary model (model 1 in fallback chain)
   primary_model:
     provider: "litellm"
-    model_id: "anthropic/claude-3-5-sonnet-20241022"
     max_tokens: 8192
     temperature: 0.0
     timeout_seconds: 60
     max_retries: 3
     retry_base_delay_seconds: 1.0
-
-  # Fallback models (model 2, 3 in chain)
   fallback_models:
     - provider: "litellm"
-      model_id: "anthropic/claude-3-5-haiku-20241022"
       max_tokens: 8192
       temperature: 0.0
       timeout_seconds: 30
       max_retries: 2
       retry_base_delay_seconds: 1.0
-    - provider: "litellm"
-      model_id: "openai/gpt-4o-mini"
-      max_tokens: 4096
-      temperature: 0.0
-      timeout_seconds: 30
-      max_retries: 2
-      retry_base_delay_seconds: 1.0
-
-  # Embedding model
   embedding_model:
     provider: "litellm"
-    model_id: "amazon/titan-embed-text-v2:0"
     dimensions: 1024
     batch_size: 100
     timeout_seconds: 30
     max_retries: 3
-
-  # LiteLLM router settings
   router:
     num_retries: 3
     retry_after: 60
     allowed_fails: 3
     cooldown_time: 300
 
-# ============================================================
-# Vector Store (Aurora pgvector)
-# ============================================================
 vector_store:
   host: "${VECTOR_DB_HOST}"
   port: 5432
@@ -101,7 +144,6 @@ vector_store:
 # Document Readers
 # ============================================================
 readers:
-  # Default reader priority order (first match wins)
   priority:
     - "pdfplumber"
     - "textract"
@@ -109,8 +151,6 @@ readers:
     - "excel"
     - "csv"
     - "docx"
-
-  # Textract async settings
   textract:
     async_enabled: true
     poll_interval_seconds: 5
@@ -119,16 +159,12 @@ readers:
       - "TABLES"
       - "FORMS"
     region: "${AWS_REGION}"
-
-  # OCR settings
   tesseract:
     languages: ["eng"]
     dpi: 300
     config: "--psm 6"
-
-  # Chunking settings
   chunking:
-    strategy: "semantic"  # semantic, fixed, recursive
+    strategy: "semantic"
     max_chunk_tokens: 512
     overlap_tokens: 50
     min_chunk_tokens: 50
@@ -139,7 +175,6 @@ readers:
 # ============================================================
 reranker:
   provider: "cohere"
-  model: "rerank-english-v3.0"
   top_n: 20
   timeout_seconds: 10
   max_retries: 2
@@ -151,16 +186,15 @@ reranker:
 caches:
   answer_cache:
     table_name: "${ANSWER_CACHE_TABLE}"
-    ttl_seconds: 86400  # 24 hours
+    ttl_seconds: 86400
     key_prefix: "ans:"
-    max_entry_size_bytes: 400000  # 400KB DynamoDB limit
-
+    max_entry_size_bytes: 400000
   role_cache:
     table_name: "${ROLE_CACHE_TABLE}"
-    ttl_seconds: 3600  # 1 hour
+    ttl_seconds: 3600
     key_prefix: "role:"
     max_entry_size_bytes: 400000
-    refresh_ahead_seconds: 300  # refresh 5 min before expiry
+    refresh_ahead_seconds: 300
 
 # ============================================================
 # Queue (SQS)
@@ -170,6 +204,9 @@ queue:
   reprocessing_queue_url: "${REPROCESSING_QUEUE_URL}"
   reports_queue_url: "${REPORTS_QUEUE_URL}"
   dead_letter_queue_url: "${DLQ_URL}"
+  # Base AWS endpoint for LocalStack (e.g. http://localhost:4566).
+  # When empty, the adapter derives it from the queue URL.
+  endpoint_url: "${AWS_ENDPOINT_URL:-}"
   visibility_timeout_seconds: 300
   max_receive_count: 3
   batch_size: 10
@@ -204,19 +241,18 @@ metering:
   table_name: "${METERING_TABLE}"
   flush_interval_seconds: 60
   batch_size: 100
-  # Prices loaded from config/prices.yaml
+  price_table: "config/prices.yaml"
 
 # ============================================================
 # Observability
 # ============================================================
 observability:
   log_level: "INFO"
-  log_format: "json"  # json, text
+  log_format: "json"
   trace_sample_rate: 1.0
   service_name: "finsight-ai"
   otlp_endpoint: "${OTLP_ENDPOINT}"
   otlp_headers: {}
-  # Alert thresholds
   alerts:
     fallback_model_3_used: true
     reranker_down: true
@@ -230,7 +266,68 @@ observability:
 security:
   require_company_id_on_all_queries: true
   pii_detection_enabled: true
-  pii_action: "mask"  # mask, block, log
+  pii_action: "mask"
   prompt_injection_detection_enabled: true
   max_question_length: 10000
   max_context_tokens: 100000
+
+# ============================================================
+# Phase 1
+# ============================================================
+ingestion:
+  max_document_size_mb: 100
+  allowed_mime_types: ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "image/png", "image/jpeg", "image/tiff"]
+  virus_scan_enabled: true
+  page_router_enabled: true
+  chunk_strategy: structure_recursive
+  child_chunk_tokens: 500
+  parent_mode: section
+  max_parent_tokens: 1500
+  llm_context_categories: []
+  required_metadata: [company, period, category, currency, units, page, table_id]
+
+documents:
+  reader: pdfplumber
+  scan_reader: tesseract
+  table_reader: pdfplumber
+  per_company_override: {}
+  categories: ["invoice", "bank_statement", "financial_statement", "budget", "contract", "board_report"]
+  upload_types: ["new", "update"]
+  delta_tracking: true
+  duplicate_check: true
+  version_retention_days: 365
+  deleted_retention_days: 30
+  source_original_link_ttl_seconds: 300
+  source_viewer_signing_key: "${SOURCE_VIEWER_SIGNING_KEY}"
+retrieval:
+  hybrid_search_enabled: true
+  vector_weight: 0.7
+  keyword_weight: 0.3
+  top_k: 50
+  rerank_top_n: 20
+  rerank_parallel_batches: 2
+  evidence_min_score: 0.30
+  evidence_min_search_score: 0.50
+  evidence_min_chunks: 1
+
+question_flow:
+  first_word_timeout_seconds: 2.0
+  max_wait_seconds: 30
+  evidence_threshold: 0.7
+
+output_gate:
+  per_sentence_citation_check: true
+  number_check_enabled: true
+  block_on_failure: true
+
+consistency:
+  check_interval_seconds: 300
+  fresh_read_window_seconds: 10
+
+answer_check:
+  enabled: true
+
+access:
+  roles: ["executive_leadership", "corporate_finance_planners", "audit_compliance", "system_admin"]
+  permissions_file: "config/permissions.yaml"
+  role_cache_seconds_privileged: 0

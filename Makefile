@@ -4,7 +4,7 @@
 
 COVERAGE_MIN ?= 50
 
-.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps
+.PHONY: help install install-dev install-hooks format lint typecheck imports vulture secrets pre-commit check ci test test-unit test-integration test-golden test-contract test-architecture test-switches test-security arch-test ratchet coverage coverage-html config-check docs-check migrate migration docker-up docker-down infra-synth infra-test lambda-build docker-build clean update-deps coverage-domain coverage-application coverage-packages coverage-diff web-typecheck web-lint web-test web-build web-api-check web-verify sizes
 
 # Default target
 help:
@@ -18,6 +18,7 @@ help:
 	@echo "Quality Gates (run all):"
 	@echo "  check          - Run every gate once (lint + typecheck + imports + vulture + secrets + tests + security)"
 	@echo "  ci             - CI pipeline (lint + typecheck + imports + vulture + secrets + coverage incl. security)"
+	@echo "  preflight      - Fast loop (lint + typecheck + imports + arch-test + unit tests)"
 	@echo "  pre-commit     - Run pre-commit on all files"
 	@echo ""
 	@echo "Individual Checks:"
@@ -30,6 +31,7 @@ help:
 	@echo "  config-check   - Validate every config profile through the loader"
 	@echo "  docs-check     - Verify every relative Markdown link resolves"
 	@echo "  arch-test      - Run architecture invariant tests"
+	@echo "  ratchet        - Regenerate standards_report.md (UPDATE_STANDARDS_REPORT=1)"
 	@echo ""
 	@echo "Tests:"
 	@echo "  test           - Run all tests (unit + contract + architecture + switches)"
@@ -52,14 +54,19 @@ help:
 	@echo "  docker-build   - Build the application container image"
 	@echo "  infra-synth    - Synthesize every CDK stack (non-deploying)"
 	@echo "  infra-test     - Run the CDK smoke tests"
-	@echo ""
-	@echo "Coverage:"
-	@echo "  coverage       - Generate coverage report and enforce the floor (COVERAGE_MIN, default 50)"
+	@echo "  web-typecheck - Run the web type checker"
+	@echo "  web-lint     - Run the web ESLint checks"
+	@echo "  web-test     - Run the web tests"
+	@echo "  web-build    - Build the web application"
+	@echo "  web-api-check- Check the generated web API client against OpenAPI"
+	@echo "  web-verify   - Run all web quality checks"
+	@echo "  coverage       - Generate coverage report and enforce the floor (COVERAGE_MIN, default 24)"
 	@echo "  coverage-html  - Generate HTML coverage report"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  clean          - Remove build artifacts"
 	@echo "  update-deps    - Update dependencies to latest allowed versions"
+	@echo "  sizes          - Report files and functions exceeding size limits"
 
 # ============================================================
 # Installation
@@ -80,6 +87,25 @@ install-hooks:
 check: lint typecheck imports vulture secrets test test-security
 	@echo "✓ All quality checks passed"
 
+# Fast pre-flight loop (lint + typecheck + imports + arch-test + unit tests)
+# Excludes: vulture, secrets, integration, contract, switches, security, coverage
+preflight: lint typecheck imports arch-test test-unit bootstrap-check
+	@echo "✓ Pre-flight checks passed"
+
+# Advanced quality gates (issue #80)
+property-tests:
+	uv run pytest tests/property -v --tb=short -m "property"
+
+mutation:
+	uv run mutmut run
+
+mutation-report:
+	uv run mutmut results
+
+security-scan:
+	uv run bandit -r src/finsight -c pyproject.toml
+	uv run pre-commit run detect-secrets --all-files
+	uv run --with pip-audit==2.10.1 pip-audit --local --skip-editable --progress-spinner off
 ci: lint typecheck imports vulture secrets coverage
 	@echo "✓ CI pipeline passed"
 
@@ -109,8 +135,14 @@ pre-commit:
 config-check:
 	uv run python scripts/check_config.py
 
+.PHONY: bootstrap-check local-bootstrap-check local-bootstrap-parity bootstrap-parity check-bootstrap-parity
+bootstrap-check local-bootstrap-check local-bootstrap-parity bootstrap-parity check-bootstrap-parity:
+	uv run python scripts/check_local_bootstrap_parity.py
 docs-check:
 	uv run python scripts/check_links.py
+
+openapi-check:
+	ENVIRONMENT=test uv run python scripts/check_openapi.py
 
 # ============================================================
 # Packaging and Infrastructure
@@ -133,6 +165,11 @@ docker-build:
 arch-test:
 	uv run pytest tests/architecture -v --tb=short
 
+# make ratchet target command (issue #220):
+# UPDATE_STANDARDS_REPORT=1 pytest tests/architecture/test_standards_checklist.py -v
+ratchet:
+	UPDATE_STANDARDS_REPORT=1 uv run pytest tests/architecture/test_standards_checklist.py -v
+
 # ============================================================
 # Test Suite
 # ============================================================
@@ -147,6 +184,12 @@ test-integration:
 
 test-golden:
 	uv run pytest tests/golden -v --tb=short -m "golden"
+
+test-performance:
+	uv run pytest tests/performance -v --tb=short -m "performance"
+
+test-load:
+	uv run pytest tests/load -v --tb=short -m "performance or load or perf or benchmark"
 
 test-contract:
 	uv run pytest tests/contract -v --tb=short -m "contract"
@@ -188,6 +231,28 @@ coverage-html:
 	uv run pytest tests/unit tests/contract tests/architecture tests/security \
 		--cov=src/finsight --cov-report=html
 
+# Ratchets for high-risk packages and changed lines.
+DIFF_COVERAGE_BASE ?= origin/main
+DOMAIN_COVERAGE_MIN ?= 65
+APPLICATION_COVERAGE_MIN ?= 29
+
+coverage-domain:
+	uv run pytest tests/unit tests/contract tests/architecture tests/security \
+		--cov=src/finsight/domain --cov-report=term-missing \
+		--cov-fail-under=$(DOMAIN_COVERAGE_MIN)
+
+coverage-application:
+	uv run pytest tests/unit tests/contract tests/architecture tests/security \
+		--cov=src/finsight/application --cov-report=term-missing \
+		--cov-fail-under=$(APPLICATION_COVERAGE_MIN)
+
+coverage-packages: coverage-domain coverage-application
+
+coverage-diff:
+	uv run diff-cover coverage.xml --compare-branch=$(DIFF_COVERAGE_BASE) \
+		--fail-under=85 \
+		--include="src/finsight/domain/*" --include="src/finsight/application/*"
+
 # ============================================================
 # Maintenance
 # ============================================================
@@ -200,3 +265,31 @@ clean:
 update-deps:
 	uv lock --upgrade
 	uv sync --all-extras
+
+
+# ============================================================
+# Web frontend
+# ============================================================
+web-typecheck:
+		cd web && npm run typecheck
+
+web-lint:
+		cd web && npm run lint
+
+web-test:
+		cd web && npm run test
+
+web-build:
+		cd web && BACKEND_API_URL=http://127.0.0.1:8000 COGNITO_REGION=us-east-1 COGNITO_USER_POOL_ID=us-east-1_test COGNITO_CLIENT_ID=testclient SESSION_COOKIE_SECURE=false npm run build
+
+web-api-check:
+		cd web && npm run api:check
+
+web-verify: web-api-check web-typecheck web-lint web-test web-build
+	@echo "✓ Web quality checks passed"
+
+# ============================================================
+# Size report
+# ============================================================
+sizes:
+	uv run python tests/support/size_report.py

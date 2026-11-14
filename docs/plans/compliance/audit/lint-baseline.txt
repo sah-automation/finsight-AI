@@ -1,0 +1,4525 @@
+uv run ruff check src tests --exit-non-zero-on-fix
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `value`
+  --> src/finsight/adapters/cache/job_progress.py:14:24
+   |
+14 | def _coerce_str(value: Any) -> str:
+   |                        ^^^
+15 |     if value is None:
+16 |         return ''
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `default`
+  --> src/finsight/adapters/cache/job_progress.py:22:58
+   |
+22 | def _first(kwargs: dict[str, Any], *names: str, default: Any = None) -> Any:
+   |                                                          ^^^
+23 |     for name in names:
+24 |         if name in kwargs and kwargs.get(name) is not None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_first`
+  --> src/finsight/adapters/cache/job_progress.py:22:73
+   |
+22 | def _first(kwargs: dict[str, Any], *names: str, default: Any = None) -> Any:
+   |                                                                         ^^^
+23 |     for name in names:
+24 |         if name in kwargs and kwargs.get(name) is not None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/adapters/cache/job_progress.py:32:28
+   |
+32 | def _resolve_config(*args: Any, **kwargs: Any) -> Any:
+   |                            ^^^
+33 |     for arg in args:
+34 |         if arg is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/adapters/cache/job_progress.py:32:43
+   |
+32 | def _resolve_config(*args: Any, **kwargs: Any) -> Any:
+   |                                           ^^^
+33 |     for arg in args:
+34 |         if arg is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_resolve_config`
+  --> src/finsight/adapters/cache/job_progress.py:32:51
+   |
+32 | def _resolve_config(*args: Any, **kwargs: Any) -> Any:
+   |                                                   ^^^
+33 |     for arg in args:
+34 |         if arg is None:
+   |
+
+PLR0912 Too many branches (13 > 12)
+  --> src/finsight/adapters/cache/job_progress.py:58:5
+   |
+58 | def _config_value(config: Any, *names: str, default: Any = None) -> Any:
+   |     ^^^^^^^^^^^^^
+59 |     for name in names:
+60 |         if config is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `config`
+  --> src/finsight/adapters/cache/job_progress.py:58:27
+   |
+58 | def _config_value(config: Any, *names: str, default: Any = None) -> Any:
+   |                           ^^^
+59 |     for name in names:
+60 |         if config is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `default`
+  --> src/finsight/adapters/cache/job_progress.py:58:54
+   |
+58 | def _config_value(config: Any, *names: str, default: Any = None) -> Any:
+   |                                                      ^^^
+59 |     for name in names:
+60 |         if config is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_config_value`
+  --> src/finsight/adapters/cache/job_progress.py:58:69
+   |
+58 | def _config_value(config: Any, *names: str, default: Any = None) -> Any:
+   |                                                                     ^^^
+59 |     for name in names:
+60 |         if config is None:
+   |
+
+SIM108 Use ternary operator `v = sec.get(name) if isinstance(sec, dict) else getattr(sec, name, None)` instead of `if`-`else`-block
+  --> src/finsight/adapters/cache/job_progress.py:76:21
+   |
+74 |                   sec = getattr(config, attr, None)
+75 |                   if sec is not None:
+76 | /                     if isinstance(sec, dict):
+77 | |                         v = sec.get(name)
+78 | |                     else:
+79 | |                         v = getattr(sec, name, None)
+   | |____________________________________________________^
+80 |                       if v is not None:
+81 |                           return v
+   |
+help: Replace `if`-`else`-block with `v = sec.get(name) if isinstance(sec, dict) else getattr(sec, name, None)`
+   |
+75 |                 if sec is not None:
+   -                     if isinstance(sec, dict):
+   -                         v = sec.get(name)
+   -                     else:
+   -                         v = getattr(sec, name, None)
+76 +                     v = sec.get(name) if isinstance(sec, dict) else getattr(sec, name, None)
+77 |                     if v is not None:
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `obj`
+  --> src/finsight/adapters/cache/job_progress.py:85:20
+   |
+85 | def _is_table(obj: Any) -> bool:
+   |                    ^^^
+86 |     return obj is not None and (
+87 |         hasattr(obj, 'put_item')
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `value`
+  --> src/finsight/adapters/cache/job_progress.py:94:31
+   |
+94 | async def _maybe_await(value: Any, *a: Any, **k: Any) -> Any:
+   |                               ^^^
+95 |     if callable(value):
+96 |         result = value(*a, **k)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*a`
+  --> src/finsight/adapters/cache/job_progress.py:94:40
+   |
+94 | async def _maybe_await(value: Any, *a: Any, **k: Any) -> Any:
+   |                                        ^^^
+95 |     if callable(value):
+96 |         result = value(*a, **k)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**k`
+  --> src/finsight/adapters/cache/job_progress.py:94:50
+   |
+94 | async def _maybe_await(value: Any, *a: Any, **k: Any) -> Any:
+   |                                                  ^^^
+95 |     if callable(value):
+96 |         result = value(*a, **k)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_maybe_await`
+  --> src/finsight/adapters/cache/job_progress.py:94:58
+   |
+94 | async def _maybe_await(value: Any, *a: Any, **k: Any) -> Any:
+   |                                                          ^^^
+95 |     if callable(value):
+96 |         result = value(*a, **k)
+   |
+
+SIM108 Use ternary operator `result = value(*a, **k) if callable(value) else value` instead of `if`-`else`-block
+   --> src/finsight/adapters/cache/job_progress.py:95:5
+    |
+ 94 |   async def _maybe_await(value: Any, *a: Any, **k: Any) -> Any:
+ 95 | /     if callable(value):
+ 96 | |         result = value(*a, **k)
+ 97 | |     else:
+ 98 | |         result = value
+    | |______________________^
+ 99 |       if inspect.isawaitable(result):
+100 |           return await result
+    |
+help: Replace `if`-`else`-block with `result = value(*a, **k) if callable(value) else value`
+   |
+94 | async def _maybe_await(value: Any, *a: Any, **k: Any) -> Any:
+   -     if callable(value):
+   -         result = value(*a, **k)
+   -     else:
+   -         result = value
+95 +     result = value(*a, **k) if callable(value) else value
+96 |     if inspect.isawaitable(result):
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `value`
+   --> src/finsight/adapters/cache/job_progress.py:104:18
+    |
+104 | def _norm(value: Any) -> str:
+    |                  ^^^
+105 |     if value is None:
+106 |         return ''
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `__getattr__`
+   --> src/finsight/adapters/cache/job_progress.py:111:41
+    |
+110 | class _ProgressRecord(dict[str, Any]):
+111 |     def __getattr__(self, name: str) -> Any:
+    |                                         ^^^
+112 |         try:
+113 |             return self.get(name)
+    |
+
+PLR0912 Too many branches (19 > 12)
+   --> src/finsight/adapters/cache/job_progress.py:121:9
+    |
+119 |     """DynamoDB job-progress (rebuildable view) adapter."""
+120 |
+121 |     def __init__(self, *args: Any, **kwargs: Any) -> None:
+    |         ^^^^^^^^
+122 |         self.config = _resolve_config(*args, **kwargs)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:121:31
+    |
+119 |     """DynamoDB job-progress (rebuildable view) adapter."""
+120 |
+121 |     def __init__(self, *args: Any, **kwargs: Any) -> None:
+    |                               ^^^
+122 |         self.config = _resolve_config(*args, **kwargs)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:121:46
+    |
+119 |     """DynamoDB job-progress (rebuildable view) adapter."""
+120 |
+121 |     def __init__(self, *args: Any, **kwargs: Any) -> None:
+    |                                              ^^^
+122 |         self.config = _resolve_config(*args, **kwargs)
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/cache/job_progress.py:181:24
+    |
+179 |                     self.resource = candidate
+180 |                     self.table = candidate.Table(self.table_name)
+181 |                 except Exception:
+    |                        ^^^^^^^^^
+182 |                     self.table = None
+183 |             elif hasattr(candidate, 'resource'):
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/cache/job_progress.py:187:24
+    |
+185 |                     self.resource = candidate.resource('dynamodb')
+186 |                     self.table = self.resource.Table(self.table_name)
+187 |                 except Exception:
+    |                        ^^^^^^^^^
+188 |                     try:
+189 |                         self.table = candidate.resource('dynamodb').Table(self.table_name)
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/cache/job_progress.py:190:28
+    |
+188 |                     try:
+189 |                         self.table = candidate.resource('dynamodb').Table(self.table_name)
+190 |                     except Exception:
+    |                            ^^^^^^^^^
+191 |                         self.table = None
+192 |             elif hasattr(candidate, 'get_item') or hasattr(candidate, 'put_item'):
+    |
+
+PLC0415 `import` should be at the top-level of a file
+   --> src/finsight/adapters/cache/job_progress.py:197:17
+    |
+195 |         if self.table is None:
+196 |             try:
+197 |                 import boto3  # type: ignore[import-untyped]
+    |                 ^^^^^^^^^^^^
+198 |
+199 |                 resource = boto3.resource('dynamodb')
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/cache/job_progress.py:202:20
+    |
+200 |                 self.table = resource.Table(self.table_name)
+201 |                 self.resource = resource
+202 |             except Exception:
+    |                    ^^^^^^^^^
+203 |                 self.table = None
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/cache/job_progress.py:209:32
+    |
+207 |         self._memory = _PROGRESS_STORES[self.table_name]
+208 |
+209 |     def _key(self, company_id: Any, job_id: Any) -> str:
+    |                                ^^^
+210 |         return f'{_norm(company_id)}#{_norm(job_id)}'
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `job_id`
+   --> src/finsight/adapters/cache/job_progress.py:209:45
+    |
+207 |         self._memory = _PROGRESS_STORES[self.table_name]
+208 |
+209 |     def _key(self, company_id: Any, job_id: Any) -> str:
+    |                                             ^^^
+210 |         return f'{_norm(company_id)}#{_norm(job_id)}'
+    |
+
+PLR0912 Too many branches (18 > 12)
+   --> src/finsight/adapters/cache/job_progress.py:212:9
+    |
+210 |         return f'{_norm(company_id)}#{_norm(job_id)}'
+211 |
+212 |     def _extract(
+    |         ^^^^^^^^
+213 |         self, args: tuple[Any, ...], kwargs: dict[str, Any]
+214 |     ) -> tuple[Any, Any, dict[str, Any]]:
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/cache/job_progress.py:266:34
+    |
+264 |         return company_id, job_id, payload
+265 |
+266 |     def _build(self, company_id: Any, job_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    |                                  ^^^
+267 |         now = datetime.now(UTC).isoformat()
+268 |         item: dict[str, Any] = {
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `job_id`
+   --> src/finsight/adapters/cache/job_progress.py:266:47
+    |
+264 |         return company_id, job_id, payload
+265 |
+266 |     def _build(self, company_id: Any, job_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    |                                               ^^^
+267 |         now = datetime.now(UTC).isoformat()
+268 |         item: dict[str, Any] = {
+    |
+
+SIM105 Use `contextlib.suppress(TypeError, ValueError)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/cache/job_progress.py:295:21
+    |
+293 |                   val = payload.get(src)
+294 |                   if src in ('progress', 'receive_count'):
+295 | /                     try:
+296 | |                         val = int(str(val))
+297 | |                     except (TypeError, ValueError):
+298 | |                         pass
+    | |____________________________^
+299 |                   item[dst] = val
+300 |           for key, val in payload.items():
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(TypeError, ValueError): ...`
+    |
+9   | from finsight.domain.ports.job_progress_port import JobProgressPort
+10  + import contextlib
+11  |
+--------------------------------------------------------------------------------
+295 |                 if src in ('progress', 'receive_count'):
+    -                     try:
+296 +                     with contextlib.suppress(TypeError, ValueError):
+297 |                         val = int(str(val))
+    -                     except (TypeError, ValueError):
+    -                         pass
+298 |                 item[dst] = val
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/cache/job_progress.py:312:20
+    |
+310 |             try:
+311 |                 await _maybe_await(self.table.put_item, Item=item)
+312 |             except Exception:
+    |                    ^^^^^^^^^
+313 |                 try:
+314 |                     await _maybe_await(self.table.put_item, item=item)
+    |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/cache/job_progress.py:313:17
+    |
+311 |                   await _maybe_await(self.table.put_item, Item=item)
+312 |               except Exception:
+313 | /                 try:
+314 | |                     await _maybe_await(self.table.put_item, item=item)
+315 | |                 except Exception:
+316 | |                     pass
+    | |________________________^
+317 |
+318 |       async def _fetch(self, company_id: Any, job_id: Any) -> dict[str, Any] | None:
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+    |
+9   | from finsight.domain.ports.job_progress_port import JobProgressPort
+10  + import contextlib
+11  |
+--------------------------------------------------------------------------------
+313 |             except Exception:
+    -                 try:
+314 +                 with contextlib.suppress(Exception):
+315 |                     await _maybe_await(self.table.put_item, item=item)
+    -                 except Exception:
+    -                     pass
+316 |
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/cache/job_progress.py:315:17
+    |
+313 |                   try:
+314 |                       await _maybe_await(self.table.put_item, item=item)
+315 | /                 except Exception:
+316 | |                     pass
+    | |________________________^
+317 |
+318 |       async def _fetch(self, company_id: Any, job_id: Any) -> dict[str, Any] | None:
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/cache/job_progress.py:315:24
+    |
+313 |                 try:
+314 |                     await _maybe_await(self.table.put_item, item=item)
+315 |                 except Exception:
+    |                        ^^^^^^^^^
+316 |                     pass
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/cache/job_progress.py:318:40
+    |
+316 |                     pass
+317 |
+318 |     async def _fetch(self, company_id: Any, job_id: Any) -> dict[str, Any] | None:
+    |                                        ^^^
+319 |         cid = _norm(company_id)
+320 |         jid = _norm(job_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `job_id`
+   --> src/finsight/adapters/cache/job_progress.py:318:53
+    |
+316 |                     pass
+317 |
+318 |     async def _fetch(self, company_id: Any, job_id: Any) -> dict[str, Any] | None:
+    |                                                     ^^^
+319 |         cid = _norm(company_id)
+320 |         jid = _norm(job_id)
+    |
+
+S112 `try`-`except`-`continue` detected, consider logging the exception
+   --> src/finsight/adapters/cache/job_progress.py:348:17
+    |
+346 |                           self._memory.setdefault(cid, {})[jid] = dict(item)
+347 |                           return dict(item)
+348 | /                 except Exception:
+349 | |                     continue
+    | |____________________________^
+350 |           return None
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/cache/job_progress.py:348:24
+    |
+346 |                         self._memory.setdefault(cid, {})[jid] = dict(item)
+347 |                         return dict(item)
+348 |                 except Exception:
+    |                        ^^^^^^^^^
+349 |                     continue
+350 |         return None
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/cache/job_progress.py:352:48
+    |
+350 |         return None
+351 |
+352 |     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                ^^^
+353 |         kwargs_copy = dict(kwargs)
+354 |         if (
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:352:60
+    |
+350 |         return None
+351 |
+352 |     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                            ^^^
+353 |         kwargs_copy = dict(kwargs)
+354 |         if (
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:352:75
+    |
+350 |         return None
+351 |
+352 |     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                                           ^^^
+353 |         kwargs_copy = dict(kwargs)
+354 |         if (
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `write_progress`
+   --> src/finsight/adapters/cache/job_progress.py:352:83
+    |
+350 |         return None
+351 |
+352 |     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                                                   ^^^
+353 |         kwargs_copy = dict(kwargs)
+354 |         if (
+    |
+
+PLR0912 Too many branches (13 > 12)
+   --> src/finsight/adapters/cache/job_progress.py:381:15
+    |
+379 |         return _ProgressRecord(item)
+380 |
+381 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |               ^^^^^^^^^^^^^
+382 |         kwargs_copy = dict(kwargs)
+383 |         if (
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/cache/job_progress.py:381:47
+    |
+379 |         return _ProgressRecord(item)
+380 |
+381 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                               ^^^
+382 |         kwargs_copy = dict(kwargs)
+383 |         if (
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:381:59
+    |
+379 |         return _ProgressRecord(item)
+380 |
+381 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                           ^^^
+382 |         kwargs_copy = dict(kwargs)
+383 |         if (
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:381:74
+    |
+379 |         return _ProgressRecord(item)
+380 |
+381 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                                          ^^^
+382 |         kwargs_copy = dict(kwargs)
+383 |         if (
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `read_progress`
+   --> src/finsight/adapters/cache/job_progress.py:381:82
+    |
+379 |         return _ProgressRecord(item)
+380 |
+381 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                                                  ^^^
+382 |         kwargs_copy = dict(kwargs)
+383 |         if (
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/cache/job_progress.py:419:47
+    |
+417 |         return _ProgressRecord(item)
+418 |
+419 |     async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                               ^^^
+420 |         cid = company_id
+421 |         if _norm(cid) == '':
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:419:59
+    |
+417 |         return _ProgressRecord(item)
+418 |
+419 |     async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                           ^^^
+420 |         cid = company_id
+421 |         if _norm(cid) == '':
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:419:74
+    |
+417 |         return _ProgressRecord(item)
+418 |
+419 |     async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                                          ^^^
+420 |         cid = company_id
+421 |         if _norm(cid) == '':
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `list_progress`
+   --> src/finsight/adapters/cache/job_progress.py:419:82
+    |
+417 |         return _ProgressRecord(item)
+418 |
+419 |     async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                                                  ^^^
+420 |         cid = company_id
+421 |         if _norm(cid) == '':
+    |
+
+PERF102 When using only the values of a dict use the `values()` method
+   --> src/finsight/adapters/cache/job_progress.py:427:31
+    |
+425 |             if cid is not None and _norm(c_key) != _norm(cid):
+426 |                 continue
+427 |             for _jid, item in jobs.items():
+    |                               ^^^^^^^^^^
+428 |                 if not isinstance(item, dict):
+429 |                     continue
+    |
+help: Replace `.items()` with `.values()`
+    |
+426 |                 continue
+    -             for _jid, item in jobs.items():
+427 +             for item in jobs.values():
+428 |                 if not isinstance(item, dict):
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/cache/job_progress.py:439:49
+    |
+437 |         return results
+438 |
+439 |     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                 ^^^
+440 |         cid, jid, _payload = self._extract(args, kwargs)
+441 |         if _norm(cid) == '':
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:439:61
+    |
+437 |         return results
+438 |
+439 |     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                             ^^^
+440 |         cid, jid, _payload = self._extract(args, kwargs)
+441 |         if _norm(cid) == '':
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:439:76
+    |
+437 |         return results
+438 |
+439 |     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                                            ^^^
+440 |         cid, jid, _payload = self._extract(args, kwargs)
+441 |         if _norm(cid) == '':
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `delete_progress`
+   --> src/finsight/adapters/cache/job_progress.py:439:84
+    |
+437 |         return results
+438 |
+439 |     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+    |                                                                                    ^^^
+440 |         cid, jid, _payload = self._extract(args, kwargs)
+441 |         if _norm(cid) == '':
+    |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/cache/job_progress.py:449:13
+    |
+447 |           deleted = store.pop(_norm(jid), None) is not None
+448 |           if self.table is not None:
+449 | /             try:
+450 | |                 await _maybe_await(self.table.delete_item, Key={'pk': self._key(cid, jid)})
+451 | |             except Exception:
+452 | |                 pass
+    | |____________________^
+453 |           return deleted
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+    |
+9   | from finsight.domain.ports.job_progress_port import JobProgressPort
+10  + import contextlib
+11  |
+--------------------------------------------------------------------------------
+449 |         if self.table is not None:
+    -             try:
+450 +             with contextlib.suppress(Exception):
+451 |                 await _maybe_await(self.table.delete_item, Key={'pk': self._key(cid, jid)})
+    -             except Exception:
+    -                 pass
+452 |         return deleted
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/cache/job_progress.py:451:13
+    |
+449 |               try:
+450 |                   await _maybe_await(self.table.delete_item, Key={'pk': self._key(cid, jid)})
+451 | /             except Exception:
+452 | |                 pass
+    | |____________________^
+453 |           return deleted
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/cache/job_progress.py:451:20
+    |
+449 |             try:
+450 |                 await _maybe_await(self.table.delete_item, Key={'pk': self._key(cid, jid)})
+451 |             except Exception:
+    |                    ^^^^^^^^^
+452 |                 pass
+453 |         return deleted
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:455:36
+    |
+453 |         return deleted
+454 |
+455 |     async def rebuild(self, *args: Any, **kwargs: Any) -> Any:
+    |                                    ^^^
+456 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:455:51
+    |
+453 |         return deleted
+454 |
+455 |     async def rebuild(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                   ^^^
+456 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `rebuild`
+   --> src/finsight/adapters/cache/job_progress.py:455:59
+    |
+453 |         return deleted
+454 |
+455 |     async def rebuild(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                           ^^^
+456 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:458:41
+    |
+456 |         return True
+457 |
+458 |     async def rebuild_from(self, *args: Any, **kwargs: Any) -> Any:
+    |                                         ^^^
+459 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:458:56
+    |
+456 |         return True
+457 |
+458 |     async def rebuild_from(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                        ^^^
+459 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `rebuild_from`
+   --> src/finsight/adapters/cache/job_progress.py:458:64
+    |
+456 |         return True
+457 |
+458 |     async def rebuild_from(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                                ^^^
+459 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:461:48
+    |
+459 |         return True
+460 |
+461 |     async def rebuild_from_aurora(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                ^^^
+462 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:461:63
+    |
+459 |         return True
+460 |
+461 |     async def rebuild_from_aurora(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                               ^^^
+462 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `rebuild_from_aurora`
+   --> src/finsight/adapters/cache/job_progress.py:461:71
+    |
+459 |         return True
+460 |
+461 |     async def rebuild_from_aurora(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                                       ^^^
+462 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:464:33
+    |
+462 |         return True
+463 |
+464 |     async def sync(self, *args: Any, **kwargs: Any) -> Any:
+    |                                 ^^^
+465 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:464:48
+    |
+462 |         return True
+463 |
+464 |     async def sync(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                ^^^
+465 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `sync`
+   --> src/finsight/adapters/cache/job_progress.py:464:56
+    |
+462 |         return True
+463 |
+464 |     async def sync(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                        ^^^
+465 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+   --> src/finsight/adapters/cache/job_progress.py:467:36
+    |
+465 |         return True
+466 |
+467 |     async def refresh(self, *args: Any, **kwargs: Any) -> Any:
+    |                                    ^^^
+468 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+   --> src/finsight/adapters/cache/job_progress.py:467:51
+    |
+465 |         return True
+466 |
+467 |     async def refresh(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                   ^^^
+468 |         return True
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `refresh`
+   --> src/finsight/adapters/cache/job_progress.py:467:59
+    |
+465 |         return True
+466 |
+467 |     async def refresh(self, *args: Any, **kwargs: Any) -> Any:
+    |                                                           ^^^
+468 |         return True
+    |
+
+TC001 Move application import `finsight.domain.ports.partition_metadata_repository.PartitionMetadataRepository` into a type-checking block
+  --> src/finsight/adapters/partitions/partition_manager.py:12:5
+   |
+10 | from finsight.domain.ports.partition_gateway import PartitionGateway
+11 | from finsight.domain.ports.partition_metadata_repository import (
+12 |     PartitionMetadataRepository,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 | )
+   |
+help: Move into type-checking block
+   |
+4  |
+   - from typing import Any
+5  + from typing import Any, TYPE_CHECKING
+6  |
+--------------------------------------------------------------------------------
+10 | from finsight.domain.ports.partition_gateway import PartitionGateway
+   - from finsight.domain.ports.partition_metadata_repository import (
+   -     PartitionMetadataRepository,
+   - )
+11 |
+12 + if TYPE_CHECKING:
+13 +     from finsight.domain.ports.partition_metadata_repository import (
+14 +         PartitionMetadataRepository,
+15 +     )
+16 +
+17 | DEFAULT_PARTITION_TABLES = [
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session_or_engine`
+  --> src/finsight/adapters/partitions/partition_manager.py:38:28
+   |
+36 |     def __init__(
+37 |         self,
+38 |         session_or_engine: Any,
+   |                            ^^^
+39 |         metadata_repository: PartitionMetadataRepository | None = None,
+40 |         tables: list[str] | None = None,
+   |
+
+PLC0415 `import` should be at the top-level of a file
+  --> src/finsight/adapters/partitions/partition_manager.py:47:9
+   |
+46 |     async def _execute(self, sql: str, params: dict[str, Any] | None = None) -> None:
+47 |         import inspect
+   |         ^^^^^^^^^^^^^^
+48 |
+49 |         session = self._session_or_engine
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> src/finsight/adapters/partitions/partition_manager.py:63:21
+   |
+61 |                           if inspect.isawaitable(commit_result):
+62 |                               await commit_result
+63 | /                     except Exception:
+64 | |                         pass
+   | |____________________________^
+65 |                   return
+66 |               except Exception:
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> src/finsight/adapters/partitions/partition_manager.py:63:28
+   |
+61 |                         if inspect.isawaitable(commit_result):
+62 |                             await commit_result
+63 |                     except Exception:
+   |                            ^^^^^^^^^
+64 |                         pass
+65 |                 return
+   |
+
+TRY300 Consider moving this statement to an `else` block
+  --> src/finsight/adapters/partitions/partition_manager.py:65:17
+   |
+63 |                     except Exception:
+64 |                         pass
+65 |                 return
+   |                 ^^^^^^
+66 |             except Exception:
+67 |                 # Reset any aborted transaction so later calls can proceed.
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> src/finsight/adapters/partitions/partition_manager.py:73:21
+   |
+71 |                           if inspect.isawaitable(rollback_result):
+72 |                               await rollback_result
+73 | /                     except Exception:
+74 | |                         pass
+   | |____________________________^
+75 |                   raise
+76 |           # Try getting a connection
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> src/finsight/adapters/partitions/partition_manager.py:73:28
+   |
+71 |                         if inspect.isawaitable(rollback_result):
+72 |                             await rollback_result
+73 |                     except Exception:
+   |                            ^^^^^^^^^
+74 |                         pass
+75 |                 raise
+   |
+
+TRY300 Consider moving this statement to an `else` block
+  --> src/finsight/adapters/partitions/partition_manager.py:84:17
+   |
+82 |                     if inspect.isawaitable(result):
+83 |                         await result
+84 |                 return
+   |                 ^^^^^^
+85 |             except Exception:
+86 |                 raise
+   |
+
+TRY203 Remove exception handler; error is immediately re-raised
+  --> src/finsight/adapters/partitions/partition_manager.py:85:13
+   |
+83 |                           await result
+84 |                   return
+85 | /             except Exception:
+86 | |                 raise
+   | |_____________________^
+87 |           raise TypeError('Unsupported session/engine type')
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_fetch_one`
+  --> src/finsight/adapters/partitions/partition_manager.py:89:83
+   |
+87 |         raise TypeError('Unsupported session/engine type')
+88 |
+89 |     async def _fetch_one(self, sql: str, params: dict[str, Any] | None = None) -> Any:
+   |                                                                                   ^^^
+90 |         import inspect
+   |
+
+PLC0415 `import` should be at the top-level of a file
+  --> src/finsight/adapters/partitions/partition_manager.py:90:9
+   |
+89 |     async def _fetch_one(self, sql: str, params: dict[str, Any] | None = None) -> Any:
+90 |         import inspect
+   |         ^^^^^^^^^^^^^^
+91 |
+92 |         session = self._session_or_engine
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:109:17
+    |
+107 |                       if inspect.isawaitable(commit_result):
+108 |                           await commit_result
+109 | /                 except Exception:
+110 | |                     pass
+    | |________________________^
+111 |               return row
+112 |           if hasattr(session, 'begin'):
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:109:24
+    |
+107 |                     if inspect.isawaitable(commit_result):
+108 |                         await commit_result
+109 |                 except Exception:
+    |                        ^^^^^^^^^
+110 |                     pass
+111 |             return row
+    |
+
+PLR0912 Too many branches (17 > 12)
+   --> src/finsight/adapters/partitions/partition_manager.py:127:15
+    |
+125 |         raise TypeError('Unsupported session/engine type')
+126 |
+127 |     async def create_partition(
+    |               ^^^^^^^^^^^^^^^^
+128 |         self,
+129 |         company_id: CompanyId,
+    |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/partitions/partition_manager.py:134:9
+    |
+132 |           """Create a partition for a company on the given table."""
+133 |           partition_name = _partition_name(company_id, table_name)
+134 | /         try:
+135 | |             # Create partition (bound value must be a literal in PostgreSQL)
+136 | |             await self._execute(
+137 | |                 f"""
+138 | |                 CREATE TABLE IF NOT EXISTS {partition_name}
+139 | |                 PARTITION OF {table_name}
+140 | |                 FOR VALUES IN ('{company_id}')
+141 | |                 """
+142 | |             )
+143 | |         except Exception:
+144 | |             # Partition may already exist; ignore.
+145 | |             pass
+    | |________________^
+146 |
+147 |           # Create indexes on partition
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:143:9
+    |
+141 |                   """
+142 |               )
+143 | /         except Exception:
+144 | |             # Partition may already exist; ignore.
+145 | |             pass
+    | |________________^
+146 |
+147 |           # Create indexes on partition
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:143:16
+    |
+141 |                 """
+142 |             )
+143 |         except Exception:
+    |                ^^^^^^^^^
+144 |             # Partition may already exist; ignore.
+145 |             pass
+    |
+
+E501 Line too long (125 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:151:101
+    |
+149 |             if table_name == 'documents':
+150 |                 await self._execute(
+151 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_status ON {partition_name} (company_id, status)'
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+152 |                 )
+153 |                 await self._execute(
+    |
+
+E501 Line too long (143 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:154:101
+    |
+152 | …
+153 | …
+154 | …tition_name}_company_period ON {partition_name} (company_id, period_start, period_end)'
+    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+155 | …
+156 | …
+    |
+
+E501 Line too long (132 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:158:101
+    |
+156 |             elif table_name == 'document_chunks':
+157 |                 await self._execute(
+158 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_document ON {partition_name} (company_id, document_id)'
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+159 |                 )
+160 |                 # Create HNSW vector index on partition if embedding exists
+    |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/partitions/partition_manager.py:161:17
+    |
+159 |   …         )
+160 |   …         # Create HNSW vector index on partition if embedding exists
+161 | / …         try:
+162 | | …             await self._execute(
+163 | | …                 f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_embedding_hnsw ON {partition_name} USING hnsw (embedding vector_…
+164 | | …             )
+165 | | …         except Exception:
+166 | | …             pass
+    | |__________________^
+167 |   …     elif table_name == 'metrics':
+168 |   …         await self._execute(
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+    |
+13  | )
+14  + import contextlib
+15  |
+--------------------------------------------------------------------------------
+161 |                 # Create HNSW vector index on partition if embedding exists
+    -                 try:
+162 +                 with contextlib.suppress(Exception):
+163 |                     await self._execute(
+164 |                         f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_embedding_hnsw ON {partition_name} USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 200)'
+165 |                     )
+    -                 except Exception:
+    -                     pass
+166 |             elif table_name == 'metrics':
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+E501 Line too long (186 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:163:101
+    |
+161 | …
+162 | …
+163 | …dding_hnsw ON {partition_name} USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 200)'
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+164 | …
+165 | …
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:165:17
+    |
+163 |   …                 f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_embedding_hnsw ON {partition_name} USING hnsw (embedding vector_…
+164 |   …             )
+165 | / …         except Exception:
+166 | | …             pass
+    | |__________________^
+167 |   …     elif table_name == 'metrics':
+168 |   …         await self._execute(
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:165:24
+    |
+163 | …                 f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_embedding_hnsw ON {partition_name} USING hnsw (embedding vector_co…
+164 | …             )
+165 | …         except Exception:
+    |                  ^^^^^^^^^
+166 | …             pass
+167 | …     elif table_name == 'metrics':
+    |
+
+E501 Line too long (140 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:169:101
+    |
+167 | …
+168 | …
+169 | …artition_name}_company_name_period ON {partition_name} (company_id, name, period_end)'
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+170 | …
+171 | …
+    |
+
+E501 Line too long (130 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:173:101
+    |
+171 |             elif table_name == 'answers':
+172 |                 await self._execute(
+173 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_created ON {partition_name} (company_id, created_at)'
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+174 |                 )
+175 |             elif table_name == 'document_versions':
+    |
+
+E501 Line too long (132 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:177:101
+    |
+175 |             elif table_name == 'document_versions':
+176 |                 await self._execute(
+177 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_document ON {partition_name} (company_id, document_id)'
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+178 |                 )
+179 |                 await self._execute(
+    |
+
+E501 Line too long (123 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:180:101
+    |
+178 |                 )
+179 |                 await self._execute(
+180 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_state ON {partition_name} (company_id, state)'
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+181 |                 )
+182 |             elif table_name == 'jobs':
+    |
+
+E501 Line too long (125 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:184:101
+    |
+182 |             elif table_name == 'jobs':
+183 |                 await self._execute(
+184 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_status ON {partition_name} (company_id, status)'
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+185 |                 )
+186 |                 await self._execute(
+    |
+
+E501 Line too long (130 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:187:101
+    |
+185 |                 )
+186 |                 await self._execute(
+187 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_created ON {partition_name} (company_id, created_at)'
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+188 |                 )
+189 |             elif table_name == 'audit_logs':
+    |
+
+E501 Line too long (113 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:191:101
+    |
+189 |             elif table_name == 'audit_logs':
+190 |                 await self._execute(
+191 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_id ON {partition_name} (company_id)'
+    |                                                                                                     ^^^^^^^^^^^^^
+192 |                 )
+193 |             else:
+    |
+
+E501 Line too long (113 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:195:101
+    |
+193 |             else:
+194 |                 await self._execute(
+195 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_id ON {partition_name} (company_id)'
+    |                                                                                                     ^^^^^^^^^^^^^
+196 |                 )
+197 |         except Exception:
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:197:9
+    |
+195 |                       f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_id ON {partition_name} (company_id)'
+196 |                   )
+197 | /         except Exception:
+198 | |             pass
+    | |________________^
+199 |
+200 |           # Record partition metadata
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:197:16
+    |
+195 |                     f'CREATE INDEX IF NOT EXISTS ix_{partition_name}_company_id ON {partition_name} (company_id)'
+196 |                 )
+197 |         except Exception:
+    |                ^^^^^^^^^
+198 |             pass
+    |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/partitions/partition_manager.py:209:17
+    |
+207 |                       status=PartitionStatus.CREATING,
+208 |                   )
+209 | /                 try:
+210 | |                     await self._metadata_repo.update_status(
+211 | |                         company_id, table_name, PartitionStatus.READY
+212 | |                     )
+213 | |                 except Exception:
+214 | |                     pass
+    | |________________________^
+215 |               except Exception:
+216 |                   pass
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+    |
+13  | )
+14  + import contextlib
+15  |
+--------------------------------------------------------------------------------
+209 |                 )
+    -                 try:
+210 +                 with contextlib.suppress(Exception):
+211 |                     await self._metadata_repo.update_status(
+212 |                         company_id, table_name, PartitionStatus.READY
+213 |                     )
+    -                 except Exception:
+    -                     pass
+214 |             except Exception:
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:213:17
+    |
+211 |                           company_id, table_name, PartitionStatus.READY
+212 |                       )
+213 | /                 except Exception:
+214 | |                     pass
+    | |________________________^
+215 |               except Exception:
+216 |                   pass
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:213:24
+    |
+211 |                         company_id, table_name, PartitionStatus.READY
+212 |                     )
+213 |                 except Exception:
+    |                        ^^^^^^^^^
+214 |                     pass
+215 |             except Exception:
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:215:13
+    |
+213 |                   except Exception:
+214 |                       pass
+215 | /             except Exception:
+216 | |                 pass
+    | |____________________^
+217 |           else:
+218 |               # Try to record directly if no repo provided
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:215:20
+    |
+213 |                 except Exception:
+214 |                     pass
+215 |             except Exception:
+    |                    ^^^^^^^^^
+216 |                 pass
+217 |         else:
+    |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/partitions/partition_manager.py:232:17
+    |
+230 |                       },
+231 |                   )
+232 | /                 try:
+233 | |                     await self._execute(
+234 | |                         """
+235 | |                         UPDATE partition_metadata
+236 | |                         SET status = 'ready', updated_at = now()
+237 | |                         WHERE company_id = :company_id AND table_name = :table_name
+238 | |                         """,
+239 | |                         {'company_id': str(company_id), 'table_name': table_name},
+240 | |                     )
+241 | |                 except Exception:
+242 | |                     pass
+    | |________________________^
+243 |               except Exception:
+244 |                   pass
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+    |
+13  | )
+14  + import contextlib
+15  |
+--------------------------------------------------------------------------------
+232 |                 )
+    -                 try:
+233 +                 with contextlib.suppress(Exception):
+234 |                     await self._execute(
+--------------------------------------------------------------------------------
+241 |                     )
+    -                 except Exception:
+    -                     pass
+242 |             except Exception:
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:241:17
+    |
+239 |                           {'company_id': str(company_id), 'table_name': table_name},
+240 |                       )
+241 | /                 except Exception:
+242 | |                     pass
+    | |________________________^
+243 |               except Exception:
+244 |                   pass
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:241:24
+    |
+239 |                         {'company_id': str(company_id), 'table_name': table_name},
+240 |                     )
+241 |                 except Exception:
+    |                        ^^^^^^^^^
+242 |                     pass
+243 |             except Exception:
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:243:13
+    |
+241 |                   except Exception:
+242 |                       pass
+243 | /             except Exception:
+244 | |                 pass
+    | |____________________^
+245 |
+246 |           return partition_name
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:243:20
+    |
+241 |                 except Exception:
+242 |                     pass
+243 |             except Exception:
+    |                    ^^^^^^^^^
+244 |                 pass
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:268:9
+    |
+266 |               if row is not None:
+267 |                   return True
+268 | /         except Exception:
+269 | |             pass
+    | |________________^
+270 |
+271 |           # Create if not exists
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:268:16
+    |
+266 |             if row is not None:
+267 |                 return True
+268 |         except Exception:
+    |                ^^^^^^^^^
+269 |             pass
+    |
+
+TRY300 Consider moving this statement to an `else` block
+   --> src/finsight/adapters/partitions/partition_manager.py:274:13
+    |
+272 |         try:
+273 |             await self.create_partition(company_id, table_name)
+274 |             return True
+    |             ^^^^^^^^^^^
+275 |         except Exception:
+276 |             return False
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:275:16
+    |
+273 |             await self.create_partition(company_id, table_name)
+274 |             return True
+275 |         except Exception:
+    |                ^^^^^^^^^
+276 |             return False
+    |
+
+TRY300 Consider moving this statement to an `else` block
+   --> src/finsight/adapters/partitions/partition_manager.py:287:13
+    |
+285 |         try:
+286 |             await self._execute(f'DROP TABLE IF EXISTS {partition_name} CASCADE')
+287 |             return True
+    |             ^^^^^^^^^^^
+288 |         except Exception:
+289 |             return False
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:288:16
+    |
+286 |             await self._execute(f'DROP TABLE IF EXISTS {partition_name} CASCADE')
+287 |             return True
+288 |         except Exception:
+    |                ^^^^^^^^^
+289 |             return False
+    |
+
+PLC0415 `import` should be at the top-level of a file
+   --> src/finsight/adapters/partitions/partition_manager.py:297:13
+    |
+295 |         """List all partitions for a company."""
+296 |         try:
+297 |             import inspect
+    |             ^^^^^^^^^^^^^^
+298 |
+299 |             # Look for partitions matching pattern
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:324:17
+    |
+322 |                       if inspect.isawaitable(commit_result):
+323 |                           await commit_result
+324 | /                 except Exception:
+325 | |                     pass
+    | |________________________^
+326 |               return [row[0] for row in rows]
+327 |           except Exception:
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:324:24
+    |
+322 |                     if inspect.isawaitable(commit_result):
+323 |                         await commit_result
+324 |                 except Exception:
+    |                        ^^^^^^^^^
+325 |                     pass
+326 |             return [row[0] for row in rows]
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:327:16
+    |
+325 |                     pass
+326 |             return [row[0] for row in rows]
+327 |         except Exception:
+    |                ^^^^^^^^^
+328 |             return []
+    |
+
+TRY300 Consider moving this statement to an `else` block
+   --> src/finsight/adapters/partitions/partition_manager.py:345:17
+    |
+343 |                     status=PartitionStatus.READY,
+344 |                 )
+345 |                 return
+    |                 ^^^^^^
+346 |             except Exception:
+347 |                 pass
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:346:13
+    |
+344 |                   )
+345 |                   return
+346 | /             except Exception:
+347 | |                 pass
+    | |____________________^
+348 |           try:
+349 |               await self._execute(
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:346:20
+    |
+344 |                 )
+345 |                 return
+346 |             except Exception:
+    |                    ^^^^^^^^^
+347 |                 pass
+348 |         try:
+    |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/partitions/partition_manager.py:348:9
+    |
+346 |               except Exception:
+347 |                   pass
+348 | /         try:
+349 | |             await self._execute(
+350 | |                 """
+351 | |                 INSERT INTO partition_metadata (company_id, partition_name, table_name, status)
+352 | |                 VALUES (:company_id, :partition_name, :table_name, 'ready')
+353 | |                 ON CONFLICT (company_id, table_name) DO UPDATE SET status = 'ready', updated_at = now()
+354 | |                 """,
+355 | |                 {
+356 | |                     'company_id': str(company_id),
+357 | |                     'partition_name': partition_name,
+358 | |                     'table_name': table_name,
+359 | |                 },
+360 | |             )
+361 | |         except Exception:
+362 | |             pass
+    | |________________^
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+    |
+13  | )
+14  + import contextlib
+15  |
+--------------------------------------------------------------------------------
+348 |                 pass
+    -         try:
+349 +         with contextlib.suppress(Exception):
+350 |             await self._execute(
+--------------------------------------------------------------------------------
+361 |             )
+    -         except Exception:
+    -             pass
+362 |
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+E501 Line too long (103 > 100)
+   --> src/finsight/adapters/partitions/partition_manager.py:353:101
+    |
+351 |                 INSERT INTO partition_metadata (company_id, partition_name, table_name, status)
+352 |                 VALUES (:company_id, :partition_name, :table_name, 'ready')
+353 |                 ON CONFLICT (company_id, table_name) DO UPDATE SET status = 'ready', updated_at = now()
+    |                                                                                                     ^^^
+354 |                 """,
+355 |                 {
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> src/finsight/adapters/partitions/partition_manager.py:361:9
+    |
+359 |                   },
+360 |               )
+361 | /         except Exception:
+362 | |             pass
+    | |________________^
+
+BLE001 Do not catch blind exception: `Exception`
+   --> src/finsight/adapters/partitions/partition_manager.py:361:16
+    |
+359 |                 },
+360 |             )
+361 |         except Exception:
+    |                ^^^^^^^^^
+362 |             pass
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session`
+  --> src/finsight/adapters/repositories/base_repository.py:16:18
+   |
+14 |     def __init__(
+15 |         self,
+16 |         session: Any | None = None,
+   |                  ^^^^^^^^^^
+17 |         session_or_engine: Any | None = None,
+18 |         connection: Any | None = None,
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session_or_engine`
+  --> src/finsight/adapters/repositories/base_repository.py:17:28
+   |
+15 |         self,
+16 |         session: Any | None = None,
+17 |         session_or_engine: Any | None = None,
+   |                            ^^^^^^^^^^
+18 |         connection: Any | None = None,
+19 |         engine: Any | None = None,
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `connection`
+  --> src/finsight/adapters/repositories/base_repository.py:18:21
+   |
+16 |         session: Any | None = None,
+17 |         session_or_engine: Any | None = None,
+18 |         connection: Any | None = None,
+   |                     ^^^^^^^^^^
+19 |         engine: Any | None = None,
+20 |         db_session: Any | None = None,
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `engine`
+  --> src/finsight/adapters/repositories/base_repository.py:19:17
+   |
+17 |         session_or_engine: Any | None = None,
+18 |         connection: Any | None = None,
+19 |         engine: Any | None = None,
+   |                 ^^^^^^^^^^
+20 |         db_session: Any | None = None,
+21 |         **kwargs: Any,
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `db_session`
+  --> src/finsight/adapters/repositories/base_repository.py:20:21
+   |
+18 |         connection: Any | None = None,
+19 |         engine: Any | None = None,
+20 |         db_session: Any | None = None,
+   |                     ^^^^^^^^^^
+21 |         **kwargs: Any,
+22 |     ) -> None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/adapters/repositories/base_repository.py:21:19
+   |
+19 |         engine: Any | None = None,
+20 |         db_session: Any | None = None,
+21 |         **kwargs: Any,
+   |                   ^^^
+22 |     ) -> None:
+23 |         chosen = (
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session`
+  --> src/finsight/adapters/repositories/base_repository.py:43:26
+   |
+42 |     @property
+43 |     def session(self) -> Any:
+   |                          ^^^
+44 |         return self._session
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_execute`
+  --> src/finsight/adapters/repositories/base_repository.py:46:81
+   |
+44 |         return self._session
+45 |
+46 |     async def _execute(self, sql: str, params: dict[str, Any] | None = None) -> Any:
+   |                                                                                 ^^^
+47 |         """Execute SQL supporting both sync and async SQLAlchemy sessions."""
+48 |         session = self._session
+   |
+
+TRY300 Consider moving this statement to an `else` block
+  --> src/finsight/adapters/repositories/base_repository.py:55:13
+   |
+53 |             if inspect.isawaitable(result):
+54 |                 result = await result
+55 |             return result
+   |             ^^^^^^^^^^^^^
+56 |         except Exception:
+57 |             if hasattr(session, 'rollback'):
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> src/finsight/adapters/repositories/base_repository.py:62:17
+   |
+60 |                       if inspect.isawaitable(rollback_result):
+61 |                           await rollback_result
+62 | /                 except Exception:
+63 | |                     pass
+   | |________________________^
+64 |               raise
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> src/finsight/adapters/repositories/base_repository.py:62:24
+   |
+60 |                     if inspect.isawaitable(rollback_result):
+61 |                         await rollback_result
+62 |                 except Exception:
+   |                        ^^^^^^^^^
+63 |                     pass
+64 |             raise
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_run`
+  --> src/finsight/adapters/repositories/base_repository.py:66:77
+   |
+64 |             raise
+65 |
+66 |     async def _run(self, sql: str, params: dict[str, Any] | None = None) -> Any:
+   |                                                                             ^^^
+67 |         return await self._execute(sql, params)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `result`
+  --> src/finsight/adapters/repositories/base_repository.py:69:39
+   |
+67 |         return await self._execute(sql, params)
+68 |
+69 |     async def _fetchone(self, result: Any) -> Any:
+   |                                       ^^^
+70 |         """Fetch one row, awaiting the result method when it is awaitable."""
+71 |         if result is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_fetchone`
+  --> src/finsight/adapters/repositories/base_repository.py:69:47
+   |
+67 |         return await self._execute(sql, params)
+68 |
+69 |     async def _fetchone(self, result: Any) -> Any:
+   |                                               ^^^
+70 |         """Fetch one row, awaiting the result method when it is awaitable."""
+71 |         if result is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `result`
+  --> src/finsight/adapters/repositories/base_repository.py:81:39
+   |
+79 |         return value
+80 |
+81 |     async def _fetchall(self, result: Any) -> Any:
+   |                                       ^^^
+82 |         """Fetch all rows, awaiting the result method when it is awaitable."""
+83 |         if result is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_fetchall`
+  --> src/finsight/adapters/repositories/base_repository.py:81:47
+   |
+79 |         return value
+80 |
+81 |     async def _fetchall(self, result: Any) -> Any:
+   |                                               ^^^
+82 |         """Fetch all rows, awaiting the result method when it is awaitable."""
+83 |         if result is None:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:98:50
+    |
+ 96 |         return value
+ 97 |
+ 98 |     async def _set_rls_context(self, company_id: Any) -> None:
+    |                                                  ^^^
+ 99 |         """Set ``app.company_id`` for the current transaction (RLS lock)."""
+100 |         await self._execute(
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:105:49
+    |
+103 |         )
+104 |
+105 |     async def set_rls_context(self, company_id: Any) -> None:
+    |                                                 ^^^
+106 |         """Public alias for :meth:`_set_rls_context`."""
+107 |         await self._set_rls_context(company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session_or_engine`
+   --> src/finsight/adapters/repositories/base_repository.py:110:53
+    |
+109 |     @staticmethod
+110 |     async def set_tenant_context(session_or_engine: Any, company_id: Any) -> None:
+    |                                                     ^^^
+111 |         """Module-level helper to set RLS context on a given session/engine."""
+112 |         result = session_or_engine.execute(
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:110:70
+    |
+109 |     @staticmethod
+110 |     async def set_tenant_context(session_or_engine: Any, company_id: Any) -> None:
+    |                                                                      ^^^
+111 |         """Module-level helper to set RLS context on a given session/engine."""
+112 |         result = session_or_engine.execute(
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:119:53
+    |
+117 |             await result
+118 |
+119 |     async def set_company_context(self, company_id: Any) -> None:
+    |                                                     ^^^
+120 |         await self._set_rls_context(company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:122:45
+    |
+120 |         await self._set_rls_context(company_id)
+121 |
+122 |     async def set_context(self, company_id: Any) -> None:
+    |                                             ^^^
+123 |         await self._set_rls_context(company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:125:52
+    |
+123 |         await self._set_rls_context(company_id)
+124 |
+125 |     async def ensure_rls_context(self, company_id: Any) -> None:
+    |                                                    ^^^
+126 |         await self._set_rls_context(company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:128:56
+    |
+126 |         await self._set_rls_context(company_id)
+127 |
+128 |     async def set_tenant_rls_context(self, company_id: Any) -> None:
+    |                                                        ^^^
+129 |         await self._set_rls_context(company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session_or_engine`
+   --> src/finsight/adapters/repositories/base_repository.py:133:46
+    |
+132 | # Module-level convenience (used by callers that do not instantiate a repository).
+133 | async def set_rls_context(session_or_engine: Any, company_id: Any) -> None:
+    |                                              ^^^
+134 |     """Set RLS context on the provided session/engine."""
+135 |     await BaseRepository.set_tenant_context(session_or_engine, company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:133:63
+    |
+132 | # Module-level convenience (used by callers that do not instantiate a repository).
+133 | async def set_rls_context(session_or_engine: Any, company_id: Any) -> None:
+    |                                                               ^^^
+134 |     """Set RLS context on the provided session/engine."""
+135 |     await BaseRepository.set_tenant_context(session_or_engine, company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session_or_engine`
+   --> src/finsight/adapters/repositories/base_repository.py:138:50
+    |
+138 | async def set_company_context(session_or_engine: Any, company_id: Any) -> None:
+    |                                                  ^^^
+139 |     await set_rls_context(session_or_engine, company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:138:67
+    |
+138 | async def set_company_context(session_or_engine: Any, company_id: Any) -> None:
+    |                                                                   ^^^
+139 |     await set_rls_context(session_or_engine, company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session_or_engine`
+   --> src/finsight/adapters/repositories/base_repository.py:142:49
+    |
+142 | async def set_tenant_context(session_or_engine: Any, company_id: Any) -> None:
+    |                                                 ^^^
+143 |     await set_rls_context(session_or_engine, company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:142:66
+    |
+142 | async def set_tenant_context(session_or_engine: Any, company_id: Any) -> None:
+    |                                                                  ^^^
+143 |     await set_rls_context(session_or_engine, company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session_or_engine`
+   --> src/finsight/adapters/repositories/base_repository.py:146:49
+    |
+146 | async def set_app_company_id(session_or_engine: Any, company_id: Any) -> None:
+    |                                                 ^^^
+147 |     await set_rls_context(session_or_engine, company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:146:66
+    |
+146 | async def set_app_company_id(session_or_engine: Any, company_id: Any) -> None:
+    |                                                                  ^^^
+147 |     await set_rls_context(session_or_engine, company_id)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+   --> src/finsight/adapters/repositories/base_repository.py:150:35
+    |
+150 | def build_set_rls_sql(company_id: Any) -> str:
+    |                                   ^^^
+151 |     # Escape single quotes to avoid SQL injection when emitting a literal.
+152 |     value = str(company_id).replace(chr(39), chr(39) + chr(39))
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `row`
+  --> src/finsight/adapters/repositories/company_repository.py:17:26
+   |
+17 | def _row_to_company(row: Any) -> Company | None:
+   |                          ^^^
+18 |     if row is None:
+19 |         return None
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session`
+  --> src/finsight/adapters/repositories/company_repository.py:41:33
+   |
+39 |     """Concrete company repository with RLS context enforcement."""
+40 |
+41 |     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
+   |                                 ^^^^^^^^^^
+42 |         super().__init__(session, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/adapters/repositories/company_repository.py:41:62
+   |
+39 |     """Concrete company repository with RLS context enforcement."""
+40 |
+41 |     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
+   |                                                              ^^^
+42 |         super().__init__(session, **kwargs)
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> src/finsight/adapters/repositories/company_repository.py:52:13
+   |
+50 |           await self._set_rls_context(company_id)
+51 |           result = await self._execute(
+52 | /             f"""
+53 | |             INSERT INTO {_TABLE} (id, name, slug)
+54 | |             VALUES (:id, :name, :slug)
+55 | |             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, updated_at = now()
+56 | |             RETURNING id, name, slug, created_at, updated_at
+57 | |             """,
+   | |_______________^
+58 |               {'id': str(company_id), 'name': name, 'slug': slug},
+59 |           )
+   |
+
+E501 Line too long (105 > 100)
+  --> src/finsight/adapters/repositories/company_repository.py:55:101
+   |
+53 |             INSERT INTO {_TABLE} (id, name, slug)
+54 |             VALUES (:id, :name, :slug)
+55 |             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, updated_at = now()
+   |                                                                                                     ^^^^^
+56 |             RETURNING id, name, slug, created_at, updated_at
+57 |             """,
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> src/finsight/adapters/repositories/company_repository.py:72:13
+   |
+70 |         await self._set_rls_context(company_id)
+71 |         result = await self._execute(
+72 |             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} WHERE id = :id',
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+73 |             {'id': str(company_id)},
+74 |         )
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> src/finsight/adapters/repositories/company_repository.py:85:13
+   |
+83 |         await self._set_rls_context(company_id)
+84 |         result = await self._execute(
+85 |             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} WHERE slug = :slug AND id = :id LIMIT 1',
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+86 |             {'slug': slug, 'id': str(company_id)},
+87 |         )
+   |
+
+E501 Line too long (115 > 100)
+  --> src/finsight/adapters/repositories/company_repository.py:85:101
+   |
+83 |         await self._set_rls_context(company_id)
+84 |         result = await self._execute(
+85 |             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} WHERE slug = :slug AND id = :id LIMIT 1',
+   |                                                                                                     ^^^^^^^^^^^^^^^
+86 |             {'slug': slug, 'id': str(company_id)},
+87 |         )
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/company_repository.py:99:13
+    |
+ 97 |           await self._set_rls_context(company_id)
+ 98 |           result = await self._execute(
+ 99 | /             f"""
+100 | |             UPDATE {_TABLE}
+101 | |             SET name = COALESCE(:name, name),
+102 | |                 slug = COALESCE(:slug, slug),
+103 | |                 updated_at = now()
+104 | |             WHERE id = :id
+105 | |             RETURNING id, name, slug, created_at, updated_at
+106 | |             """,
+    | |_______________^
+107 |               {'id': str(company_id), 'name': name, 'slug': slug},
+108 |           )
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/company_repository.py:118:13
+    |
+116 |         await self._set_rls_context(company_id)
+117 |         result = await self._execute(
+118 |             f'DELETE FROM {_TABLE} WHERE id = :id',
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+119 |             {'id': str(company_id)},
+120 |         )
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/company_repository.py:132:13
+    |
+130 |         await self._set_rls_context(company_id)
+131 |         result = await self._execute(
+132 |             f'SELECT id, name, slug, created_at, updated_at FROM {_TABLE} ORDER BY created_at DESC',
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+133 |             {},
+134 |         )
+    |
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+  --> src/finsight/adapters/repositories/job_repository.py:9:33
+   |
+ 7 | from typing import Any
+ 8 |
+ 9 | from finsight.core.types import CompanyId, JobStatus
+   |                                 ^^^^^^^^^
+10 | from finsight.domain.ports.job_repository import JobRepository as JobRepositoryPort
+   |
+help: Move into type-checking block
+   |
+6  | from datetime import UTC, datetime
+   - from typing import Any
+7  + from typing import Any, TYPE_CHECKING
+8  |
+   - from finsight.core.types import CompanyId, JobStatus
+9  | from finsight.domain.ports.job_repository import JobRepository as JobRepositoryPort
+10 |
+11 | from .base_repository import BaseRepository
+12 |
+13 + if TYPE_CHECKING:
+14 +     from finsight.core.types import CompanyId, JobStatus
+15 +
+16 | _TABLE = 'jobs'
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.JobStatus` into a type-checking block
+  --> src/finsight/adapters/repositories/job_repository.py:9:44
+   |
+ 7 | from typing import Any
+ 8 |
+ 9 | from finsight.core.types import CompanyId, JobStatus
+   |                                            ^^^^^^^^^
+10 | from finsight.domain.ports.job_repository import JobRepository as JobRepositoryPort
+   |
+help: Move into type-checking block
+   |
+6  | from datetime import UTC, datetime
+   - from typing import Any
+7  + from typing import Any, TYPE_CHECKING
+8  |
+   - from finsight.core.types import CompanyId, JobStatus
+9  | from finsight.domain.ports.job_repository import JobRepository as JobRepositoryPort
+10 |
+11 | from .base_repository import BaseRepository
+12 |
+13 + if TYPE_CHECKING:
+14 +     from finsight.core.types import CompanyId, JobStatus
+15 +
+16 | _TABLE = 'jobs'
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `value`
+  --> src/finsight/adapters/repositories/job_repository.py:17:23
+   |
+17 | def _uuid_like(value: Any) -> bool:
+   |                       ^^^
+18 |     try:
+19 |         uuid.UUID(str(value))
+   |
+
+TRY300 Consider moving this statement to an `else` block
+  --> src/finsight/adapters/repositories/job_repository.py:20:9
+   |
+18 |     try:
+19 |         uuid.UUID(str(value))
+20 |         return True
+   |         ^^^^^^^^^^^
+21 |     except (ValueError, AttributeError, TypeError):
+22 |         return False
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `value`
+  --> src/finsight/adapters/repositories/job_repository.py:25:28
+   |
+25 | def _as_str_or_none(value: Any) -> str | None:
+   |                            ^^^
+26 |     if value is None:
+27 |         return None
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `__getattr__`
+  --> src/finsight/adapters/repositories/job_repository.py:35:41
+   |
+33 |     """Flexible row wrapper supporting attribute access."""
+34 |
+35 |     def __getattr__(self, name: str) -> Any:
+   |                                         ^^^
+36 |         try:
+37 |             return self.get(name)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `row`
+  --> src/finsight/adapters/repositories/job_repository.py:42:25
+   |
+42 | def _row_to_record(row: Any) -> _JobRecord | None:
+   |                         ^^^
+43 |     if row is None:
+44 |         return None
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> src/finsight/adapters/repositories/job_repository.py:50:16
+   |
+48 |         try:
+49 |             keys = list(mapping.keys())
+50 |         except Exception:
+   |                ^^^^^^^^^
+51 |             keys = []
+52 |         for key in keys:
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> src/finsight/adapters/repositories/job_repository.py:55:20
+   |
+53 |             try:
+54 |                 data[str(key)] = mapping[key]
+55 |             except Exception:
+   |                    ^^^^^^^^^
+56 |                 try:
+57 |                     data[str(key)] = mapping.get(key)
+   |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+  --> src/finsight/adapters/repositories/job_repository.py:56:17
+   |
+54 |                   data[str(key)] = mapping[key]
+55 |               except Exception:
+56 | /                 try:
+57 | |                     data[str(key)] = mapping.get(key)
+58 | |                 except Exception:
+59 | |                     pass
+   | |________________________^
+60 |       if not data:
+61 |           try:
+   |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+   |
+12 | from .base_repository import BaseRepository
+13 + import contextlib
+14 |
+--------------------------------------------------------------------------------
+56 |             except Exception:
+   -                 try:
+57 +                 with contextlib.suppress(Exception):
+58 |                     data[str(key)] = mapping.get(key)
+   -                 except Exception:
+   -                     pass
+59 |     if not data:
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> src/finsight/adapters/repositories/job_repository.py:58:17
+   |
+56 |                   try:
+57 |                       data[str(key)] = mapping.get(key)
+58 | /                 except Exception:
+59 | |                     pass
+   | |________________________^
+60 |       if not data:
+61 |           try:
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> src/finsight/adapters/repositories/job_repository.py:58:24
+   |
+56 |                 try:
+57 |                     data[str(key)] = mapping.get(key)
+58 |                 except Exception:
+   |                        ^^^^^^^^^
+59 |                     pass
+60 |     if not data:
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> src/finsight/adapters/repositories/job_repository.py:63:16
+   |
+61 |         try:
+62 |             data = {'value': row}
+63 |         except Exception:
+   |                ^^^^^^^^^
+64 |             data = {}
+65 |     return _JobRecord(data)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `_pop`
+  --> src/finsight/adapters/repositories/job_repository.py:68:50
+   |
+68 | def _pop(kwargs: dict[str, Any], *names: str) -> Any:
+   |                                                  ^^^
+69 |     for name in names:
+70 |         if name in kwargs:
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `value`
+  --> src/finsight/adapters/repositories/job_repository.py:75:30
+   |
+75 | def _normalise_status(value: Any) -> str | None:
+   |                              ^^^
+76 |     if value is None:
+77 |         return None
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> src/finsight/adapters/repositories/job_repository.py:81:9
+   |
+79 |           try:
+80 |               return str(value.value)
+81 | /         except Exception:
+82 | |             pass
+   | |________________^
+83 |       return str(value)
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> src/finsight/adapters/repositories/job_repository.py:81:16
+   |
+79 |         try:
+80 |             return str(value.value)
+81 |         except Exception:
+   |                ^^^^^^^^^
+82 |             pass
+83 |     return str(value)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session`
+  --> src/finsight/adapters/repositories/job_repository.py:89:33
+   |
+87 |     """Concrete job repository with RLS context enforcement."""
+88 |
+89 |     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
+   |                                 ^^^^^^^^^^
+90 |         super().__init__(session, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/adapters/repositories/job_repository.py:89:62
+   |
+87 |     """Concrete job repository with RLS context enforcement."""
+88 |
+89 |     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
+   |                                                              ^^^
+90 |         super().__init__(session, **kwargs)
+   |
+
+PLR0912 Too many branches (20 > 12)
+  --> src/finsight/adapters/repositories/job_repository.py:92:15
+   |
+90 |         super().__init__(session, **kwargs)
+91 |
+92 |     async def create_job(
+   |               ^^^^^^^^^^
+93 |         self,
+94 |         company_id: CompanyId,
+   |
+
+PLR0915 Too many statements (64 > 50)
+  --> src/finsight/adapters/repositories/job_repository.py:92:15
+   |
+90 |         super().__init__(session, **kwargs)
+91 |
+92 |     async def create_job(
+   |               ^^^^^^^^^^
+93 |         self,
+94 |         company_id: CompanyId,
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/job_repository.py:198:17
+    |
+196 |               ]
+197 |               sql = (
+198 | /                 f'INSERT INTO {_TABLE} ({column_list}) '
+199 | |                 f'VALUES ({placeholders}) '
+200 | |                 'ON CONFLICT (company_id, job_id) DO UPDATE SET '
+    | |_________________________________________________________________^
+201 |                   + ', '.join(f'{c} = EXCLUDED.{c}' for c in update_cols)
+202 |                   + ', updated_at = now() '
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/job_repository.py:206:19
+    |
+204 |             )
+205 |         else:
+206 |             sql = f'INSERT INTO {_TABLE} ({column_list}) VALUES ({placeholders}) RETURNING *'
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+207 |
+208 |         result = await self._execute(sql, values)
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/job_repository.py:222:15
+    |
+220 |     ) -> object:
+221 |         await self._set_rls_context(company_id)
+222 |         sql = f'SELECT * FROM {_TABLE} WHERE company_id = :company_id AND job_id = :job_id'
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+223 |         params: dict[str, Any] = {
+224 |             'company_id': str(company_id),
+    |
+
+PLR0912 Too many branches (21 > 12)
+   --> src/finsight/adapters/repositories/job_repository.py:241:15
+    |
+239 |         return _row_to_record(row)
+240 |
+241 |     async def update_job(
+    |               ^^^^^^^^^^
+242 |         self,
+243 |         company_id: CompanyId,
+    |
+
+PLR0915 Too many statements (71 > 50)
+   --> src/finsight/adapters/repositories/job_repository.py:241:15
+    |
+239 |         return _row_to_record(row)
+240 |
+241 |     async def update_job(
+    |               ^^^^^^^^^^
+242 |         self,
+243 |         company_id: CompanyId,
+    |
+
+SIM105 Use `contextlib.suppress(TypeError, ValueError)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/repositories/job_repository.py:273:17
+    |
+271 |               val = kwargs.pop('progress')
+272 |               if val is not None:
+273 | /                 try:
+274 | |                     val = int(str(val))
+275 | |                 except (TypeError, ValueError):
+276 | |                     pass
+    | |________________________^
+277 |                   values['progress_val'] = val
+278 |                   assignments.append('progress = :progress_val')
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(TypeError, ValueError): ...`
+    |
+12  | from .base_repository import BaseRepository
+13  + import contextlib
+14  |
+--------------------------------------------------------------------------------
+273 |             if val is not None:
+    -                 try:
+274 +                 with contextlib.suppress(TypeError, ValueError):
+275 |                     val = int(str(val))
+    -                 except (TypeError, ValueError):
+    -                     pass
+276 |                 values['progress_val'] = val
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+SIM105 Use `contextlib.suppress(TypeError, ValueError)` instead of `try`-`except`-`pass`
+   --> src/finsight/adapters/repositories/job_repository.py:301:17
+    |
+299 |               val = kwargs.pop('receive_count')
+300 |               if val is not None:
+301 | /                 try:
+302 | |                     val = int(str(val))
+303 | |                 except (TypeError, ValueError):
+304 | |                     pass
+    | |________________________^
+305 |               values['receive_count_val'] = val if val is not None else None
+306 |               assignments.append('receive_count = COALESCE(:receive_count_val, receive_count)')
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(TypeError, ValueError): ...`
+    |
+12  | from .base_repository import BaseRepository
+13  + import contextlib
+14  |
+--------------------------------------------------------------------------------
+301 |             if val is not None:
+    -                 try:
+302 +                 with contextlib.suppress(TypeError, ValueError):
+303 |                     val = int(str(val))
+    -                 except (TypeError, ValueError):
+    -                     pass
+304 |             values['receive_count_val'] = val if val is not None else None
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+B007 Loop control variable `val` not used within loop body
+   --> src/finsight/adapters/repositories/job_repository.py:344:18
+    |
+343 |         # passthrough unknown kwargs
+344 |         for key, val in list(kwargs.items()):
+    |                  ^^^
+345 |             if key in {'company_id', 'job_id'}:
+346 |                 continue
+    |
+help: Rename unused `val` to `_val`
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/job_repository.py:361:13
+    |
+360 |           sql = (
+361 | /             f'UPDATE {_TABLE} SET {", ".join(assignments)} '
+362 | |             'WHERE company_id = :company_id AND job_id = :job_id RETURNING *'
+    | |_____________________________________________________________________________^
+363 |           )
+364 |           result = await self._execute(sql, params)
+    |
+
+PLR0912 Too many branches (15 > 12)
+   --> src/finsight/adapters/repositories/job_repository.py:368:15
+    |
+366 |         return _row_to_record(row)
+367 |
+368 |     async def list_jobs(
+    |               ^^^^^^^^^
+369 |         self,
+370 |         company_id: CompanyId,
+    |
+
+PLR0915 Too many statements (53 > 50)
+   --> src/finsight/adapters/repositories/job_repository.py:368:15
+    |
+366 |         return _row_to_record(row)
+367 |
+368 |     async def list_jobs(
+    |               ^^^^^^^^^
+369 |         self,
+370 |         company_id: CompanyId,
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/job_repository.py:406:15
+    |
+404 |             params['job_id'] = _as_str_or_none(job_id)
+405 |
+406 |         sql = f'SELECT * FROM {_TABLE} WHERE {" AND ".join(where)}'
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+407 |
+408 |         order_by = kwargs.pop('order_by', None) or kwargs.pop('orderBy', None) or 'created_at'
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/job_repository.py:456:15
+    |
+454 |             'job_id': _as_str_or_none(job_id),
+455 |         }
+456 |         sql = f'DELETE FROM {_TABLE} WHERE company_id = :company_id AND job_id = :job_id RETURNING job_id'
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+457 |         result = await self._execute(sql, params)
+458 |         row = await self._fetchone(result)
+    |
+
+E501 Line too long (106 > 100)
+   --> src/finsight/adapters/repositories/job_repository.py:456:101
+    |
+454 |             'job_id': _as_str_or_none(job_id),
+455 |         }
+456 |         sql = f'DELETE FROM {_TABLE} WHERE company_id = :company_id AND job_id = :job_id RETURNING job_id'
+    |                                                                                                     ^^^^^^
+457 |         result = await self._execute(sql, params)
+458 |         row = await self._fetchone(result)
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `row`
+  --> src/finsight/adapters/repositories/partition_metadata_repository.py:19:27
+   |
+19 | def _row_to_metadata(row: Any) -> PartitionMetadata | None:
+   |                           ^^^
+20 |     if row is None:
+21 |         return None
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session`
+  --> src/finsight/adapters/repositories/partition_metadata_repository.py:45:33
+   |
+43 |     """Concrete partition metadata repository with RLS context enforcement."""
+44 |
+45 |     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
+   |                                 ^^^^^^^^^^
+46 |         super().__init__(session, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/adapters/repositories/partition_metadata_repository.py:45:62
+   |
+43 |     """Concrete partition metadata repository with RLS context enforcement."""
+44 |
+45 |     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
+   |                                                              ^^^
+46 |         super().__init__(session, **kwargs)
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> src/finsight/adapters/repositories/partition_metadata_repository.py:57:13
+   |
+55 |           await self._set_rls_context(company_id)
+56 |           result = await self._execute(
+57 | /             f"""
+58 | |             INSERT INTO {_TABLE} (company_id, partition_name, table_name, status)
+59 | |             VALUES (:company_id, :partition_name, :table_name, :status)
+60 | |             ON CONFLICT (company_id, table_name) DO UPDATE
+61 | |                 SET partition_name = EXCLUDED.partition_name,
+62 | |                     status = EXCLUDED.status,
+63 | |                     updated_at = now()
+64 | |             RETURNING company_id, partition_name, table_name, status, created_at, updated_at
+65 | |             """,
+   | |_______________^
+66 |               {
+67 |                   'company_id': str(company_id),
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> src/finsight/adapters/repositories/partition_metadata_repository.py:91:13
+   |
+89 |           await self._set_rls_context(company_id)
+90 |           result = await self._execute(
+91 | /             f"""
+92 | |             SELECT company_id, partition_name, table_name, status, created_at, updated_at
+93 | |             FROM {_TABLE}
+94 | |             WHERE company_id = :company_id AND table_name = :table_name
+95 | |             """,
+   | |_______________^
+96 |               {'company_id': str(company_id), 'table_name': table_name},
+97 |           )
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/partition_metadata_repository.py:107:13
+    |
+105 |           await self._set_rls_context(company_id)
+106 |           result = await self._execute(
+107 | /             f"""
+108 | |             SELECT company_id, partition_name, table_name, status, created_at, updated_at
+109 | |             FROM {_TABLE}
+110 | |             WHERE company_id = :company_id
+111 | |             """,
+    | |_______________^
+112 |               {'company_id': str(company_id)},
+113 |           )
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/partition_metadata_repository.py:136:13
+    |
+134 |           await self._set_rls_context(company_id)
+135 |           result = await self._execute(
+136 | /             f"""
+137 | |             UPDATE {_TABLE}
+138 | |             SET status = :status, updated_at = now()
+139 | |             WHERE company_id = :company_id AND table_name = :table_name
+140 | |             RETURNING company_id, partition_name, table_name, status, created_at, updated_at
+141 | |             """,
+    | |_______________^
+142 |               {'company_id': str(company_id), 'table_name': table_name, 'status': str(status)},
+143 |           )
+    |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `row`
+  --> src/finsight/adapters/repositories/user_repository.py:17:23
+   |
+17 | def _row_to_user(row: Any) -> User | None:
+   |                       ^^^
+18 |     if row is None:
+19 |         return None
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `session`
+  --> src/finsight/adapters/repositories/user_repository.py:43:33
+   |
+41 |     """Concrete user repository with RLS context enforcement."""
+42 |
+43 |     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
+   |                                 ^^^^^^^^^^
+44 |         super().__init__(session, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/adapters/repositories/user_repository.py:43:62
+   |
+41 |     """Concrete user repository with RLS context enforcement."""
+42 |
+43 |     def __init__(self, session: Any | None = None, **kwargs: Any) -> None:
+   |                                                              ^^^
+44 |         super().__init__(session, **kwargs)
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> src/finsight/adapters/repositories/user_repository.py:55:13
+   |
+53 |           await self._set_rls_context(company_id)
+54 |           result = await self._execute(
+55 | /             f"""
+56 | |             INSERT INTO {_TABLE} (id, company_id, email, role)
+57 | |             VALUES (:id, :company_id, :email, :role)
+58 | |             ON CONFLICT (company_id, email) DO UPDATE
+59 | |                 SET role = EXCLUDED.role, updated_at = now()
+60 | |             RETURNING id, company_id, email, role, created_at, updated_at
+61 | |             """,
+   | |_______________^
+62 |               {
+63 |                   'id': str(user_id),
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+  --> src/finsight/adapters/repositories/user_repository.py:82:13
+   |
+80 |           await self._set_rls_context(company_id)
+81 |           result = await self._execute(
+82 | /             f"""
+83 | |             SELECT id, company_id, email, role, created_at, updated_at
+84 | |             FROM {_TABLE}
+85 | |             WHERE company_id = :company_id AND id = :id
+86 | |             """,
+   | |_______________^
+87 |               {'company_id': str(company_id), 'id': str(user_id)},
+88 |           )
+   |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/user_repository.py:99:13
+    |
+ 97 |           await self._set_rls_context(company_id)
+ 98 |           result = await self._execute(
+ 99 | /             f"""
+100 | |             SELECT id, company_id, email, role, created_at, updated_at
+101 | |             FROM {_TABLE}
+102 | |             WHERE company_id = :company_id AND email = :email
+103 | |             """,
+    | |_______________^
+104 |               {'company_id': str(company_id), 'email': email},
+105 |           )
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/user_repository.py:115:13
+    |
+113 |           await self._set_rls_context(company_id)
+114 |           result = await self._execute(
+115 | /             f"""
+116 | |             SELECT id, company_id, email, role, created_at, updated_at
+117 | |             FROM {_TABLE}
+118 | |             WHERE company_id = :company_id
+119 | |             ORDER BY created_at DESC
+120 | |             """,
+    | |_______________^
+121 |               {'company_id': str(company_id)},
+122 |           )
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/user_repository.py:146:13
+    |
+144 |           await self._set_rls_context(company_id)
+145 |           result = await self._execute(
+146 | /             f"""
+147 | |                 UPDATE {_TABLE}
+148 | |                 SET email = COALESCE(:email, email),
+149 | |                     role = COALESCE(:role, role),
+150 | |                     updated_at = now()
+151 | |                 WHERE company_id = :company_id AND id = :id
+152 | |                 RETURNING id, company_id, email, role, created_at, updated_at
+153 | |                 """,
+    | |___________________^
+154 |               {
+155 |                   'company_id': str(company_id),
+    |
+
+S608 Possible SQL injection vector through string-based query construction
+   --> src/finsight/adapters/repositories/user_repository.py:171:13
+    |
+169 |         await self._set_rls_context(company_id)
+170 |         result = await self._execute(
+171 |             f'DELETE FROM {_TABLE} WHERE company_id = :company_id AND id = :id',
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+172 |             {'company_id': str(company_id), 'id': str(user_id)},
+173 |         )
+    |
+
+F841 Local variable `count` is assigned to but never used
+   --> src/finsight/application/delete_document/delete_document.py:311:25
+    |
+309 |                         pass
+310 |                     try:
+311 |                         count = await _await(repo.purge_document(company_id, doc_id))
+    |                         ^^^^^
+312 |                         purged_count += 1
+313 |                     except Exception:
+    |
+help: Remove assignment to unused variable `count`
+    |
+310 |                     try:
+    -                         count = await _await(repo.purge_document(company_id, doc_id))
+311 +                         await _await(repo.purge_document(company_id, doc_id))
+312 |                         purged_count += 1
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+F841 Local variable `doc_cfg` is assigned to but never used
+   --> src/finsight/application/delete_document/delete_document.py:654:13
+    |
+652 |         value = self._retention_days
+653 |         if value is None:
+654 |             doc_cfg = None
+    |             ^^^^^^^
+655 |             if isinstance(self._config, dict):
+656 |                 candidate = self._config.get('documents', self._config.get('document'))
+    |
+help: Remove assignment to unused variable `doc_cfg`
+    |
+653 |         if value is None:
+    -             doc_cfg = None
+654 |             if isinstance(self._config, dict):
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+F841 Local variable `vid_or_chunks` is assigned to but never used
+   --> src/finsight/application/delete_document/delete_document.py:794:25
+    |
+792 |                     method = getattr(vw, method_name, None)
+793 |                     if callable(method):
+794 |                         vid_or_chunks = vid if method_name == 'delete_version' else []
+    |                         ^^^^^^^^^^^^^
+795 |                         with contextlib.suppress(Exception):
+796 |                             if method_name == 'delete_version':
+    |
+help: Remove assignment to unused variable `vid_or_chunks`
+    |
+793 |                     if callable(method):
+    -                         vid_or_chunks = vid if method_name == 'delete_version' else []
+794 |                         with contextlib.suppress(Exception):
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+F841 Local variable `cache_cleared` is assigned to but never used
+   --> src/finsight/application/reprocess/reprocess.py:294:13
+    |
+292 |             if qjob_id is not None:
+293 |                 job_id = qjob_id
+294 |             cache_cleared = False
+    |             ^^^^^^^^^^^^^
+295 |             return ReprocessResult(
+296 |                 company_id=company_ids[0],
+    |
+help: Remove assignment to unused variable `cache_cleared`
+    |
+293 |                 job_id = qjob_id
+    -             cache_cleared = False
+294 |             return ReprocessResult(
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+PLW0127 Self-assignment of variable `published_any`
+   --> src/finsight/application/reprocess/reprocess.py:336:17
+    |
+334 |                 await self._touch_stamp(cid)
+335 |                 # Publish not tied to change events in Phase 1; audit only.
+336 |                 published_any = published_any
+    |                 ^^^^^^^^^^^^^
+337 |                 # flag affected documents (reuse document repo listing) - keep audit only
+338 |                 affected = await self._flag_affected(cid)
+    |
+
+B025 try-except block with duplicate exception `Exception`
+   --> src/finsight/application/reprocess/reprocess.py:429:24
+    |
+427 |                 except Exception:
+428 |                     docs = None
+429 |                 except Exception:
+    |                        ^^^^^^^^^
+430 |                     docs = None
+431 |             if docs is not None:
+    |
+
+F841 Local variable `version_id` is assigned to but never used
+   --> src/finsight/application/reprocess/reprocess.py:439:13
+    |
+437 |             if document_id is None:
+438 |                 continue
+439 |             version_id = _get_attr(doc, 'version_id', 'latest_version_id', 'committed_version_id')
+    |             ^^^^^^^^^^
+440 |             # atomic commit stays current version; no mutation of committed version
+441 |             # publish change events marking reprocessed candidate maybe via repo update stamp
+    |
+help: Remove assignment to unused variable `version_id`
+    |
+438 |                 continue
+    -             version_id = _get_attr(doc, 'version_id', 'latest_version_id', 'committed_version_id')
+439 +             _get_attr(doc, 'version_id', 'latest_version_id', 'committed_version_id')
+440 |             # atomic commit stays current version; no mutation of committed version
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+F401 `.models` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> src/finsight/application/update_document/__init__.py:3:15
+  |
+1 | """Update document application package."""
+2 |
+3 | from . import models
+  |               ^^^^^^
+4 | from .models import *  # noqa: F403
+5 | from .update_document import *  # noqa: F403
+  |
+help: Add unused import `models` to __all__
+
+RUF060 Unnecessary membership test on empty collection
+   --> src/finsight/application/update_document/update_document.py:777:12
+    |
+776 |     def _resolve_delta_tracking(self) -> bool:
+777 |         if 'delta_tracking' in {}:
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+778 |             pass
+779 |         value = self._delta_tracking
+    |
+
+B023 Function definition does not bind loop variable `method`
+   --> src/finsight/application/update_document/update_document.py:842:25
+    |
+840 |             create_kwargs.setdefault('id', kwargs.get('version_id'))
+841 |             for call in (
+842 |                 lambda: method(company_id, **create_kwargs),
+    |                         ^^^^^^
+843 |                 lambda: method(company_id=company_id, **create_kwargs),
+844 |             ):
+    |
+
+B023 Function definition does not bind loop variable `create_kwargs`
+   --> src/finsight/application/update_document/update_document.py:842:46
+    |
+840 |             create_kwargs.setdefault('id', kwargs.get('version_id'))
+841 |             for call in (
+842 |                 lambda: method(company_id, **create_kwargs),
+    |                                              ^^^^^^^^^^^^^
+843 |                 lambda: method(company_id=company_id, **create_kwargs),
+844 |             ):
+    |
+
+B023 Function definition does not bind loop variable `method`
+   --> src/finsight/application/update_document/update_document.py:843:25
+    |
+841 |             for call in (
+842 |                 lambda: method(company_id, **create_kwargs),
+843 |                 lambda: method(company_id=company_id, **create_kwargs),
+    |                         ^^^^^^
+844 |             ):
+845 |                 try:
+    |
+
+B023 Function definition does not bind loop variable `create_kwargs`
+   --> src/finsight/application/update_document/update_document.py:843:57
+    |
+841 |             for call in (
+842 |                 lambda: method(company_id, **create_kwargs),
+843 |                 lambda: method(company_id=company_id, **create_kwargs),
+    |                                                         ^^^^^^^^^^^^^
+844 |             ):
+845 |                 try:
+    |
+
+B007 Loop control variable `payload` not used within loop body
+    --> src/finsight/application/update_document/update_document.py:1035:30
+     |
+1033 |             stamp = None
+1034 |         if repo is not None:
+1035 |             for method_name, payload in (('update_document_stamp', None),):
+     |                              ^^^^^^^
+1036 |                 method = getattr(repo, method_name, None)
+1037 |                 if callable(method):
+     |
+help: Rename unused `payload` to `_payload`
+     |
+1034 |         if repo is not None:
+     -             for method_name, payload in (('update_document_stamp', None),):
+1035 +             for method_name, _payload in (('update_document_stamp', None),):
+1036 |                 method = getattr(repo, method_name, None)
+     |
+note: This is an unsafe fix and may change runtime behavior
+
+F401 `dataclasses.dataclass` imported but unused
+ --> src/finsight/core/types/__init__.py:5:25
+  |
+3 | from __future__ import annotations
+4 |
+5 | from dataclasses import dataclass
+  |                         ^^^^^^^^^
+6 | from enum import StrEnum
+7 | from typing import NewType
+  |
+help: Remove unused import: `dataclasses.dataclass`
+
+E402 Module level import not at top of file
+   --> src/finsight/core/types/__init__.py:131:1
+    |
+129 |     'UserId',
+130 | ]
+131 | from .partition_status import PartitionStatus
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+132 |
+133 | __all__.append('PartitionStatus')
+    |
+help: Move module level imports to top of file
+
+F401 `.partition_status.PartitionStatus` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+   --> src/finsight/core/types/__init__.py:131:31
+    |
+129 |     'UserId',
+130 | ]
+131 | from .partition_status import PartitionStatus
+    |                               ^^^^^^^^^^^^^^^
+132 |
+133 | __all__.append('PartitionStatus')
+    |
+help: Add unused import `PartitionStatus` to __all__
+
+TC003 Move standard library import `datetime.datetime` into a type-checking block
+ --> src/finsight/domain/entities/company.py:6:22
+  |
+5 | from dataclasses import dataclass
+6 | from datetime import datetime
+  |                      ^^^^^^^^
+7 |
+8 | from finsight.core.types import CompanyId
+  |
+help: Move into type-checking block
+   |
+5  | from dataclasses import dataclass
+   - from datetime import datetime
+6  |
+7  | from finsight.core.types import CompanyId
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from datetime import datetime
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/entities/company.py:8:33
+  |
+6 | from datetime import datetime
+7 |
+8 | from finsight.core.types import CompanyId
+  |                                 ^^^^^^^^^
+help: Move into type-checking block
+   |
+7  |
+   - from finsight.core.types import CompanyId
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+PLR0912 Too many branches (34 > 12)
+  --> src/finsight/domain/entities/document_version.py:90:9
+   |
+88 |     extras: dict[str, object] = field(default_factory=dict)
+89 |
+90 |     def __init__(self, *args: object, **kwargs: object) -> None:
+   |         ^^^^^^^^
+91 |         positional_order = [
+92 |             'id',
+   |
+
+PLR0915 Too many statements (97 > 50)
+  --> src/finsight/domain/entities/document_version.py:90:9
+   |
+88 |     extras: dict[str, object] = field(default_factory=dict)
+89 |
+90 |     def __init__(self, *args: object, **kwargs: object) -> None:
+   |         ^^^^^^^^
+91 |         positional_order = [
+92 |             'id',
+   |
+
+RET504 Unnecessary assignment to `obj` before `return` statement
+  --> src/finsight/domain/entities/document_version_state.py:29:16
+   |
+27 |             canonical = 'committed'
+28 |         obj = str.__new__(cls, canonical)
+29 |         return obj
+   |                ^^^
+30 |
+31 |     @classmethod
+   |
+help: Remove unnecessary assignment
+   |
+27 |             canonical = 'committed'
+   -         obj = str.__new__(cls, canonical)
+   -         return obj
+28 +         return str.__new__(cls, canonical)
+29 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC003 Move standard library import `datetime.datetime` into a type-checking block
+ --> src/finsight/domain/entities/partition_metadata.py:6:22
+  |
+5 | from dataclasses import dataclass
+6 | from datetime import datetime
+  |                      ^^^^^^^^
+7 |
+8 | from finsight.core.types import CompanyId, PartitionStatus
+  |
+help: Move into type-checking block
+   |
+5  | from dataclasses import dataclass
+   - from datetime import datetime
+6  |
+7  | from finsight.core.types import CompanyId, PartitionStatus
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from datetime import datetime
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC003 Move standard library import `datetime.datetime` into a type-checking block
+ --> src/finsight/domain/entities/user.py:6:22
+  |
+5 | from dataclasses import dataclass
+6 | from datetime import datetime
+  |                      ^^^^^^^^
+7 |
+8 | from finsight.core.types import CompanyId, Role, UserId
+  |
+help: Move into type-checking block
+   |
+5  | from dataclasses import dataclass
+   - from datetime import datetime
+6  |
+7  | from finsight.core.types import CompanyId, Role, UserId
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from datetime import datetime
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/entities/user.py:8:33
+  |
+6 | from datetime import datetime
+7 |
+8 | from finsight.core.types import CompanyId, Role, UserId
+  |                                 ^^^^^^^^^
+help: Move into type-checking block
+   |
+7  |
+   - from finsight.core.types import CompanyId, Role, UserId
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId, Role, UserId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.Role` into a type-checking block
+ --> src/finsight/domain/entities/user.py:8:44
+  |
+6 | from datetime import datetime
+7 |
+8 | from finsight.core.types import CompanyId, Role, UserId
+  |                                            ^^^^
+help: Move into type-checking block
+   |
+7  |
+   - from finsight.core.types import CompanyId, Role, UserId
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId, Role, UserId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.UserId` into a type-checking block
+ --> src/finsight/domain/entities/user.py:8:50
+  |
+6 | from datetime import datetime
+7 |
+8 | from finsight.core.types import CompanyId, Role, UserId
+  |                                                  ^^^^^^
+help: Move into type-checking block
+   |
+7  |
+   - from finsight.core.types import CompanyId, Role, UserId
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId, Role, UserId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/answer_cache.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId
+  |                                 ^^^^^^^^^
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId
+7  + from typing import TYPE_CHECKING
+8  +
+9  + if TYPE_CHECKING:
+10 +     from finsight.core.types import CompanyId
+11 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+PLR0913 Too many arguments in function definition (6 > 5)
+  --> src/finsight/domain/ports/answer_cache.py:14:15
+   |
+13 |     @abstractmethod
+14 |     async def get(
+   |               ^^^
+15 |         self,
+16 |         company_id: CompanyId,
+   |
+help: Consider adding `@typing.override` if changing the function signature would violate the Liskov Substitution Principle
+
+PLR0913 Too many arguments in function definition (8 > 5)
+  --> src/finsight/domain/ports/answer_cache.py:29:15
+   |
+28 |     @abstractmethod
+29 |     async def set(
+   |               ^^^
+30 |         self,
+31 |         company_id: CompanyId,
+   |
+help: Consider adding `@typing.override` if changing the function signature would violate the Liskov Substitution Principle
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/answer_cache.py:57:54
+   |
+55 |     # Aliases for get.
+56 |     async def get_answer(self, company_id: CompanyId, **kwargs: object) -> object:
+57 |         return await self.get(company_id, **kwargs)  # type: ignore
+   |                                                      ^^^^^^^^^^^^^^
+58 |
+59 |     async def fetch(self, company_id: CompanyId, **kwargs: object) -> object:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/answer_cache.py:60:54
+   |
+59 |     async def fetch(self, company_id: CompanyId, **kwargs: object) -> object:
+60 |         return await self.get(company_id, **kwargs)  # type: ignore
+   |                                                      ^^^^^^^^^^^^^^
+61 |
+62 |     async def get_cached(self, company_id: CompanyId, **kwargs: object) -> object:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/answer_cache.py:63:54
+   |
+62 |     async def get_cached(self, company_id: CompanyId, **kwargs: object) -> object:
+63 |         return await self.get(company_id, **kwargs)  # type: ignore
+   |                                                      ^^^^^^^^^^^^^^
+64 |
+65 |     # Aliases for set.
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/answer_cache.py:67:61
+   |
+65 |     # Aliases for set.
+66 |     async def set_answer(self, company_id: CompanyId, value: object, **kwargs: object) -> None:
+67 |         return await self.set(company_id, value, **kwargs)  # type: ignore
+   |                                                             ^^^^^^^^^^^^^^
+68 |
+69 |     async def put(self, company_id: CompanyId, value: object, **kwargs: object) -> None:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/answer_cache.py:70:61
+   |
+69 |     async def put(self, company_id: CompanyId, value: object, **kwargs: object) -> None:
+70 |         return await self.set(company_id, value, **kwargs)  # type: ignore
+   |                                                             ^^^^^^^^^^^^^^
+71 |
+72 |     async def store(self, company_id: CompanyId, value: object, **kwargs: object) -> None:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/answer_cache.py:73:61
+   |
+72 |     async def store(self, company_id: CompanyId, value: object, **kwargs: object) -> None:
+73 |         return await self.set(company_id, value, **kwargs)  # type: ignore
+   |                                                             ^^^^^^^^^^^^^^
+74 |
+75 |     # Aliases for clear (company-scoped invalidation).
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+   --> src/finsight/domain/ports/answer_cache.py:101:68
+    |
+100 |     async def exists(self, company_id: CompanyId, **kwargs: object) -> bool:
+101 |         return (await self.get(company_id, **kwargs)) is not None  # type: ignore
+    |                                                                    ^^^^^^^^^^^^^^
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/company_repository.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId
+  |                                 ^^^^^^^^^
+8 | from finsight.domain.entities.company import Company
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId
+7  | from finsight.domain.entities.company import Company
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.domain.entities.company.Company` into a type-checking block
+ --> src/finsight/domain/ports/company_repository.py:8:46
+  |
+7 | from finsight.core.types import CompanyId
+8 | from finsight.domain.entities.company import Company
+  |                                              ^^^^^^^
+help: Move into type-checking block
+   |
+7  | from finsight.core.types import CompanyId
+   - from finsight.domain.entities.company import Company
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.domain.entities.company import Company
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/document_reader.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId
+  |                                 ^^^^^^^^^
+8 | from finsight.domain.value_objects.reader_result import ReaderResult
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId
+7  | from finsight.domain.value_objects.reader_result import ReaderResult
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.domain.value_objects.reader_result.ReaderResult` into a type-checking block
+ --> src/finsight/domain/ports/document_reader.py:8:57
+  |
+7 | from finsight.core.types import CompanyId
+8 | from finsight.domain.value_objects.reader_result import ReaderResult
+  |                                                         ^^^^^^^^^^^^
+help: Move into type-checking block
+   |
+7  | from finsight.core.types import CompanyId
+   - from finsight.domain.value_objects.reader_result import ReaderResult
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.domain.value_objects.reader_result import ReaderResult
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+PLR0913 Too many arguments in function definition (6 > 5)
+  --> src/finsight/domain/ports/document_reader.py:15:15
+   |
+14 |     @abstractmethod
+15 |     async def read(
+   |               ^^^^
+16 |         self,
+17 |         company_id: CompanyId,
+   |
+help: Consider adding `@typing.override` if changing the function signature would violate the Liskov Substitution Principle
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/document_reader.py:34:64
+   |
+32 |         self, company_id: CompanyId, content: object = None, **kwargs: object
+33 |     ) -> ReaderResult:
+34 |         return await self.read(company_id, content, **kwargs)  # type: ignore
+   |                                                                ^^^^^^^^^^^^^^
+35 |
+36 |     async def extract(
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/document_reader.py:39:64
+   |
+37 |         self, company_id: CompanyId, content: object = None, **kwargs: object
+38 |     ) -> ReaderResult:
+39 |         return await self.read(company_id, content, **kwargs)  # type: ignore
+   |                                                                ^^^^^^^^^^^^^^
+40 |
+41 |     async def parse(
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/document_reader.py:44:64
+   |
+42 |         self, company_id: CompanyId, content: object = None, **kwargs: object
+43 |     ) -> ReaderResult:
+44 |         return await self.read(company_id, content, **kwargs)  # type: ignore
+   |                                                                ^^^^^^^^^^^^^^
+45 |
+46 |     async def extract_text(
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/document_reader.py:49:64
+   |
+47 |         self, company_id: CompanyId, content: object = None, **kwargs: object
+48 |     ) -> ReaderResult:
+49 |         return await self.read(company_id, content, **kwargs)  # type: ignore
+   |                                                                ^^^^^^^^^^^^^^
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/document_repository.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId, DocumentId
+  |                                 ^^^^^^^^^
+8 | from finsight.domain.entities.document_version import DocumentVersion
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId, DocumentId
+7  | from finsight.domain.entities.document_version import DocumentVersion
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId, DocumentId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.DocumentId` into a type-checking block
+ --> src/finsight/domain/ports/document_repository.py:7:44
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId, DocumentId
+  |                                            ^^^^^^^^^^
+8 | from finsight.domain.entities.document_version import DocumentVersion
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId, DocumentId
+7  | from finsight.domain.entities.document_version import DocumentVersion
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId, DocumentId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.domain.entities.document_version.DocumentVersion` into a type-checking block
+ --> src/finsight/domain/ports/document_repository.py:8:55
+  |
+7 | from finsight.core.types import CompanyId, DocumentId
+8 | from finsight.domain.entities.document_version import DocumentVersion
+  |                                                       ^^^^^^^^^^^^^^^
+help: Move into type-checking block
+   |
+7  | from finsight.core.types import CompanyId, DocumentId
+   - from finsight.domain.entities.document_version import DocumentVersion
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.domain.entities.document_version import DocumentVersion
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/document_repository.py:80:74
+   |
+78 |     # Aliases for version methods.
+79 |     async def create_version(self, company_id: CompanyId, **kwargs: object) -> DocumentVersion:
+80 |         return await self.create_document_version(company_id, **kwargs)  # type: ignore
+   |                                                                          ^^^^^^^^^^^^^^
+81 |
+82 |     async def create_document_version_record(
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/document_repository.py:85:74
+   |
+83 |         self, company_id: CompanyId, **kwargs: object
+84 |     ) -> DocumentVersion:
+85 |         return await self.create_document_version(company_id, **kwargs)  # type: ignore
+   |                                                                          ^^^^^^^^^^^^^^
+86 |
+87 |     async def get_version(
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:13:48
+   |
+12 |     @abstractmethod
+13 |     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                ^^^
+14 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:13:60
+   |
+12 |     @abstractmethod
+13 |     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                            ^^^
+14 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:13:75
+   |
+12 |     @abstractmethod
+13 |     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                           ^^^
+14 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `write_progress`
+  --> src/finsight/domain/ports/job_progress_port.py:13:83
+   |
+12 |     @abstractmethod
+13 |     async def write_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                                   ^^^
+14 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:17:47
+   |
+16 |     @abstractmethod
+17 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                               ^^^
+18 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:17:59
+   |
+16 |     @abstractmethod
+17 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                           ^^^
+18 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:17:74
+   |
+16 |     @abstractmethod
+17 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                          ^^^
+18 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `read_progress`
+  --> src/finsight/domain/ports/job_progress_port.py:17:82
+   |
+16 |     @abstractmethod
+17 |     async def read_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                                  ^^^
+18 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:21:47
+   |
+20 |     @abstractmethod
+21 |     async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                               ^^^
+22 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:21:59
+   |
+20 |     @abstractmethod
+21 |     async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                           ^^^
+22 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:21:74
+   |
+20 |     @abstractmethod
+21 |     async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                          ^^^
+22 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `list_progress`
+  --> src/finsight/domain/ports/job_progress_port.py:21:82
+   |
+20 |     @abstractmethod
+21 |     async def list_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                                  ^^^
+22 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:25:49
+   |
+24 |     @abstractmethod
+25 |     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                 ^^^
+26 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:25:61
+   |
+24 |     @abstractmethod
+25 |     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                             ^^^
+26 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:25:76
+   |
+24 |     @abstractmethod
+25 |     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                            ^^^
+26 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `delete_progress`
+  --> src/finsight/domain/ports/job_progress_port.py:25:84
+   |
+24 |     @abstractmethod
+25 |     async def delete_progress(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                                    ^^^
+26 |         raise NotImplementedError
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:29:39
+   |
+28 |     # aliases
+29 |     async def write(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                       ^^^
+30 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:29:51
+   |
+28 |     # aliases
+29 |     async def write(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                   ^^^
+30 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:29:66
+   |
+28 |     # aliases
+29 |     async def write(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                  ^^^
+30 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `write`
+  --> src/finsight/domain/ports/job_progress_port.py:29:74
+   |
+28 |     # aliases
+29 |     async def write(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                          ^^^
+30 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:32:37
+   |
+30 |         return await self.write_progress(company_id, *args, **kwargs)
+31 |
+32 |     async def put(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                     ^^^
+33 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:32:49
+   |
+30 |         return await self.write_progress(company_id, *args, **kwargs)
+31 |
+32 |     async def put(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                 ^^^
+33 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:32:64
+   |
+30 |         return await self.write_progress(company_id, *args, **kwargs)
+31 |
+32 |     async def put(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                ^^^
+33 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `put`
+  --> src/finsight/domain/ports/job_progress_port.py:32:72
+   |
+30 |         return await self.write_progress(company_id, *args, **kwargs)
+31 |
+32 |     async def put(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                        ^^^
+33 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:35:40
+   |
+33 |         return await self.write_progress(company_id, *args, **kwargs)
+34 |
+35 |     async def upsert(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                        ^^^
+36 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:35:52
+   |
+33 |         return await self.write_progress(company_id, *args, **kwargs)
+34 |
+35 |     async def upsert(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                    ^^^
+36 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:35:67
+   |
+33 |         return await self.write_progress(company_id, *args, **kwargs)
+34 |
+35 |     async def upsert(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                   ^^^
+36 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `upsert`
+  --> src/finsight/domain/ports/job_progress_port.py:35:75
+   |
+33 |         return await self.write_progress(company_id, *args, **kwargs)
+34 |
+35 |     async def upsert(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                           ^^^
+36 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:38:38
+   |
+36 |         return await self.write_progress(company_id, *args, **kwargs)
+37 |
+38 |     async def save(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                      ^^^
+39 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:38:50
+   |
+36 |         return await self.write_progress(company_id, *args, **kwargs)
+37 |
+38 |     async def save(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                  ^^^
+39 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:38:65
+   |
+36 |         return await self.write_progress(company_id, *args, **kwargs)
+37 |
+38 |     async def save(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                 ^^^
+39 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `save`
+  --> src/finsight/domain/ports/job_progress_port.py:38:73
+   |
+36 |         return await self.write_progress(company_id, *args, **kwargs)
+37 |
+38 |     async def save(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                         ^^^
+39 |         return await self.write_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:41:37
+   |
+39 |         return await self.write_progress(company_id, *args, **kwargs)
+40 |
+41 |     async def get(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                     ^^^
+42 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:41:49
+   |
+39 |         return await self.write_progress(company_id, *args, **kwargs)
+40 |
+41 |     async def get(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                 ^^^
+42 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:41:64
+   |
+39 |         return await self.write_progress(company_id, *args, **kwargs)
+40 |
+41 |     async def get(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                ^^^
+42 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `get`
+  --> src/finsight/domain/ports/job_progress_port.py:41:72
+   |
+39 |         return await self.write_progress(company_id, *args, **kwargs)
+40 |
+41 |     async def get(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                        ^^^
+42 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:44:39
+   |
+42 |         return await self.read_progress(company_id, *args, **kwargs)
+43 |
+44 |     async def fetch(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                       ^^^
+45 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:44:51
+   |
+42 |         return await self.read_progress(company_id, *args, **kwargs)
+43 |
+44 |     async def fetch(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                   ^^^
+45 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:44:66
+   |
+42 |         return await self.read_progress(company_id, *args, **kwargs)
+43 |
+44 |     async def fetch(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                  ^^^
+45 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `fetch`
+  --> src/finsight/domain/ports/job_progress_port.py:44:74
+   |
+42 |         return await self.read_progress(company_id, *args, **kwargs)
+43 |
+44 |     async def fetch(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                          ^^^
+45 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:47:38
+   |
+45 |         return await self.read_progress(company_id, *args, **kwargs)
+46 |
+47 |     async def read(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                      ^^^
+48 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:47:50
+   |
+45 |         return await self.read_progress(company_id, *args, **kwargs)
+46 |
+47 |     async def read(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                  ^^^
+48 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:47:65
+   |
+45 |         return await self.read_progress(company_id, *args, **kwargs)
+46 |
+47 |     async def read(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                 ^^^
+48 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `read`
+  --> src/finsight/domain/ports/job_progress_port.py:47:73
+   |
+45 |         return await self.read_progress(company_id, *args, **kwargs)
+46 |
+47 |     async def read(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                         ^^^
+48 |         return await self.read_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `company_id`
+  --> src/finsight/domain/ports/job_progress_port.py:50:38
+   |
+48 |         return await self.read_progress(company_id, *args, **kwargs)
+49 |
+50 |     async def list(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                      ^^^
+51 |         return await self.list_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `*args`
+  --> src/finsight/domain/ports/job_progress_port.py:50:50
+   |
+48 |         return await self.read_progress(company_id, *args, **kwargs)
+49 |
+50 |     async def list(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                  ^^^
+51 |         return await self.list_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  --> src/finsight/domain/ports/job_progress_port.py:50:65
+   |
+48 |         return await self.read_progress(company_id, *args, **kwargs)
+49 |
+50 |     async def list(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                 ^^^
+51 |         return await self.list_progress(company_id, *args, **kwargs)
+   |
+
+ANN401 Dynamically typed expressions (typing.Any) are disallowed in `list`
+  --> src/finsight/domain/ports/job_progress_port.py:50:73
+   |
+48 |         return await self.read_progress(company_id, *args, **kwargs)
+49 |
+50 |     async def list(self, company_id: Any, *args: Any, **kwargs: Any) -> Any:
+   |                                                                         ^^^
+51 |         return await self.list_progress(company_id, *args, **kwargs)
+   |
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/job_repository.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId, JobStatus
+  |                                 ^^^^^^^^^
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId, JobStatus
+7  + from typing import TYPE_CHECKING
+8  +
+9  + if TYPE_CHECKING:
+10 +     from finsight.core.types import CompanyId, JobStatus
+11 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.JobStatus` into a type-checking block
+ --> src/finsight/domain/ports/job_repository.py:7:44
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId, JobStatus
+  |                                            ^^^^^^^^^
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId, JobStatus
+7  + from typing import TYPE_CHECKING
+8  +
+9  + if TYPE_CHECKING:
+10 +     from finsight.core.types import CompanyId, JobStatus
+11 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/job_repository.py:68:69
+   |
+66 |     # Aliases.
+67 |     async def create(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+68 |         return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+   |                                                                     ^^^^^^^^^^^^^^
+69 |
+70 |     async def insert(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/job_repository.py:71:69
+   |
+70 |     async def insert(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+71 |         return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+   |                                                                     ^^^^^^^^^^^^^^
+72 |
+73 |     async def add_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/job_repository.py:74:69
+   |
+73 |     async def add_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+74 |         return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+   |                                                                     ^^^^^^^^^^^^^^
+75 |
+76 |     async def upsert_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/job_repository.py:77:69
+   |
+76 |     async def upsert_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+77 |         return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+   |                                                                     ^^^^^^^^^^^^^^
+78 |
+79 |     async def upsert(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/job_repository.py:80:69
+   |
+79 |     async def upsert(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+80 |         return await self.create_job(company_id, job_id, **kwargs)  # type: ignore
+   |                                                                     ^^^^^^^^^^^^^^
+81 |
+82 |     async def get(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+   --> src/finsight/domain/ports/job_repository.py:103:69
+    |
+101 |         self, company_id: CompanyId, job_id: object, **kwargs: object
+102 |     ) -> object:
+103 |         return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+    |                                                                     ^^^^^^^^^^^^^^
+104 |
+105 |     async def update_status(
+    |
+
+PGH003 Use specific rule codes when ignoring type issues
+   --> src/finsight/domain/ports/job_repository.py:108:69
+    |
+106 |         self, company_id: CompanyId, job_id: object, **kwargs: object
+107 |     ) -> object:
+108 |         return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+    |                                                                     ^^^^^^^^^^^^^^
+109 |
+110 |     async def set_status(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+    |
+
+PGH003 Use specific rule codes when ignoring type issues
+   --> src/finsight/domain/ports/job_repository.py:111:69
+    |
+110 |     async def set_status(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+111 |         return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+    |                                                                     ^^^^^^^^^^^^^^
+112 |
+113 |     async def mark_status(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+    |
+
+PGH003 Use specific rule codes when ignoring type issues
+   --> src/finsight/domain/ports/job_repository.py:114:69
+    |
+113 |     async def mark_status(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+114 |         return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+    |                                                                     ^^^^^^^^^^^^^^
+115 |
+116 |     async def mark_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+    |
+
+PGH003 Use specific rule codes when ignoring type issues
+   --> src/finsight/domain/ports/job_repository.py:117:69
+    |
+116 |     async def mark_job(self, company_id: CompanyId, job_id: object, **kwargs: object) -> object:
+117 |         return await self.update_job(company_id, job_id, **kwargs)  # type: ignore
+    |                                                                     ^^^^^^^^^^^^^^
+118 |
+119 |     async def delete(self, company_id: CompanyId, job_id: object, **kwargs: object) -> bool:
+    |
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/object_storage.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId
+  |                                 ^^^^^^^^^
+8 | from finsight.domain.value_objects.presigned_upload import PresignedUpload
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId
+7  | from finsight.domain.value_objects.presigned_upload import PresignedUpload
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.domain.value_objects.presigned_upload.PresignedUpload` into a type-checking block
+ --> src/finsight/domain/ports/object_storage.py:8:60
+  |
+7 | from finsight.core.types import CompanyId
+8 | from finsight.domain.value_objects.presigned_upload import PresignedUpload
+  |                                                            ^^^^^^^^^^^^^^^
+help: Move into type-checking block
+   |
+7  | from finsight.core.types import CompanyId
+   - from finsight.domain.value_objects.presigned_upload import PresignedUpload
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.domain.value_objects.presigned_upload import PresignedUpload
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/object_storage.py:52:85
+   |
+50 |         self, company_id: CompanyId, key: str, **kwargs: object
+51 |     ) -> PresignedUpload:
+52 |         return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+   |                                                                                     ^^^^^^^^^^^^^^
+53 |
+54 |     async def presigned_upload_url(
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/object_storage.py:57:85
+   |
+55 |         self, company_id: CompanyId, key: str, **kwargs: object
+56 |     ) -> PresignedUpload:
+57 |         return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+   |                                                                                     ^^^^^^^^^^^^^^
+58 |
+59 |     async def get_presigned_upload_url(
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/object_storage.py:62:85
+   |
+60 |         self, company_id: CompanyId, key: str, **kwargs: object
+61 |     ) -> PresignedUpload:
+62 |         return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+   |                                                                                     ^^^^^^^^^^^^^^
+63 |
+64 |     async def generate_upload_url(
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/object_storage.py:67:85
+   |
+65 |         self, company_id: CompanyId, key: str, **kwargs: object
+66 |     ) -> PresignedUpload:
+67 |         return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+   |                                                                                     ^^^^^^^^^^^^^^
+68 |
+69 |     async def presigned_url(
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/object_storage.py:72:85
+   |
+70 |         self, company_id: CompanyId, key: str, **kwargs: object
+71 |     ) -> PresignedUpload:
+72 |         return await self.generate_presigned_upload_url(company_id, key, **kwargs)  # type: ignore
+   |                                                                                     ^^^^^^^^^^^^^^
+73 |
+74 |     async def get(self, company_id: CompanyId, key: str, **kwargs: object) -> bytes:
+   |
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/partition_gateway.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId
+  |                                 ^^^^^^^^^
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId
+7  + from typing import TYPE_CHECKING
+8  +
+9  + if TYPE_CHECKING:
+10 +     from finsight.core.types import CompanyId
+11 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.domain.entities.partition_metadata.PartitionMetadata` into a type-checking block
+ --> src/finsight/domain/ports/partition_metadata_repository.py:8:57
+  |
+7 | from finsight.core.types import CompanyId, PartitionStatus
+8 | from finsight.domain.entities.partition_metadata import PartitionMetadata
+  |                                                         ^^^^^^^^^^^^^^^^^
+help: Move into type-checking block
+   |
+7  | from finsight.core.types import CompanyId, PartitionStatus
+   - from finsight.domain.entities.partition_metadata import PartitionMetadata
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.domain.entities.partition_metadata import PartitionMetadata
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC003 Move standard library import `collections.abc.AsyncIterator` into a type-checking block
+ --> src/finsight/domain/ports/unit_of_work.py:6:29
+  |
+5 | from abc import ABC, abstractmethod
+6 | from collections.abc import AsyncIterator
+  |                             ^^^^^^^^^^^^^
+7 | from contextlib import asynccontextmanager
+  |
+help: Move into type-checking block
+   |
+5  | from abc import ABC, abstractmethod
+   - from collections.abc import AsyncIterator
+6  | from contextlib import asynccontextmanager
+7  |
+8  | from finsight.core.types import CompanyId
+9  + from typing import TYPE_CHECKING
+10 +
+11 + if TYPE_CHECKING:
+12 +     from collections.abc import AsyncIterator
+13 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/unit_of_work.py:9:33
+  |
+7 | from contextlib import asynccontextmanager
+8 |
+9 | from finsight.core.types import CompanyId
+  |                                 ^^^^^^^^^
+help: Move into type-checking block
+   |
+8  |
+   - from finsight.core.types import CompanyId
+9  + from typing import TYPE_CHECKING
+10 +
+11 + if TYPE_CHECKING:
+12 +     from finsight.core.types import CompanyId
+13 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/user_repository.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId, Role, UserId
+  |                                 ^^^^^^^^^
+8 | from finsight.domain.entities.user import User
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId, Role, UserId
+7  | from finsight.domain.entities.user import User
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId, Role, UserId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.Role` into a type-checking block
+ --> src/finsight/domain/ports/user_repository.py:7:44
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId, Role, UserId
+  |                                            ^^^^
+8 | from finsight.domain.entities.user import User
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId, Role, UserId
+7  | from finsight.domain.entities.user import User
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId, Role, UserId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.UserId` into a type-checking block
+ --> src/finsight/domain/ports/user_repository.py:7:50
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId, Role, UserId
+  |                                                  ^^^^^^
+8 | from finsight.domain.entities.user import User
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId, Role, UserId
+7  | from finsight.domain.entities.user import User
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId, Role, UserId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.domain.entities.user.User` into a type-checking block
+ --> src/finsight/domain/ports/user_repository.py:8:43
+  |
+7 | from finsight.core.types import CompanyId, Role, UserId
+8 | from finsight.domain.entities.user import User
+  |                                           ^^^^
+help: Move into type-checking block
+   |
+7  | from finsight.core.types import CompanyId, Role, UserId
+   - from finsight.domain.entities.user import User
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.domain.entities.user import User
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.core.types.CompanyId` into a type-checking block
+ --> src/finsight/domain/ports/virus_scanner.py:7:33
+  |
+5 | from abc import ABC, abstractmethod
+6 |
+7 | from finsight.core.types import CompanyId
+  |                                 ^^^^^^^^^
+8 | from finsight.domain.value_objects.virus_scan_result import VirusScanResult
+  |
+help: Move into type-checking block
+   |
+6  |
+   - from finsight.core.types import CompanyId
+7  | from finsight.domain.value_objects.virus_scan_result import VirusScanResult
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.core.types import CompanyId
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+TC001 Move application import `finsight.domain.value_objects.virus_scan_result.VirusScanResult` into a type-checking block
+ --> src/finsight/domain/ports/virus_scanner.py:8:61
+  |
+7 | from finsight.core.types import CompanyId
+8 | from finsight.domain.value_objects.virus_scan_result import VirusScanResult
+  |                                                             ^^^^^^^^^^^^^^^
+help: Move into type-checking block
+   |
+7  | from finsight.core.types import CompanyId
+   - from finsight.domain.value_objects.virus_scan_result import VirusScanResult
+8  + from typing import TYPE_CHECKING
+9  +
+10 + if TYPE_CHECKING:
+11 +     from finsight.domain.value_objects.virus_scan_result import VirusScanResult
+12 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/virus_scanner.py:30:60
+   |
+28 |         self, company_id: CompanyId, key: str, **kwargs: object
+29 |     ) -> VirusScanResult:
+30 |         return await self.scan(company_id, key, **kwargs)  # type: ignore
+   |                                                            ^^^^^^^^^^^^^^
+31 |
+32 |     async def scan_key(self, company_id: CompanyId, key: str, **kwargs: object) -> VirusScanResult:
+   |
+
+PGH003 Use specific rule codes when ignoring type issues
+  --> src/finsight/domain/ports/virus_scanner.py:33:60
+   |
+32 |     async def scan_key(self, company_id: CompanyId, key: str, **kwargs: object) -> VirusScanResult:
+33 |         return await self.scan(company_id, key, **kwargs)  # type: ignore
+   |                                                            ^^^^^^^^^^^^^^
+
+TC003 Move standard library import `collections.abc.Iterator` into a type-checking block
+ --> src/finsight/domain/value_objects/virus_scan_result.py:5:29
+  |
+3 | from __future__ import annotations
+4 |
+5 | from collections.abc import Iterator
+  |                             ^^^^^^^^
+6 | from dataclasses import dataclass
+  |
+help: Move into type-checking block
+   |
+4  |
+   - from collections.abc import Iterator
+5  | from dataclasses import dataclass
+6  + from typing import TYPE_CHECKING
+7  +
+8  + if TYPE_CHECKING:
+9  +     from collections.abc import Iterator
+10 |
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+Found 365 errors.
+53 unsafe fixes available with `--fix --unsafe-fixes`.
+make: *** [lint] Error 1
+exit=2

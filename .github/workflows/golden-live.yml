@@ -1,0 +1,44 @@
+name: Golden Live Provider (Nightly)
+
+"on":
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  golden-live:
+    name: Golden set with live providers
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.label.name, 'live-provider')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.0"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run golden set (pilot)
+        run: uv run pytest tests/golden -v --tb=short -m "golden"
+        env:
+          ENVIRONMENT: development
+          LIVE_PROVIDER: "true"
+
+      - name: Run golden set (standard)
+        run: uv run pytest tests/golden -v --tb=short -m "golden"
+        env:
+          ENVIRONMENT: staging
+          LIVE_PROVIDER: "true"

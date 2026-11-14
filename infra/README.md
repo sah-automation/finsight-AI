@@ -3,8 +3,12 @@
 This directory contains infrastructure definitions for FinSight AI.
 
 ## Local development
-- `docker-compose.test.yml` (repo root) for local services (Postgres+pgvector, LocalStack, Redis, OTel)
+- `docker-compose.test.yml` (repo root) for local services (Postgres+pgvector, LocalStack, Redis, OTel, Arize Phoenix)
 - `localstack/`, `postgres/`, `otel/` contain bootstrap/config for local stack
+- Traces: applications send OTLP to the collector (`http://localhost:4318/v1/traces`,
+  `config/dev.yaml` `otlp_endpoint`), the collector deletes blocklisted span
+  attributes (`attributes/redact`) and exports to Phoenix (SQLite mode, UI at
+  `http://localhost:6006`). Contract: `tests/contract/test_otel_collector_phoenix_contract.py`
 
 ## Production/deployment (IaC)
 We use AWS CDK in Python under `infra/cdk/` (decision record:

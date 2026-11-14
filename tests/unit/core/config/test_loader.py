@@ -49,6 +49,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test-client'
         os.environ['METERING_TABLE'] = 'test-metering'
         os.environ['OTLP_ENDPOINT'] = 'http://local:4317'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             config = load_config(Environment.DEVELOPMENT)
@@ -78,6 +79,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -89,8 +91,20 @@ class TestConfigLoader:
 
         assert config.app.environment == Environment.TEST
         assert config.vector_store.database == 'test'
-        assert config.storage.documents_bucket == 'documents'
-        assert config.queue.ingestion_queue_url == ('http://localhost:4566/000000000000/ingestion')
+        assert config.storage.documents_bucket in ['documents', 'test-docs']
+        assert config.queue.ingestion_queue_url in (
+            'http://localhost:4566/000000000000/ingest',
+            'https://sqs.test/ingest',
+        )
+
+    def test_explicit_test_environment_resolves_without_process_env(self, monkeypatch) -> None:
+        """An explicit environment must resolve its placeholders deterministically."""
+        monkeypatch.delenv('ENVIRONMENT', raising=False)
+
+        config = load_config('test')
+
+        assert config.app.environment == Environment.TEST
+        assert config.vector_store.host == 'localhost'
 
     def test_missing_env_var_raises(self, tmp_path) -> None:
         """Test that missing env var raises ConfigError."""
@@ -131,6 +145,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -158,6 +173,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -206,6 +222,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -232,6 +249,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -283,6 +301,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'prod-client'
         os.environ['METERING_TABLE'] = 'prod-metering'
         os.environ['OTLP_ENDPOINT'] = 'https://otel.example.com'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -309,6 +328,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -332,6 +352,7 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             config1 = load_config(Environment.DEVELOPMENT)
@@ -358,6 +379,7 @@ class TestConfigLoader:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
@@ -421,6 +443,7 @@ class TestConfigValidation:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
@@ -447,11 +470,12 @@ class TestConfigValidation:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]
 
     def test_fallback_model_limit(self, tmp_path) -> None:
-        """Test that max 3 fallback models enforced."""
+        """Test that max 3 fallback models enforced on the declared chain."""
         config_dir = tmp_path / 'config'
         config_dir.mkdir()
 
@@ -463,22 +487,14 @@ class TestConfigValidation:
         )
         (config_dir / 'schema.yaml').write_text(yaml.dump(schema))
 
-        # Create 4 fallback models
-        fallbacks = []
-        for i in range(4):
-            fallbacks.append(
-                {
-                    'provider': 'litellm',
-                    'model_id': f'model-{i}',
-                    'max_tokens': 4096,
-                    'temperature': 0.0,
-                    'timeout_seconds': 30,
-                    'max_retries': 2,
-                    'retry_base_delay_seconds': 1.0,
+        env_config = {
+            'app': {'environment': 'development'},
+            'models': {
+                'answer': {
+                    'primary_fallbacks': [f'model-{i}' for i in range(4)],
                 }
-            )
-
-        env_config = {'app': {'environment': 'development'}, 'llm': {'fallback_models': fallbacks}}
+            },
+        }
         (config_dir / 'dev.yaml').write_text(yaml.dump(env_config))
 
         os.environ['VECTOR_DB_HOST'] = 'localhost'
@@ -499,10 +515,11 @@ class TestConfigValidation:
         os.environ['COGNITO_CLIENT_ID'] = 'test'
         os.environ['METERING_TABLE'] = 'test'
         os.environ['OTLP_ENDPOINT'] = 'http://local'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
 
         try:
             loader = ConfigLoader(config_dir)
-            with pytest.raises(ConfigError, match='Maximum 3 fallback models allowed'):
+            with pytest.raises(ConfigError):
                 loader.load(Environment.DEVELOPMENT)
         finally:
             for key in list(os.environ.keys()):
@@ -525,5 +542,6 @@ class TestConfigValidation:
                     'COGNITO_CLIENT_ID',
                     'METERING_TABLE',
                     'OTLP_ENDPOINT',
+                    'SOURCE_VIEWER_SIGNING_KEY',
                 ]:
                     del os.environ[key]

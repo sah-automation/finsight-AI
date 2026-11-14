@@ -7,6 +7,7 @@ Vector search and storage using Aurora pgvector.
 **Belongs here:**
 - `AuroraPgVectorSearch` - semantic search with filters
 - `AuroraPgVectorWrite` - upsert/delete vectors
+- Version-safe writes: new vectors stay inactive until the version commits
 - Filter by company_id (mandatory)
 - HNSW index management
 

@@ -1,0 +1,14 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Run a full code review across the entire Slice 7 implementation (Tickets 7.1 through 7.9), fix any gaps or issues found against coding standards, tests, security, accessibility, and the OpenAPI contract, then run the full validation gate and commit the completed Slice 7 work.
+
+## Acceptance criteria
+
+- [ ] Review covers backend contract, BFF auth, UI screens, role behaviour, and source viewer
+- [ ] Blocking findings are fixed or explicitly documented with follow-up
+- [ ] Full typecheck, lint, architecture, unit, and integration validation passes
+- [ ] Final commit captures the complete Slice 7 implementation

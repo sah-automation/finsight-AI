@@ -1,0 +1,18 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Build the Upload screen as one file per submission with required upload type, category, period, status, optional replacing-document selection for updates, allowed types and limits from the contract, duplicate-upload warnings with an update shortcut, direct S3 upload progress bar, virus-scan checking and rejection states, partition-missing blocking message, and polling through the BFF until ingestion reaches a terminal state.
+
+## Acceptance criteria
+
+- [ ] Required form fields are validated against contract values, not UI constants
+- [ ] Duplicate warning offers Update or continue without accidental duplicate
+- [ ] Real progress bar is shown during direct upload
+- [ ] Virus-scan checking and rejection states are explicit and non-alarming
+- [ ] Partition-missing errors block the entire form
+- [ ] Document ingestion state updates in the library after upload
+- [ ] Scanned or low-confidence documents show Needs review with a reason
+- [ ] All states (loading, empty, error, success) are handled and tested

@@ -95,8 +95,15 @@ repos:
       - id: debug-statements
       - id: requirements-txt-fixer
 
-# Architecture invariant tests (run in CI, not pre-commit)
-# These are run via: make arch-test or pytest tests/architecture/
+  # Architecture invariant tests (MANDATORY)
+  - repo: local
+    hooks:
+      - id: architecture-tests
+        name: architecture invariant tests
+        entry: uv run pytest tests/architecture -v --tb=short -m architecture
+        language: system
+        files: ^(src/finsight/.*\.py|tests/architecture/.*\.py)$
+        pass_filenames: false
 
 ci:
   autofix_commit_msg: "chore: pre-commit auto-fixes"

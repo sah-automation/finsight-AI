@@ -1,0 +1,65 @@
+name: Load and Performance Baseline
+
+"on":
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  load-performance:
+    name: Load and performance baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'load-test') ||
+      contains(github.event.pull_request.labels.*.name, 'performance') ||
+      contains(github.event.pull_request.labels.*.name, 'perf')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.13.0"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run performance test suite
+        run: uv run pytest tests/performance -v --tb=short -m "performance"
+
+      - name: Run Q&A load baseline (pilot)
+        run: >
+          uv run python tests/performance/performance_harness.py
+          --profile pilot --scenario qa --requests 200 --concurrency 20 --write
+
+      - name: Run Q&A load baseline (standard)
+        run: >
+          uv run python tests/performance/performance_harness.py
+          --profile standard --scenario qa --requests 200 --concurrency 40 --write
+
+      - name: Run ingestion load baseline (pilot)
+        run: >
+          uv run python tests/performance/performance_harness.py
+          --profile pilot --scenario ingestion --requests 40 --write
+
+      - name: Upload baselines
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-baselines
+          path: tests/performance/baselines
+          retention-days: 30
+          if-no-files-found: warn

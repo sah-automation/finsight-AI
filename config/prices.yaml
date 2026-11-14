@@ -1,11 +1,24 @@
 # Pricing Configuration
-# STATUS: planned. Not read by any code yet; tracked in issue #11.
-# Model and service prices in USD per million tokens/units.
-# Intended single source of truth for cost calculation and metering.
-# It will be loaded by core/config and used by the metering adapter.
+# STATUS: read by finsight.core.config.price_table and the DynamoDB metering adapter.
+# Single source of truth for cost calculation and metering. Never hard-code prices.
+# Model and service prices in the units declared under price_sections below.
 
-# Last updated: 2026-10-25
+# Last updated: 2026-10-30
 # Source: Provider public pricing pages
+
+# Divisor applied to each section's prices (raw units -> billed unit).
+unit_scales:
+  per_million_tokens: 1000000
+  per_thousand_documents: 1000
+  per_unit: 1
+
+# The scale each section's prices are expressed in.
+price_sections:
+  llm_models: {scale: per_million_tokens}
+  embedding_models: {scale: per_million_tokens}
+  reranker_models: {scale: per_thousand_documents}
+  aws_services: {scale: per_unit}
+  cohere: {scale: per_unit}
 
 # LLM Models (per 1M tokens)
 llm_models:
@@ -42,6 +55,11 @@ llm_models:
     output: 30.00
     cache_read: 1.00
     cache_write: 3.75
+  "openai/gpt-3.5-turbo":
+    input: 0.50
+    output: 1.50
+    cache_read: 0.50
+    cache_write: 0.50
 
   # Amazon Bedrock (via LiteLLM)
   "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0":
@@ -51,8 +69,53 @@ llm_models:
     input: 0.25
     output: 1.25
 
+  # Test fixtures used by config/test.yaml. Zero-priced so CI never accrues cost.
+  "test/primary":
+    input: 0.00
+    output: 0.00
+  "test/fallback-1":
+    input: 0.00
+    output: 0.00
+  "test/fallback-2":
+    input: 0.00
+    output: 0.00
+
+  # D9 pilot models
+  "gemini/gemini-3.6-flash":
+    input: 0.75
+    output: 3.75
+  "gemini/gemini-3.8-flash":
+    input: 0.75
+    output: 3.75
+  "gemini/gemini-3.5-flash-lite":
+    input: 0.30
+    output: 2.50
+  "gemini/gemini-3.1-flash-lite":
+    input: 0.25
+    output: 1.50
+  "groq/openai/gpt-oss-120b":
+    input: 0.15
+    output: 0.60
+  "groq/openai/gpt-oss-20b":
+    input: 0.075
+    output: 0.30
+  "groq/qwen/qwen3.8-27b":
+    input: 0.80
+    output: 4.00
+  "nvidia_nim/nvidia/nemotron-3.5-bolt-e4b":
+    input: 0.00
+    output: 0.00
+  "nvidia_nim/google/gemma-4-31b-it":
+    input: 0.00
+    output: 0.00
+  "self_hosted/open_model_small":
+    input: 0.00
+    output: 0.00
+
 # Embedding Models (per 1M tokens)
 embedding_models:
+  "gemini/gemini-embedding-001":
+    input: 0.00001
   "amazon/titan-embed-text-v2:0":
     input: 0.02
   "openai/text-embedding-3-large":
@@ -61,13 +124,21 @@ embedding_models:
     input: 0.02
   "cohere/embed-english-v3.0":
     input: 0.10
+  "test/embedding":
+    input: 0.00
 
 # Reranker (per 1K documents)
 reranker_models:
+  "nvidia_nim/llama-3.2-nv-rerankqa-1b-v2":
+    per_1k_docs: 0.00
+  "self_hosted/cross_encoder_small":
+    per_1k_docs: 0.00
   "cohere/rerank-english-v3.0":
     per_1k_docs: 1.00
   "cohere/rerank-multilingual-v3.0":
     per_1k_docs: 1.00
+  "cohere/test":
+    per_1k_docs: 0.00
 
 # AWS Services
 aws_services:

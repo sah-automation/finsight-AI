@@ -4,16 +4,22 @@ Interfaces (abstract classes or Protocols) that the outside world must fulfil.
 
 **Belongs here:**
 - `LLMGateway` - generate, stream, embed
+- `EmbeddingProvider` - embed
+- `HybridSearch` - search
+- `Reranker` - rerank
+- `WaitingLine` - run
 - `VectorSearch` - semantic search
 - `VectorWrite` - upsert vectors
 - `DocumentReader` - extract text/tables from files
 - `DocumentRepository` - CRUD for documents
 - `ChunkRepository` - CRUD for chunks
 - `MetricRepository` - CRUD for metrics
+- `ChangeEventPublisher` - publish lifecycle changes and cascade signals
 - `CachePort` - get/set with TTL
 - `QueuePort` - enqueue jobs
 - `AuthPort` - verify token, get role
 - `MeteringPort` - record usage
+- `TracingPort` - emit spans
 
 **Naming convention:** Ports end with what they are (`Gateway`, `Search`, `Repository`, `Reader`).
 

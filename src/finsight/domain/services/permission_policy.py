@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from finsight.core.types import Action, Category, Role
+    from finsight.core.types import Action, DocumentCategory, Role
 
 PermissionMatrix = Mapping[str, Mapping[str, Sequence[str]]]
 
 
-def is_permission_allowed(
+def is_permission_allowed(*args: Any, **kwargs: Any) -> Any:
+    return _is_permission_allowed_impl(*args, **kwargs)
+
+
+def _is_permission_allowed_impl(
     permissions: PermissionMatrix,
     role: Role | str,
-    category: Category,
-    action: Action,
+    category: DocumentCategory | str,
+    action: Action | str,
 ) -> bool:
     """Return True when the role may perform the action on the category."""
     role_id = str(getattr(role, 'value', role))
@@ -28,9 +32,17 @@ def is_permission_allowed(
     action_id = str(getattr(action, 'value', action))
     category_id = str(getattr(category, 'value', category))
 
-    allowed = role_permissions.get('*', ())
-    if '*' in allowed or action_id in allowed:
-        return True
+    # Handle new permissions format with role_actions
+    if isinstance(role_permissions, dict):
+        role_actions = role_permissions.get('role_actions', [])
+        if isinstance(role_actions, (list, tuple, set)) and action_id in role_actions:
+            return True
+        categories = role_permissions.get('categories', role_permissions)
+        category_allowed = categories.get(category_id, ()) if isinstance(categories, dict) else ()
+    else:
+        return False
 
-    category_allowed = role_permissions.get(category_id, ())
-    return '*' in category_allowed or action_id in category_allowed
+    allowed = category_allowed if isinstance(category_allowed, (list, tuple, set)) else ()
+    if isinstance(allowed, str):
+        allowed = [allowed]
+    return bool('*' in allowed or action_id in allowed)

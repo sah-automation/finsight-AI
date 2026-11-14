@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1360" width="100%" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1500" height="1360" fill="#ffffff"/>
+
+<!-- Header -->
+<text x="40" y="44" font-size="25" font-weight="bold" fill="#1f2937" text-anchor="start">FinSight AI, Phase 1: life of a document - states and transitions</text>
+<text x="40" y="70" font-size="13" font-weight="normal" fill="#374151" text-anchor="start">States tracked per DocumentVersion: received, stored, processing, done (committed), failed, needs review (chunk-level / whole-document), superseded, rejected.</text>
+<text x="40" y="88" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">Grounded in phase1_mvp_plan.md (Document/DocumentVersion) and the config switch guide (5.27). Aurora is the source of truth.</text>
+
+<!-- Legend -->
+<rect x="40" y="104" width="24" height="20" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="72" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Identity, routing, store</text>
+<rect x="262" y="104" width="24" height="20" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="294" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Compute</text>
+<rect x="484" y="104" width="24" height="20" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="516" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Write / tenant create</text>
+<rect x="706" y="104" width="24" height="20" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="738" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Read / answer</text>
+<rect x="928" y="104" width="24" height="20" rx="4" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="960" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Gate that refuses</text>
+<rect x="1150" y="104" width="24" height="20" rx="4" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="1182" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Config, rules, evidence</text>
+
+<!-- Section A -->
+<rect x="40" y="140" width="1420" height="190" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750" y="162" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">A. Happy path and virus rejection</text>
+<text x="750" y="182" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">State is per DocumentVersion. Old answers remain valid while a new version processes. Old version becomes superseded only when the new version commits.</text>
+
+<rect x="40" y="200" width="260" height="110" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="170" y="225" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">received</text>
+<text x="170" y="245" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Upload accepted after input,</text>
+<text x="170" y="259" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">onboarding and duplicate gates.</text>
+<text x="170" y="273" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Version created as received.</text>
+<text x="170" y="287" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">No bytes committed yet.</text>
+
+<rect x="340" y="200" width="260" height="110" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="470" y="225" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">rejected</text>
+<text x="470" y="245" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Virus scan fails after file lands in S3.</text>
+<text x="470" y="259" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">File never queued or stored visibly.</text>
+<text x="470" y="273" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Terminal for this upload attempt.</text>
+<text x="470" y="287" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">No chunks or vectors created.</text>
+
+<rect x="640" y="200" width="260" height="110" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="770" y="225" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">stored</text>
+<text x="770" y="245" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Raw file saved under</text>
+<text x="770" y="259" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">&lt;company&gt;/&lt;document&gt;/&lt;version&gt;/</text>
+<text x="770" y="273" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Virus scan passed.</text>
+<text x="770" y="287" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Job queued for this version.</text>
+
+<rect x="940" y="200" width="260" height="110" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="1070" y="225" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">processing</text>
+<text x="1070" y="245" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Page routing, read, delta,</text>
+<text x="1070" y="259" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">chunk, embed and validate.</text>
+<text x="1070" y="273" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Chunks/vectors not visible.</text>
+<text x="1070" y="287" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Heartbeat monitored.</text>
+
+<rect x="1240" y="200" width="220" height="110" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="1350" y="225" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">done</text>
+<text x="1350" y="245" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Committed in one transaction.</text>
+<text x="1350" y="259" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Ready for Q&amp;A and citations.</text>
+<text x="1350" y="273" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Internal name: committed.</text>
+<text x="1350" y="287" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Used by answer path.</text>
+
+<polyline points="300,255 338,255" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<text x="319" y="248" font-size="9.5" font-weight="normal" fill="#5F5E5A" text-anchor="middle">scan fail</text>
+<polyline points="600,255 638,255" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<text x="619" y="248" font-size="9.5" font-weight="normal" fill="#5F5E5A" text-anchor="middle">scan pass</text>
+<polyline points="900,255 938,255" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<text x="919" y="248" font-size="9.5" font-weight="normal" fill="#5F5E5A" text-anchor="middle">worker picks job</text>
+<polyline points="1200,255 1238,255" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<text x="1219" y="248" font-size="9.5" font-weight="normal" fill="#5F5E5A" text-anchor="middle">commit OK</text>
+
+<!-- Section B -->
+<rect x="40" y="350" width="1420" height="330" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750" y="372" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">B. Exits from processing, needs review and version transitions</text>
+<text x="750" y="392" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">failed covers errors, retries exhausted, and worker heartbeat timeout. needs review is split by scope. Old versions become superseded on new version commit.</text>
+
+<rect x="40" y="410" width="280" height="150" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="180" y="435" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">failed</text>
+<text x="180" y="455" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Step errors, retries exhausted after</text>
+<text x="180" y="469" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">job_max_receive_count, or worker</text>
+<text x="180" y="483" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">timeout/death (heartbeat lost).</text>
+<text x="180" y="497" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Moved to retry/DLQ, alert raised.</text>
+<text x="180" y="511" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Terminal. User sees "please upload again".</text>
+<text x="180" y="525" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Restart by re-uploading (new or Update).</text>
+
+<rect x="360" y="410" width="320" height="150" rx="8" fill="#F1EFE8" stroke="#854F0B" stroke-width="1"/>
+<text x="520" y="435" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">needs review (chunk-level)</text>
+<text x="520" y="455" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Few bad chunks/low-confidence pages.</text>
+<text x="520" y="469" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Document still commits in one transaction.</text>
+<text x="520" y="483" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Flagged chunks excluded from numbers/citations.</text>
+<text x="520" y="497" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Badge shown in source viewer.</text>
+<text x="520" y="511" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">No in-app reviewer in Phase 1.</text>
+<text x="520" y="525" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Exit only by uploading corrected file as Update.</text>
+
+<rect x="720" y="410" width="320" height="150" rx="8" fill="#F1EFE8" stroke="#993C1D" stroke-width="1"/>
+<text x="880" y="435" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">needs review (whole-document)</text>
+<text x="880" y="455" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Wholly unreadable or fails required validation.</text>
+<text x="880" y="469" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Does not commit. No visible chunks/vectors.</text>
+<text x="880" y="483" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Not ready for Q&amp;A or citations.</text>
+<text x="880" y="497" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">No in-app reviewer in Phase 1.</text>
+<text x="880" y="511" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Exit only by uploading corrected file as Update.</text>
+<text x="880" y="525" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">(Creates a new version)</text>
+
+<rect x="1080" y="410" width="380" height="150" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="1270" y="435" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">superseded</text>
+<text x="1270" y="455" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Previous version becomes superseded when</text>
+<text x="1270" y="469" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">a new version commits. Kept for version_retention_days.</text>
+<text x="1270" y="483" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Old answers/citations that reference it remain valid.</text>
+<text x="1270" y="497" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Chunks read-only. Answer cache cleared on update.</text>
+<text x="1270" y="511" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">Reprocess: stays on old done version until new</text>
+<text x="1270" y="525" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">version commits atomically; old/new never mixed.</text>
+
+<!-- Arrows from processing -->
+<polyline points="1070,310 1070,350 180,350 180,408" fill="none" stroke="#993C1D" stroke-width="1.5" marker-end="url(#ar)"/>
+<text x="625" y="343" font-size="9.5" font-weight="normal" fill="#993C1D" text-anchor="middle">error / retries exhausted / worker timeout</text>
+<polyline points="1070,310 1070,350 520,350 520,408" fill="none" stroke="#854F0B" stroke-width="1.5" marker-end="url(#ar)"/>
+<text x="795" y="343" font-size="9.5" font-weight="normal" fill="#854F0B" text-anchor="middle">chunk-level flags only (commit still allowed)</text>
+<polyline points="1070,310 1070,350 880,350 880,408" fill="none" stroke="#993C1D" stroke-width="1.5" marker-end="url(#ar)"/>
+<text x="975" y="343" font-size="9.5" font-weight="normal" fill="#993C1D" text-anchor="middle">whole-document cannot commit</text>
+<polyline points="1350,310 1350,350 1270,350 1270,408" fill="none" stroke="#5F5E5A" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<text x="1310" y="343" font-size="9.5" font-weight="normal" fill="#5F5E5A" text-anchor="middle">new version commits → old becomes superseded</text>
+
+<!-- Recovery arrows -->
+<polyline points="180,560 180,590 750,590 750,310" fill="none" stroke="#5F5E5A" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<text x="465" y="583" font-size="9.5" font-weight="normal" fill="#5F5E5A" text-anchor="middle">retry (idempotent)</text>
+<polyline points="520,560 520,600 750,600 750,310" fill="none" stroke="#5F5E5A" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<text x="635" y="593" font-size="9.5" font-weight="normal" fill="#5F5E5A" text-anchor="middle">upload corrected file as Update → new version</text>
+<polyline points="880,560 880,610 750,610 750,310" fill="none" stroke="#5F5E5A" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<text x="815" y="603" font-size="9.5" font-weight="normal" fill="#5F5E5A" text-anchor="middle">upload corrected file as Update → new version</text>
+
+<!-- Section C -->
+<rect x="40" y="700" width="1420" height="340" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750" y="722" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">C. Transitions and conditions</text>
+
+<rect x="60" y="740" width="230" height="26" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="175" y="758" font-size="11" font-weight="bold" fill="#1f2937" text-anchor="middle">Current state</text>
+<rect x="290" y="740" width="320" height="26" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="450" y="758" font-size="11" font-weight="bold" fill="#1f2937" text-anchor="middle">Allowed next states</text>
+<rect x="610" y="740" width="830" height="26" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="1025" y="758" font-size="11" font-weight="bold" fill="#1f2937" text-anchor="middle">Trigger / condition</text>
+
+<g font-size="10.5" fill="#374151">
+<text x="70" y="785" text-anchor="start">received</text>
+<text x="300" y="785" text-anchor="start">stored | rejected</text>
+<text x="620" y="785" text-anchor="start">Virus scan after file lands. Fail → rejected (terminal). Pass → stored, job queued.</text>
+
+<text x="70" y="813" text-anchor="start">stored</text>
+<text x="300" y="813" text-anchor="start">processing</text>
+<text x="620" y="813" text-anchor="start">SQS/Step Functions worker picks job for this version.</text>
+
+<text x="70" y="841" text-anchor="start">processing</text>
+<text x="300" y="841" text-anchor="start">done (committed)</text>
+<text x="620" y="841" text-anchor="start">All checks pass. Commit in one transaction. Chunk-level flags may still allow commit with flagged chunks.</text>
+
+<text x="70" y="869" text-anchor="start">processing</text>
+<text x="300" y="869" text-anchor="start">failed</text>
+<text x="620" y="869" text-anchor="start">Step error, retries exhausted after job_max_receive_count, or worker timeout/death (heartbeat lost).</text>
+
+<text x="70" y="897" text-anchor="start">processing</text>
+<text x="300" y="897" text-anchor="start">needs review (chunk-level)</text>
+<text x="620" y="897" text-anchor="start">Issues on some chunks only. Document still commits; flagged chunks excluded from numbers/citations.</text>
+
+<text x="70" y="925" text-anchor="start">processing</text>
+<text x="300" y="925" text-anchor="start">needs review (whole-document)</text>
+<text x="620" y="925" text-anchor="start">Wholly unreadable or fails required validation. No commit; no visible chunks/vectors.</text>
+
+<text x="70" y="953" text-anchor="start">failed</text>
+<text x="300" y="953" text-anchor="start">— (terminal)</text>
+<text x="620" y="953" text-anchor="start">After retries/DLQ and alert. User sees "please upload again". Restart by re-uploading (new or Update).</text>
+
+<text x="70" y="981" text-anchor="start">needs review</text>
+<text x="300" y="981" text-anchor="start">received (new version via Update)</text>
+<text x="620" y="981" text-anchor="start">No in-app reviewer in Phase 1. Exit only by uploading a corrected file as an Update.</text>
+
+<text x="70" y="1009" text-anchor="start">done</text>
+<text x="300" y="1009" text-anchor="start">superseded (old) + received (new version)</text>
+<text x="620" y="1009" text-anchor="start">Update or reprocess creates new version. Old becomes superseded on new version commit atomically; old/new never mixed.</text>
+</g>
+
+<!-- Section D -->
+<rect x="40" y="1060" width="1420" height="270" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="750" y="1082" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">D. Invariants enforced by core and data rules</text>
+
+<text x="60" y="1107" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="start">• State is per DocumentVersion. Ready only after commit. processing, failed, rejected, and whole-document needs_review are never cited.</text>
+<text x="60" y="1125" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="start">• One transaction per version. On new version commit, previous version becomes superseded. Document stamp updates in the same transaction.</text>
+<text x="60" y="1143" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="start">• Retries idempotent (job id + upsert on stable chunk id). Heartbeat/worker timeout → failed. SQS/DLQ + alerts after job_max_receive_count.</text>
+<text x="60" y="1161" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="start">• Virus scan after file lands → rejected if fails (never queued/stored). Numbers from code only; chunk-level needs_review chunks flagged and excluded.</text>
+<text x="60" y="1179" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="start">• Whole-document needs_review does not commit. No in-app reviewer in Phase 1 — exit only by uploading a corrected file as an Update.</text>
+<text x="60" y="1197" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="start">• Reprocess: stay on old done version until new version commits atomically; old/new vectors never mixed. Stable chunk ids reused where unchanged.</text>
+<text x="60" y="1215" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="start">• Failed is terminal after retries/DLQ — user sees "please upload again", restart by re-uploading. Delete separate (soft then purge), audit entry remains.</text>
+<text x="60" y="1233" font-size="10" font-weight="normal" fill="#5F5E5A" text-anchor="start">Config: consistency.job_max_receive_count, worker/heartbeat timeout, documents.version_retention_days, documents.deleted_retention_days, virus scan settings.</text>
+<text x="60" y="1251" font-size="10" font-weight="normal" fill="#5F5E5A" text-anchor="start">States: received, stored, processing, committed/done, failed, needs_review (chunk-level/whole-document), superseded, rejected. committed = UI/answer-facing done.</text>
+</svg>

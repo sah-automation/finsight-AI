@@ -127,7 +127,46 @@ class DocumentTooLargeError(UserFacingError):
     """Document exceeds size limit."""
 
 
+class DocumentVersionNotFoundError(DocumentError):
+    """Referenced document version does not exist (permanent failure)."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+        retryable: bool = False,
+    ) -> None:
+        super().__init__(message, code=code, details=details, retryable=False)
+
+
+class SourceObjectNotFoundError(DocumentError):
+    """Referenced source object is missing from object storage (permanent failure)."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+        retryable: bool = False,
+    ) -> None:
+        super().__init__(message, code=code, details=details, retryable=False)
+
+
 # Ingestion
+class InvalidStateTransitionError(FinSightError, ValueError):
+    """Raised when an entity refuses an illegal state transition."""
+
+
+# Common aliases for invalid state transition errors.
+IllegalStateTransitionError = InvalidStateTransitionError
+InvalidTransitionError = InvalidStateTransitionError
+InvalidDocumentVersionTransitionError = InvalidStateTransitionError
+DocumentVersionTransitionError = InvalidStateTransitionError
+
+
 class IngestionError(FinSightError):
     """Ingestion pipeline error."""
 
@@ -275,3 +314,55 @@ def to_user_message(error: Exception) -> str:
             return message
     # Default for unexpected errors
     return 'An unexpected error occurred. Please try again later.'
+
+
+__all__ = [
+    'USER_FRIENDLY_MESSAGES',
+    'AllModelsFailedError',
+    'AuthenticationError',
+    'AuthorizationError',
+    'BusinessRuleError',
+    'CacheError',
+    'CitationVerificationFailedError',
+    'CognitoError',
+    'ConfigError',
+    'ConflictError',
+    'DatabaseConnectionError',
+    'DatabaseError',
+    'DocumentError',
+    'DocumentNotFoundError',
+    'DocumentProcessingError',
+    'DocumentTooLargeError',
+    'DocumentVersionNotFoundError',
+    'DocumentVersionTransitionError',
+    'DynamoDBError',
+    'EmbeddingError',
+    'ExternalServiceError',
+    'FinSightError',
+    'IllegalStateTransitionError',
+    'IngestionError',
+    'IngestionJobNotFoundError',
+    'InsufficientData',
+    'InvalidDocumentVersionTransitionError',
+    'InvalidStateTransitionError',
+    'InvalidTransitionError',
+    'LLMContextWindowError',
+    'LLMError',
+    'LLMRateLimitError',
+    'NoRelevantDocumentsError',
+    'PolicyBlocked',
+    'QuestionError',
+    'QuestionTooLongError',
+    'QueueError',
+    'RetryableError',
+    'S3Error',
+    'SQSError',
+    'SourceObjectNotFoundError',
+    'TextractError',
+    'TokenExpiredError',
+    'UnsupportedFormatError',
+    'UserFacingError',
+    'ValidationError',
+    'VectorStoreError',
+    'to_user_message',
+]

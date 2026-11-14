@@ -44,6 +44,10 @@ DATA_METHOD_KEYWORDS: tuple[str, ...] = (
     'execute',
 )
 
+# Pipeline run state is keyed by a globally unique run/version id, not by
+# tenant. The state-store seam therefore has no company_id dimension (#157).
+NON_TENANT_CLASS_NAMES: frozenset[str] = frozenset({'StateStore', 'InMemoryStateStore'})
+
 # Identifiers that must never be passed directly to a logger.
 SENSITIVE_LOG_IDENTIFIERS: frozenset[str] = frozenset(
     {
@@ -150,12 +154,37 @@ def find_methods_without_company_id(package_path: Path) -> list[tuple[str, str, 
     violations = []
     for filepath in get_python_files(package_path):
         tree = parse_python_file(filepath)
+        parent_map: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(tree):
+            for child in ast.iter_child_nodes(parent):
+                parent_map[child] = parent
+
+        def enclosing_class_name(
+            node: ast.AST, parent_lookup: dict[ast.AST, ast.AST]
+        ) -> str | None:
+            current = parent_lookup.get(node)
+            while current is not None:
+                if isinstance(current, ast.ClassDef):
+                    return current.name
+                current = parent_lookup.get(current)
+            return None
+
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             if node.name.startswith('_'):
                 continue
             if any(is_property_decorator(decorator) for decorator in node.decorator_list):
+                continue
+
+            class_name = enclosing_class_name(node, parent_map)
+            # Private or value-object helper classes (e.g. stream chunks) are not
+            # tenant data accessors; their dict-style helpers are false positives.
+            if class_name is not None and (
+                class_name.startswith('_')
+                or class_name.endswith(('Chunk', 'Result'))
+                or class_name in NON_TENANT_CLASS_NAMES
+            ):
                 continue
 
             method_name = node.name.lower()
@@ -254,3 +283,111 @@ def _sensitive_names_in(expr: ast.expr) -> set[str]:
             names |= _sensitive_names_in(keyword.value)
         return names
     return set()
+
+
+def _assign_allowed(value: ast.expr | None, targets: list[ast.expr]) -> bool:
+    if not targets or any(not isinstance(target, ast.Name) for target in targets):
+        return False
+    if any(isinstance(target, ast.Name) and target.id == '__all__' for target in targets):
+        return True
+    if value is None:
+        return False
+    if isinstance(value, (ast.Name, ast.Attribute)):
+        return True
+    if isinstance(value, (ast.List, ast.Tuple)):
+        return all(isinstance(element, (ast.Name, ast.Attribute)) for element in value.elts)
+    return False
+
+
+def _is_type_checking(test: ast.expr) -> bool:
+    return (isinstance(test, ast.Name) and test.id == 'TYPE_CHECKING') or (
+        isinstance(test, ast.Attribute) and test.attr == 'TYPE_CHECKING'
+    )
+
+
+def _statement_allowed(node: ast.stmt, *, type_checking: bool = False) -> bool:  # noqa: PLR0911
+    if isinstance(node, (ast.Import, ast.ImportFrom)):
+        return True
+    if (
+        isinstance(node, ast.Expr)
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+    ):
+        return True
+    if isinstance(node, ast.Assign):
+        return _assign_allowed(node.value, node.targets)
+    if isinstance(node, ast.AnnAssign):
+        if not isinstance(node.target, ast.Name):
+            return False
+        if node.target.id == '__all__':
+            return True
+        return node.value is not None and isinstance(node.value, (ast.Name, ast.Attribute))
+    if isinstance(node, ast.AugAssign):
+        return isinstance(node.target, ast.Name) and node.target.id == '__all__'
+    if isinstance(node, ast.If):
+        if type_checking or not _is_type_checking(node.test):
+            return False
+        return (
+            all(_statement_allowed(child, type_checking=True) for child in node.body)
+            and not node.orelse
+        )
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return node.name == '__getattr__'
+    return False
+
+
+def is_passthrough_module(filepath: Path | str) -> bool:
+    """Return True for behavior-free re-export modules (excluding __init__)."""
+    path = Path(filepath)
+    if path.name == '__init__.py':
+        return False
+    try:
+        tree = ast.parse(path.read_text(encoding='utf-8'))
+    except (OSError, SyntaxError, UnicodeError):
+        return False
+    if any(isinstance(node, ast.ClassDef) for node in tree.body):
+        return False
+    functions = [
+        node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+    if len(functions) > 1 or (functions and functions[0].name != '__getattr__'):
+        return False
+    return all(_statement_allowed(node) for node in tree.body)
+
+
+def find_passthrough_modules(root: Path | str) -> list[Path]:
+    base = Path(root)
+    if base.is_file():
+        return [base] if is_passthrough_module(base) else []
+    if not base.exists():
+        return []
+    return [
+        path
+        for path in sorted(base.rglob('*.py'))
+        if path.name != '__init__.py' and is_passthrough_module(path)
+    ]
+
+
+def find_pass_through_modules(root: Path | str) -> list[Path]:
+    return find_passthrough_modules(root)
+
+
+def find_passthroughs(root: Path | str) -> list[Path]:
+    return find_passthrough_modules(root)
+
+
+def count_passthrough_modules(root: Path | str) -> int:
+    return len(find_passthrough_modules(root))
+
+
+def count_pass_through_modules(root: Path | str) -> int:
+    return count_passthrough_modules(root)
+
+
+def count_passthroughs(root: Path | str) -> int:
+    return count_passthrough_modules(root)
+
+
+is_passthrough = is_passthrough_module
+is_pass_through = is_passthrough_module
+is_pass_through_module = is_passthrough_module

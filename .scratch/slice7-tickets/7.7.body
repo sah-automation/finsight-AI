@@ -1,0 +1,20 @@
+## Parent
+
+Part of #90
+
+## What to build
+
+Build the Ask screen: empty state with company example questions, scope line describing searched documents, question input with Enter-to-send and Shift+Enter line breaks, removable filter chips, streaming status messages, skeleton until first verified sentence, whole verified sentence streaming, answer above citations, inline citation chips with accessible names and hover preview paging, sources row with count, formatted figures with currency units period tabular numerals signed values calculated tagging and needs-review badges, insufficient-data result, busy and temporary-unavailable states with retry, permission-denied message, stop answer, copy answer, feedback with thumbs-down reasons, related questions when returned, cached badge and evidence-basis line, threads list with reopen, and opening a citation into the adjacent source viewer without losing chat context.
+
+## Acceptance criteria
+
+- [ ] Question entry supports Enter to send and Shift+Enter for line breaks
+- [ ] Answers render only as whole verified sentences after the output gate
+- [ ] Number formatting uses `Intl.NumberFormat` and always includes currency, units, and period
+- [ ] Inline citation chips have accessible names, hover previews, and multi-source paging
+- [ ] Streaming status messages map to real remote states
+- [ ] Insufficient data, busy, unavailable, and permission-denied states use approved messages
+- [ ] Feedback captures rating and the four approved thumbs-down reasons
+- [ ] Threads can be reopened from the threads list
+- [ ] Stop and copy answer controls work during and after streaming
+- [ ] All states (loading, empty, error, success) are handled and tested

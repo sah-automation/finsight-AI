@@ -4,22 +4,21 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from finsight.core.types import RequestContext
 
 
 def build_answer_cache_key(
-    context: RequestContext,
+    context: object,
     question: str,
     document_stamp: str,
 ) -> str:
     """Build a deterministic cache key that always includes the tenant identity."""
+    company_id = getattr(context, 'company_id', '')
+    role = getattr(context, 'role', None)
+    access_scope = getattr(context, 'access_scope', [])
     payload = {
-        'company_id': context.company_id,
-        'role': context.role.value,
-        'access_scope': sorted(category.value for category in context.access_scope),
+        'company_id': company_id,
+        'role': getattr(role, 'value', role),
+        'access_scope': sorted(getattr(cat, 'value', cat) for cat in access_scope),
         'question': ' '.join(question.split()),
         'document_stamp': document_stamp,
     }

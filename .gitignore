@@ -18,6 +18,10 @@ cdk.out/
 infra/cdk/cdk.out/
 lib/
 lib64/
+# but never ignore web/ source (the generic 'lib/' pattern above is for
+# Python build artifacts such as venv lib directories).
+!web/src/lib/
+!web/src/lib/**
 parts/
 sdist/
 var/
@@ -163,3 +167,13 @@ data/
 tmp/
 temp/
 *.tmp
+*.tmp
+
+# Frontend
+web/node_modules/
+web/.next/
+web/tsconfig.tsbuildinfo
+web/coverage/
+web/.env.local
+web/.env.*.local
+web/npm-debug.log*

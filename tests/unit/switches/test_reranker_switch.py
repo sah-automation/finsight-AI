@@ -1,8 +1,11 @@
-# Switch test for reranker_enabled
+"""Switch test for reranker_enabled."""
 
 from __future__ import annotations
 
 import pytest
+
+from finsight.adapters.rerank.cohere_reranker import CohereReranker
+from finsight.core.config.models import SwitchesConfig
 
 
 @pytest.mark.switch
@@ -12,9 +15,13 @@ class TestRerankerSwitch:
     @pytest.mark.switch
     def test_reranker_on(self) -> None:
         """Test behavior when switch is ENABLED."""
-        pytest.skip('Not yet implemented')
+        switches = SwitchesConfig(reranker_enabled=True)
+        reranker = CohereReranker(config=switches)
+        assert reranker.enabled is True
 
     @pytest.mark.switch
     def test_reranker_off(self) -> None:
         """Test behavior when switch is DISABLED."""
-        pytest.skip('Not yet implemented')
+        switches = SwitchesConfig(reranker_enabled=False)
+        reranker = CohereReranker(config=switches)
+        assert reranker.enabled is False

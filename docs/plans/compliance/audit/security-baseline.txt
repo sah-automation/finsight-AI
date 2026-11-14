@@ -1,0 +1,29 @@
+uv run pytest tests/security -v --tb=short -m "security"
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-8.4.2, pluggy-1.7.0
+rootdir: /Users/home/Dev/Projects/FinSight-AI
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0, timeout-2.4.0, asyncio-1.4.0, Faker-40.43.0, mock-3.17.0, anyio-4.15.1, platformdirs-4.13.5
+timeout: 60.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 339 items
+
+tests/security/test_cache_keys.py .........                              [  2%]
+tests/security/test_company_isolation.py ......                          [  4%]
+tests/security/test_evidence.py ........                                 [  6%]
+tests/security/test_permissions.py ..................................... [ 17%]
+........................................................................ [ 38%]
+........................................................................ [ 60%]
+........................................................................ [ 81%]
+....................................................                     [ 96%]
+tests/security/test_pii_redaction.py .......                             [ 98%]
+tests/security/test_prompt_injection.py s                                [ 99%]
+tests/security/test_secret_scanning_scope.py ...                         [100%]
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/security/test_prompt_injection.py:16: Prompt-injection detection is not implemented yet; add tests when the input gate lands.
+======================== 338 passed, 1 skipped in 0.48s ========================
+
+--- make test-security exit code: 0 ---

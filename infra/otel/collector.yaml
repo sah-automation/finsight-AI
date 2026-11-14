@@ -1,5 +1,7 @@
-# Minimal OpenTelemetry Collector for integration tests.
-# Receives OTLP and logs spans/metrics so tests can assert exports happened.
+# Local OpenTelemetry Collector (issue #280).
+# Receives OTLP from the application, deletes span attributes matching the
+# sensitive-field redaction blocklist, then exports traces to the local Arize
+# Phoenix service and logs spans/metrics so tests can assert exports happened.
 
 receivers:
   otlp:
@@ -10,18 +12,44 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # Mirror of the application's sensitive-field blocklist
+  # (src/finsight/adapters/tracing/_tracing_redaction.py). The collector is a
+  # second redaction layer in front of Phoenix: blocklisted span attributes
+  # are deleted before export. Guarded by
+  # tests/contract/test_otel_collector_phoenix_contract.py.
+  attributes/redact:
+    actions:
+      # Delete any attribute whose key contains a blocklist token (case
+      # insensitive), or a URL reference - the application sanitizer also
+      # drops keys containing 'url'.
+      - action: delete
+        pattern: '(?i)(question|chunk|answer|pii|signed_url|signedurl|credential|secret|password|raw_text|document_text|api_key|email|phone|address|ssn|credit_card|authorization|url)'
+      # 'token' and 'prompt' are deleted as exact attribute names only:
+      # aggregate LLM metric names (tokens_prompt, prompt_tokens,
+      # first_token_latency_ms, ...) legitimately contain those substrings and
+      # must survive export. Composite prompt/token keys never reach this
+      # collector because the application sanitizer strips them first.
+      - action: delete
+        key: token
+      - action: delete
+        key: prompt
   batch: {}
 
 exporters:
   debug:
     verbosity: basic
+  # Arize Phoenix (docker-compose.test.yml). Phoenix serves OTLP HTTP on
+  # 6006; the collector posts spans to <endpoint>/v1/traces. UI:
+  # http://localhost:6006
+  otlphttp/phoenix:
+    endpoint: http://phoenix:6006
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [debug]
+      processors: [attributes/redact, batch]
+      exporters: [debug, otlphttp/phoenix]
     metrics:
       receivers: [otlp]
       processors: [batch]

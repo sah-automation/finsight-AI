@@ -1,0 +1,313 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 2880" width="100%" font-family="Arial, Helvetica, sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1500" height="2880" fill="#ffffff"/>
+<text x="40" y="44" font-size="25" font-weight="bold" fill="#1f2937" text-anchor="start">FinSight AI, Phase 1: how one company's data is kept separate from another's</text>
+<text x="40" y="70" font-size="13" font-weight="normal" fill="#374151" text-anchor="start">Two independent locks in Aurora (a partition per company first, a row-level rule second), plus the company id on every call. The pilot runs one cell; the same rules repeat per region and cell.</text>
+<text x="40" y="90" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">Phase 1 scope: ingestion, question answering with citations, and the source viewer. Standard setup shown, with pilot values named where they differ.</text>
+<rect x="40" y="104" width="24" height="20" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="72" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Identity, routing, data store</text>
+<rect x="262" y="104" width="24" height="20" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text x="294" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Compute</text>
+<rect x="484" y="104" width="24" height="20" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="516" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Write path</text>
+<rect x="706" y="104" width="24" height="20" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="738" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Read path</text>
+<rect x="928" y="104" width="24" height="20" rx="4" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<text x="960" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">A gate that refuses</text>
+<rect x="1150" y="104" width="24" height="20" rx="4" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="1182" y="119" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Config, rules, evidence</text>
+<rect x="20" y="140" width="1460" height="388" rx="12" fill="none" stroke="#185FA5" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="36" y="166" font-size="15" font-weight="bold" fill="#185FA5" text-anchor="start">1. The Global router picks the region first; identity and tenancy run inside the region</text>
+<text x="36" y="184" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">HLD order: company to region and cell lookup happens before any regional component. The edge stack below only exists in the chosen region.</text>
+<rect x="40" y="198" width="280" height="76" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="180.0" y="224" font-size="13.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Web app</text>
+<text x="180.0" y="244" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Next.js: upload form, chat,</text>
+<text x="180.0" y="260" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">source viewer</text>
+<rect x="340" y="198" width="400" height="76" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="540.0" y="224" font-size="13.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Global router</text>
+<text x="540.0" y="244" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">The first global step. Maps company_id</text>
+<text x="540.0" y="260" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">to (region, cell) before anything else.</text>
+<rect x="760" y="198" width="300" height="76" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="910.0" y="224" font-size="13.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Other regions</text>
+<text x="910.0" y="244" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Same setup, added later.</text>
+<text x="910.0" y="260" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">A company is never half moved.</text>
+<rect x="1080" y="198" width="360" height="76" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="1260.0" y="224" font-size="13.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Pre-auth company lookup</text>
+<text x="1260.0" y="244" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Company id comes from the request or a</text>
+<text x="1260.0" y="260" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">stored mapping; auth happens in-region.</text>
+<polyline points="320,236 340,236" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<polyline points="740,236 760,236" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<polyline points="540,274 540,294" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="294" width="330" height="76" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="205" y="320" font-size="13.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Edge</text>
+<text x="205" y="340" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">CloudFront and WAF.</text>
+<text x="205" y="356" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Rate limits from config.</text>
+<rect x="390" y="294" width="260" height="76" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="520" y="320" font-size="13.5" font-weight="bold" fill="#1f2937" text-anchor="middle">API Gateway</text>
+<text x="520" y="340" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">REST and streaming, TLS.</text>
+<text x="520" y="356" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Rate limits per second/burst.</text>
+<rect x="670" y="294" width="290" height="76" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="815" y="320" font-size="13.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Cognito (Lite)</text>
+<text x="815" y="340" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">4 groups -&gt; 4 roles.</text>
+<text x="815" y="356" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">No third-party vendor (D8).</text>
+<rect x="980" y="294" width="480" height="76" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="1220" y="320" font-size="13.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Authorizer -&gt; RequestContext</text>
+<text x="1220" y="340" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">company_id . user_id . role . access_scope . cell . trace_id</text>
+<text x="1220" y="356" font-size="11" font-weight="normal" fill="#374151" text-anchor="middle">Built once, then read-only for the rest of the request.</text>
+<polyline points="370,332 390,332" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<polyline points="650,332 670,332" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<polyline points="960,332 980,332" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="388" width="670" height="124" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="54" y="412" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">config/permissions.yaml is the only source of access</text>
+<text x="54" y="429" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Role x action x document category. documents.categories must match it exactly.</text>
+<text x="54" y="446" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">An unknown role, a missing entry or an unknown category stops startup. It never defaults.</text>
+<text x="54" y="463" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">A missing permission is denied. There is no default allow on any role.</text>
+<text x="54" y="480" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Role lookup cache lives in DynamoDB, never function memory; privileged roles read live (5.18).</text>
+<text x="54" y="497" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Role changes bump the role version; running copies see it on the next call or within 60 seconds.</text>
+<rect x="730" y="388" width="730" height="124" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="744" y="412" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Authorizer -&gt; RequestContext, immutable, then tenancy and storage use it</text>
+<text x="744" y="429" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">company_id comes from the verified token claim, never from the request body.</text>
+<text x="744" y="446" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">The token's company must match the company the router routed. Otherwise: refused.</text>
+<text x="744" y="463" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">The Global router's resolved cell is folded in here, so the cell is part of the context.</text>
+<text x="744" y="480" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Pilot: scale.cells = 1, so every company maps to cell 1; a missing or doubled cell stops startup.</text>
+<text x="744" y="497" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Use cases receive this context, so company and cell cannot be widened later.</text>
+<polyline points="905,370 905,388" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<polyline points="1275,370 1275,388" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<polyline points="1100,512 1100,544" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="20" y="544" width="1460" height="212" rx="12" fill="none" stroke="#185FA5" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="36" y="570" font-size="15" font-weight="bold" fill="#185FA5" text-anchor="start">2. The router picks one cell per company. One database per cell, and no query crosses cells.</text>
+<text x="36" y="588" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Residency note: the router and CloudFront are global, but each company is hosted in one region and its data stays there. Risk 9 is still open.</text>
+<rect x="40" y="612" width="700" height="130" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="54" y="636" font-size="13" font-weight="bold" fill="#374151" text-anchor="start">Cell 1, the only cell in the pilot</text>
+<rect x="54" y="654" width="158" height="72" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="133" y="680" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Aurora + pgvector</text>
+<text x="133" y="700" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">partition per company</text>
+<rect x="224" y="654" width="158" height="72" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="303" y="680" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="middle">S3 raw files</text>
+<text x="303" y="700" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">prefix per company</text>
+<rect x="394" y="654" width="158" height="72" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="473" y="680" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="middle">DynamoDB</text>
+<text x="473" y="700" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">cache and role version</text>
+<rect x="564" y="654" width="158" height="72" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="643" y="680" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="middle">SQS + Step Functions</text>
+<text x="643" y="700" font-size="10.5" font-weight="normal" fill="#374151" text-anchor="middle">per-company job cap</text>
+<rect x="760" y="612" width="260" height="130" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="774" y="636" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Cell 2 and up</text>
+<text x="774" y="653" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Created only when listed in config.</text>
+<text x="774" y="670" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">The pilot creates none, so there</text>
+<text x="774" y="687" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">is no extra cost.</text>
+<rect x="1040" y="612" width="420" height="130" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="1054" y="636" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Rules the config module enforces</text>
+<text x="1054" y="653" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Every company maps to exactly one cell.</text>
+<text x="1054" y="670" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">scale.vector_store must name a registered store.</text>
+<text x="1054" y="687" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Moving a company is copy, verify, switch, then delete.</text>
+<rect x="20" y="772" width="1460" height="496" rx="12" fill="none" stroke="#993C1D" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="36" y="798" font-size="15" font-weight="bold" fill="#993C1D" text-anchor="start">3. Inside a cell: shared parent tables, then two independent locks around each company</text>
+<text x="36" y="816" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Every query carries company_id. Lock 1 decides which rows can be touched, lock 2 decides which rows may be returned.</text>
+<rect x="40" y="836" width="1420" height="60" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="54" y="862" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Shared parent tables, PARTITION BY LIST (company_id)</text>
+<text x="54" y="882" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">documents . document_versions . pages . document_chunks (vectors) . metrics (extracted numbers)</text>
+<text x="800" y="862" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">Onboarding adds a partition, its indexes and</text>
+<text x="800" y="880" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">its vector index before the first upload.</text>
+<text x="1120" y="862" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">The upload endpoint refuses with a clear</text>
+<text x="1120" y="880" font-size="11" font-weight="normal" fill="#5F5E5A" text-anchor="start">message while a partition is missing.</text>
+<rect x="40" y="920" width="460" height="120" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="54" y="944" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Partition for company A</text>
+<text x="54" y="966" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Only rows with company_id = A can land here.</text>
+<text x="54" y="983" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Own HNSW vector index and own company-first indexes.</text>
+<text x="54" y="1000" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Own retention: dropped when the company leaves.</text>
+<text x="54" y="1017" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">A query names the company, so the planner prunes to this one box.</text>
+<polyline points="270,896 270,920" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="510" y="920" width="460" height="120" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="524" y="944" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Partition for company B</text>
+<text x="524" y="966" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Only rows with company_id = B can land here.</text>
+<text x="524" y="983" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Own HNSW vector index and own company-first indexes.</text>
+<text x="524" y="1000" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Own retention: dropped when the company leaves.</text>
+<text x="524" y="1017" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">A query names the company, so the planner prunes to this one box.</text>
+<polyline points="740,896 740,920" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="980" y="920" width="460" height="120" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="994" y="944" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Partition for company C</text>
+<text x="994" y="966" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Only rows with company_id = C can land here.</text>
+<text x="994" y="983" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Own HNSW vector index and own company-first indexes.</text>
+<text x="994" y="1000" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Own retention: dropped when the company leaves.</text>
+<text x="994" y="1017" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">A query names the company, so the planner prunes to this one box.</text>
+<polyline points="1210,896 1210,920" fill="none" stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#ar)"/>
+<rect x="40" y="1048" width="1420" height="74" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<path d="M59,1065 v-4 a5.5,5.5 0 0 1 11,0 v4" fill="none" stroke="#993C1D" stroke-width="2" stroke-linecap="round"/>
+<rect x="56" y="1064" width="17" height="13" rx="2.5" fill="#993C1D" stroke="#993C1D" stroke-width="0"/>
+<text x="84" y="1074" font-size="13" font-weight="bold" fill="#993C1D" text-anchor="start">LOCK 1, physical: partition pruning</text>
+<text x="84" y="1094" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Partitions keep each company's rows in their own place and give each its own vector index, so search stays fast within one company.</text>
+<text x="84" y="1112" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Lock 1 is performance and blast radius. A missing filter never happens on purpose, and it does not refuse by itself; that is Lock 2's job.</text>
+<rect x="40" y="1126" width="1420" height="92" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+<path d="M59,1143 v-4 a5.5,5.5 0 0 1 11,0 v4" fill="none" stroke="#993C1D" stroke-width="2" stroke-linecap="round"/>
+<rect x="56" y="1142" width="17" height="13" rx="2.5" fill="#993C1D" stroke="#993C1D" stroke-width="0"/>
+<text x="84" y="1152" font-size="13" font-weight="bold" fill="#993C1D" text-anchor="start">LOCK 2, logical: row-level security, FORCE ROW LEVEL SECURITY on every parent table</text>
+<text x="84" y="1172" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Policy: USING (company_id = current_setting('app.company_id')::uuid). The value is set from the context inside the UnitOfWork, per transaction.</text>
+<text x="84" y="1190" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">If a query forgets the filter, Postgres returns zero rows. If the setting is missing, it fails closed, never open. Reset when the connection returns to the pool.</text>
+<text x="84" y="1208" font-size="11" font-weight="bold" fill="#993C1D" text-anchor="start">Both locks stay on in every environment. Neither is a switch, and neither has an off path.</text>
+<rect x="20" y="1284" width="1460" height="406" rx="12" fill="none" stroke="#185FA5" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="36" y="1310" font-size="15" font-weight="bold" fill="#185FA5" text-anchor="start">4. The same company id reaches every other store, and each store keys on it in its own way</text>
+<text x="36" y="1328" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Aurora is the truth for documents and jobs. Everything else is either rebuildable, or addressed by a key that already contains the company.</text>
+<rect x="40" y="1340" width="345" height="160" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="54" y="1364" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">S3 raw files</text>
+<text x="54" y="1381" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Bucket per environment and region, KMS.</text>
+<text x="54" y="1398" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">One prefix per company, for example</text>
+<text x="54" y="1415" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">&lt;company_id&gt;/&lt;document_id&gt;/&lt;version&gt;/.</text>
+<text x="54" y="1432" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">A signed link is short-lived and covers</text>
+<text x="54" y="1449" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">one file. The source viewer re-checks</text>
+<text x="54" y="1466" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">access before it signs anything.</text>
+<rect x="405" y="1340" width="395" height="160" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="419" y="1364" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Answer cache (DynamoDB)</text>
+<text x="419" y="1381" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Key built in one function and unit tested</text>
+<text x="419" y="1398" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">(see the strip below).</text>
+<text x="419" y="1415" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">TTL from cache.ttl_seconds. BASE is fine.</text>
+<text x="419" y="1432" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Company and role are checked again on read.</text>
+<text x="419" y="1449" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Upload, update or deletion bumps the stamp,</text>
+<text x="419" y="1466" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">so old answers become unaddressable.</text>
+<rect x="820" y="1340" width="300" height="160" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="834" y="1364" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Role cache and job view</text>
+<text x="834" y="1381" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">DynamoDB. Role cache keyed by user id,</text>
+<text x="834" y="1398" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">plus one role version per company.</text>
+<text x="834" y="1415" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Role version read strongly consistent.</text>
+<text x="834" y="1432" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Job progress here is rebuildable; Aurora</text>
+<text x="834" y="1449" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">is the truth. Chat history is company</text>
+<text x="834" y="1466" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">scoped and never reused for another.</text>
+<rect x="1150" y="1340" width="310" height="160" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="1164" y="1364" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">SQS and Step Functions</text>
+<text x="1164" y="1381" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">One queue per cell, with a per-company</text>
+<text x="1164" y="1398" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">cap on running jobs (5.21).</text>
+<text x="1164" y="1415" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">The job carries the company id; the</text>
+<text x="1164" y="1432" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">worker rebuilds RequestContext.</text>
+<text x="1164" y="1449" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Safe to repeat: job id plus upsert on</text>
+<text x="1164" y="1466" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">chunk id. Retry list after the limit.</text>
+<rect x="40" y="1516" width="900" height="164" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="1"/>
+<text x="54" y="1540" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">The answer cache key, in full</text>
+<rect x="56" y="1552" width="145" height="56" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="128" y="1576" font-size="12" font-weight="bold" fill="#1f2937" text-anchor="middle">company id</text>
+<text x="128" y="1594" font-size="10" font-weight="normal" fill="#374151" text-anchor="middle">from the token</text>
+<text x="211" y="1585" font-size="15" font-weight="bold" fill="#185FA5" text-anchor="middle">+</text>
+<rect x="223" y="1552" width="145" height="56" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="295" y="1576" font-size="12" font-weight="bold" fill="#1f2937" text-anchor="middle">role</text>
+<text x="295" y="1594" font-size="10" font-weight="normal" fill="#374151" text-anchor="middle">1 of 4 roles</text>
+<text x="378" y="1585" font-size="15" font-weight="bold" fill="#185FA5" text-anchor="middle">+</text>
+<rect x="390" y="1552" width="145" height="56" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="462" y="1576" font-size="12" font-weight="bold" fill="#1f2937" text-anchor="middle">access scope</text>
+<text x="462" y="1594" font-size="10" font-weight="normal" fill="#374151" text-anchor="middle">allowed categories</text>
+<text x="545" y="1585" font-size="15" font-weight="bold" fill="#185FA5" text-anchor="middle">+</text>
+<rect x="557" y="1552" width="145" height="56" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="629" y="1576" font-size="12" font-weight="bold" fill="#1f2937" text-anchor="middle">question</text>
+<text x="629" y="1594" font-size="10" font-weight="normal" fill="#374151" text-anchor="middle">hash of the text</text>
+<text x="712" y="1585" font-size="15" font-weight="bold" fill="#185FA5" text-anchor="middle">+</text>
+<rect x="724" y="1552" width="145" height="56" rx="8" fill="#ffffff" stroke="#185FA5" stroke-width="1"/>
+<text x="796" y="1576" font-size="12" font-weight="bold" fill="#1f2937" text-anchor="middle">document stamp</text>
+<text x="796" y="1594" font-size="10" font-weight="normal" fill="#374151" text-anchor="middle">moved on every write</text>
+<text x="56" y="1630" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Change any one part and the key changes. Upload, update or a deletion moves the stamp in the same transaction, so old answers become unaddressable.</text>
+<text x="56" y="1649" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">The stamp is one row per company. Entries are not deleted in a race, they simply stop being reachable, and TTL clears the rest.</text>
+<text x="56" y="1668" font-size="11" font-weight="bold" fill="#185FA5" text-anchor="start">A cached answer is only shown after the same role and category check a fresh answer would face.</text>
+<rect x="960" y="1516" width="500" height="164" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="974" y="1540" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Read paths that must not go stale</text>
+<text x="974" y="1557" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">fresh_read_window_seconds 10: reads right after an</text>
+<text x="974" y="1574" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">upload use the primary, not the standby reader (5.9).</text>
+<text x="974" y="1591" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">A cached answer carries its model name and a</text>
+<text x="974" y="1608" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">cache tag, so it is never mistaken for a fresh one.</text>
+<text x="974" y="1625" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Privileged roles never read a cached role.</text>
+<rect x="20" y="1706" width="1460" height="428" rx="12" fill="none" stroke="#0F6E56" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="36" y="1732" font-size="15" font-weight="bold" fill="#0F6E56" text-anchor="start">5. Where each lock sits in the two flows</text>
+<text x="36" y="1750" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">The write path proves where rows land. The read path proves which rows can come back, including through a citation.</text>
+<rect x="40" y="1764" width="680" height="200" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+<text x="54" y="1788" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Write path: upload to a committed version</text>
+<text x="54" y="1810" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">1. Input gate: category, period, status, upload type, file type and size.</text>
+<text x="54" y="1828" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">2. Onboarding gate: the company partition must exist, or the upload is refused.</text>
+<text x="54" y="1846" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">3. S3: the object lands under the company prefix, encrypted.</text>
+<text x="54" y="1864" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">4. Virus scan: only after the file is in S3. The job is queued only if it passes.</text>
+<text x="54" y="1882" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">5. SQS to Step Functions: the job carries the company id and the per-company cap.</text>
+<text x="54" y="1900" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">6. Read, delta check, chunk, embed: the worker rebuilds the context and sets RLS.</text>
+<text x="54" y="1918" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">7. One transaction: pages, chunks, vectors, extracted numbers, version, job status, stamp.</text>
+<text x="54" y="1936" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">8. Lock 1 places the rows in one partition. Lock 2 stops any other read returning them.</text>
+<text x="54" y="1954" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">9. Commit, then ready. Cache entries on the old stamp are no longer addressable.</text>
+<rect x="760" y="1764" width="700" height="200" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+<text x="774" y="1788" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Read path: question, answer, citation</text>
+<text x="774" y="1812" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">1. Authorizer to RequestContext. Role checked against permissions.yaml on every call.</text>
+<text x="774" y="1830" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">2. Input gate runs before any model: prompt trick checks and PII checks.</text>
+<text x="774" y="1848" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">3. Cache lookup with company, role, scope and stamp. Company checked again on read.</text>
+<text x="774" y="1866" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">4. Understand, then embed the question. The embedding model version is stored.</text>
+<text x="774" y="1884" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">5. Hybrid search, company first, inside that company's partition and vector index.</text>
+<text x="774" y="1902" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">6. Rerank sees only the chunks the company-scoped search returned, never a pool.</text>
+<text x="774" y="1920" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">7. Calculate with code inside the same tenant context. The model never does maths.</text>
+<text x="774" y="1938" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">8. Evidence gate, model router and gateway, output gate on citations and numbers.</text>
+<text x="774" y="1956" font-size="10.8" font-weight="normal" fill="#374151" text-anchor="start">9. Citation to source viewer: a citation id on its own is never enough (below).</text>
+<rect x="40" y="1980" width="680" height="140" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="54" y="2004" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">What the source viewer checks before it returns one row</text>
+<text x="54" y="2021" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">1. The citation resolves to a document inside the context's company.</text>
+<text x="54" y="2038" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">2. The role may see that document category, per permissions.yaml.</text>
+<text x="54" y="2055" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">3. The version is visible: not soft-deleted, not superseded without a note.</text>
+<text x="54" y="2072" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">4. Only then is the page or table read, and a short-lived link signed.</text>
+<rect x="760" y="1980" width="700" height="140" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="774" y="2004" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Where a number in an answer comes from</text>
+<text x="774" y="2021" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Every figure is produced by SQL or pandas, inside the same tenant context.</text>
+<text x="774" y="2038" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">The model may repeat a figure from code output or from a cited chunk, nothing else.</text>
+<text x="774" y="2055" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">The output gate drops any sentence whose number cannot be traced to one of those.</text>
+<text x="774" y="2072" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">So a neighbour's number cannot enter through a shared prompt part either.</text>
+<rect x="20" y="2150" width="1460" height="420" rx="12" fill="none" stroke="#993C1D" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="36" y="2176" font-size="15" font-weight="bold" fill="#993C1D" text-anchor="start">6. Cross-company attempts, and where each one stops</text>
+<text x="36" y="2194" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Every row names the lock or check that refuses the request. None of these rely on the caller behaving well.</text>
+<rect x="40" y="2200" width="1420" height="34" rx="0" fill="#F3F4F6" stroke="none" stroke-width="1"/>
+<text x="50" y="2222" font-size="12" font-weight="bold" fill="#1f2937" text-anchor="start">Attempt</text>
+<text x="560" y="2222" font-size="12" font-weight="bold" fill="#1f2937" text-anchor="start">Where it stops</text>
+<polyline points="40,2234 1460,2234" fill="none" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="40" y="2234" width="1420" height="32" rx="0" fill="#F9FAFB" stroke="none" stroke-width="1"/>
+<text x="50" y="2255" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Send another company_id in the request body</text>
+<text x="560" y="2255" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">Ignored. The context is built from the token claim, and the body cannot set or change the company.</text>
+<polyline points="40,2266 1460,2266" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<text x="50" y="2287" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Guess a document or chunk id from another company</text>
+<text x="560" y="2287" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">The repository filter plus lock 2. Zero rows, and no error tells the caller whether the row exists.</text>
+<polyline points="40,2298 1460,2298" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="40" y="2298" width="1420" height="32" rx="0" fill="#F9FAFB" stroke="none" stroke-width="1"/>
+<text x="50" y="2319" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Open a citation id from another company in the viewer</text>
+<text x="560" y="2319" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">The source viewer compares document.company_id with the context before it reads or signs anything.</text>
+<polyline points="40,2330 1460,2330" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<text x="50" y="2351" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Ask a question whose best chunks belong to a neighbour</text>
+<text x="560" y="2351" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">Search runs inside one partition with the company named first. The neighbour's rows are never candidates.</text>
+<polyline points="40,2362 1460,2362" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="40" y="2362" width="1420" height="32" rx="0" fill="#F9FAFB" stroke="none" stroke-width="1"/>
+<text x="50" y="2383" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Replay a pre-signed upload link</text>
+<text x="560" y="2383" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">Links are short-lived and cover one file. A download is re-authorized before it is signed.</text>
+<polyline points="40,2394 1460,2394" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<text x="50" y="2415" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Keep using a role that was just removed</text>
+<text x="560" y="2415" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">The role version is bumped. Privileged roles read fresh every call, others within 60 seconds.</text>
+<polyline points="40,2426 1460,2426" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="40" y="2426" width="1420" height="32" rx="0" fill="#F9FAFB" stroke="none" stroke-width="1"/>
+<text x="50" y="2447" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Put a job for another company on the queue</text>
+<text x="560" y="2447" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">The worker rebuilds the context from the job record and re-sets RLS. A repeated message does no harm.</text>
+<polyline points="40,2458 1460,2458" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<text x="50" y="2479" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Ship a query that forgets the company filter</text>
+<text x="560" y="2479" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">Lock 2 returns zero rows. A test build also rejects a repository method without company_id.</text>
+<polyline points="40,2490 1460,2490" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="40" y="2490" width="1420" height="32" rx="0" fill="#F9FAFB" stroke="none" stroke-width="1"/>
+<text x="50" y="2511" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Expect a stale answer after an upload</text>
+<text x="560" y="2511" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">The stamp moves in the same transaction, so the old cache key is no longer addressable.</text>
+<polyline points="40,2522 1460,2522" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<text x="50" y="2543" font-size="11.5" font-weight="bold" fill="#1f2937" text-anchor="start">Pull a soft-deleted document</text>
+<text x="560" y="2543" font-size="11.2" font-weight="normal" fill="#374151" text-anchor="start">Queries exclude deleted rows, purge waits deleted_retention_days, and the audit entry stays.</text>
+<polyline points="40,2554 1460,2554" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="20" y="2586" width="1460" height="252" rx="12" fill="none" stroke="#5F5E5A" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="36" y="2612" font-size="15" font-weight="bold" fill="#5F5E5A" text-anchor="start">7. None of this is a switch, and this is how the build proves it</text>
+<text x="36" y="2630" font-size="11.5" font-weight="normal" fill="#374151" text-anchor="start">Every item below is on in every environment and has no off path. A failure in any of these tests blocks a release.</text>
+<rect x="40" y="2646" width="700" height="150" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="54" y="2670" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Protections that never turn off</text>
+<text x="54" y="2687" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">company id on every repository, search, cache, queue and storage call</text>
+<text x="54" y="2704" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">row-level security on the parent tables, plus the partition-per-company gate</text>
+<text x="54" y="2721" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">the output gate, which has no off value in config</text>
+<text x="54" y="2738" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">metering, the audit log and the write-once copy</text>
+<text x="54" y="2755" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Shared on purpose: code, model providers, one database per cell.</text>
+<text x="54" y="2772" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Never shared: rows, files, vectors, cached answers, usage detail.</text>
+<rect x="770" y="2646" width="690" height="168" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="1"/>
+<text x="784" y="2670" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="start">Tests that fail the build if separation breaks</text>
+<text x="784" y="2687" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">RLS test: a query without the setting returns nothing, and does not error open</text>
+<text x="784" y="2704" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">company filter test: every repository method requires company_id</text>
+<text x="784" y="2721" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">cache key test: the key changes when company, role, scope or stamp changes</text>
+<text x="784" y="2738" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">cross-company isolation test across every endpoint, including the source viewer</text>
+<text x="784" y="2755" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">partition-missing upload test, negative source viewer test</text>
+<text x="784" y="2772" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Feedback can enter the golden set after review and anonymising. Nothing learned from one company is used for another.</text>
+<text x="40" y="2858" font-size="10.5" font-weight="normal" fill="#5F5E5A" text-anchor="start">Grounded in docs/plans/phase1/phase1_mvp_plan.md (D1, D2, D3, D7, D8), finsight_mvp_hld.svg, finsight_config_switches.md 5.15, 5.18, 5.20, 5.21, 5.27 and CODING_STANDARDS.md section 11.</text>
+</svg>

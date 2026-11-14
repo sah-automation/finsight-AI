@@ -1,0 +1,237 @@
+"""Disabled tracing adapter - emits minimal spans only."""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import Mapping
+from typing import Any
+
+from finsight.domain.ports.tracing_port import TracingPort
+from finsight.domain.value_objects.span import Span
+
+from ._tracing_config import _active_switch_values
+from ._tracing_redaction import _sanitize_attributes
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class DisabledTracer(TracingPort):
+    """No-op tracing adapter that emits minimal structured spans.
+
+    This adapter implements TracingPort but does not send spans to any backend.
+    It always returns minimal spans (mode='disabled', active=False, minimal=True)
+    regardless of the active/enabled parameters, making it suitable for
+    environments where detailed tracing is disabled.
+    """
+
+    def __init__(
+        self, *, config: Any = None, service_name: str = 'finsight-ai', **kwargs: Any
+    ) -> None:
+        self._config = config if config is not None else kwargs.get('config')
+        self._service_name = service_name
+        self._spans: list[Span] = []
+
+    async def _start_span_impl(  # noqa: PLR0913
+        self,
+        company_id: object,
+        operation: str | None = None,
+        *,
+        name: str | None = None,
+        span_name: str | None = None,
+        trace_id: object = None,
+        attributes: dict[str, object] | None = None,
+        metadata: dict[str, object] | None = None,
+        active: bool = True,
+        enabled: bool | None = None,
+        mode: str | None = None,
+        minimal: bool | None = None,
+        **kwargs: object,
+    ) -> Span:
+        """Create a minimal span (always disabled mode)."""
+        # In disabled tracer, we always produce minimal spans regardless of parameters
+        effective_mode = 'disabled'
+        effective_active = False
+        effective_minimal = True
+
+        # Determine span name
+        passed_name = name or span_name or operation
+        if passed_name is None:
+            op_name = kwargs.get('operation_name')
+            label = kwargs.get('label')
+            if isinstance(op_name, str):
+                passed_name = op_name
+            elif isinstance(label, str):
+                passed_name = label
+
+        # Merge attributes (for minimal spans, we still include company info)
+        merged_attributes: dict[str, Any] = {}
+        if isinstance(attributes, Mapping):
+            merged_attributes.update(attributes)
+        if isinstance(metadata, Mapping):
+            merged_attributes.update(metadata)
+        tags = kwargs.get('tags') or kwargs.get('context')
+        if isinstance(tags, Mapping):
+            merged_attributes.update(tags)
+
+        # Add standard minimal attributes
+        merged_attributes.setdefault('step', passed_name or operation)
+        try:
+            _vals = _active_switch_values(self._config)
+            if _vals:
+                merged_attributes.setdefault('active_switch_values', _vals)
+                merged_attributes.setdefault('active_switches', _vals)
+                merged_attributes.setdefault('switches', _vals)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.debug('active switch values unavailable: %s', exc)
+
+        # Apply the sensitive-field redaction blocklist as a safety net.
+        merged_attributes = _sanitize_attributes(merged_attributes)
+
+        # Create minimal span
+        span = Span(
+            company_id=company_id,
+            name=passed_name
+            if passed_name is not None
+            else (operation if operation is not None else None),
+            span_name=passed_name,
+            operation=passed_name,
+            trace_id=trace_id if trace_id is not None else kwargs.get('trace'),
+            attributes=merged_attributes,
+            active=effective_active,
+            enabled=effective_active,
+            mode=effective_mode,
+            minimal=effective_minimal,
+        )
+
+        # Store span for records/emitted_spans access
+        self._spans.append(span)
+
+        return span
+
+    async def start_span(  # noqa: PLR0913
+        self,
+        company_id: object,
+        operation: str | None = None,
+        *,
+        name: str | None = None,
+        span_name: str | None = None,
+        trace_id: object = None,
+        attributes: dict[str, object] | None = None,
+        metadata: dict[str, object] | None = None,
+        active: bool = True,
+        enabled: bool | None = None,
+        mode: str | None = None,
+        minimal: bool | None = None,
+        **kwargs: object,
+    ) -> object:
+        """Emit or start a span for an operation (always minimal)."""
+        return await self._start_span_impl(
+            company_id=company_id,
+            operation=operation,
+            name=name,
+            span_name=span_name,
+            trace_id=trace_id,
+            attributes=attributes,
+            metadata=metadata,
+            active=active,
+            enabled=enabled,
+            mode=mode,
+            minimal=minimal,
+            **kwargs,
+        )
+
+    @property
+    def otel(self) -> None:
+        return None
+
+    @property
+    def otel_exporter(self) -> None:
+        return None
+
+    @property
+    def otel_provider(self) -> None:
+        return None
+
+    @property
+    def otel_processor(self) -> None:
+        return None
+
+    @property
+    def otel_tracer(self) -> None:
+        return None
+
+    @property
+    def exporter(self) -> None:
+        return None
+
+    @property
+    def provider(self) -> None:
+        return None
+
+    @property
+    def processor(self) -> None:
+        return None
+
+    @property
+    def tracer(self) -> None:
+        return None
+
+    def flush(self) -> None:
+        return None
+
+    def force_flush(self) -> None:
+        return None
+
+    def shutdown(self) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+    def _filtered(self, company_id: Any = None) -> list[Span]:
+        if company_id is None:
+            return list(self._spans)
+        wanted = str(company_id)
+        return [span for span in self._spans if str(span.company_id) == wanted]
+
+    def records(self, company_id: Any = None) -> list[dict[str, Any]]:
+        """Return recorded spans as dicts."""
+        return [span.to_dict() for span in self._filtered(company_id)]
+
+    def emitted_spans(self, company_id: Any = None) -> list[Span]:
+        """Return emitted spans as Span objects."""
+        return self._filtered(company_id)
+
+    async def make_span(
+        self,
+        company_id: object,
+        *args: object,
+        **kwargs: object,
+    ) -> Span:
+        """Create a minimal span without emitting (matches TracingAdapter behavior)."""
+        # Always produce minimal span in disabled tracer
+        kwargs['active'] = False
+        kwargs['enabled'] = False
+        kwargs['mode'] = 'disabled'
+        kwargs['minimal'] = True
+        raw_attributes = None
+        for key in ('attributes', 'metadata', 'tags', 'context'):
+            if key in kwargs and isinstance(kwargs.get(key), Mapping):
+                raw_attributes = kwargs.pop(key)
+                break
+        attrs = dict(raw_attributes) if isinstance(raw_attributes, Mapping) else {}
+        try:
+            _vals = _active_switch_values(self._config)
+            if _vals:
+                attrs.setdefault('active_switch_values', _vals)
+                attrs.setdefault('active_switches', _vals)
+                attrs.setdefault('switches', _vals)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.debug('active switch values unavailable: %s', exc)
+        kwargs['attributes'] = _sanitize_attributes(attrs)
+        span = Span(company_id=company_id, **kwargs)
+        self._spans.append(span)
+        return span
+
+
+__all__ = ['DisabledTracer']

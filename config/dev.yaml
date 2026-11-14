@@ -1,99 +1,122 @@
 # Development Environment Configuration
 # Values here override schema.yaml defaults.
-# Secrets should be in environment variables, not in this file.
 
 app:
   environment: "development"
 
 switches:
-  reranker_enabled: true
+  parallel_steps: true
   backup_request_enabled: true
-  parallel_retrieval_enabled: false  # simpler for dev
-  per_sentence_citation_check: true
-  async_textract_enabled: false  # use sync/pdfplumber in dev
-  ocr_fallback_enabled: true
+  prompt_cache_enabled: true
   answer_cache_enabled: true
-  role_cache_enabled: true
   detailed_tracing_enabled: true
-  usage_metering_enabled: false  # disable in dev
+  usage_metering_enabled: true
+  llm_content_capture_enabled: true
+
+models:
+  region: "us-east-1"
 
 llm:
   primary_model:
-    model_id: "anthropic/claude-3-5-haiku-20241022"  # cheaper for dev
+    provider: "litellm"
     max_tokens: 4096
+    temperature: 0.0
     timeout_seconds: 30
+    max_retries: 3
+    retry_base_delay_seconds: 1.0
   fallback_models:
     - provider: "litellm"
-      model_id: "openai/gpt-4o-mini"
       max_tokens: 4096
       temperature: 0.0
       timeout_seconds: 20
       max_retries: 2
       retry_base_delay_seconds: 1.0
   embedding_model:
-    model_id: "amazon/titan-embed-text-v2:0"
-    batch_size: 50
+    provider: "litellm"
+    dimensions: 1024
+    batch_size: 10
+    timeout_seconds: 30
+    max_retries: 3
 
 vector_store:
   host: "localhost"
   port: 5432
   database: "finsight_dev"
-  username: "postgres"
-  password: "postgres"
+  username: "dev"
+  password: "dev"  # pragma: allowlist secret
   ssl_mode: "disable"
   pool_size: 5
   max_overflow: 2
+  pool_timeout_seconds: 30
+  pool_recycle_seconds: 3600
+  hnsw_ef_search: 50
+  hnsw_ef_construction: 100
+  hnsw_m: 8
 
 readers:
   textract:
     async_enabled: false
     region: "us-east-1"
 
-reranker:
-  provider: "local"  # use local reranker in dev
-
-caches:
-  answer_cache:
-    table_name: "finsight-dev-answer-cache"
-    max_entry_size_bytes: 400000
-  role_cache:
-    table_name: "finsight-dev-role-cache"
-    max_entry_size_bytes: 400000
-
-queue:
-  ingestion_queue_url: "http://localhost:4566/000000000000/finsight-dev-ingestion"
-  reprocessing_queue_url: "http://localhost:4566/000000000000/finsight-dev-reprocessing"
-  reports_queue_url: "http://localhost:4566/000000000000/finsight-dev-reports"
-  dead_letter_queue_url: "http://localhost:4566/000000000000/finsight-dev-dlq"
-
 storage:
+  region: "us-east-1"
   documents_bucket: "finsight-dev-documents"
   reports_bucket: "finsight-dev-reports"
   backups_bucket: "finsight-dev-backups"
-  region: "us-east-1"
 
 auth:
-  user_pool_id: "us-east-1_devpool"
-  client_id: "devclient"
   region: "us-east-1"
+  user_pool_id: "us-east-1-dev"
+  client_id: "dev-client"
 
 metering:
   table_name: "finsight-dev-metering"
 
 observability:
   log_level: "DEBUG"
-  log_format: "text"
   trace_sample_rate: 1.0
-  otlp_endpoint: "http://localhost:4317"
+  # Dev traces flow through the local redacting OTel collector
+  # (docker-compose.test.yml, OTLP HTTP on 4318), which deletes blocklisted
+  # span attributes and exports to Arize Phoenix (UI: http://localhost:6006).
+  # Do not point this straight at Phoenix - that would bypass redaction.
+  otlp_endpoint: "http://localhost:4318/v1/traces"
   alerts:
-    fallback_model_3_used: false
-    reranker_down: false
-    embedding_retries_exceeded: 10
-    job_in_retry_list: false
-    role_cache_stale_seconds: 86400
+    fallback_model_3_used: true
+    reranker_down: true
+    embedding_retries_exceeded: 3
+    job_in_retry_list: true
+    role_cache_stale_seconds: 7200
 
-security:
-  require_company_id_on_all_queries: true
-  pii_detection_enabled: false  # disable for easier dev
-  pii_action: "log"
-  prompt_injection_detection_enabled: false
+caches:
+  answer_cache:
+    table_name: "${ANSWER_CACHE_TABLE}"
+    ttl_seconds: 86400
+    key_prefix: "ans:"
+    max_entry_size_bytes: 400000
+  role_cache:
+    table_name: "${ROLE_CACHE_TABLE}"
+    ttl_seconds: 3600
+    key_prefix: "role:"
+    max_entry_size_bytes: 400000
+    refresh_ahead_seconds: 300
+
+queue:
+  ingestion_queue_url: "${INGESTION_QUEUE_URL}"
+  reprocessing_queue_url: "${REPROCESSING_QUEUE_URL}"
+  reports_queue_url: "${REPORTS_QUEUE_URL}"
+  dead_letter_queue_url: "${DLQ_URL}"
+  visibility_timeout_seconds: 300
+  max_receive_count: 3
+  batch_size: 10
+  wait_time_seconds: 20
+
+reranker:
+  provider: "cohere"
+  top_n: 20
+  timeout_seconds: 10
+  max_retries: 2
+  batch_size: 50
+
+encryption:
+  key_mode: aws_managed
+  kms_key_alias: ""

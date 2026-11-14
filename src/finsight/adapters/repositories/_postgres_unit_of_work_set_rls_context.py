@@ -1,0 +1,16 @@
+"""Auto-extracted helper for PostgresUnitOfWork.set_rls_context."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+# Host module-level definitions (injected at runtime of this helper)
+# (none required)
+
+
+if TYPE_CHECKING:
+    from .postgres_unit_of_work import PostgresUnitOfWork
+
+
+async def _set_rls_context(self: PostgresUnitOfWork, company_id: object) -> None:
+    await self.set_company_context(company_id)

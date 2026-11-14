@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+pytest_plugins = ['tests.support.placeholder_guard']
+
 _MARKER_BY_DIR = {
     'unit': pytest.mark.unit,
     'integration': pytest.mark.integration,
