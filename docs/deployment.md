@@ -111,6 +111,48 @@ Each needs an organization administrator (or an SCP exception) to run from the
 management account. Until then the affected steps are owned by the maintainer,
 not by the agent.
 
+### Unblocking commands
+
+Run these from a principal the organization's service control policies allow
+(the management account, or an account with an SCP exception). Each one is
+verified by reading the resource back.
+
+```bash
+# 1. GitHub OIDC identity provider — without this the smoke workflow cannot
+#    assume the role. The role's trust policy already references it.
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list 1b511abead59c6ce207077c0bf0e0043b1382612
+aws iam list-open-id-connect-providers
+
+# 2. CDK bootstrap — creates the CDKToolkit stack and the asset buckets.
+cd infra/cdk
+cdk bootstrap aws://069632763967/us-east-1 --require-approval never
+aws cloudformation describe-stacks --stack-name CDKToolkit
+
+# 3. Neon connection string — SecureString, value never echoed.
+aws ssm put-parameter \
+  --name /finsight/dev/neon/database_url \
+  --type SecureString \
+  --value file://<local-file-holding-the-connection-string>
+aws ssm describe-parameters --parameter-filters "Name=BeginWith,/finsight"
+
+# 4. Budget email notifications — enable billing alerts, then re-apply the
+#    budget so the subscriber sticks. AWS silently drops budget notifications
+#    when billing-alert preferences are off.
+aws billing update-billing-preferences --features BILLING_ALERTS
+aws budgets create-budget --account-id 069632763967 \
+  --budget file://budget.json \
+  --notifications-with-subscribers file://budget-subscribers.json
+aws budgets describe-budget --account-id 069632763967 \
+  --budget-name finsight-monthly-budget
+```
+
+Steps 1–3 need `iam:CreateOpenIDConnectProvider`, `cloudformation:*` and
+`ssm:PutParameter` respectively; step 4 needs the billing-preference actions.
+
+
 ## Validating changes
 
 ```bash
