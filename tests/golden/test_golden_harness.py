@@ -17,6 +17,50 @@ import run_golden
 
 pytestmark = [pytest.mark.golden]
 
+# Every `${VAR}` reference without a default across `config/schema.yaml` and
+# `config/staging.yaml` (the standard profile). The pilot profile's
+# `config/development.yaml` needs the same set; providing all of them lets
+# `run_golden.load_config_for_profile` succeed in CI, where no other config
+# environment is present.
+_REQUIRED_ENV: tuple[str, ...] = (
+    'VECTOR_DB_HOST',
+    'VECTOR_DB_NAME',
+    'VECTOR_DB_USER',
+    'VECTOR_DB_PASSWORD',
+    'ANSWER_CACHE_TABLE',
+    'ROLE_CACHE_TABLE',
+    'INGESTION_QUEUE_URL',
+    'REPROCESSING_QUEUE_URL',
+    'REPORTS_QUEUE_URL',
+    'DLQ_URL',
+    'AWS_REGION',
+    'COGNITO_CLIENT_ID',
+    'COGNITO_USER_POOL_ID',
+    'DOCUMENTS_BUCKET',
+    'REPORTS_BUCKET',
+    'BACKUPS_BUCKET',
+    'METERING_TABLE',
+    'OTLP_ENDPOINT',
+    'OTLP_HEADERS',
+    'SOURCE_VIEWER_SIGNING_KEY',
+)
+
+
+@pytest.fixture(autouse=True)
+def _required_config_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Provide every required config variable for the whole module.
+
+    The golden harness builds the real composition root against deterministic
+    adapters, so the only external dependency is a loadable `Config` — which
+    requires all `${VAR}` references above to resolve.
+    """
+
+    for key in _REQUIRED_ENV:
+        monkeypatch.setenv(key, 'test-value')
+    # Substituted verbatim into `config/staging.yaml`, so it must be a YAML/JSON
+    # mapping for the `otlp_headers: dict[str, str]` field to validate.
+    monkeypatch.setenv('OTLP_HEADERS', '{"authorization": "Bearer test-value"}')
+
 
 def test_question_set_has_minimum_size() -> None:
     questions = run_golden.load_questions()
@@ -40,29 +84,7 @@ def test_loads_both_profiles() -> None:
     assert run_golden.profile_to_environment('standard') == 'staging'
 
 
-def test_config_loads_for_both_profiles(monkeypatch: pytest.MonkeyPatch) -> None:
-    for key in (
-        'VECTOR_DB_HOST',
-        'VECTOR_DB_NAME',
-        'VECTOR_DB_USER',
-        'VECTOR_DB_PASSWORD',
-        'ANSWER_CACHE_TABLE',
-        'ROLE_CACHE_TABLE',
-        'INGESTION_QUEUE_URL',
-        'REPROCESSING_QUEUE_URL',
-        'REPORTS_QUEUE_URL',
-        'DLQ_URL',
-        'AWS_REGION',
-        'COGNITO_CLIENT_ID',
-        'COGNITO_USER_POOL_ID',
-        'DOCUMENTS_BUCKET',
-        'REPORTS_BUCKET',
-        'BACKUPS_BUCKET',
-        'METERING_TABLE',
-        'OTLP_ENDPOINT',
-        'SOURCE_VIEWER_SIGNING_KEY',
-    ):
-        monkeypatch.setenv(key, 'test-value')
+def test_config_loads_for_both_profiles() -> None:
     for profile in ('pilot', 'standard'):
         config = run_golden.load_config_for_profile(profile)
         assert config is not None
@@ -76,8 +98,11 @@ def test_reference_answerer_scores_perfectly() -> None:
 
 
 def test_same_set_runs_on_both_profiles() -> None:
-    pilot = run_golden.run_golden(profile='pilot')
-    standard = run_golden.run_golden(profile='standard')
+    # Harness-mechanics test (this module targets the scoring harness, not the
+    # full Q&A flow): the reference answerer stands in for a scoring run so the
+    # check stays deterministic across environments.
+    pilot = run_golden.run_golden(profile='pilot', ask=run_golden.reference_answerer)
+    standard = run_golden.run_golden(profile='standard', ask=run_golden.reference_answerer)
     assert pilot['question_count'] == standard['question_count']
 
 
@@ -121,7 +146,7 @@ def test_baseline_exists_for_both_profiles() -> None:
 
 def test_compare_to_baseline_passes_for_reference_run() -> None:
     for profile in ('pilot', 'standard'):
-        report = run_golden.run_golden(profile=profile)
+        report = run_golden.run_golden(profile=profile, ask=run_golden.reference_answerer)
         baseline = compare_results.load_baseline(profile)
         ok, messages = compare_results.compare_to_baseline(report, baseline)
         assert ok, messages
@@ -142,7 +167,7 @@ def test_baseline_files_written() -> None:
 
 
 def test_write_results(tmp_path: Path) -> None:
-    report = run_golden.run_golden(profile='pilot', limit=3)
+    report = run_golden.run_golden(profile='pilot', ask=run_golden.reference_answerer, limit=3)
     target = tmp_path / 'out.json'
     run_golden.write_results(target, report)
     data = json.loads(target.read_text())
