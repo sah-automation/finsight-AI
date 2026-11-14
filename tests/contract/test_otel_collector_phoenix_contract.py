@@ -53,11 +53,11 @@ def _dev_config() -> dict[str, Any]:
 # traced_embedding.py and traced_reranker.py). They carry full LLM content on
 # purpose (opt-in capture, ADR 0005) and must survive collector redaction.
 GENAI_CONTENT_ATTRIBUTES = (
-    'genai.request.messages',
-    'genai.response.messages',
-    'genai.embedding.texts',
-    'genai.rerank.query',
-    'genai.rerank.candidates',
+    'gen_ai.prompt.messages',
+    'gen_ai.completion.messages',
+    'gen_ai.embedding.texts',
+    'gen_ai.rerank.query',
+    'gen_ai.rerank.candidates',
 )
 
 # Aggregate LLM metric names that legitimately contain the 'token'/'prompt'
@@ -176,20 +176,24 @@ def test_redaction_is_case_insensitive() -> None:
     assert not remaining, f'uppercase blocklisted fields leaked: {sorted(remaining)}'
 
 
-def test_redaction_deletes_genai_convention_content_keys() -> None:
-    """OTel GenAI semantic-convention content keys must never reach Phoenix.
+def test_redaction_preserves_genai_convention_content_keys() -> None:
+    """OTel GenAI semantic-convention content keys must survive collector redaction.
 
-    gen_ai.prompt.* / gen_ai.completion.* carry full prompt and response
-    content but contain no blocklist token, so the collector deletes them by
-    prefix. The application's own capture keys use the 'genai.' spelling.
+    gen_ai.prompt.* / gen_ai.completion.* are no longer deleted by the
+    collector (they were removed from the blocklist so dev traces show
+    meaningful content). PII protection happens at the application level in
+    _sanitize_attributes, which walks the captured content values and strips
+    PII/credentials before the span is stored or exported.
     """
     sample = {
-        'gen_ai.prompt.0.content': 'leaky prompt',
-        'gen_ai.completion.0.content': 'leaky completion',
-        'GEN_AI.PROMPT.1.content': 'leaky uppercase',
+        'gen_ai.prompt.0.content': 'What is my revenue?',
+        'gen_ai.completion.0.content': 'Revenue grew 12 percent.',
+        'GEN_AI.PROMPT.1.content': 'What is my SSN?',
     }
     remaining = _apply_redaction_actions(sample, _redaction_actions())
-    assert not remaining, f'GenAI convention content keys leaked: {sorted(remaining)}'
+    assert set(remaining) == set(sample), (
+        f'collector deleted GenAI convention content keys: {sorted(set(sample) - set(remaining))}'
+    )
 
 
 def test_redaction_preserves_aggregate_and_content_capture_attributes() -> None:

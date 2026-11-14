@@ -197,7 +197,7 @@ class TracedEmbedding(LiteLLMEmbedding):
                 try:
                     texts = _extract_embedding_texts(request)
                     if texts is not None:
-                        attributes['genai.embedding.texts'] = texts
+                        attributes['gen_ai.embedding.texts'] = texts
                 except Exception as exc:
                     _LOGGER.debug('content capture failed: %s', exc)
 

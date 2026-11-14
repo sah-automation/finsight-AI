@@ -22,5 +22,5 @@
 | TracedLLM | Decorator around the LLM gateway that emits an enriched span (tokens, fallback tags, cost) after each call; `TracedEmbedding` and `TracedReranker` do the same for their calls. |
 | Metering | Exactly one usage row per paid call (company, service, units, cost, model, trace id); a paid call without a usage row is a bug. |
 | MeteredLLM | Decorator that writes the usage row around an inner LLM gateway, so no call site can forget metering. |
-| LLM Content Capture | The `llm_content_capture_enabled` switch gating full prompt/response and chunk text on spans (`genai.*` attributes); on in dev/test, off in staging/prod, redaction blocklist always applies (ADR-0005). |
+| LLM Content Capture | The `llm_content_capture_enabled` switch gating full prompt/response and chunk text on spans (`gen_ai.*` attributes); on in dev/test, off in staging/prod, redaction blocklist always applies (ADR-0005). |
 | OTLP | OpenTelemetry Protocol; the wire format spans are exported with to the CloudWatch Logs OTLP endpoint in AWS and the local collector in dev (ADR-0006). |

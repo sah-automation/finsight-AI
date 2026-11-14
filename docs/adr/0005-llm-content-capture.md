@@ -34,10 +34,10 @@ path changes.
 `llm_content_capture_enabled`, gates full content capture on spans:
 
 - When the switch is on, the traced decorators attach content to span
-  attributes under GenAI attribute names:
-  `genai.request.messages` and `genai.response.messages` for LLM calls
-  (`TracedLLM`), `genai.embedding.texts` for embedding calls
-  (`TracedEmbedding`), and `genai.rerank.query` / `genai.rerank.candidates`
+  attributes under GenAI semantic-convention attribute names:
+  `gen_ai.prompt.messages` and `gen_ai.completion.messages` for LLM calls
+  (`TracedLLM`), `gen_ai.embedding.texts` for embedding calls
+  (`TracedEmbedding`), and `gen_ai.rerank.query` / `gen_ai.rerank.candidates`
   for rerank calls (`TracedReranker`).
 - When the switch is off, none of these attributes are emitted. Both paths are
   contract-tested against every `TracingPort` implementation.

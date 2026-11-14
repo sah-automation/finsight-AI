@@ -328,10 +328,10 @@ class TracedLLM(LiteLLMGateway):
                 try:
                     req_messages = _extract_request_messages(request)
                     if req_messages is not None:
-                        attributes['genai.request.messages'] = req_messages
+                        attributes['gen_ai.prompt.messages'] = req_messages
                     resp_text = _extract_response_text(result)
                     if resp_text is not None:
-                        attributes['genai.response.messages'] = [
+                        attributes['gen_ai.completion.messages'] = [
                             {'role': 'assistant', 'content': resp_text}
                         ]
                 except Exception as exc:

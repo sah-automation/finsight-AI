@@ -73,67 +73,97 @@ def _looks_sensitive_text(value: Any) -> bool:
     return any(pattern.search(value) for pattern in _PII_VALUE_PATTERNS)
 
 
+def _sanitize_mapping(value: Mapping[Any, Any]) -> dict[str, Any]:
+    """Recursively sanitize a mapping's keys and values."""
+    cleaned: dict[str, Any] = {}
+    for nested_key, nested_value in value.items():
+        keep, sanitized = _sanitize_attribute(nested_key, nested_value)
+        if keep:
+            cleaned[str(nested_key)] = sanitized
+    return cleaned
+
+
+def _sanitize_list(value: Any) -> list[Any]:
+    """Recursively sanitize a list/tuple's items."""
+    cleaned_list: list[Any] = []
+    for item in value:
+        if isinstance(item, Mapping):
+            cleaned_list.append(_sanitize_mapping(item))
+        elif _looks_sensitive_text(item):
+            continue
+        else:
+            cleaned_list.append(item)
+    return cleaned_list
+
+
+def _sanitize_genai_content(value: Any) -> tuple[bool, Any]:
+    """Sanitize GenAI semantic-convention content values.
+
+    gen_ai.prompt.* / gen_ai.completion.* keys carry full LLM content behind
+    the opt-in llm_content_capture_enabled switch. The key itself survives
+    name-based redaction, but the values are still walked to strip PII,
+    credentials and signed URLs.
+    """
+    if isinstance(value, Mapping):
+        return True, _sanitize_mapping(value)
+    if isinstance(value, (list, tuple)):
+        return True, _sanitize_list(value)
+    if _looks_sensitive_text(value):
+        return False, None
+    return True, value
+
+
+def _sanitize_attribute(key: Any, value: Any) -> tuple[bool, Any]:
+    """Sanitize a single span attribute key-value pair."""
+    key_text = str(key)
+    lowered = key_text.lower()
+
+    # Allow-list LLM token-count and latency metrics. Their names contain
+    # substrings ("token", "prompt") that would otherwise trip the
+    # sensitive-name blocklist, but the values are aggregates, not content.
+    if lowered in _TOKEN_METRIC_KEYS:
+        if isinstance(value, Mapping):
+            return True, _sanitize_mapping(value)
+        return True, value
+
+    # GenAI semantic-convention content keys (gen_ai.prompt.*,
+    # gen_ai.completion.*) carry full LLM content behind the opt-in
+    # llm_content_capture_enabled switch. They must survive name-based
+    # redaction so dev traces show meaningful content, but their values are
+    # still walked below to strip PII, credentials and signed URLs.
+    if lowered.startswith(('gen_ai.prompt.', 'gen_ai.completion.')):
+        return _sanitize_genai_content(value)
+
+    if any(token in lowered for token in _SENSITIVE_NAME_TOKENS):
+        return False, None
+    if 'url' in lowered:
+        return False, None
+
+    if isinstance(value, Mapping):
+        return True, _sanitize_mapping(value)
+    if isinstance(value, (list, tuple)):
+        return True, _sanitize_list(value)
+    if _looks_sensitive_text(value):
+        return False, None
+    # Convert company identifiers embedded in attributes, but never
+    # re-hash the already-hashed wire-safe attributes.
+    if 'company' in lowered and lowered not in {'company_hash', 'company_present'}:
+        try:
+            return True, company_to_trace_attribute(value)
+        except Exception as exc:
+            _LOGGER.debug('company attribute conversion failed: %s', exc)
+    return True, value
+
+
 def _sanitize_attributes(attributes: Any) -> dict[str, Any]:
     if attributes is None:
         return {}
     if not isinstance(attributes, Mapping):
         attributes = {'value': attributes}
 
-    def _sanitize(key: Any, value: Any) -> tuple[bool, Any]:
-        key_text = str(key)
-        lowered = key_text.lower()
-        # Allow-list LLM token-count and latency metrics. Their names contain
-        # substrings ("token", "prompt") that would otherwise trip the
-        # sensitive-name blocklist, but the values are aggregates, not content.
-        if lowered in _TOKEN_METRIC_KEYS:
-            if isinstance(value, Mapping):
-                metric_cleaned: dict[str, Any] = {}
-                for nested_key, nested_value in value.items():
-                    keep, sanitized = _sanitize(nested_key, nested_value)
-                    if keep:
-                        metric_cleaned[str(nested_key)] = sanitized
-                return True, metric_cleaned
-            return True, value
-        if any(token in lowered for token in _SENSITIVE_NAME_TOKENS):
-            return False, None
-        if 'url' in lowered:
-            return False, None
-        if isinstance(value, Mapping):
-            cleaned: dict[str, Any] = {}
-            for nested_key, nested_value in value.items():
-                keep, sanitized = _sanitize(nested_key, nested_value)
-                if keep:
-                    cleaned[str(nested_key)] = sanitized
-            return True, cleaned
-        if isinstance(value, (list, tuple)):
-            cleaned_list = []
-            for item in value:
-                if isinstance(item, Mapping):
-                    cleaned_item: dict[str, Any] = {}
-                    for nested_key, nested_value in item.items():
-                        keep, sanitized = _sanitize(nested_key, nested_value)
-                        if keep:
-                            cleaned_item[str(nested_key)] = sanitized
-                    cleaned_list.append(cleaned_item)
-                elif _looks_sensitive_text(item):
-                    continue
-                else:
-                    cleaned_list.append(item)
-            return True, cleaned_list
-        if _looks_sensitive_text(value):
-            return False, None
-        # Convert company identifiers embedded in attributes, but never
-        # re-hash the already-hashed wire-safe attributes.
-        if 'company' in lowered and lowered not in {'company_hash', 'company_present'}:
-            try:
-                return True, company_to_trace_attribute(value)
-            except Exception as exc:
-                _LOGGER.debug('company attribute conversion failed: %s', exc)
-        return True, value
-
     cleaned: dict[str, Any] = {}
     for key, value in attributes.items():
-        keep, sanitized = _sanitize(key, value)
+        keep, sanitized = _sanitize_attribute(key, value)
         if keep:
             cleaned[str(key)] = sanitized
     return cleaned

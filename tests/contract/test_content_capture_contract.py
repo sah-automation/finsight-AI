@@ -111,8 +111,13 @@ def test_traced_llm_content_capture_gating(tracer_name: str, capture: bool) -> N
 
     attrs = tracer.emitted_spans(COMPANY)[0].attributes
     if capture:
-        assert 'genai.request.messages' in attrs or 'genai.response.messages' in attrs
+        assert 'gen_ai.prompt.messages' in attrs or 'gen_ai.completion.messages' in attrs
+        # Legacy non-convention spelling must not be emitted.
+        assert 'genai.request.messages' not in attrs
+        assert 'genai.response.messages' not in attrs
     else:
+        assert 'gen_ai.prompt.messages' not in attrs
+        assert 'gen_ai.completion.messages' not in attrs
         assert 'genai.request.messages' not in attrs
         assert 'genai.response.messages' not in attrs
 
@@ -134,9 +139,12 @@ def test_traced_embedding_content_capture_gating(tracer_name: str, capture: bool
 
     attrs = tracer.emitted_spans(COMPANY)[0].attributes
     if capture:
-        assert 'genai.embedding.texts' in attrs
-        assert 'chunk text here' in str(attrs['genai.embedding.texts'])
+        assert 'gen_ai.embedding.texts' in attrs
+        assert 'chunk text here' in str(attrs['gen_ai.embedding.texts'])
+        # Legacy non-convention spelling must not be emitted.
+        assert 'genai.embedding.texts' not in attrs
     else:
+        assert 'gen_ai.embedding.texts' not in attrs
         assert 'genai.embedding.texts' not in attrs
 
 
@@ -159,8 +167,13 @@ def test_traced_reranker_content_capture_gating(tracer_name: str, capture: bool)
 
     attrs = tracer.emitted_spans(COMPANY)[0].attributes
     if capture:
-        assert 'genai.rerank.query' in attrs or 'genai.rerank.candidates' in attrs
+        assert 'gen_ai.rerank.query' in attrs or 'gen_ai.rerank.candidates' in attrs
+        # Legacy non-convention spelling must not be emitted.
+        assert 'genai.rerank.query' not in attrs
+        assert 'genai.rerank.candidates' not in attrs
     else:
+        assert 'gen_ai.rerank.query' not in attrs
+        assert 'gen_ai.rerank.candidates' not in attrs
         assert 'genai.rerank.query' not in attrs
         assert 'genai.rerank.candidates' not in attrs
 
@@ -235,7 +248,41 @@ def test_content_capture_redacts_sensitive_nested_field(tracer_name: str) -> Non
         )
     )
     attrs = tracer.emitted_spans(COMPANY)[0].attributes
-    if 'genai.request.messages' in attrs:
-        serialized = str(attrs['genai.request.messages'])
+    if 'gen_ai.prompt.messages' in attrs:
+        serialized = str(attrs['gen_ai.prompt.messages'])
         assert 'leak' not in serialized
         assert 'credentials' not in serialized
+
+
+@pytest.mark.parametrize('tracer_name', list(_make_tracers()))
+def test_content_capture_redacts_pii_value_inside_content(tracer_name: str) -> None:
+    """When capture is on, PII/URL values inside captured content are still redacted."""
+    tracer = _make_tracers()[tracer_name]
+    cfg = _config(True)
+    provider = LiteLLMGateway(
+        completion_func=_ok_completion, model='test-model', max_retries=0, config=cfg
+    )
+    traced = TracedLLM(
+        MeteredLLM(RetryingLLM(provider, retries=0), metering=None),
+        tracing=tracer,
+    )
+    asyncio.run(
+        traced.complete(
+            COMPANY,
+            messages=[
+                {
+                    'role': 'user',
+                    'content': 'Contact me at alice@example.com or https://evil.com/leak',
+                }
+            ],
+            prompt='hi',
+            question='hi',
+        )
+    )
+    attrs = tracer.emitted_spans(COMPANY)[0].attributes
+    assert 'gen_ai.prompt.messages' in attrs
+    serialized = str(attrs['gen_ai.prompt.messages'])
+    assert 'alice@example.com' not in serialized
+    assert 'https://evil.com/leak' not in serialized
+    # The whole value containing a URL is stripped, leaving only non-sensitive keys.
+    assert '{"role": "user"}' in serialized or "{'role': 'user'}" in serialized

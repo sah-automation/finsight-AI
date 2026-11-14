@@ -197,9 +197,9 @@ class TracedReranker:
                 try:
                     query, candidates = _extract_rerank_content(request)
                     if query is not None:
-                        attributes['genai.rerank.query'] = query
+                        attributes['gen_ai.rerank.query'] = query
                     if candidates is not None:
-                        attributes['genai.rerank.candidates'] = candidates
+                        attributes['gen_ai.rerank.candidates'] = candidates
                 except Exception as exc:
                     _LOGGER.debug('content capture failed: %s', exc)
 

@@ -36,7 +36,7 @@ def _trace_id_of(span: Any) -> Any:
 
 
 def _embed_span(spans: list[Any]) -> Any:
-    emb = [s for s in spans if 'genai.embedding.texts' in s.attributes]
+    emb = [s for s in spans if 'gen_ai.embedding.texts' in s.attributes]
     assert emb, 'expected an embedding span carrying input texts'
     return emb[0]
 
@@ -74,7 +74,7 @@ def test_ingest_embed_step_emits_embedding_span_with_input_texts() -> None:
     assert spans, 'expected at least one emitted span'
     emb = _embed_span(spans)
     assert emb.attributes.get('duration_ms', 0) > 0
-    texts = emb.attributes.get('genai.embedding.texts')
+    texts = emb.attributes.get('gen_ai.embedding.texts')
     assert isinstance(texts, list) and texts
     assert any('Revenue grew 12 percent' in str(t) for t in texts)
     assert _trace_id_of(emb) == TRACE_ID

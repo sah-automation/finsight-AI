@@ -24,12 +24,6 @@ processors:
       # drops keys containing 'url'.
       - action: delete
         pattern: '(?i)(question|chunk|answer|pii|signed_url|signedurl|credential|secret|password|raw_text|document_text|api_key|email|phone|address|ssn|credit_card|authorization|url)'
-      # Delete OTel GenAI semantic-convention content keys. gen_ai.prompt.* /
-      # gen_ai.completion.* carry full prompt and response content but contain
-      # no blocklist token, so they are deleted by prefix. The application's
-      # own capture attributes use the 'genai.' spelling and must survive.
-      - action: delete
-        pattern: '(?i)^gen_ai\.(prompt|completion)'
       # 'token' and 'prompt' are deleted as exact attribute names only:
       # aggregate LLM metric names (tokens_prompt, prompt_tokens,
       # first_token_latency_ms, ...) legitimately contain those substrings and

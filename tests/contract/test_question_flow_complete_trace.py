@@ -206,7 +206,7 @@ def test_question_flow_content_capture_visible_in_dev() -> None:
 
     llm = _llm_span(tracer.emitted_spans(COMPANY))
     serialized = str(llm.attributes)
-    assert 'genai.request.messages' in serialized or 'genai.response.messages' in serialized
+    assert 'gen_ai.prompt.messages' in serialized or 'gen_ai.completion.messages' in serialized
 
 
 def test_question_flow_switch_off_removes_content_keeps_telemetry() -> None:
@@ -223,8 +223,8 @@ def test_question_flow_switch_off_removes_content_keeps_telemetry() -> None:
 
     llm = _llm_span(tracer.emitted_spans(COMPANY))
     serialized = str(llm.attributes)
-    assert 'genai.request.messages' not in serialized
-    assert 'genai.response.messages' not in serialized
+    assert 'gen_ai.prompt.messages' not in serialized
+    assert 'gen_ai.completion.messages' not in serialized
     # Aggregate telemetry remains.
     assert isinstance(llm.attributes.get('tokens_total'), int)
     assert llm.attributes.get('tokens_total', 0) > 0
