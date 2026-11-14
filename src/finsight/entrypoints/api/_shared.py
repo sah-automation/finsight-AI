@@ -467,10 +467,11 @@ def _events_from_outcome(outcome: Any, data: dict[str, Any]) -> list[tuple[str, 
     elif getattr(outcome, 'insufficient_data', False):
         is_insufficient = True
         reason = getattr(outcome, 'reason', reason) or reason
-    elif isinstance(outcome, Exception):
-        if 'insufficient' in class_name or 'insufficient' in str(outcome).lower():
-            is_insufficient = True
-            reason = str(outcome) or reason
+    elif isinstance(outcome, Exception) and (
+        'insufficient' in class_name or 'insufficient' in str(outcome).lower()
+    ):
+        is_insufficient = True
+        reason = str(outcome) or reason
     if (
         type(outcome).__name__ in ('InsufficientData',)
         or (
