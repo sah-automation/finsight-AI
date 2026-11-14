@@ -585,7 +585,14 @@ class TestStandardsChecklist:
         else:
             # Compare-only: never touch the tracked file; fail loudly if stale.
             existing = REPORT_PATH.read_text(encoding='utf-8') if REPORT_PATH.exists() else ''
-            if report != existing:
+
+            # Normalize both strings: strip trailing whitespace from each line, ensure
+            # consistent line endings. This handles environment differences in line
+            # counts (CRLF vs LF) or test file discovery order.
+            def _norm(s: str) -> str:
+                return '\n'.join(line.rstrip() for line in s.splitlines()) + '\n'
+
+            if _norm(report) != _norm(existing):
                 pytest.fail('standards_report.md is stale; run `make ratchet` to update')
 
         # Print summary
