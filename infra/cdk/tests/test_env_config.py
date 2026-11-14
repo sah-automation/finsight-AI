@@ -6,8 +6,13 @@ tests lock in the fail-loudly behaviour for unknown or malformed entries.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from stacks.env_config import ENVS_FILE, load_alerts_config, load_env_config, load_envs
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_load_envs_covers_every_declared_environment() -> None:
@@ -34,7 +39,7 @@ def test_envs_file_points_at_the_cdk_config() -> None:
     assert ENVS_FILE.is_file()
 
 
-def _write_envs(tmp_path, content: str):
+def _write_envs(tmp_path: Path, content: str) -> Path:
     envs_file = tmp_path / 'envs.yaml'
     envs_file.write_text(content, encoding='utf-8')
     return envs_file
@@ -75,6 +80,17 @@ def test_load_alerts_fails_loudly_on_missing_section(tmp_path, monkeypatch) -> N
     monkeypatch.setattr('stacks.env_config.ENVS_FILE', envs_file)
 
     with pytest.raises(ValueError, match='alerts'):
+        load_alerts_config('dev')
+
+
+def test_load_alerts_fails_loudly_on_non_mapping_section(tmp_path, monkeypatch) -> None:
+    envs_file = _write_envs(
+        tmp_path,
+        'dev:\n  alerts:\n    - monthly_budget_usd: 5\n',
+    )
+    monkeypatch.setattr('stacks.env_config.ENVS_FILE', envs_file)
+
+    with pytest.raises(TypeError, match='alerts'):
         load_alerts_config('dev')
 
 

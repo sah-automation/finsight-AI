@@ -41,11 +41,16 @@ def load_alerts_config(env_name: str) -> dict[str, Any]:
     fallback here would drop spend guardrails without anyone noticing.
     """
     config = load_env_config(env_name)
-    alerts = config.get('alerts')
-    if not isinstance(alerts, dict):
+    if 'alerts' not in config:
         raise ValueError(
-            f'Environment {env_name!r} is missing a valid alerts section; '
-            f'expected a mapping with monthly_budget_usd and notification_email'
+            f'Environment {env_name!r} is missing an alerts section; '
+            f'expected monthly_budget_usd and notification_email'
+        )
+    alerts = config['alerts']
+    if not isinstance(alerts, dict):
+        raise TypeError(
+            f'Environment {env_name!r} alerts section must be a mapping, '
+            f'got {type(alerts).__name__}'
         )
     budget = alerts.get('monthly_budget_usd')
     if isinstance(budget, bool) or not isinstance(budget, (int, float)) or budget <= 0:
