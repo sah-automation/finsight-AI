@@ -105,6 +105,16 @@ ignore = [
 # question group is one block, so the statement and argument counts follow the
 # content rather than a class design.
 "scripts/fixture_builder/**/*" = ["E501", "PLR0913", "PLR0915", "PLR0917"]
+# One-off scratch tooling from the Phase 1 hardening sweep (ticket
+# publishing). Not application code; long literal strings and subprocess
+# orchestration are intentional.
+".scratch/**/*" = ["E501", "S603", "PLW1510"]
+# Alembic migrations are data-shaped DDL: version guards deliberately
+# swallow "already applied" states, statements exceed branch/statement
+# limits, and long DDL strings are kept on one line for readability.
+"migrations/versions/**/*" = [
+    "E501", "PLR0912", "PLR0915", "S110", "S112", "BLE001", "SIM105", "S608",
+]
 "scripts/run_ingestion_worker.py" = ["BLE001", "E501", "N802", "N806", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "RET504", "S110", "S112", "SIM101", "SIM102", "SIM105", "TRY401"]
 "tests/golden/*" = ["BLE001", "PLC0415", "PLR0912", "PLR0915", "PLR2004", "E402", "SIM103", "SIM105", "S110", "RUF046"]
 # CDK constructors are framework-shaped: they forward **kwargs to Stack and take
