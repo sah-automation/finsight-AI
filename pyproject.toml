@@ -7,7 +7,7 @@ requires-python = "==3.12.*"
 license = {text = "Apache-2.0"}
 authors = [{name = "FinSight AI Team"}]
 dependencies = [
-    "fastapi>=0.115.0,<0.162",
+    "fastapi>=0.115.0,<0.163",
     "uvicorn[standard]>=0.34.0,<0.55",
     "pydantic>=2.10.0,<3",
     "pydantic-settings>=2.6.0,<3",
@@ -44,7 +44,7 @@ dependencies = [
 ]
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.3.0,<9",
+    "pytest>=8.3.0,<10",
     "pytest-asyncio>=0.24.0,<2",
     "pytest-cov>=5.0.0,<8",
     "pytest-mock>=3.14.0,<4",
@@ -60,7 +60,7 @@ dev = [
     "pre-commit>=4.0.0,<5",
     "freezegun>=1.5.0,<2",
     "faker>=34.0.0,<41",
-    "reportlab>=4.2.0,<5",
+    "reportlab>=4.2.0,<6",
     "hypothesis>=6.170.0,<7",
     "mutmut>=3.8.0,<4",
     "bandit>=1.9.0,<2",
@@ -657,7 +657,7 @@ include = ["finsight*"]
 [dependency-groups]
 dev = [
     "bandit>=1.9.4",
-    "diff-cover>=9.0.0,<11",
+    "diff-cover>=9.0.0,<12",
     "hypothesis>=6.170.13",
     "mutmut>=3.8.1",
 ]
