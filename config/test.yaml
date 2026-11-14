@@ -15,9 +15,9 @@ switches:
 models:
   region: "us-east-1"
   answer:
-    primary: "gemini/gemini-3.6-flash"
+    primary: "groq/openai/gpt-oss-120b"
     primary_fallbacks:
-      - "groq/openai/gpt-oss-120b"
+      - "gemini/gemini-3.6-flash"
       - "nvidia_nim/google/gemma-4-31b-it"
       - "self_hosted/open_model_small"
     cheap: "groq/openai/gpt-oss-20b"
@@ -26,7 +26,7 @@ models:
       - "groq/openai/gpt-oss-120b"
       - "self_hosted/open_model_small"
   rerank:
-    primary: "cohere/test"
+    primary: "cohere/rerank-english-v3.0"
   approved_models:
     - model_id: "gemini/gemini-3.6-flash"
       regions: ["us-east-1", "us-west-2", "us"]
