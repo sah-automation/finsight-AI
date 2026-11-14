@@ -1395,6 +1395,12 @@ _LEGACY_EXCEPTION_FRESHNESS_COMMITS = frozenset(
         '9dd468902e773f346cec05073037a75af477dc3d',  # pragma: allowlist secret
         '60a19630b3feb8516e548a907f7be8a68f7abf29',  # pragma: allowlist secret
         'f9f049739717f6e5d5914f4cc60e936cdc2b410e',  # pragma: allowlist secret
+        # Phase 1 commits below predate the first CI run of the branch (the
+        # gate is CI-only via CHECK_EXCEPTION_FRESHNESS) and touched an
+        # excepted file together with this list, same class as the entries
+        # above. Refs #290.
+        'c71bdd86f0f66a0094f7e01e6f91874d0cceaf9c',  # pragma: allowlist secret — feat(obs): add llm_content_capture switch (#274)
+        '4d6d279f149aa5d30da0a296d135a6f8221186ce',  # pragma: allowlist secret — feat(ingest): run ingestion end-to-end (#239)
     }
 )
 

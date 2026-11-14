@@ -107,55 +107,82 @@ OVERSIZED_FUNCTION_EXCEPTIONS = {}
 
 
 class TestCurrentTicketNumber:
-    """Tests for _current_ticket_number."""
+    """Tests for _current_ticket_number.
+
+    CI runners export GITHUB_REF / GITHUB_HEAD_REF / GITHUB_REF_NAME for the
+    pull request under test, which would leak into these tests through
+    ``os.environ``. Every test starts from a scrubbed environment so the
+    outcome depends only on the inputs each test sets.
+    """
+
+    _CI_VARS = (
+        'CHECK_EXCEPTION_FRESHNESS_PR',
+        'GITHUB_PR_NUMBER',
+        'PR_NUMBER',
+        'GITHUB_REF',
+        'GITHUB_HEAD_REF',
+        'GITHUB_REF_NAME',
+    )
+
+    def _scrub(self) -> dict[str, str]:
+        return dict.fromkeys(self._CI_VARS, '')
 
     def test_reads_from_check_exception_freshness_pr(self) -> None:
-        with patch.dict(os.environ, {'CHECK_EXCEPTION_FRESHNESS_PR': '42'}):
+        with patch.dict(os.environ, {**self._scrub(), 'CHECK_EXCEPTION_FRESHNESS_PR': '42'}):
             assert _current_ticket_number(Path('test')) == '42'
 
     def test_reads_from_github_pr_number(self) -> None:
-        with patch.dict(os.environ, {'GITHUB_PR_NUMBER': '123'}):
+        with patch.dict(os.environ, {**self._scrub(), 'GITHUB_PR_NUMBER': '123'}):
             assert _current_ticket_number(Path('test')) == '123'
 
     def test_reads_from_pr_number(self) -> None:
-        with patch.dict(os.environ, {'PR_NUMBER': '999'}):
+        with patch.dict(os.environ, {**self._scrub(), 'PR_NUMBER': '999'}):
             assert _current_ticket_number(Path('test')) == '999'
 
     def test_reads_from_github_ref(self) -> None:
-        with patch.dict(os.environ, {'GITHUB_REF': 'refs/pull/555/merge'}):
+        with patch.dict(os.environ, {**self._scrub(), 'GITHUB_REF': 'refs/pull/555/merge'}):
             assert _current_ticket_number(Path('test')) == '555'
 
     def test_reads_from_github_head_ref(self) -> None:
-        with patch.dict(os.environ, {'GITHUB_HEAD_REF': 'feature-123-fix'}):
+        with patch.dict(os.environ, {**self._scrub(), 'GITHUB_HEAD_REF': 'feature-123-fix'}):
             assert _current_ticket_number(Path('test')) == '123'
 
     def test_reads_from_github_ref_name(self) -> None:
-        with patch.dict(os.environ, {'GITHUB_REF_NAME': 'pr-777'}):
+        with patch.dict(os.environ, {**self._scrub(), 'GITHUB_REF_NAME': 'pr-777'}):
             assert _current_ticket_number(Path('test')) == '777'
 
     def test_reads_from_git_commit_message(self) -> None:
-        with patch('tests.architecture.test_invariants._git') as mock_git:
+        with (
+            patch.dict(os.environ, self._scrub()),
+            patch('tests.architecture.test_invariants._git') as mock_git,
+        ):
             mock_result = MagicMock()
             mock_result.stdout = 'Fix issue #456'
             mock_git.return_value = mock_result
             assert _current_ticket_number(Path('test')) == '456'
 
     def test_reads_from_git_branch_name(self) -> None:
-        with patch('tests.architecture.test_invariants._git') as mock_git:
+        with (
+            patch.dict(os.environ, self._scrub()),
+            patch('tests.architecture.test_invariants._git') as mock_git,
+        ):
             mock_result = MagicMock()
             mock_result.stdout = 'feature/789-new-feature'
             mock_git.return_value = mock_result
             assert _current_ticket_number(Path('test')) == '789'
 
     def test_returns_none_when_no_ticket_found(self) -> None:
-        with patch('tests.architecture.test_invariants._git') as mock_git:
+        with (
+            patch.dict(os.environ, self._scrub()),
+            patch('tests.architecture.test_invariants._git') as mock_git,
+        ):
             mock_result = MagicMock()
             mock_result.stdout = 'no ticket here'
             mock_git.return_value = mock_result
             assert _current_ticket_number(Path('test')) is None
 
     def test_ignores_non_numeric_env_values(self) -> None:
-        with patch.dict(os.environ, {'CHECK_EXCEPTION_FRESHNESS_PR': 'abc'}):
+        with patch.dict(os.environ, {**self._scrub(), 'CHECK_EXCEPTION_FRESHNESS_PR': 'abc'}):
             assert _current_ticket_number(Path('test')) is None
 
 
