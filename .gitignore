@@ -18,6 +18,10 @@ cdk.out/
 infra/cdk/cdk.out/
 lib/
 lib64/
+# but never ignore web/ source (the generic 'lib/' pattern above is for
+# Python build artifacts such as venv lib directories).
+!web/src/lib/
+!web/src/lib/**
 parts/
 sdist/
 var/
