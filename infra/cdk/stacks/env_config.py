@@ -31,3 +31,32 @@ def load_env_config(env_name: str) -> dict[str, Any]:
     if not isinstance(config, dict):
         raise TypeError(f'Environment {env_name!r} must be a mapping')
     return config
+
+
+def load_alerts_config(env_name: str) -> dict[str, Any]:
+    """Return the billing-guardrail alerts settings for one environment.
+
+    Fails loudly when the ``alerts`` section is missing, the monthly budget is
+    not a positive number, or the notification email is absent — a silent
+    fallback here would drop spend guardrails without anyone noticing.
+    """
+    config = load_env_config(env_name)
+    alerts = config.get('alerts')
+    if not isinstance(alerts, dict):
+        raise ValueError(
+            f'Environment {env_name!r} is missing a valid alerts section; '
+            f'expected a mapping with monthly_budget_usd and notification_email'
+        )
+    budget = alerts.get('monthly_budget_usd')
+    if isinstance(budget, bool) or not isinstance(budget, (int, float)) or budget <= 0:
+        raise ValueError(
+            f'Environment {env_name!r} alerts.monthly_budget_usd must be a '
+            f'positive number, got {budget!r}'
+        )
+    email = alerts.get('notification_email')
+    if not isinstance(email, str) or not email.strip() or '@' not in email:
+        raise ValueError(
+            f'Environment {env_name!r} alerts.notification_email must be a '
+            f'non-empty email address, got {email!r}'
+        )
+    return {'monthly_budget_usd': budget, 'notification_email': email.strip()}

@@ -5,6 +5,9 @@ dev:
   environment: development
   removal_policy: destroy
   key_mode: aws_managed
+  alerts:
+    monthly_budget_usd: 5
+    notification_email: test@gmail.com
   data:
     point_in_time_recovery: false
     aurora_backup_retention_days: 1
@@ -14,6 +17,9 @@ staging:
   environment: staging
   removal_policy: destroy
   key_mode: aws_managed
+  alerts:
+    monthly_budget_usd: 5
+    notification_email: test@gmail.com
   data:
     point_in_time_recovery: false
     aurora_backup_retention_days: 1
@@ -23,6 +29,12 @@ prod:
   environment: production
   removal_policy: retain
   key_mode: aws_managed
+  alerts:
+    # Monthly AWS spend guardrail. The budget alarm is created from this value;
+    # changing the threshold later is a config change, not a code change.
+    monthly_budget_usd: 5
+    # Billing budget and Cost Explorer anomaly notifications go here.
+    notification_email: test@gmail.com
   data:
     point_in_time_recovery: true
     aurora_backup_retention_days: 35
