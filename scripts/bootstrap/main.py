@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -24,12 +26,43 @@ logging.basicConfig(
 logger = logging.getLogger('bootstrap_test_data')
 
 
+def _run_alembic_upgrade() -> int:
+    """Run alembic upgrade head to ensure migrations are applied."""
+    logger.info('Running alembic upgrade head...')
+    env = os.environ.copy()
+    env['ENVIRONMENT'] = 'test'
+    repo_root = Path(__file__).parent.parent.parent
+    result = subprocess.run(
+        ['uv', 'run', 'alembic', 'upgrade', 'head'],  # noqa: S607
+        cwd=repo_root,
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        logger.error('alembic upgrade failed: %s', result.stderr)
+    else:
+        logger.info('alembic upgrade head completed')
+    return result.returncode
+
+
 async def main() -> int:
     """Main bootstrap function."""
     logger.info('Starting test environment bootstrap...')
 
+    # Ensure dummy AWS credentials so config seam doesn't require real secrets.
+    os.environ.setdefault('AWS_ACCESS_KEY_ID', 'test')
+    os.environ.setdefault('AWS_SECRET_ACCESS_KEY', 'test')
+    os.environ.setdefault('AWS_DEFAULT_REGION', 'us-east-1')
+    os.environ.setdefault('AWS_REGION', 'us-east-1')
+
     # Load .env so AWS_ENDPOINT_URL/test credentials reach the config seam.
     load_dotenv()
+
+    # Apply database migrations before any bootstrap data operations.
+    if _run_alembic_upgrade() != 0:
+        return 1
 
     # Load test configuration (ENVIRONMENT=test should be set externally)
     config = load_config('test')

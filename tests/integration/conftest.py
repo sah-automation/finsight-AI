@@ -62,6 +62,12 @@ def bootstrap_test_environment() -> Generator[None, None, None]:
     if os.environ.get('ENVIRONMENT') != 'test':
         os.environ['ENVIRONMENT'] = 'test'
 
+    # Ensure dummy AWS credentials for config seam.
+    os.environ.setdefault('AWS_ACCESS_KEY_ID', 'test')
+    os.environ.setdefault('AWS_SECRET_ACCESS_KEY', 'test')
+    os.environ.setdefault('AWS_DEFAULT_REGION', 'us-east-1')
+    os.environ.setdefault('AWS_REGION', 'us-east-1')
+
     logging.getLogger('bootstrap_test_data').setLevel(logging.WARNING)
     result = asyncio.run(bootstrap_main())
     if result != 0:

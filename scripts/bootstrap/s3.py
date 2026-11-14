@@ -9,6 +9,7 @@ local one, mirroring ``adapters/queue/_sqs_queue_aws_config.py``.
 from __future__ import annotations
 
 import logging
+import socket
 from typing import Any
 from urllib.parse import urlparse
 
@@ -43,6 +44,18 @@ def _is_local_endpoint(endpoint_url: Any) -> bool:
     return host in _LOCAL_ENDPOINT_HOSTS or host.endswith('.localstack.cloud')
 
 
+def _localstack_reachable(endpoint_url: str) -> bool:
+    """Return True if LocalStack S3 endpoint (port 4566) answers TCP."""
+    try:
+        parsed = urlparse(endpoint_url)
+        host = parsed.hostname or 'localhost'
+        port = parsed.port or 4566
+        with socket.create_connection((host, port), timeout=2):
+            return True
+    except OSError:  # pragma: no cover - exercised only without LocalStack
+        return False
+
+
 def _build_s3_client(config: Any) -> Any:
     """Build a boto3 S3 client from the config seam and storage settings."""
     storage_config = config.storage
@@ -72,7 +85,21 @@ def _build_s3_client(config: Any) -> Any:
 
 
 async def upload_fixtures_to_s3(config: Any, records: list[dict[str, Any]]) -> None:
-    """Upload fixture files to S3."""
+    """Upload fixture files to S3.
+
+    When LocalStack is not reachable (e.g. Migrations job runs Postgres only),
+    this function logs a warning and returns without error so the bootstrap
+    can complete for the database steps.
+    """
+    settings = aws_client_settings()
+    endpoint_url = settings.get('endpoint_url')
+    if _is_local_endpoint(endpoint_url) and not _localstack_reachable(str(endpoint_url)):
+        logger.warning(
+            'LocalStack S3 endpoint %s not reachable; skipping S3 fixture uploads',
+            endpoint_url,
+        )
+        return
+
     bucket = config.storage.documents_bucket
     s3_client = _build_s3_client(config)
 
