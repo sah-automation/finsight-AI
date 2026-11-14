@@ -6,7 +6,27 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+from finsight.core.config import reset_config
 from finsight.entrypoints.api.app import create_app
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin config loading so this module passes without leaked sibling env.
+
+    `tests/unit/core/config/test_loader.py` exports config variables during
+    full-suite runs; running this module in isolation must not depend on
+    that leak. `ENVIRONMENT=test` makes the loader fall back to `test-*`
+    default values.
+    """
+
+    monkeypatch.setenv('ENVIRONMENT', 'test')
+
+    reset_config()
+    yield
+    reset_config()
 
 
 def _walk_refs(value: Any) -> list[str]:
