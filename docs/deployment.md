@@ -1,15 +1,15 @@
 # Deployment Guide
 
-**Status: plumbing in place, no application deployed.** Stage B of the AWS
-plan (`docs/plans/aws-infra-cicd-plan.md`) provisioned the account-level
+**Status: account plumbing in place, no application deployed.** Stage B of the
+AWS plan (`docs/plans/aws-infra-cicd-plan.md`) provisioned the account-level
 plumbing: AWS credentials and CLI, a config-driven billing budget with anomaly
-alerts, an IAM deployment role trusting GitHub OIDC, GitHub Environments, and a
-manual OIDC smoke workflow. No application stack is deployed yet, and there is
-still no deploy/release workflow — that is Stage D. Four provisioning steps
-remain blocked by the organization's service control policies; they are listed
-under "Blocked by organization policy" below. In particular the OIDC identity
-provider does not exist yet, so the smoke workflow cannot succeed until an
-organization administrator creates it.
+alerts, an IAM deployment role trusting GitHub OIDC, GitHub Environments, the
+GitHub OIDC identity provider, a bootstrapped CDK environment, and a manual OIDC
+smoke workflow that now passes on all three environments. No application stack
+is deployed yet, and there is still no deploy/release workflow — that is Stage
+D. Two steps still need the account owner: storing the Neon connection string
+and enabling the budget's email notifications. They are listed under "Remaining
+owner steps" below.
 
 ## Overview
 
@@ -38,8 +38,36 @@ Target account: `069632763967` (region `us-east-1`).
 | GitHub Environments | `dev`, `staging`, `production` | Each holds `AWS_ROLE_ARN` + `AWS_REGION` environment variables |
 | Billing budget | `finsight-monthly-budget` (monthly, USD) | Amount comes from `alerts.monthly_budget_usd` in `infra/cdk/config/envs.yaml`, applied by `scripts/apply_billing_guardrails.py` |
 | Cost anomaly monitor | `finsight-cost-anomaly` (per service) + `finsight-cost-anomaly-subscription` | Subscribed by email; threshold comes from `alerts.anomaly_threshold_usd` in the same file |
+| OIDC identity provider | `arn:aws:iam::069632763967:oidc-provider/token.actions.githubusercontent.com` | Client id `sts.amazonaws.com`; the role's trust policy points at it |
+| CDK environment | `CDKToolkit` stack in `us-east-1` | Bootstrap version 23; asset bucket `cdk-hnb659fds-assets-069632763967-us-east-1` |
 | OIDC smoke workflow | `.github/workflows/aws-role-smoke.yml` | Manual trigger; proves GitHub can assume the role |
-| OIDC identity provider | **not created** | Blocked by the organization's service control policies (see below) |
+
+### The trust policy's subject format
+
+GitHub's OIDC `sub` claim is **not** `owner/repo` for every repository. When
+the repository owner is a user rather than an organization, the claim carries
+numeric ids:
+
+```
+repo:<owner>@<owner-id>/<repo>@<repo-id>:environment:<environment-name>
+```
+
+For this repository that is
+`repo:sah-automation@266460128/finsight-AI@1433058315:environment:dev`. The
+role's trust policy lists the `dev`, `staging` and `production` variants of
+that string. A trust policy written against the organization-style
+`repo:sah-automation/finsight-AI:environment:dev` never matches, and AWS
+reports it as the unhelpful *"Not authorized to perform
+sts:AssumeRoleWithWebIdentity"*.
+
+Read the real claim out of CloudTrail when it changes:
+
+```bash
+aws cloudtrail lookup-events \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRoleWithWebIdentity \
+  --max-results 1 --output json \
+  | jq -r '.Events[0].Username'
+```
 
 The budget threshold is configuration, not code: `alerts.monthly_budget_usd` in
 `infra/cdk/config/envs.yaml` is the only place the amount is written down, and
@@ -75,6 +103,17 @@ the environments. It assumes `finsight-deploy-role` through GitHub OIDC, calls
 `sts get-caller-identity`, and fails loudly if the assumed identity is not the
 expected role in the expected account. It creates nothing and deploys nothing.
 
+All three environments pass:
+
+```bash
+gh workflow run aws-role-smoke.yml --ref main -f environment=dev
+gh workflow run aws-role-smoke.yml --ref main -f environment=staging
+gh workflow run aws-role-smoke.yml --ref main -f environment=production
+```
+
+A passing run ends with
+`OIDC trust chain verified: assumed role ARN arn:aws:sts::069632763967:assumed-role/finsight-deploy-role/finsight-aws-role-smoke in account 069632763967`.
+
 ### Production reviewer rule
 
 The `production` environment carries the reviewer rule as a definition —
@@ -94,78 +133,52 @@ repository ruleset.
 
 ### Application secrets
 
-The Neon connection string is **not stored yet**: `ssm:PutParameter` is denied
-by the organization's service control policies (see below). The intended
-destination is a `SecureString` under `/finsight/<env>/neon/database_url`. The
-value is never printed, logged, or committed — it is read from a local file and
-stored with `aws ssm put-parameter --value file://<path>`. Stage C reads it
-through the secrets provider rather than from the repository.
+The Neon connection string is stored in SSM Parameter Store as a `SecureString`
+under `/finsight/<env>/neon/database_url`. The value is never printed, logged
+or committed: the owner pastes it into a local file with owner-only
+permissions (outside the repository), the agent reads it in memory, hands it
+straight to the SSM API, verifies the parameter by metadata only, and then
+removes the local file.
 
-## Blocked by organization policy
+Stage C reads the parameter through the secrets provider rather than from the
+repository. The application config (`config/*.yaml`) still carries the
+`VECTOR_DB_*` placeholders that Stage C replaces with the stored DSN.
 
-The organization's service control policies deny four provisioning actions to
-every principal in this account, so they cannot be completed from the project's
-own credentials:
+## Remaining owner steps
 
-- `iam:CreateOpenIDConnectProvider` — the GitHub OIDC identity provider.
-  Without it the smoke workflow fails at the assume-role step.
-- `cloudformation:*` and `s3:CreateBucket` — `cdk bootstrap` and the
-  `CDKToolkit` stack.
-- `ssm:PutParameter` — the Neon connection string.
-- `billing:GetBillingPreferences` / `billing:UpdateBillingPreferences` — the
-  budget's email subscribers. Budgets created without billing-alert preferences
-  enabled accept the request but silently drop the notification, so the budget
-  alarm currently has no email subscriber. The Cost Explorer anomaly
-  subscription is unaffected and is confirmed.
+Two steps need the account owner. Neither is blocked by a policy any more — the
+organization's service control policy was narrowed so that
+`cloudformation:*`, the `s3`/`sqs`/`ssm` actions the tooling needs, and
+`sts:AssumeRoleWithWebIdentity` are permitted in `us-east-1`.
 
-Each needs an organization administrator (or an SCP exception) to run from the
-management account. Until then the affected steps are owned by the maintainer,
-not by the agent.
+1. **Store the Neon connection string.** The owner captures the value into a
+   local file with hidden input; the agent then stores it and verifies it by
+   metadata:
 
-### Unblocking commands
+   ```bash
+   # 1a. owner captures the value (hidden input, 0600, outside the repo)
+   uv run python scripts/capture_neon_credential.py
+   # 1b. agent stores it and verifies metadata only
+   uv run python scripts/store_neon_parameter.py
+   aws ssm describe-parameters \
+     --parameter-filters "Key=Name,Option=BeginsWith,Values=/finsight"
+   ```
 
-Run these from a principal the organization's service control policies allow
-(the management account, or an account with an SCP exception). Each one is
-verified by reading the resource back.
+2. **Enable the budget's email notifications.** AWS accepts a budget
+   notification and then silently drops it when billing-alert preferences are
+   off, so `finsight-monthly-budget` currently has **no** email subscriber.
+   The Cost Explorer anomaly subscription is unaffected and is `CONFIRMED`.
+   Fix it by enabling billing alerts and re-applying the budget from the same
+   config file:
 
-```bash
-# 1. GitHub OIDC identity provider — without this the smoke workflow cannot
-#    assume the role. The role's trust policy already references it.
-aws iam create-open-id-connect-provider \
-  --url https://token.actions.githubusercontent.com \
-  --client-id-list sts.amazonaws.com \
-  --thumbprint-list 1b511abead59c6ce207077c0bf0e0043b1382612
-aws iam list-open-id-connect-providers
+   ```bash
+   aws billing update-billing-preferences --features BILLING_ALERTS
+   uv run python scripts/apply_billing_guardrails.py --env prod
+   ```
 
-# 2. CDK bootstrap — creates the CDKToolkit stack and the asset buckets.
-cd infra/cdk
-cdk bootstrap aws://069632763967/us-east-1 --require-approval never
-aws cloudformation describe-stacks --stack-name CDKToolkit
-
-# 3. Neon connection string — SecureString, value never echoed.
-aws ssm put-parameter \
-  --name /finsight/dev/neon/database_url \
-  --type SecureString \
-  --value file://<local-file-holding-the-connection-string>
-aws ssm describe-parameters \
-  --parameter-filters "Key=Name,Option=BeginsWith,Values=/finsight"
-
-# 4. Budget email notifications — enable billing alerts, then re-apply the
-#    budget so the subscriber sticks. AWS silently drops budget notifications
-#    when billing-alert preferences are off.
-aws billing update-billing-preferences --features BILLING_ALERTS
-uv run python scripts/apply_billing_guardrails.py --env prod
-```
-
-Step 4 re-applies the budget from `infra/cdk/config/envs.yaml` — the same
-script that applies it today, so the amount never lives outside the config
-file. The script replaces an existing budget (AWS rejects a second budget with
-the same name), reuses the anomaly monitor, and prints a warning when the
-budget still carries no email subscriber.
-
-Steps 1–3 need `iam:CreateOpenIDConnectProvider`, `cloudformation:*` and
-`ssm:PutParameter` respectively; step 4 needs the billing-preference actions.
-
+   The script replaces the existing budget (AWS rejects a second budget with
+   the same name), reuses the anomaly monitor, and prints a warning when the
+   budget still carries no email subscriber.
 
 ## Validating changes
 
