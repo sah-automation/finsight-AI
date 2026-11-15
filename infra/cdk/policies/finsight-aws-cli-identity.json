@@ -1,0 +1,94 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BaselineEverythingInThisAccount",
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "NeverTouchUsersOrOtherCredentials",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateUser",
+        "iam:DeleteUser",
+        "iam:UpdateUser",
+        "iam:PutUserPolicy",
+        "iam:AttachUserPolicy",
+        "iam:DetachUserPolicy",
+        "iam:DeleteUserPolicy",
+        "iam:CreateLoginProfile",
+        "iam:UpdateLoginProfile",
+        "iam:DeleteLoginProfile",
+        "iam:AddUserToGroup",
+        "iam:RemoveUserToGroup"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "OnlyRotateItsOwnAccessKey",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateAccessKey",
+        "iam:DeleteAccessKey",
+        "iam:UpdateAccessKey",
+        "iam:ListAccessKeys"
+      ],
+      "NotResource": "arn:aws:iam::069632763967:user/aws-cli"
+    },
+    {
+      "Sid": "OnlyManageRolesAndPoliciesInTheApplicationNamespace",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:PassRole",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:CreatePolicyVersion",
+        "iam:DeletePolicyVersion",
+        "iam:SetDefaultPolicyVersion",
+        "iam:TagPolicy",
+        "iam:UntagPolicy",
+        "iam:CreateServiceLinkedRole"
+      ],
+      "NotResource": [
+        "arn:aws:iam::069632763967:role/finsight-*",
+        "arn:aws:iam::069632763967:role/FinSight-*",
+        "arn:aws:iam::069632763967:role/cdk-hnb659fds-*",
+        "arn:aws:iam::069632763967:role/aws-service-role/*",
+        "arn:aws:iam::069632763967:policy/finsight-*",
+        "arn:aws:iam::069632763967:policy/FinSight-*"
+      ]
+    },
+    {
+      "Sid": "NeverRewriteTheTrustChainOrAnyPermissionsBoundary",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateOpenIDConnectProvider",
+        "iam:UpdateOpenIDConnectProvider",
+        "iam:DeleteOpenIDConnectProvider",
+        "iam:CreateSAMLProvider",
+        "iam:UpdateSAMLProvider",
+        "iam:DeleteSAMLProvider",
+        "iam:PutUserPermissionsBoundary",
+        "iam:UpdateUserPermissionsBoundary",
+        "iam:DeleteUserPermissionsBoundary",
+        "iam:PutRolePermissionsBoundary",
+        "iam:UpdateRolePermissionsBoundary",
+        "iam:DeleteRolePermissionsBoundary"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

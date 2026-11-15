@@ -42,6 +42,7 @@ Target account: `069632763967` (region `us-east-1`).
 | CDK environment | `CDKToolkit` stack in `us-east-1` | Bootstrap version 23; asset bucket `cdk-hnb659fds-assets-069632763967-us-east-1` |
 | Database credential | `/finsight/prod/neon/database_url` | `SecureString`; the value is never printed, logged or committed |
 | OIDC smoke workflow | `.github/workflows/aws-role-smoke.yml` | Manual trigger; proves GitHub can assume the role |
+| Operator user + guardrails | `aws-cli` IAM user, three deny policies | `infra/cdk/policies/`; see "Operator access model" below |
 
 ### The trust policy's subject format
 
@@ -158,6 +159,80 @@ uv run python scripts/capture_neon_credential.py
 uv run python scripts/store_neon_parameter.py \
   --parameter-name /finsight/dev/neon/database_url
 ```
+
+## Operator access model
+
+Two identities reach this account, and they are deliberately different.
+
+| Identity | What it is | What it can do |
+|---|---|---|
+| **Root user** (`069632763967`) | The account owner | Everything, including root-only operations (root password, root email, root MFA, closing the account). Protected by MFA and kept in a password manager. Never used for day-to-day work |
+| **`aws-cli` IAM user** | The operator identity used by CI tooling and by an agent with the key | Only what the three guardrail policies allow. Revocable by deleting one access key, with no effect on any other resource |
+
+The operator user's credentials live in `~/.aws/credentials` (mode `0600`) and
+must also be stored in a password manager — the file on one laptop is not a
+backup.
+
+### The three guardrail policies
+
+They live in the repository under `infra/cdk/policies/` and are attached to the
+`aws-cli` user:
+
+| Policy | What it grants | What it denies |
+|---|---|---|
+| `finsight-aws-cli-identity` | The baseline: everything in this account | Creating or changing IAM users; anyone else's access keys; roles or policies outside `finsight-*` / `FinSight-*` / `cdk-*`; the OIDC and SAML providers; any permissions boundary |
+| `finsight-aws-cli-data` | — | `organizations:*`, `account:*`, web-identity and SAML federation; assuming any role but the app's; stacks other than `FinSight-*` / `CDKToolkit`; SSM parameters outside `/finsight/*` and `/cdk-bootstrap/*`; secrets and KMS decrypts outside the app's |
+| `finsight-aws-cli-services` | — | Object reads/writes and bucket policies outside `finsight-*` / `cdk-*`; log writes outside the app's groups; compute, ML, and messaging services the application never uses |
+
+The baseline is `Allow *`, so the deny list is the guardrail: any AWS action
+that is not on it is permitted in this account. Keep that in mind before
+adding a service the application does not use.
+
+### Applying and verifying
+
+```bash
+# attach the three guardrails (order matters: attach before removing admin)
+for name in identity data services; do
+  aws iam create-policy \
+    --policy-name "finsight-aws-cli-$name" \
+    --policy-document "file://infra/cdk/policies/finsight-aws-cli-$name.json" \
+    --description "Deny guardrails for the FinSight AI aws-cli user"
+  aws iam attach-user-policy --user-name aws-cli \
+    --policy-arn "arn:aws:iam::069632763967:policy/finsight-aws-cli-$name"
+done
+
+# AdministratorAccess is no longer needed: the identity policy grants the baseline
+aws iam detach-user-policy --user-name aws-cli \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+```
+
+Then prove both halves — that the work still succeeds and that the guardrails
+still block:
+
+```bash
+uv run python scripts/verify_aws_cli_permissions.py
+```
+
+The verifier makes only read-only calls (or calls against resources that do
+not exist) and evaluates the resource-scoped decisions with the IAM policy
+simulator, so running it changes nothing. It prints `all 51 checks passed` when
+the arrangement is intact.
+
+**Never** attach these as a permissions boundary or an inline user policy:
+both are capped at 2,048 characters and would be rejected. They are attached
+managed policies, each under the 6,144-character limit.
+
+### Getting back in if you are locked out
+
+1. Sign in to the **management account** (`My-Team`, `899706604406`) as root.
+2. IAM Identity Center → assign yourself to `FinSight AI` → sign in with the
+   `AccountFullAccessRole` permission set.
+3. From there, create a new access key for `aws-cli` and update
+   `~/.aws/credentials`.
+
+The root password, the root MFA backup codes and the operator access key should
+all live in a password manager. Each account's **alternate contact** (email and
+phone) is the only recovery path that works when everything else is lost.
 
 ## Remaining owner steps
 
