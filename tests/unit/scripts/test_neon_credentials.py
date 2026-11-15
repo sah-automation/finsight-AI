@@ -34,7 +34,9 @@ def _load(name: str) -> Any:
 capture = _load('capture_neon_credential')
 store = _load('store_neon_parameter')
 
-DSN = 'postgresql://user:secret@ep-example.us-east-2.aws.neon.tech/neondb?sslmode=require'
+# A fake connection string, never a real credential. The pragma keeps the
+# secret scanner from reading the user:password shape as Basic Auth.
+DSN = 'postgresql://user:placeholder@ep-example.us-east-2.aws.neon.tech/db?sslmode=require'  # pragma: allowlist secret
 
 
 class FakeSsm:
@@ -132,12 +134,13 @@ def test_store_never_prints_the_value(tmp_path: Path, capsys: Any) -> None:
     target = tmp_path / 'neon.env'
     capture.write_credential_file(DSN, target)
     ssm = FakeSsm()
+    password = DSN.split('://', 1)[1].split(':', 1)[1].split('@', 1)[0]
 
     store.store_and_verify(ssm, target, '/finsight/prod/neon/database_url')
 
     captured = capsys.readouterr()
     assert DSN not in captured.out
-    assert 'secret' not in captured.out
+    assert password not in captured.out
 
 
 def test_store_fails_loudly_when_the_parameter_is_missing(tmp_path: Path) -> None:
