@@ -25,6 +25,7 @@ from .reranker import Reranker, RerankerPort
 from .tracing_port import TracingPort
 from .unit_of_work import UnitOfWork
 from .user_repository import UserRepository
+from .vector_store_port import VectorSearchPort, VectorStorePort, VectorWritePort
 from .vector_write import VectorWrite
 from .virus_scanner import VirusScanner
 from .waiting_line import QueueLine, WaitingLine, WaitingLinePort
@@ -73,7 +74,10 @@ __all__ = [
     'UnitOfWork',
     'UserRepository',
     'VectorSearch',
+    'VectorSearchPort',
+    'VectorStorePort',
     'VectorWrite',
+    'VectorWritePort',
     'VirusScanner',
     'WaitingLine',
     'WaitingLinePort',

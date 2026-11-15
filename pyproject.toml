@@ -264,6 +264,7 @@ ignore = [
 "src/finsight/adapters/vector_store/*.py" = ["ANN401", "BLE001", "S608"]
 "src/finsight/adapters/vector_store/aurora_pg_vector_search.py" = ["PLC0415"]
 "src/finsight/adapters/vector_store/aurora_pg_vector_write.py" = ["PLC0415"]
+"src/finsight/adapters/vector_store/neon_pg_vector_write.py" = ["PLC0415", "PLR0913", "PLR0917"]
 # Extracted helper modules retain the original adapter's documented exemptions.
 "src/finsight/adapters/vector_store/_aurora_pg_vector_search_*.py" = [
     "ANN401", "BLE001", "PLC0415", "S608", "E501", "S110", "PLR0912", "PLR0915",

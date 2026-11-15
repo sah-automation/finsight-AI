@@ -142,6 +142,14 @@ class DataStack(Stack):
             'removal_policy': removal_policy,
         }
 
+        # Vector store selection gates Aurora resources
+        vector_store = str(config.get('vector_store', 'aurora_pgvector'))
+        if vector_store not in ('neon_pgvector', 'aurora_pgvector'):
+            raise ValueError(
+                f'Unknown vector_store {vector_store!r}; expected neon_pgvector or aurora_pgvector'
+            )
+        use_aurora = vector_store == 'aurora_pgvector'
+
         cors_allowed_origins = _resolve_cors_allowed_origins(config, env_name)
         cors_rule = s3.CorsRule(
             allowed_methods=[
@@ -246,22 +254,27 @@ class DataStack(Stack):
 
         # Aurora PostgreSQL with pgvector (parameterized; no hardcoded creds).
         # Aurora is the source of truth for documents, jobs and chat metadata.
-        aurora_kwargs: dict[str, Any] = {}
-        if encryption_key is not None:
-            aurora_kwargs['storage_encryption_key'] = encryption_key
-        self.cluster = rds.DatabaseCluster(
-            self,
-            f'AuroraCluster{env_name}',
-            engine=rds.DatabaseClusterEngine.aurora_postgres(
-                version=rds.AuroraPostgresEngineVersion.VER_16_4
-            ),
-            writer=rds.ClusterInstance.provisioned('writer'),
-            vpc=vpc,
-            default_database_name=f'finsight_{env_name}',
-            storage_encrypted=True,
-            backup=rds.BackupProps(retention=Duration.days(aurora_backup_days)),
-            deletion_protection=aurora_deletion_protection,
-            removal_policy=removal_policy,
-            **aurora_kwargs,
-        )
-        self.source_of_truth = self.cluster
+        # Only created when vector_store == 'aurora_pgvector'.
+        if use_aurora:
+            aurora_kwargs: dict[str, Any] = {}
+            if encryption_key is not None:
+                aurora_kwargs['storage_encryption_key'] = encryption_key
+            self.cluster = rds.DatabaseCluster(
+                self,
+                f'AuroraCluster{env_name}',
+                engine=rds.DatabaseClusterEngine.aurora_postgres(
+                    version=rds.AuroraPostgresEngineVersion.VER_16_4
+                ),
+                writer=rds.ClusterInstance.provisioned('writer'),
+                vpc=vpc,
+                default_database_name=f'finsight_{env_name}',
+                storage_encrypted=True,
+                backup=rds.BackupProps(retention=Duration.days(aurora_backup_days)),
+                deletion_protection=aurora_deletion_protection,
+                removal_policy=removal_policy,
+                **aurora_kwargs,
+            )
+            self.source_of_truth = self.cluster
+        else:
+            self.cluster = None
+            self.source_of_truth = None

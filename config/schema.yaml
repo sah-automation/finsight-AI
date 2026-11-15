@@ -18,6 +18,7 @@ switches:
   backup_request_enabled: true
   prompt_cache_enabled: true
   answer_cache_enabled: true
+  vector_store: "neon_pgvector"
   detailed_tracing_enabled: true
   usage_metering_enabled: true
   llm_content_capture_enabled: true
