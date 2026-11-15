@@ -1,15 +1,15 @@
 # Deployment Guide
 
-**Status: account plumbing in place, no application deployed.** Stage B of the
-AWS plan (`docs/plans/aws-infra-cicd-plan.md`) provisioned the account-level
+**Status: Stage B complete, no application deployed.** Stage B of the AWS
+plan (`docs/plans/aws-infra-cicd-plan.md`) provisioned the account-level
 plumbing: AWS credentials and CLI, a config-driven billing budget with anomaly
 alerts, an IAM deployment role trusting GitHub OIDC, GitHub Environments, the
-GitHub OIDC identity provider, a bootstrapped CDK environment, and a manual OIDC
-smoke workflow that now passes on all three environments. No application stack
-is deployed yet, and there is still no deploy/release workflow — that is Stage
-D. Two steps still need the account owner: storing the Neon connection string
-and enabling the budget's email notifications. They are listed under "Remaining
-owner steps" below.
+GitHub OIDC identity provider, a bootstrapped CDK environment, the Neon
+credential in SSM Parameter Store, and a manual OIDC smoke workflow that passes
+on all three environments. No application stack is deployed yet, and there is
+still no deploy/release workflow — that is Stage D. One step still needs the
+account owner: enabling the budget's email notifications, listed under
+"Remaining owner steps" below.
 
 ## Overview
 
@@ -40,6 +40,7 @@ Target account: `069632763967` (region `us-east-1`).
 | Cost anomaly monitor | `finsight-cost-anomaly` (per service) + `finsight-cost-anomaly-subscription` | Subscribed by email; threshold comes from `alerts.anomaly_threshold_usd` in the same file |
 | OIDC identity provider | `arn:aws:iam::069632763967:oidc-provider/token.actions.githubusercontent.com` | Client id `sts.amazonaws.com`; the role's trust policy points at it |
 | CDK environment | `CDKToolkit` stack in `us-east-1` | Bootstrap version 23; asset bucket `cdk-hnb659fds-assets-069632763967-us-east-1` |
+| Database credential | `/finsight/prod/neon/database_url` | `SecureString`; the value is never printed, logged or committed |
 | OIDC smoke workflow | `.github/workflows/aws-role-smoke.yml` | Manual trigger; proves GitHub can assume the role |
 
 ### The trust policy's subject format
@@ -140,31 +141,32 @@ permissions (outside the repository), the agent reads it in memory, hands it
 straight to the SSM API, verifies the parameter by metadata only, and then
 removes the local file.
 
+| Parameter | State |
+|---|---|
+| `/finsight/prod/neon/database_url` | **Stored** — `SecureString`, version 1 |
+| `/finsight/dev/neon/database_url` | Not created — the `dev` environment gets its own database when it has one; the production credential is deliberately not copied into a development path |
+| `/finsight/staging/neon/database_url` | Same as `dev` |
+
 Stage C reads the parameter through the secrets provider rather than from the
 repository. The application config (`config/*.yaml`) still carries the
 `VECTOR_DB_*` placeholders that Stage C replaces with the stored DSN.
 
+To store another environment's credential:
+
+```bash
+uv run python scripts/capture_neon_credential.py
+uv run python scripts/store_neon_parameter.py \
+  --parameter-name /finsight/dev/neon/database_url
+```
+
 ## Remaining owner steps
 
-Two steps need the account owner. Neither is blocked by a policy any more — the
-organization's service control policy was narrowed so that
-`cloudformation:*`, the `s3`/`sqs`/`ssm` actions the tooling needs, and
+One step needs the account owner, and it is not blocked by a policy — the
+organization's service control policy was narrowed so that `cloudformation:*`,
+the `s3`/`sqs`/`ssm` actions the tooling needs, and
 `sts:AssumeRoleWithWebIdentity` are permitted in `us-east-1`.
 
-1. **Store the Neon connection string.** The owner captures the value into a
-   local file with hidden input; the agent then stores it and verifies it by
-   metadata:
-
-   ```bash
-   # 1a. owner captures the value (hidden input, 0600, outside the repo)
-   uv run python scripts/capture_neon_credential.py
-   # 1b. agent stores it and verifies metadata only
-   uv run python scripts/store_neon_parameter.py
-   aws ssm describe-parameters \
-     --parameter-filters "Key=Name,Option=BeginsWith,Values=/finsight"
-   ```
-
-2. **Enable the budget's email notifications.** AWS accepts a budget
+1. **Enable the budget's email notifications.** AWS accepts a budget
    notification and then silently drops it when billing-alert preferences are
    off, so `finsight-monthly-budget` currently has **no** email subscriber.
    The Cost Explorer anomaly subscription is unaffected and is `CONFIRMED`.
