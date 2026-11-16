@@ -6,10 +6,10 @@ from __future__ import annotations
 import atexit
 import logging
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from finsight.adapters.observability import CloudWatchExporter, OtlpEndpointExporter
-from finsight.domain.ports.observability_exporter_port import ObservabilityExporterPort
+from finsight.adapters.telemetry import _sanitize_attributes
 from finsight.domain.ports.tracing_port import TracingPort
 from finsight.domain.value_objects.span import Span, company_to_trace_attribute
 
@@ -25,10 +25,12 @@ from ._tracing_config import (
     _resolve_config,
     _resolve_switch_enabled,
 )
-from finsight.adapters.telemetry import _sanitize_attributes
 from ._tracing_span_collection import _SpanCollection
 
 _LOGGER = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from finsight.domain.ports.observability_exporter_port import ObservabilityExporterPort
 
 STANDARD_SPAN_ATTRIBUTES: tuple[str, ...] = (
     'step',

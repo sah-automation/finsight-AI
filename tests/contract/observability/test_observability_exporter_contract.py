@@ -11,6 +11,8 @@ from unittest import mock
 
 import pytest
 
+from finsight.adapters.observability import CloudWatchExporter, OtlpEndpointExporter
+
 if TYPE_CHECKING:
     from finsight.domain.ports.observability import ObservabilityExporterPort
 
@@ -21,7 +23,7 @@ pytestmark = pytest.mark.contract
 class DummySpan:
     """Minimal span for testing."""
 
-    def __init__(self, name: str = 'test-span', attributes: dict | None = None):
+    def __init__(self, name: str = 'test-span', attributes: dict | None = None) -> None:
         self.name = name
         self.attributes = attributes or {}
         self.span_name = name
@@ -34,8 +36,6 @@ class TestObservabilityExporterContract:
 
     @pytest.fixture
     def cloudwatch_exporter(self) -> ObservabilityExporterPort:
-        from finsight.adapters.observability import CloudWatchExporter
-
         with mock.patch('finsight.adapters.tracing._tracing_otel.OTLPSpanExporter'):
             exporter = CloudWatchExporter(
                 endpoint='https://logs.us-east-1.amazonaws.com/v1/logs',
@@ -52,8 +52,6 @@ class TestObservabilityExporterContract:
 
     @pytest.fixture
     def otlp_endpoint_exporter(self) -> ObservabilityExporterPort:
-        from finsight.adapters.observability import OtlpEndpointExporter
-
         with mock.patch('finsight.adapters.tracing._tracing_otel.OTLPSpanExporter'):
             exporter = OtlpEndpointExporter(
                 endpoint='https://otel.example.com/v1/traces',

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pytest
 
+from finsight.adapters.tracing._tracing_config import _observability
 from finsight.core.config.models import ObservabilityConfig, SwitchesConfig
 
 
@@ -85,7 +86,7 @@ class TestObservabilityBackendSwitch:
 
     def test_fallback_to_legacy_endpoint(self) -> None:
         """When backend-specific endpoints are not set, falls back to legacy otlp_endpoint."""
-        switches = SwitchesConfig(observability_backend='cloudwatch')
+        SwitchesConfig(observability_backend='cloudwatch')
         observability = ObservabilityConfig(
             log_level='INFO',
             log_format='json',
@@ -110,8 +111,6 @@ class TestObservabilityBackendSwitch:
 
     def test_tracing_adapter_uses_correct_backend(self) -> None:
         """Tracing adapter should use the correct backend based on switch."""
-        from finsight.adapters.tracing._tracing_config import _observability
-
         # Test cloudwatch backend
         config = {
             'switches': {'observability_backend': 'cloudwatch'},
