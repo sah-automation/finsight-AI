@@ -75,9 +75,9 @@ Option B is the path of least resistance. It:
 **Required env vars for Option B:**
 ```python
 environment = {
-    "OTLP_ENDPOINT": f"https://logs.{region}.amazonaws.com/v1/logs",
-    "ENVIRONMENT": env_name,  # "production" | "staging" | "dev"
-    "AWS_REGION": region,
+    'OTLP_ENDPOINT': f'https://logs.{region}.amazonaws.com/v1/logs',
+    'ENVIRONMENT': env_name,  # "production" | "staging" | "dev"
+    'AWS_REGION': region,
     # Secrets (via Secrets Manager/SSM, DI-21):
     # "OTEL_EXPORTER_OTLP_HEADERS": "authorization=Bearer <sigv4-token>"  # or use IAM auth
 }
@@ -166,22 +166,28 @@ from aws_cdk import aws_logs as logs
 # ... existing role code ...
 
 # Grant PutLogEvents on the Observability log group (passed in or looked up)
-log_group_arn = f"arn:aws:logs:{region}:{account}:log-group:/aws/lambda/finsight-{env_name}:*"
-role.add_to_policy(iam.PolicyStatement(
-    actions=["logs:PutLogEvents"],
-    resources=[log_group_arn],
-    conditions={"StringEquals": {"aws:SourceArn": f"arn:aws:lambda:{region}:{account}:function:finsight-{env_name}-api"}}
-))
+log_group_arn = f'arn:aws:logs:{region}:{account}:log-group:/aws/lambda/finsight-{env_name}:*'
+role.add_to_policy(
+    iam.PolicyStatement(
+        actions=['logs:PutLogEvents'],
+        resources=[log_group_arn],
+        conditions={
+            'StringEquals': {
+                'aws:SourceArn': f'arn:aws:lambda:{region}:{account}:function:finsight-{env_name}-api'
+            }
+        },
+    )
+)
 
 # Lambda environment
 self.api_fn = lambda_.Function(
     # ... existing args ...
     environment={
-        "OTLP_ENDPOINT": f"https://logs.{region}.amazonaws.com/v1/logs",
-        "ENVIRONMENT": env_name,
-        "AWS_REGION": region,
-        "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",  # CloudWatch OTLP uses HTTP/protobuf
-        "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED": "true",
+        'OTLP_ENDPOINT': f'https://logs.{region}.amazonaws.com/v1/logs',
+        'ENVIRONMENT': env_name,
+        'AWS_REGION': region,
+        'OTEL_EXPORTER_OTLP_PROTOCOL': 'http/protobuf',  # CloudWatch OTLP uses HTTP/protobuf
+        'OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED': 'true',
     },
     # ... rest ...
 )
