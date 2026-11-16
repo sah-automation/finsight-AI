@@ -12,6 +12,9 @@ switches:
   detailed_tracing_enabled: true
   usage_metering_enabled: true
   llm_content_capture_enabled: false
+  # Pilot path (issue #330): prod calls the model-gateway Lambda over the
+  # network instead of vendoring litellm into the API package.
+  llm_transport: "remote_gateway"
 
 models:
   region: "${AWS_REGION}"

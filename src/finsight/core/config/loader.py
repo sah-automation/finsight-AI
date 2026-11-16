@@ -200,6 +200,9 @@ class ConfigLoader:
             observability_backend = getattr(switches, 'observability_backend', None)
             if observability_backend is not None:
                 logger.info('Active observability_backend: %s', observability_backend)
+            llm_transport = getattr(switches, 'llm_transport', None)
+            if llm_transport is not None:
+                logger.info('Active llm_transport: %s', llm_transport)
 
         self._config = config
         return config

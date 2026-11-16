@@ -23,6 +23,8 @@ switches:
   detailed_tracing_enabled: true
   usage_metering_enabled: true
   llm_content_capture_enabled: true
+  # LLM transport: remote_gateway (pilot) or in_process (standard) — issue #330.
+  llm_transport: "in_process"
 
 
 # ============================================================

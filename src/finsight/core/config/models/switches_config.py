@@ -17,6 +17,8 @@ class SwitchesConfig(StrictBaseModel):
     secrets_provider: Literal['parameter_store', 'secrets_manager'] = 'parameter_store'
     # Observability backend switch: cloudwatch (pilot) or otlp_endpoint (standard)
     observability_backend: Literal['cloudwatch', 'otlp_endpoint'] = 'cloudwatch'
+    # LLM transport switch: remote_gateway (pilot, issue #330) or in_process (standard)
+    llm_transport: Literal['remote_gateway', 'in_process'] = 'in_process'
     # Legacy switches for compatibility
     reranker_enabled: bool = True
     async_textract_enabled: bool = True
