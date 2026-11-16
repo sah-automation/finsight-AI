@@ -18,6 +18,7 @@ from .llm_gateway import LLM, LLMGateway
 from .metering_port import MeteringPort
 from .metric_repository import MetricRepository, MetricsRepository
 from .object_storage import ObjectStorage
+from .observability_exporter_port import ObservabilityExporterPort
 from .partition_gateway import PartitionGateway, PartitionManager
 from .partition_metadata_repository import PartitionMetadataRepository
 from .queue_port import Queue, QueuePort
@@ -61,6 +62,7 @@ __all__ = [
     'MetricRepository',
     'MetricsRepository',
     'ObjectStorage',
+    'ObservabilityExporterPort',
     'PartitionGateway',
     'PartitionManager',
     'PartitionMetadataRepository',

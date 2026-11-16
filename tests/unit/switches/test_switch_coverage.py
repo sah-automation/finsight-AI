@@ -34,6 +34,7 @@ SWITCH_TO_TEST_FILE = {
     'llm_content_capture_enabled': 'test_llm_content_capture_switch.py',
     'vector_store': 'test_vector_store_switch.py',
     'secrets_provider': 'test_secrets_provider_switch.py',  # pragma: allowlist secret
+    'observability_backend': 'test_observability_backend_switch.py',
 }
 
 
