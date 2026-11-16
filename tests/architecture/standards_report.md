@@ -16,8 +16,8 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **switch_both_paths_tested**: All config switches have ON and OFF tests implemented
 ✅ **constructor_injection**: No hidden os.getenv/environ access in business code
 ⏭️ **company_id_on_all_data_calls**: All data access methods require company_id
-  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/secrets_provider.py:16 get_secret
-  - /Users/home/Dev/Projects/FinSight-AI/src/finsight/domain/ports/secrets_provider.py:28 get_secrets
+  - domain/ports/secrets_provider.py:16 get_secret
+  - domain/ports/secrets_provider.py:28 get_secrets
 ✅ **no_model_math**: No float math on monetary values in domain
 ✅ **no_raw_errors_to_user**: No bare Exception raised in entrypoints (specific exceptions OK - caught by middleware)
 ✅ **no_sensitive_data_in_logs**: No sensitive data in logs
