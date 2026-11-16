@@ -1416,6 +1416,9 @@ _LEGACY_EXCEPTION_FRESHNESS_COMMITS = frozenset(
         # above. Refs #290.
         'c71bdd86f0f66a0094f7e01e6f91874d0cceaf9c',  # pragma: allowlist secret — feat(obs): add llm_content_capture switch (#274)
         '4d6d279f149aa5d30da0a296d135a6f8221186ce',  # pragma: allowlist secret — feat(ingest): run ingestion end-to-end (#239)
+        # Stage C commits that introduced oversized file exceptions alongside
+        # the excepted files. Refs #310.
+        '9c2771edab54eed7ec586102f037fd81d9da96df',  # pragma: allowlist secret — feat(vector-store): add vector_store switch with Neon adapter
     }
 )
 
