@@ -150,6 +150,7 @@ INFRA_REFERENCE_MODULES = frozenset(
         'finsight.core.types',
         'finsight.entrypoints.api.app',
         'finsight.entrypoints.api.main',
+        'finsight.entrypoints.gateway.app',
     }
 )
 REFERENCED_MODULES = INFRA_REFERENCE_MODULES
