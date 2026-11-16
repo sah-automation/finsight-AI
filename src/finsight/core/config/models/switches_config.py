@@ -15,6 +15,8 @@ class SwitchesConfig(StrictBaseModel):
     vector_store: Literal['neon_pgvector', 'aurora_pgvector'] = 'neon_pgvector'
     # Secrets provider switch: parameter_store (pilot) or secrets_manager (standard)
     secrets_provider: Literal['parameter_store', 'secrets_manager'] = 'parameter_store'
+    # Observability backend switch: cloudwatch (pilot) or otlp_endpoint (standard)
+    observability_backend: Literal['cloudwatch', 'otlp_endpoint'] = 'cloudwatch'
     # Legacy switches for compatibility
     reranker_enabled: bool = True
     async_textract_enabled: bool = True

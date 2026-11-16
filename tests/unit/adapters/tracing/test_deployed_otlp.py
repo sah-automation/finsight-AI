@@ -52,7 +52,8 @@ def _deployed_config() -> dict[str, Any]:
 @pytest.fixture
 def fake_exporter() -> Iterator[mock.MagicMock]:
     with mock.patch(
-        'finsight.adapters.tracing._tracing_otel.OTLPSpanExporter', new=mock.MagicMock()
+        'finsight.adapters.observability.cloud_watch_exporter._OtelSpanExporter',
+        new=mock.MagicMock(),
     ) as fake:
         yield fake
 
@@ -94,7 +95,8 @@ def test_disabled_tracing_does_not_configure_an_exporter() -> None:
     config = _deployed_config()
     config['switches'] = {'detailed_tracing_enabled': False}
     with mock.patch(
-        'finsight.adapters.tracing._tracing_otel.OTLPSpanExporter', new=mock.MagicMock()
+        'finsight.adapters.observability.cloud_watch_exporter._OtelSpanExporter',
+        new=mock.MagicMock(),
     ) as fake:
         tracer = TracingAdapter(config=config, detailed_tracing_enabled=False)
     assert tracer.otel is None or not getattr(tracer.otel, 'enabled', False)

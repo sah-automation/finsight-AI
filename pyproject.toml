@@ -133,6 +133,14 @@ ignore = [
     "PLR0912", "PLR0913", "PLR0915", "PLR2004", "RUF100", "S110", "SIM102",
     "SIM103", "SIM105", "SIM108", "TC001", "TRY300",
 ]
+# Observability exporters and shared telemetry helpers wrap SDK/OTLP calls whose
+# failure modes are heterogeneous (network, auth, serialization). Broad catches
+# with suppression are intentional: a telemetry outage must never break the
+# request path, and the OTLP SDK imports are deferred to avoid import cycles.
+"src/finsight/adapters/observability/*.py" = ["BLE001", "PLC0415", "S110", "SIM105"]
+"src/finsight/adapters/telemetry/*.py" = [
+    "BLE001", "PLC0415", "PLR0911", "S110", "SIM105",
+]
 # Onboarding use case exposes flexible constructor/input surfaces by design.
 "src/finsight/application/onboarding/*.py" = [
     "ANN401", "ANN002", "ANN003", "PLR0913",
@@ -519,6 +527,13 @@ name = "Adapters must be independent"
 type = "independence"
 ignore_imports = [
     "finsight.adapters.audit.postgres_audit_log -> finsight.adapters.repositories.base_repository",
+    # tracing_adapter uses observability exporters to emit spans
+    "finsight.adapters.tracing.tracing_adapter -> finsight.adapters.observability",
+    # tracing_adapter uses shared telemetry utilities
+    "finsight.adapters.tracing.tracing_adapter -> finsight.adapters.telemetry",
+    # observability exporters use shared telemetry utilities
+    "finsight.adapters.observability.cloud_watch_exporter -> finsight.adapters.telemetry",
+    "finsight.adapters.observability.otlp_endpoint_exporter -> finsight.adapters.telemetry",
 ]
 modules = [
     "finsight.adapters.llm",
@@ -540,6 +555,8 @@ modules = [
     "finsight.adapters.state_store",
     "finsight.adapters.audit",
     "finsight.adapters.secrets",
+    "finsight.adapters.observability",
+    "finsight.adapters.telemetry",
 ]
 
 [[tool.importlinter.contracts]]

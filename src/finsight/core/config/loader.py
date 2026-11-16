@@ -197,6 +197,9 @@ class ConfigLoader:
             vector_store = getattr(switches, 'vector_store', None)
             if vector_store is not None:
                 logger.info('Active vector_store: %s', vector_store)
+            observability_backend = getattr(switches, 'observability_backend', None)
+            if observability_backend is not None:
+                logger.info('Active observability_backend: %s', observability_backend)
 
         self._config = config
         return config
