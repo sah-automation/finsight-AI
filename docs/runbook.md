@@ -1,8 +1,8 @@
 # Runbook
 
-**Status: scaffolding.** These are the intended procedures. No deploy pipeline
-exists yet, so none of this has been exercised. See
-[deployment.md](deployment.md).
+**Status: active.** These procedures are exercised by the release workflow
+(`.github/workflows/release.yml`) which triggers on `v*` tags. See
+[deployment.md](deployment.md) for the deployment process.
 
 ## Overview
 
