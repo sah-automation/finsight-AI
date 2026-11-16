@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 import aws_cdk as cdk
+from stacks.api_gateway import ApiGatewayStack
 from stacks.auth import AuthStack
 from stacks.compute import ComputeStack
 from stacks.data import DataStack
@@ -57,6 +58,13 @@ def main() -> None:
     )
     msg = MessagingStack(app, f'FinSight-{env_name}-Messaging', env=env, env_name=env_name)
     auth = AuthStack(app, f'FinSight-{env_name}-Auth', env=env, env_name=env_name)
+    api_gateway = ApiGatewayStack(
+        app,
+        f'FinSight-{env_name}-ApiGateway',
+        env=env,
+        env_name=env_name,
+        env_config=known_envs[env_name],
+    )
     step_functions = StepFunctionsStack(
         app,
         f'FinSight-{env_name}-StepFunctions',
@@ -76,6 +84,7 @@ def main() -> None:
         data=data,
         messaging=msg,
         auth=auth,
+        api_gateway=api_gateway,
         lambda_zip=_lambda_asset(),
         step_functions=step_functions,
         observability=observability,

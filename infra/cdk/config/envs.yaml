@@ -17,6 +17,18 @@ dev:
     point_in_time_recovery: false
     aurora_backup_retention_days: 1
     aurora_deletion_protection: false
+  api_gateway:
+    custom_domain: api.finsight.sahcreatives.com
+    # ACM certificate ARN in us-east-1. Required for custom domain.
+    # Set to empty string to allow synthesis without cert (follow-up adds cert).
+    acm_certificate_arn: ""
+    throttling:
+      rate_limit: 10
+      burst_limit: 20
+    access_logging:
+      retention_days: 30
+    waf_enabled: false
+    waf_rate_limit: 1000
 staging:
   name: staging
   environment: staging
@@ -31,6 +43,16 @@ staging:
     point_in_time_recovery: false
     aurora_backup_retention_days: 1
     aurora_deletion_protection: false
+  api_gateway:
+    custom_domain: api.finsight.sahcreatives.com
+    acm_certificate_arn: ""
+    throttling:
+      rate_limit: 10
+      burst_limit: 20
+    access_logging:
+      retention_days: 30
+    waf_enabled: false
+    waf_rate_limit: 1000
 prod:
   name: prod
   environment: production
@@ -48,3 +70,13 @@ prod:
     point_in_time_recovery: true
     aurora_backup_retention_days: 35
     aurora_deletion_protection: true
+  api_gateway:
+    custom_domain: api.finsight.sahcreatives.com
+    acm_certificate_arn: ""
+    throttling:
+      rate_limit: 10
+      burst_limit: 20
+    access_logging:
+      retention_days: 30
+    waf_enabled: false
+    waf_rate_limit: 1000

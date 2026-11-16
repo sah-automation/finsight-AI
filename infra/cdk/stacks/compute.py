@@ -6,7 +6,9 @@ import json
 
 # CDK constructs are accepted as opaque objects to avoid over-coupling this stack.
 from aws_cdk import Stack
-from aws_cdk import aws_apigateway as apigw
+from aws_cdk import aws_apigatewayv2 as apigatewayv2
+from aws_cdk import aws_apigatewayv2_authorizers as apigatewayv2_auth
+from aws_cdk import aws_apigatewayv2_integrations as integrations
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from constructs import Construct
@@ -44,6 +46,7 @@ class ComputeStack(Stack):
         data: object = None,
         messaging: object = None,
         auth: object = None,
+        api_gateway: object = None,
         lambda_zip: str | None = None,
         step_functions: object = None,
         workflow: object = None,
@@ -133,46 +136,62 @@ class ComputeStack(Stack):
         # the Observability log group (issue #276).
         self._grant_observability_permissions(role)
 
-        # API Gateway with Cognito authorization.
-        self.rest_api = apigw.RestApi(
-            self,
-            f'ApiGateway{env_name}',
-            rest_api_name=f'finsight-{env_name}-api',
-            deploy=True,
-        )
-        self.api = self.rest_api
-        self.api_gateway = self.rest_api
+        # HTTP API from ApiGatewayStack with Cognito authorization.
+        http_api = getattr(api_gateway, 'http_api', None) if api_gateway is not None else None
+        if http_api is None:
+            raise ValueError('ApiGatewayStack must be provided to ComputeStack')
+
+        self.http_api = http_api
+        self.api = http_api
+        self.api_gateway = http_api
 
         user_pool = getattr(auth, 'user_pool', None) if auth is not None else None
-        if user_pool is not None:
-            self.authorizer = apigw.CognitoUserPoolsAuthorizer(
-                self,
-                f'ApiAuthorizer{env_name}',
-                cognito_user_pools=[user_pool],
-                authorizer_name=f'finsight-{env_name}-authorizer',
-                identity_source='method.request.header.Authorization',
-            )
-            self.cognito_authorizer = self.authorizer
+        if user_pool is None:
+            raise ValueError('AuthStack with user_pool must be provided to ComputeStack')
 
-            integration = apigw.LambdaIntegration(self.api_fn, proxy=True)
-            auth_type = apigw.AuthorizationType.COGNITO
-            root_method = self.rest_api.root.add_method(
-                'ANY',
-                integration,
-                authorizer=self.authorizer,
-                authorization_type=auth_type,
-            )
-            proxy = self.rest_api.root.add_resource('{proxy+}')
-            proxy.add_method(
-                'ANY',
-                integration,
-                authorizer=self.authorizer,
-                authorization_type=auth_type,
-            )
-            self.protected_methods = [root_method]
-        else:
-            self.authorizer = None
-            self.cognito_authorizer = None
+        # Create JWT authorizer for HTTP API
+        # Cognito issuer URL format: https://cognito-idp.{region}.amazonaws.com/{user_pool_id}
+        issuer_url = f'https://cognito-idp.{self.region}.amazonaws.com/{user_pool.user_pool_id}'
+        user_pool_client = getattr(auth, 'user_pool_client', None)
+        if user_pool_client is None:
+            raise ValueError('AuthStack with user_pool_client must be provided to ComputeStack')
+        audience = [user_pool_client.user_pool_client_id]
+
+        self.jwt_authorizer = apigatewayv2_auth.HttpJwtAuthorizer(
+            f'JwtAuthorizer{env_name}',
+            jwt_issuer=issuer_url,
+            jwt_audience=audience,
+            authorizer_name=f'finsight-{env_name}-jwt-authorizer',
+            identity_source=['$request.header.Authorization'],
+        )
+
+        # Create Lambda integration
+        lambda_integration = integrations.HttpLambdaIntegration(
+            f'ApiLambdaIntegration{env_name}',
+            self.api_fn,
+        )
+
+        # Add routes with JWT authorizer
+        self._add_http_api_routes(lambda_integration, self.jwt_authorizer)
+
+    def _add_http_api_routes(
+        self,
+        integration: integrations.HttpLambdaIntegration,
+        authorizer: apigatewayv2_auth.HttpJwtAuthorizer,
+    ) -> None:
+        """Add standard routes to the HTTP API."""
+        self.http_api.add_routes(
+            path='/{proxy+}',
+            methods=[apigatewayv2.HttpMethod.ANY],
+            integration=integration,
+            authorizer=authorizer,
+        )
+        self.http_api.add_routes(
+            path='/',
+            methods=[apigatewayv2.HttpMethod.ANY],
+            integration=integration,
+            authorizer=authorizer,
+        )
 
     def _grant_observability_permissions(self, role: object) -> None:
         """Grant the runtime role write access to the Observability log group."""
