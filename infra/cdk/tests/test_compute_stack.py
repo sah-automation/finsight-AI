@@ -13,8 +13,10 @@ import json
 
 import aws_cdk as cdk
 from aws_cdk.assertions import Template
+from stacks.api_gateway import ApiGatewayStack
 from stacks.auth import AuthStack
 from stacks.compute import ComputeStack, _app_environment
+from stacks.env_config import load_envs
 from stacks.observability import ObservabilityStack
 
 # Pin the account/region so the region-derived OTLP endpoint is deterministic.
@@ -27,12 +29,20 @@ def _compute_template(env_name: str = 'dev') -> Template:
     observability = ObservabilityStack(
         app, f'FinSight-{env_name}-Observability', env=_ENV, env_name=env_name
     )
+    api_gateway = ApiGatewayStack(
+        app,
+        f'FinSight-{env_name}-ApiGateway',
+        env=_ENV,
+        env_name=env_name,
+        env_config=load_envs()[env_name],
+    )
     compute = ComputeStack(
         app,
         f'FinSight-{env_name}-Compute',
         env=_ENV,
         env_name=env_name,
         auth=auth,
+        api_gateway=api_gateway,
         observability=observability,
     )
     return Template.from_stack(compute)

@@ -17,7 +17,7 @@ CDK_DIR = Path(__file__).resolve().parents[1]
 
 
 def test_synth_writes_every_stack(tmp_path: Path) -> None:
-    """`python -m app.app` synthesizes a cloud assembly with all six stacks."""
+    """`python -m app.app` synthesizes a cloud assembly with all seven stacks."""
     outdir = tmp_path / 'cdk.out'
     env = os.environ.copy()
     env['CDK_OUTDIR'] = str(outdir)
@@ -46,6 +46,7 @@ def test_synth_writes_every_stack(tmp_path: Path) -> None:
         'FinSight-dev-Data',
         'FinSight-dev-Messaging',
         'FinSight-dev-Auth',
+        'FinSight-dev-ApiGateway',
         'FinSight-dev-Compute',
         'FinSight-dev-Observability',
     }
