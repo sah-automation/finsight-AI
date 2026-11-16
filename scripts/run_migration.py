@@ -6,7 +6,7 @@ This script:
 2. Parses it to extract connection components
 3. Sets the VECTOR_DB_* environment variables for the config loader
 4. Runs `alembic upgrade head`
-5. Verifies the migration with `alembic current`
+5. Verifies the migration with `alembic current` (hard gate)
 
 The connection string comes from the SSM-injected Neon parameter (the same one
 the app resolves — never from GitHub secrets), and the script uses the same
@@ -14,7 +14,6 @@ OIDC-assumed role that the deploy workflow uses.
 
 Usage:
     uv run python scripts/run_migration.py --environment prod
-    uv run python scripts/run_migration.py --environment staging
 """
 
 from __future__ import annotations
@@ -23,20 +22,31 @@ import argparse
 import os
 import subprocess
 import sys
+from dataclasses import dataclass
 from urllib.parse import unquote, urlparse
 
 import boto3  # type: ignore[import-untyped]
 from botocore.exceptions import BotoCoreError, ClientError  # type: ignore[import-untyped]
 
-# SSM parameter path pattern
+# SSM parameter path pattern (matches app's secrets provider)
 SSM_PARAMETER_PATTERN = '/finsight/{env}/neon/database_url'
 
 # Environment mapping from CDK env to app ENVIRONMENT
 ENV_MAPPING = {
-    'dev': 'development',
-    'staging': 'staging',
     'prod': 'production',
 }
+
+
+@dataclass(frozen=True)
+class VectorDbConfig:
+    """Vector database connection configuration."""
+
+    host: str
+    port: int
+    database: str
+    username: str
+    password: str
+    sslmode: str
 
 
 def get_ssm_parameter(parameter_name: str, region: str) -> str:
@@ -46,8 +56,8 @@ def get_ssm_parameter(parameter_name: str, region: str) -> str:
     return response['Parameter']['Value']  # type: ignore[no-any-return]
 
 
-def parse_database_url(url: str) -> dict[str, str]:
-    """Parse a PostgreSQL connection URL into components.
+def parse_database_url(url: str) -> VectorDbConfig:
+    """Parse a PostgreSQL connection URL into a VectorDbConfig.
 
     Expected format: postgresql://user:pwd@host:port/db?sslmode=require # pragma: allowlist secret
     """
@@ -64,28 +74,33 @@ def parse_database_url(url: str) -> dict[str, str]:
         query_params = dict(q.split('=') for q in parsed.query.split('&') if '=' in q)
         sslmode = query_params.get('sslmode', 'require')
 
+    return VectorDbConfig(
+        host=parsed.hostname or '',
+        port=parsed.port or 5432,
+        database=parsed.path.lstrip('/') if parsed.path else '',
+        username=parsed.username or '',
+        password=password,
+        sslmode=sslmode,
+    )
+
+
+def build_vector_db_env(config: VectorDbConfig) -> dict[str, str]:
+    """Build VECTOR_DB_* environment variables dict for the config loader."""
     return {
-        'host': parsed.hostname or '',
-        'port': str(parsed.port or 5432),
-        'database': parsed.path.lstrip('/') if parsed.path else '',
-        'username': parsed.username or '',
-        'password': password,
-        'sslmode': sslmode,
+        'VECTOR_DB_HOST': config.host,
+        'VECTOR_DB_PORT': str(config.port),
+        'VECTOR_DB_NAME': config.database,
+        'VECTOR_DB_USER': config.username,
+        'VECTOR_DB_PASSWORD': config.password,
     }
 
 
-def set_vector_db_env(components: dict[str, str]) -> None:
-    """Set VECTOR_DB_* environment variables for the config loader."""
-    os.environ['VECTOR_DB_HOST'] = components['host']
-    os.environ['VECTOR_DB_PORT'] = components['port']
-    os.environ['VECTOR_DB_NAME'] = components['database']
-    os.environ['VECTOR_DB_USER'] = components['username']
-    os.environ['VECTOR_DB_PASSWORD'] = components['password']
-
-
-def run_alembic_upgrade(environment: str) -> subprocess.CompletedProcess[str]:
+def run_alembic_upgrade(
+    environment: str, env_vars: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
     """Run alembic upgrade head with the given environment."""
     env = os.environ.copy()
+    env.update(env_vars)
     env['ENVIRONMENT'] = ENV_MAPPING.get(environment, environment)
     return subprocess.run(
         ['uv', 'run', 'alembic', 'upgrade', 'head'],  # noqa: S607
@@ -96,9 +111,12 @@ def run_alembic_upgrade(environment: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def run_alembic_current(environment: str) -> subprocess.CompletedProcess[str]:
-    """Run alembic current to verify the migration."""
+def run_alembic_current(
+    environment: str, env_vars: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
+    """Run alembic current to verify the migration (hard gate)."""
     env = os.environ.copy()
+    env.update(env_vars)
     env['ENVIRONMENT'] = ENV_MAPPING.get(environment, environment)
     return subprocess.run(
         ['uv', 'run', 'alembic', 'current'],  # noqa: S607
@@ -114,13 +132,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         '--environment',
         required=True,
-        choices=['dev', 'staging', 'prod'],
+        choices=['prod'],
         help='Target environment (maps to CDK env name)',
     )
     parser.add_argument(
         '--region',
-        default=os.environ.get('AWS_REGION', 'us-east-1'),
-        help='AWS region (default: from AWS_REGION env var or us-east-1)',
+        required=True,
+        help='AWS region (from AWS_REGION env var)',
     )
     parser.add_argument(
         '--parameter-name',
@@ -141,22 +159,22 @@ def main(argv: list[str] | None = None) -> int:
 
     print('🔍 Parsing connection string...')
     try:
-        components = parse_database_url(database_url)
+        config = parse_database_url(database_url)
     except ValueError as e:
         print(f'❌ Failed to parse connection string: {e}', file=sys.stderr)
         return 1
 
-    print(f'   Host: {components["host"]}')
-    print(f'   Port: {components["port"]}')
-    print(f'   Database: {components["database"]}')
-    print(f'   Username: {components["username"]}')
-    print(f'   SSL mode: {components["sslmode"]}')
+    print(f'   Host: {config.host}')
+    print(f'   Port: {config.port}')
+    print(f'   Database: {config.database}')
+    print(f'   Username: {config.username}')
+    print(f'   SSL mode: {config.sslmode}')
 
-    print('🔧 Setting VECTOR_DB_* environment variables...')
-    set_vector_db_env(components)
+    print('🔧 Building VECTOR_DB_* environment variables...')
+    env_vars = build_vector_db_env(config)
 
     print('📦 Running alembic upgrade head...')
-    result = run_alembic_upgrade(env)
+    result = run_alembic_upgrade(env, env_vars)
     if result.stdout:
         print(result.stdout)
     if result.stderr:
@@ -167,17 +185,18 @@ def main(argv: list[str] | None = None) -> int:
         return result.returncode
 
     print('✅ Migration completed successfully')
-    print('🔍 Verifying migration with alembic current...')
-    verify_result = run_alembic_current(env)
+    print('🔍 Verifying migration with alembic current (hard gate)...')
+    verify_result = run_alembic_current(env, env_vars)
     if verify_result.stdout:
         print(verify_result.stdout)
     if verify_result.stderr:
         print(verify_result.stderr, file=sys.stderr)
 
     if verify_result.returncode != 0:
-        print('⚠️  Verification failed, but migration reported success', file=sys.stderr)
-        # Don't fail the workflow on verification failure, but warn
+        print('❌ Verification failed — schema not at current head!', file=sys.stderr)
+        return 1
 
+    print('✅ Verification passed — schema is at current migration head')
     print('🎉 Migration job completed successfully')
     return 0
 

@@ -207,11 +207,11 @@ jobs:
         run: |
           uv run python scripts/run_migration.py --environment prod --region ${{ vars.AWS_REGION }}
 
-      - name: Verify migration
+      - name: Verify migration (hard gate)
         if: success()
         run: |
           echo "✅ Migration completed successfully"
-          echo "Schema is at current migration head"
+          echo "✅ Schema verified at current migration head via alembic current"
 
       - name: Migration failed
         if: failure()
