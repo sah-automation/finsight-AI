@@ -48,6 +48,7 @@ class ComputeStack(Stack):
         auth: object = None,
         api_gateway: object = None,
         lambda_zip: str | None = None,
+        gateway_zip: str | None = None,
         step_functions: object = None,
         workflow: object = None,
         workflows: object = None,
@@ -126,6 +127,24 @@ class ComputeStack(Stack):
             memory_size=1024,
             **lambda_kwargs,
         )
+
+        # Model-gateway function (issue #330): only for prod where
+        # llm_transport=remote_gateway. The gateway runs behind the AWS Lambda
+        # Web Adapter with handler=run.sh and response_stream invoke mode for
+        # NDJSON streaming of litellm chunks.
+        self.gateway_fn = None
+        if env_name == 'prod':
+            self.gateway_fn = self._create_gateway_function(
+                env_name, gateway_zip, vpc, observability
+            )
+            # Grant the API function permission to invoke the gateway
+            self.gateway_fn.grant_invoke(self.api_fn)
+            # Expose the gateway function URL to the API function via env
+            gateway_url = self.gateway_fn.add_function_url(
+                auth_type=lambda_.FunctionUrlAuthType.AWS_IAM,
+                invoke_mode=lambda_.InvokeMode.RESPONSE_STREAM,
+            )
+            self.api_fn.add_environment('MODEL_GATEWAY_URL', gateway_url.url)
 
         # Scoped permissions for Aurora, DynamoDB, S3, queues, and workflows.
         self._grant_scoped_permissions(
@@ -288,3 +307,82 @@ class ComputeStack(Stack):
                 )
             if state_machine is not None and hasattr(state_machine, 'grant_start_execution'):
                 state_machine.grant_start_execution(role)
+
+    def _create_gateway_function(
+        self,
+        env_name: str,
+        gateway_zip: str | None,
+        vpc: object | None,
+        observability: object | None,
+    ) -> lambda_.Function:
+        """Create the model-gateway Lambda function (issue #330).
+
+        The gateway runs behind the AWS Lambda Web Adapter layer. Key settings:
+        - Handler: 'run.sh' (the startup script included in gateway.zip)
+        - Layer: LambdaAdapterLayerX86 (public layer, us-east-1)
+        - Runtime: Python 3.12 (the adapter boots uvicorn from run.sh)
+        - Memory: 512 MB (enough for litellm + uvicorn)
+        - Env: MODEL_GATEWAY_MASTER_KEY from SSM, plus OTLP/ENVIRONMENT
+        """
+        # Web Adapter layer ARN for x86_64 in us-east-1 (pinned to v30)
+        adapter_layer = lambda_.LayerVersion.from_layer_version_arn(
+            self,
+            f'LambdaWebAdapterLayer{env_name}',
+            f'arn:aws:lambda:{self.region}:753240598075:layer:LambdaAdapterLayerX86:30',
+        )
+
+        gateway_code = (
+            lambda_.Code.from_asset(gateway_zip)
+            if gateway_zip
+            else lambda_.Code.from_inline(PLACEHOLDER_CODE)
+        )
+        gateway_role = iam.Role(
+            self,
+            f'GatewayLambdaExecutionRole{env_name}',
+            assumed_by=iam.ServicePrincipal('lambda.amazonaws.com'),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    'service-role/AWSLambdaVPCAccessExecutionRole'
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    'service-role/AWSLambdaBasicExecutionRole'
+                ),
+            ],
+        )
+
+        # SSM parameter for the shared master key (SecureString)
+        master_key = f'{{{{resolve:ssmsecure:/finsight/{env_name}/model_gateway_master_key}}}}'
+
+        gateway_environment: dict[str, str] = {
+            'OTLP_ENDPOINT': f'https://logs.{self.region}.amazonaws.com/v1/logs',
+            'ENVIRONMENT': _app_environment(env_name),
+            'MODEL_GATEWAY_MASTER_KEY': master_key,
+            'AWS_LAMBDA_EXEC_WRAPPER': '/opt/bootstrap',
+            'AWS_LWA_INVOKE_MODE': 'response_stream',
+            'PORT': '8080',
+        }
+
+        observability_headers: dict[str, str] = {}
+        if observability is not None:
+            routing = getattr(observability, 'otlp_routing_headers', None)
+            if callable(routing):
+                observability_headers = routing()
+        if observability_headers:
+            gateway_environment['OTLP_HEADERS'] = json.dumps(observability_headers)
+
+        gateway_kwargs: dict[str, object] = {'layers': [adapter_layer]}
+        if vpc is not None:
+            gateway_kwargs['vpc'] = vpc
+
+        return lambda_.Function(
+            self,
+            f'GatewayFunction{env_name}',
+            function_name=f'finsight-{env_name}-gateway',
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler='run.sh',
+            code=gateway_code,
+            role=gateway_role,
+            memory_size=512,
+            environment=gateway_environment,
+            **gateway_kwargs,
+        )
