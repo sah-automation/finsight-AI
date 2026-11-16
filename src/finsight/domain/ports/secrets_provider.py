@@ -13,10 +13,11 @@ class SecretsProvider(ABC):
     """Interface for retrieving secrets from a provider."""
 
     @abstractmethod
-    async def get_secret(self, name: str) -> str | None:
-        """Get a secret value by name.
+    async def get_secret(self, company_id: str, name: str) -> str | None:
+        """Get a secret value by name for a specific company.
 
         Args:
+            company_id: The company identifier for multi-tenancy isolation.
             name: The secret name/key to retrieve.
 
         Returns:
@@ -25,10 +26,11 @@ class SecretsProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_secrets(self, names: Sequence[str]) -> dict[str, str | None]:
-        """Get multiple secret values by name.
+    async def get_secrets(self, company_id: str, names: Sequence[str]) -> dict[str, str | None]:
+        """Get multiple secret values by name for a specific company.
 
         Args:
+            company_id: The company identifier for multi-tenancy isolation.
             names: A sequence of secret names/keys to retrieve.
 
         Returns:

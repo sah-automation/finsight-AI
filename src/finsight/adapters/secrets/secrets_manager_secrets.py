@@ -27,28 +27,35 @@ class SecretsManagerSecrets(SecretsProvider):
         """
         self._client: SecretsManagerClient = client
 
-    async def get_secret(self, name: str) -> str | None:
-        """Get a secret value by name from Secrets Manager.
+    def _prefix_name(self, company_id: str, name: str) -> str:
+        """Prefix the secret name with company_id for multi-tenancy isolation."""
+        return f'{company_id}/{name}'
+
+    async def get_secret(self, company_id: str, name: str) -> str | None:
+        """Get a secret value by name from Secrets Manager for a specific company.
 
         Args:
+            company_id: The company identifier for multi-tenancy isolation.
             name: The secret name to retrieve.
 
         Returns:
             The secret value as a string, or None if not found.
         """
+        prefixed_name = self._prefix_name(company_id, name)
         try:
-            response = self._client.get_secret_value(SecretId=name)
+            response = self._client.get_secret_value(SecretId=prefixed_name)
             return response['SecretString']  # type: ignore[no-any-return]
         except self._client.exceptions.ResourceNotFoundException:
             return None
 
-    async def get_secrets(self, names: Sequence[str]) -> dict[str, str | None]:
-        """Get multiple secret values by name from Secrets Manager.
+    async def get_secrets(self, company_id: str, names: Sequence[str]) -> dict[str, str | None]:
+        """Get multiple secret values by name from Secrets Manager for a specific company.
 
         Secrets Manager doesn't have a batch get operation, so we call GetSecretValue
         for each name sequentially.
 
         Args:
+            company_id: The company identifier for multi-tenancy isolation.
             names: A sequence of secret names to retrieve.
 
         Returns:
@@ -56,7 +63,7 @@ class SecretsManagerSecrets(SecretsProvider):
         """
         result: dict[str, str | None] = {}
         for name in names:
-            result[name] = await self.get_secret(name)
+            result[name] = await self.get_secret(company_id, name)
         return result
 
 
