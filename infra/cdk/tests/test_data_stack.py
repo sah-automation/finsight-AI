@@ -72,7 +72,8 @@ def test_non_production_tables_are_destroyed_without_point_in_time_recovery() ->
 
 
 def test_aurora_cluster_is_the_source_of_truth_and_encrypted() -> None:
-    for env_name in ('dev', 'prod'):
+    # Only prod uses aurora_pgvector; dev uses neon_pgvector
+    for env_name in ('prod',):
         template = _data_template(env_name)
         clusters = template.find_resources('AWS::RDS::DBCluster')
         assert len(clusters) == 1
@@ -84,8 +85,15 @@ def test_aurora_cluster_is_the_source_of_truth_and_encrypted() -> None:
         assert cluster['DeletionPolicy'] == ('Retain' if env_name == 'prod' else 'Delete')
 
 
+def test_dev_uses_neon_no_aurora_cluster() -> None:
+    """Dev environment uses neon_pgvector and should not create Aurora cluster."""
+    template = _data_template('dev')
+    clusters = template.find_resources('AWS::RDS::DBCluster')
+    assert len(clusters) == 0
+
+
 def test_aurora_backup_retention_comes_from_environment_config() -> None:
-    expected = {'dev': 1, 'prod': 35}
+    expected = {'prod': 35}
     for env_name, days in expected.items():
         template = _data_template(env_name)
         cluster = next(iter(template.find_resources('AWS::RDS::DBCluster').values()))
@@ -109,15 +117,16 @@ def test_cache_tables_have_ttl_and_tenant_sort_keys() -> None:
 
 
 def test_customer_managed_key_mode_uses_one_kms_key_for_data() -> None:
-    env_config = copy.deepcopy(load_env_config('dev'))
+    env_config = copy.deepcopy(load_env_config('prod'))
     env_config['key_mode'] = 'kms_customer'
+    env_config['vector_store'] = 'aurora_pgvector'
 
     app = cdk.App()
-    network = NetworkStack(app, 'FinSight-dev-Network', env_name='dev')
+    network = NetworkStack(app, 'FinSight-prod-Network', env_name='prod')
     data = DataStack(
         app,
-        'FinSight-dev-Data',
-        env_name='dev',
+        'FinSight-prod-Data',
+        env_name='prod',
         vpc=network.vpc,
         env_config=env_config,
     )

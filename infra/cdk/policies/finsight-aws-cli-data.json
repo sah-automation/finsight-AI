@@ -1,0 +1,88 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "NeverReachTheOrganizationOrTheAccountOwnerSettings",
+      "Effect": "Deny",
+      "Action": [
+        "organizations:*",
+        "account:*",
+        "sts:AssumeRoleWithWebIdentity",
+        "sts:AssumeRoleWithSAML",
+        "iam:UpdateAccountPasswordPolicy",
+        "iam:DeleteAccountPasswordPolicy",
+        "iam:CreateAccountAlias",
+        "iam:UpdateAccountAlias",
+        "iam:DeleteAccountAlias",
+        "iam:ListAccountAliases"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "OnlyAssumeTheApplicationsOwnRoles",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "NotResource": [
+        "arn:aws:iam::069632763967:role/finsight-deploy-role",
+        "arn:aws:iam::069632763967:role/cdk-hnb659fds-*"
+      ]
+    },
+    {
+      "Sid": "OnlyTouchApplicationStacks",
+      "Effect": "Deny",
+      "Action": [
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:CreateChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DeleteChangeSet"
+      ],
+      "NotResource": [
+        "arn:aws:cloudformation:us-east-1:069632763967:stack/FinSight-*/*",
+        "arn:aws:cloudformation:us-east-1:069632763967:stack/CDKToolkit/*"
+      ]
+    },
+    {
+      "Sid": "OnlyTouchApplicationParameters",
+      "Effect": "Deny",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+        "ssm:PutParameter",
+        "ssm:DeleteParameter",
+        "ssm:LabelParameter",
+        "ssm:UnlabelParameter"
+      ],
+      "NotResource": [
+        "arn:aws:ssm:us-east-1:069632763967:parameter/finsight/*",
+        "arn:aws:ssm:us-east-1:069632763967:parameter/cdk-bootstrap/*"
+      ]
+    },
+    {
+      "Sid": "OnlyTouchApplicationSecretsAndKeys",
+      "Effect": "Deny",
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:DeleteSecret"
+      ],
+      "NotResource": [
+        "arn:aws:secretsmanager:us-east-1:069632763967:secret:AuroraCluster*",
+        "arn:aws:secretsmanager:us-east-1:069632763967:secret:finsight-*"
+      ]
+    },
+    {
+      "Sid": "OnlyDecryptApplicationKeys",
+      "Effect": "Deny",
+      "Action": "kms:Decrypt",
+      "NotResource": [
+        "arn:aws:kms:us-east-1:069632763967:alias/aws/ssm",
+        "arn:aws:kms:us-east-1:069632763967:alias/aws/secretsmanager",
+        "arn:aws:kms:us-east-1:069632763967:key/*"
+      ]
+    }
+  ]
+}

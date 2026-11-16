@@ -1,3 +1,5 @@
+from typing import Literal
+
 from .strict_base_model import (
     StrictBaseModel,
 )
@@ -9,6 +11,8 @@ class SwitchesConfig(StrictBaseModel):
     backup_request_enabled: bool = True
     prompt_cache_enabled: bool = True
     answer_cache_enabled: bool = True
+    # Vector store switch: neon_pgvector (pilot) or aurora_pgvector (standard)
+    vector_store: Literal['neon_pgvector', 'aurora_pgvector'] = 'neon_pgvector'
     # Legacy switches for compatibility
     reranker_enabled: bool = True
     async_textract_enabled: bool = True

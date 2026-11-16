@@ -1671,6 +1671,53 @@ def build_vector_write(*args: Any, **kwargs: Any) -> Any:
     return _build_vector_write_impl(*args, **kwargs)
 
 
+def _resolve_vector_store_value(config: Any) -> str:
+    """Extract vector_store value from config object or dict."""
+    vector_store_value = 'aurora_pgvector'
+    if config is not None:
+        if hasattr(config, 'switches'):
+            switches = getattr(config, 'switches', None)
+            if switches is not None and hasattr(switches, 'vector_store'):
+                vector_store_value = switches.vector_store
+        elif isinstance(config, dict):
+            switches = config.get('switches')
+            if isinstance(switches, dict):
+                vector_store_value = switches.get('vector_store', vector_store_value)
+            elif switches is not None and hasattr(switches, 'vector_store'):
+                vector_store_value = switches.vector_store
+    if vector_store_value not in ('neon_pgvector', 'aurora_pgvector'):
+        raise ValueError(
+            f'Unknown vector_store {vector_store_value!r}; expected neon_pgvector or aurora_pgvector'
+        )
+    return vector_store_value
+
+
+def _select_vector_adapter(vector_store_value: str) -> tuple[str, tuple[str, ...]]:
+    """Return (module_path, names) for the given vector store value."""
+    if vector_store_value == 'neon_pgvector':
+        return (
+            'finsight.adapters.vector_store.neon_pg_vector_write',
+            ('NeonPgVectorWrite',),
+        )
+    return (
+        'finsight.adapters.vector_store.aurora_pg_vector_write',
+        ('AuroraPgVectorWrite', 'PostgresVectorWrite'),
+    )
+
+
+def _try_import_adapter(
+    module_path: str, names: tuple[str, ...], session: Any, config: Any, extra: dict[str, Any]
+) -> Any:
+    """Try to import and instantiate an adapter."""
+    try:
+        Cls = _import_adapter(module_path, *names)
+        if Cls is not None:
+            return Cls(session=session, config=config, **extra)
+    except Exception:  # noqa: S110
+        pass
+    return None
+
+
 def _build_vector_write_impl(*args: Any, **kwargs: Any) -> Any:
     provided = _existing(kwargs, 'vector_write', 'vector_store_write', 'vector_writer')
     if provided is None:
@@ -1688,19 +1735,14 @@ def _build_vector_write_impl(*args: Any, **kwargs: Any) -> Any:
         and k not in _CONFIG_KEYS
         and k not in {'vector_write', 'vector_store_write', 'vector_writer', 'vector_store'}
     }
-    for module_path, names in (
-        (
-            'finsight.adapters.vector_store.aurora_pg_vector_write',
-            ('AuroraPgVectorWrite', 'PostgresVectorWrite'),
-        ),
-    ):
-        try:
-            Cls = _import_adapter(module_path, *names)
-            if Cls is not None:
-                return Cls(session=session, config=config, **_extra)
-        except Exception:  # noqa: S112
-            continue
-    return None
+
+    vector_store_value = _resolve_vector_store_value(config)
+    module_path, names = _select_vector_adapter(vector_store_value)
+
+    adapter = _try_import_adapter(module_path, names, session, config, _extra)
+    if adapter is None:
+        raise RuntimeError(f'Failed to load vector store adapter for {vector_store_value}')
+    return adapter
 
 
 def build_change_event_publisher(*args: Any, **kwargs: Any) -> Any:

@@ -1,0 +1,70 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OnlyWriteApplicationBuckets",
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:GetObject",
+        "s3:PutBucketPolicy",
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketAcl",
+        "s3:PutBucketPublicAccessBlock"
+      ],
+      "NotResource": [
+        "arn:aws:s3:::finsight-*",
+        "arn:aws:s3:::finsight-*/*",
+        "arn:aws:s3:::cdk-hnb659fds-*",
+        "arn:aws:s3:::cdk-hnb659fds-*/*"
+      ]
+    },
+    {
+      "Sid": "OnlyWriteApplicationLogGroups",
+      "Effect": "Deny",
+      "Action": [
+        "logs:PutLogEvents",
+        "logs:CreateLogStream",
+        "logs:DeleteLogStream",
+        "logs:DeleteLogGroup"
+      ],
+      "NotResource": [
+        "arn:aws:logs:us-east-1:069632763967:log-group:/aws/lambda/finsight-*",
+        "arn:aws:logs:us-east-1:069632763967:log-group:/aws/lambda/finsight-*:*",
+        "arn:aws:logs:us-east-1:069632763967:log-group:/aws/lambda/FinSight-*",
+        "arn:aws:logs:us-east-1:069632763967:log-group:/aws/lambda/FinSight-*:*",
+        "arn:aws:logs:us-east-1:069632763967:log-group:/aws/finsight/*",
+        "arn:aws:logs:us-east-1:069632763967:log-group:/aws/finsight/*:*",
+        "arn:aws:logs:us-east-1:069632763967:log-group:/aws/cdk/*",
+        "arn:aws:logs:us-east-1:069632763967:log-group:/aws/cdk/*:*"
+      ]
+    },
+    {
+      "Sid": "NoComputeNoMlNoMessagingTheApplicationDoesNotUse",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:CreateFleet",
+        "ec2:CreateLaunchTemplate",
+        "ecs:*",
+        "eks:*",
+        "batch:*",
+        "sagemaker:*",
+        "bedrock:*",
+        "comprehend:*",
+        "textract:*",
+        "glue:*",
+        "athena:*",
+        "redshift:*",
+        "opensearch:*",
+        "elasticache:*",
+        "elasticbeanstalk:*",
+        "lightsail:*",
+        "ses:*",
+        "appsync:*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
