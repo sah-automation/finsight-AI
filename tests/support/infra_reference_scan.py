@@ -104,6 +104,12 @@ def scan_reference_tokens(text: str) -> set[str]:
     """Return module paths derived from ``finsight.*`` tokens in ``text``."""
     modules: set[str] = set()
     for match in MODULE_PATH_RE.finditer(text):
+        start, end = match.span()
+        # A match inside a longer dotted sequence is not a module reference.
+        # This skips hostnames such as ``api.finsight.example.com`` in config,
+        # where ``finsight.example`` is a domain label, not an importable path.
+        if (start > 0 and text[start - 1] == '.') or (end < len(text) and text[end] == '.'):
+            continue
         derived = module_part(match.group(0))
         if derived is not None:
             modules.add(derived)
