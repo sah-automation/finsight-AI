@@ -1,9 +1,10 @@
 ---
 
 # Issue #322: "merge to main" means "deployed to production".
+# Issue #324: Alembic migration job in the deploy pipeline.
 # Assumes the existing GitHub OIDC deployment role (no long-lived AWS creds).
 # Builds api.zip + gateway.zip + container image, uploads as artifacts,
-# then runs `cdk deploy --all` for the prod CDK environment.
+# then runs CDK deploy in phases: data stacks -> migration -> compute stacks.
 # GitHub Environment `production` maps to CDK env `prod`.
 
 name: Deploy to Production
@@ -33,6 +34,8 @@ concurrency:
 env:
   UV_VERSION: "0.13.0"
   CDK_ENV: prod
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
 
 jobs:
   build-artifacts:
@@ -95,8 +98,8 @@ jobs:
           digest=$(docker images --digests finsight-ai:deploy --format '{{.Digest}}' | head -1)
           echo "digest=$digest" >> $GITHUB_OUTPUT
 
-  deploy:
-    name: CDK Deploy (prod)
+  deploy-data-stacks:
+    name: CDK Deploy Data Stacks
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: build-artifacts
@@ -140,7 +143,7 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           role-duration-seconds: 3600
-          role-session-name: finsight-cdk-deploy
+          role-session-name: finsight-cdk-deploy-data
 
       - name: Synthesize CDK stacks
         working-directory: infra/cdk
@@ -149,10 +152,132 @@ jobs:
             --context env=prod \
             --output cdk.out
 
-      - name: CDK Deploy --all
+      - name: CDK Deploy Data Stacks
         working-directory: infra/cdk
         run: |
-          npx --yes aws-cdk@2.162.1 deploy --all \
+          npx --yes aws-cdk@2.162.1 deploy \
+            FinSight-prod-Network \
+            FinSight-prod-Data \
+            FinSight-prod-Messaging \
+            FinSight-prod-Auth \
+            FinSight-prod-ApiGateway \
+            FinSight-prod-StepFunctions \
+            FinSight-prod-Observability \
+            --context env=prod \
+            --require-approval never \
+            --output cdk.out
+
+  run-migration:
+    name: Run Database Migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy-data-stacks
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Configure AWS credentials via OIDC
+        id: aws
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 1800
+          role-session-name: finsight-migration
+
+      - name: Run database migration
+        run: |
+          uv run python scripts/run_migration.py --environment prod --region ${{ vars.AWS_REGION }}
+
+      - name: Verify migration
+        if: success()
+        run: |
+          echo "✅ Migration completed successfully"
+          echo "Schema is at current migration head"
+
+      - name: Migration failed
+        if: failure()
+        run: |
+          echo "::error::Database migration failed — deployment halted"
+          exit 1
+
+  deploy-compute-stacks:
+    name: CDK Deploy Compute Stacks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: run-migration
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Download Lambda zips
+        uses: actions/download-artifact@v7
+        with:
+          name: lambda-zips
+          path: dist/lambda
+
+      - name: Verify checksums
+        run: |
+          cd dist/lambda
+          sha256sum -c checksums.txt
+
+      - name: Configure AWS credentials via OIDC
+        id: aws
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 3600
+          role-session-name: finsight-cdk-deploy-compute
+
+      - name: Synthesize CDK stacks
+        working-directory: infra/cdk
+        run: |
+          npx --yes aws-cdk@2.162.1 synth \
+            --context env=prod \
+            --output cdk.out
+
+      - name: CDK Deploy Compute Stack
+        working-directory: infra/cdk
+        run: |
+          npx --yes aws-cdk@2.162.1 deploy \
+            FinSight-prod-Compute \
             --context env=prod \
             --require-approval never \
             --output cdk.out

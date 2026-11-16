@@ -22,8 +22,7 @@ dev:
   api_gateway:
     custom_domain: api.finsight.sahcreatives.com
     # ACM certificate ARN in us-east-1. Required for custom domain.
-    # Set to empty string to allow synthesis without cert (follow-up adds cert).
-    acm_certificate_arn: ""
+    acm_certificate_arn: "arn:aws:acm:us-east-1:069632763967:certificate/27c3a5d3-ad9c-470d-9ae7-65fc56eef757"
     throttling:
       rate_limit: 10
       burst_limit: 20
@@ -48,7 +47,7 @@ staging:
     aurora_deletion_protection: false
   api_gateway:
     custom_domain: api.finsight.sahcreatives.com
-    acm_certificate_arn: ""
+    acm_certificate_arn: "arn:aws:acm:us-east-1:069632763967:certificate/27c3a5d3-ad9c-470d-9ae7-65fc56eef757"
     throttling:
       rate_limit: 10
       burst_limit: 20
@@ -76,7 +75,7 @@ prod:
     aurora_deletion_protection: true
   api_gateway:
     custom_domain: api.finsight.sahcreatives.com
-    acm_certificate_arn: ""
+    acm_certificate_arn: "arn:aws:acm:us-east-1:069632763967:certificate/27c3a5d3-ad9c-470d-9ae7-65fc56eef757"
     throttling:
       rate_limit: 10
       burst_limit: 20
