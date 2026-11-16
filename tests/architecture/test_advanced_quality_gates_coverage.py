@@ -20,6 +20,8 @@ GENUINE_WORKFLOWS = [
     'openapi.yml',
     'aws-role-smoke.yml',
     'golden-live.yml',
+    'security-scan.yml',
+    'advanced-quality-gates.yml',
 ]
 
 
@@ -57,7 +59,6 @@ class TestAdvancedQualityGatesCoverage:
         """Ensure byte-identical scaffolding stubs have been removed."""
         workflows_dir = ROOT.parent / '.github' / 'workflows'
         scaffolding_names = {
-            'advanced-quality-gates.yml',
             'advanced-quality.yml',
             'quality-gates.yml',
             'container-scan.yml',
@@ -70,7 +71,6 @@ class TestAdvancedQualityGatesCoverage:
             'property-tests.yml',
             'property.yml',
             'sast.yml',
-            'security-scan.yml',
             'security-scanning.yml',
             'static-security-scan.yml',
             'static-security.yml',
