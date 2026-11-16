@@ -1419,6 +1419,10 @@ _LEGACY_EXCEPTION_FRESHNESS_COMMITS = frozenset(
         # Stage C commits that introduced oversized file exceptions alongside
         # the excepted files. Refs #310.
         '9c2771edab54eed7ec586102f037fd81d9da96df',  # pragma: allowlist secret — feat(vector-store): add vector_store switch with Neon adapter
+        # Merge commits from updating PR branches with main (which includes the
+        # legacy exception fix). These also touch test_invariants.py. Refs #310.
+        'fe1a4109a70450e8bd723364b9959b1f6c269c80',  # pragma: allowlist secret — Merge main into pr/c1-vector-store
+        'dcddf48dc1b4a75c5727cbcd3c555b86a49fdf22',  # pragma: allowlist secret — Merge pr/c1-vector-store: docs(adapters) (#316)
     }
 )
 
