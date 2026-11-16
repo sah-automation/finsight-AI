@@ -17,8 +17,8 @@
 | Database | `vector_store` switch: `neon_pgvector` (pilot default) / `aurora_pgvector` (standard path, in code, off) |
 | Secrets | `secrets.provider` switch: `parameter_store` (pilot default) / `secrets_manager` (standard path) |
 | Observability | `observability.backend` switch: `cloudwatch` (pilot default) / `otlp_endpoint` (standard path) |
-| API | Keep API Gateway HTTP API (usage-priced, no fixed floor) + custom domain `finsight.sahcreatives.com` |
-| Frontend | Next.js in `web/` → Vercel Hobby (free), deploy from Phase 2 onward |
+| API | Keep API Gateway HTTP API (usage-priced, no fixed floor) + custom domain `api.finsight.sahcreatives.com` |
+| Frontend | Next.js in `web/` → Vercel Hobby (free) at `finsight.sahcreatives.com` (apex), deploy from Phase 2 onward |
 | Local | `test` and `development` environments stay on localhost (docker compose / LocalStack) |
 
 ## 2. Budget (target: minimal fixed monthly cost)
@@ -82,7 +82,7 @@ Both paths written and tested. Unknown values fail startup loudly. Active values
 3. `observability.backend` switch + generic OTLP path
 4. CDK lean stack: Aurora behind the switch (undeployed), no NAT, SSM wiring, per-function IAM, 30-day log retention
 5. Observability stacks: CloudWatch dashboard, alarms, Neon storage metric check
-6. API Gateway + custom domain mapping (`finsight.sahcreatives.com`), ACM cert (`us-east-1`), throttling from config
+6. API Gateway + custom domain mapping (`api.finsight.sahcreatives.com`), ACM cert (`us-east-1`), throttling from config
 7. Billing budget as configurable value (`alerts.monthly_budget_usd` in CDK env config), default $5
 
 ### Stage D — Deploy workflow (closes DI-22)
@@ -102,7 +102,7 @@ Both paths written and tested. Unknown values fail startup loudly. Active values
 ## 6. Verification checklist
 
 - [ ] `main` up to date with all Phase 1 work; branch protection enforced
-- [ ] `prod` CDK environment deployed; `finsight.sahcreatives.com` serves the API
+- [ ] `prod` CDK environment deployed; `api.finsight.sahcreatives.com` serves the API, `finsight.sahcreatives.com` serves the frontend (Vercel)
 - [ ] Auto-deploy on merge works end to end; smoke tests pass on the deployed environment
 - [ ] All three switches validate both paths in CI; unknown values refuse startup
 - [ ] Billing alarm fires a test alert; monthly spend tracking visible in Cost Explorer

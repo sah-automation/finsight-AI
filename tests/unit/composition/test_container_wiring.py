@@ -16,6 +16,7 @@ from finsight.adapters.repositories.postgres_document_table_repository import (
     PostgresDocumentTableRepository,
 )
 from finsight.adapters.vector_store.aurora_pg_vector_write import AuroraPgVectorWrite
+from finsight.adapters.vector_store.neon_pg_vector_write import NeonPgVectorWrite
 from finsight.composition import (
     build_answer_cache,
     build_change_event_publisher,
@@ -28,22 +29,33 @@ from finsight.composition import (
 from finsight.core.config.loader import load_config
 
 
+def _expected_vector_write_type() -> type:
+    """Return the expected vector write type based on test config."""
+    config = load_config('test')
+    switches = getattr(config, 'switches', None)
+    if switches is not None and getattr(switches, 'vector_store', None) == 'neon_pgvector':
+        return NeonPgVectorWrite
+    return AuroraPgVectorWrite
+
+
 def test_individual_builders_select_the_adapters() -> None:
+    test_config = load_config('test')
     assert isinstance(build_chunk_repository(), PostgresChunkRepository)
     assert isinstance(build_document_repository(), PostgresDocumentRepository)
     assert isinstance(build_document_table_repository(), PostgresDocumentTableRepository)
-    assert isinstance(build_vector_write(), AuroraPgVectorWrite)
+    assert isinstance(build_vector_write(config=test_config), _expected_vector_write_type())
     assert isinstance(build_answer_cache(), AnswerCache)
     assert isinstance(build_change_event_publisher(), ChangeEventPublisher)
 
 
 def test_container_exposes_the_same_adapter_instances() -> None:
     container = build_container(config=load_config('test'))
+    expected_vector_type = _expected_vector_write_type()
 
     assert isinstance(container.chunk_repository, PostgresChunkRepository)
     assert isinstance(container.document_repository, PostgresDocumentRepository)
     assert isinstance(container.document_table_repository, PostgresDocumentTableRepository)
-    assert isinstance(container.vector_write, AuroraPgVectorWrite)
+    assert isinstance(container.vector_write, expected_vector_type)
     assert container.vector_store is container.vector_write
     assert isinstance(container.answer_cache, AnswerCache)
     assert isinstance(container.change_event_publisher, ChangeEventPublisher)

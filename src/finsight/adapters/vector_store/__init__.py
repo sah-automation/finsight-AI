@@ -1,4 +1,4 @@
-"""Vector-store adapters (Aurora pgvector read and write)."""
+"""Vector-store adapters (Aurora pgvector read and write, Neon pgvector write)."""
 
 from .aurora_pg_vector_search import AuroraPgVectorSearch
 from .aurora_pg_vector_write import (
@@ -11,6 +11,7 @@ from .aurora_pg_vector_write import (
     VectorWriteAdapter,
 )
 from .base_vector_store import BaseVectorStore
+from .neon_pg_vector_write import NeonPgVectorWrite
 from .search_result import SearchResult
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     'AuroraPgvectorWrite',
     'AuroraVectorWrite',
     'BaseVectorStore',
+    'NeonPgVectorWrite',
     'PgVectorWrite',
     'PostgresVectorWrite',
     'SearchResult',

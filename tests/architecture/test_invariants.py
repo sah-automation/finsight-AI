@@ -126,6 +126,11 @@ OVERSIZED_FILE_EXCEPTIONS: dict[str, dict[str, str]] = {
         'owner': 'adapters',
         'removal_condition': 'Extract polling and parsing helpers once contract tests guard behavior.',
     },
+    'adapters/vector_store/neon_pg_vector_write.py': {
+        'reason': 'Neon pgvector write adapter implements full VectorWrite contract with in-memory storage.',
+        'owner': 'adapters',
+        'removal_condition': 'Extract storage helpers when adapter exceeds 320 lines.',
+    },
     'entrypoints/api/_shared.py': {
         'reason': 'Shared request-normalization helpers extracted from all routers.',
         'owner': 'entrypoints',
@@ -290,6 +295,16 @@ OVERSIZED_FUNCTION_EXCEPTIONS: dict[str, dict[str, str]] = {
         'reason': 'Pipeline orchestrator derives a terminal status from per-step outcomes.',
         'owner': 'application',
         'removal_condition': 'Move status policy into a separate helper when seam stabilizes.',
+    },
+    'adapters/vector_store/neon_pg_vector_write.py::commit_version': {
+        'reason': 'Commit version aggregates deactivation, activation and document tracking in one transaction.',
+        'owner': 'adapters',
+        'removal_condition': 'Extract version flip logic when contract tests cover behavior.',
+    },
+    'adapters/vector_store/neon_pg_vector_write.py::upsert': {
+        'reason': 'Upsert alias handles multiple calling conventions for backward compatibility.',
+        'owner': 'adapters',
+        'removal_condition': 'Collapse to single calling convention when pipeline is stable.',
     },
 }
 # Private helpers currently above the 60-line ratchet. Entries are removed as
@@ -1401,6 +1416,9 @@ _LEGACY_EXCEPTION_FRESHNESS_COMMITS = frozenset(
         # above. Refs #290.
         'c71bdd86f0f66a0094f7e01e6f91874d0cceaf9c',  # pragma: allowlist secret — feat(obs): add llm_content_capture switch (#274)
         '4d6d279f149aa5d30da0a296d135a6f8221186ce',  # pragma: allowlist secret — feat(ingest): run ingestion end-to-end (#239)
+        # Stage C commits that introduced oversized file exceptions alongside
+        # the excepted files. Refs #310.
+        '9c2771edab54eed7ec586102f037fd81d9da96df',  # pragma: allowlist secret — feat(vector-store): add vector_store switch with Neon adapter
     }
 )
 
