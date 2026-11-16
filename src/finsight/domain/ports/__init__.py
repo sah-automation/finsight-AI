@@ -22,6 +22,7 @@ from .partition_gateway import PartitionGateway, PartitionManager
 from .partition_metadata_repository import PartitionMetadataRepository
 from .queue_port import Queue, QueuePort
 from .reranker import Reranker, RerankerPort
+from .secrets_provider import SecretsProvider
 from .tracing_port import TracingPort
 from .unit_of_work import UnitOfWork
 from .user_repository import UserRepository
@@ -68,6 +69,7 @@ __all__ = [
     'QueuePort',
     'Reranker',
     'RerankerPort',
+    'SecretsProvider',
     'TableRepository',
     'TablesRepository',
     'TracingPort',

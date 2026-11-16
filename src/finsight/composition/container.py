@@ -1745,6 +1745,67 @@ def _build_vector_write_impl(*args: Any, **kwargs: Any) -> Any:
     return adapter
 
 
+def build_secrets_provider(*args: Any, **kwargs: Any) -> Any:
+    return _build_secrets_provider_impl(*args, **kwargs)
+
+
+def _resolve_secrets_provider_value(config: Any) -> str:
+    """Extract secrets_provider value from config object or dict."""
+    secrets_provider_value = 'parameter_store'  # pragma: allowlist secret
+    if config is not None:
+        if hasattr(config, 'switches'):
+            switches = getattr(config, 'switches', None)
+            if switches is not None and hasattr(switches, 'secrets_provider'):
+                secrets_provider_value = switches.secrets_provider
+        elif isinstance(config, dict):
+            switches = config.get('switches')
+            if isinstance(switches, dict):
+                secrets_provider_value = switches.get('secrets_provider', secrets_provider_value)
+            elif switches is not None and hasattr(switches, 'secrets_provider'):
+                secrets_provider_value = switches.secrets_provider
+    if secrets_provider_value not in ('parameter_store', 'secrets_manager'):
+        raise ValueError(
+            f'Unknown secrets_provider {secrets_provider_value!r}; '
+            f'expected parameter_store or secrets_manager'
+        )
+    return secrets_provider_value
+
+
+def _select_secrets_adapter(secrets_provider_value: str) -> tuple[str, tuple[str, ...]]:
+    """Return (module_path, names) for the given secrets provider value."""
+    if secrets_provider_value == 'parameter_store':  # pragma: allowlist secret
+        return (
+            'finsight.adapters.secrets.parameter_store_secrets',  # pragma: allowlist secret
+            ('ParameterStoreSecrets',),
+        )
+    return (
+        'finsight.adapters.secrets.secrets_manager_secrets',  # pragma: allowlist secret
+        ('SecretsManagerSecrets',),
+    )
+
+
+def _build_secrets_provider_impl(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(kwargs, 'secrets_provider', 'secrets')
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k not in {'secrets_provider', 'secrets'}
+    }
+
+    secrets_provider_value = _resolve_secrets_provider_value(config)
+    module_path, names = _select_secrets_adapter(secrets_provider_value)
+
+    adapter = _try_import_adapter(module_path, names, None, config, _extra)
+    if adapter is None:
+        raise RuntimeError(f'Failed to load secrets provider for {secrets_provider_value}')
+    return adapter
+
+
 def build_change_event_publisher(*args: Any, **kwargs: Any) -> Any:
     return _build_change_event_publisher_impl(*args, **kwargs)
 

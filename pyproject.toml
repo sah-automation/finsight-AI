@@ -539,6 +539,7 @@ modules = [
     "finsight.adapters.waiting_line",
     "finsight.adapters.state_store",
     "finsight.adapters.audit",
+    "finsight.adapters.secrets",
 ]
 
 [[tool.importlinter.contracts]]
