@@ -8,6 +8,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from finsight.adapters.observability import CloudWatchExporter, OtlpEndpointExporter
+from finsight.domain.ports.observability_exporter_port import ObservabilityExporterPort
 from finsight.domain.ports.tracing_port import TracingPort
 from finsight.domain.value_objects.span import Span, company_to_trace_attribute
 
@@ -23,10 +25,7 @@ from ._tracing_config import (
     _resolve_config,
     _resolve_switch_enabled,
 )
-from ._tracing_otel import _OtelSpanExporter
-from ._tracing_redaction import (
-    _sanitize_attributes,
-)
+from finsight.adapters.telemetry import _sanitize_attributes
 from ._tracing_span_collection import _SpanCollection
 
 _LOGGER = logging.getLogger(__name__)
@@ -83,6 +82,20 @@ class TracingAdapter(TracingPort):
         self.trace_sample_rate = _first(
             kwargs, 'trace_sample_rate', 'sample_rate', default=obs.get('trace_sample_rate')
         )
+        self.observability_backend = _first(
+            kwargs, 'observability_backend', default=obs.get('observability_backend')
+        )
+
+        # Log the active observability backend for traceability
+        _LOGGER.info(
+            'Tracing adapter initialized',
+            extra={
+                'service_name': self.service_name,
+                'otlp_endpoint': self.otlp_endpoint,
+                'observability_backend': self.observability_backend,
+                'detailed_tracing_enabled': self.enabled,
+            },
+        )
 
         tracing_name = _first(kwargs, 'table_name', 'name', default=None)
         self.name = tracing_name or self.service_name
@@ -91,16 +104,25 @@ class TracingAdapter(TracingPort):
 
         self._spans: list[Span] = []
 
-        # OpenTelemetry / OTLP export (adapter concern). Only enabled when
-        # detailed tracing is enabled; never reads env vars directly.
-        self._otel: Any = None
+        # OpenTelemetry / OTLP export via ObservabilityExporterPort.
+        # Only enabled when detailed tracing is enabled; never reads env vars directly.
+        self._otel: ObservabilityExporterPort | None = None
         if self.enabled:
-            self._otel = _OtelSpanExporter(
-                endpoint=self.otlp_endpoint,
-                headers=self.otlp_headers,
-                sample_rate=self.trace_sample_rate,
-                service_name=self.service_name,
-            )
+            backend = self.observability_backend or 'cloudwatch'
+            if backend == 'cloudwatch':
+                self._otel = CloudWatchExporter(
+                    endpoint=self.otlp_endpoint,
+                    headers=self.otlp_headers,
+                    sample_rate=self.trace_sample_rate,
+                    service_name=self.service_name,
+                )
+            else:  # otlp_endpoint
+                self._otel = OtlpEndpointExporter(
+                    endpoint=self.otlp_endpoint,
+                    headers=self.otlp_headers,
+                    sample_rate=self.trace_sample_rate,
+                    service_name=self.service_name,
+                )
         else:
             self._otel = None
         if self._otel is not None and getattr(self._otel, 'enabled', False):

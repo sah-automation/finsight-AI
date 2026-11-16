@@ -519,6 +519,13 @@ name = "Adapters must be independent"
 type = "independence"
 ignore_imports = [
     "finsight.adapters.audit.postgres_audit_log -> finsight.adapters.repositories.base_repository",
+    # tracing_adapter uses observability exporters to emit spans
+    "finsight.adapters.tracing.tracing_adapter -> finsight.adapters.observability",
+    # tracing_adapter uses shared telemetry utilities
+    "finsight.adapters.tracing.tracing_adapter -> finsight.adapters.telemetry",
+    # observability exporters use shared telemetry utilities
+    "finsight.adapters.observability.cloud_watch_exporter -> finsight.adapters.telemetry",
+    "finsight.adapters.observability.otlp_endpoint_exporter -> finsight.adapters.telemetry",
 ]
 modules = [
     "finsight.adapters.llm",
@@ -540,6 +547,8 @@ modules = [
     "finsight.adapters.state_store",
     "finsight.adapters.audit",
     "finsight.adapters.secrets",
+    "finsight.adapters.observability",
+    "finsight.adapters.telemetry",
 ]
 
 [[tool.importlinter.contracts]]

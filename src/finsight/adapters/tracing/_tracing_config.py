@@ -55,36 +55,111 @@ def _switch_value(switches: Any, *names: str, default: Any = True) -> Any:
     return default
 
 
+def _get_observability_backend(config: Any) -> str:
+    """Extract the observability backend from config switches."""
+    switches = None
+    if isinstance(config, Mapping):
+        switches = config.get('switches')
+    elif config is not None:
+        switches = getattr(config, 'switches', None)
+    if isinstance(switches, Mapping):
+        value = switches.get('observability_backend')
+        return str(value) if value is not None else 'cloudwatch'
+    if switches is not None:
+        value = getattr(switches, 'observability_backend', None)
+        return str(value) if value is not None else 'cloudwatch'
+    return 'cloudwatch'
+
+
+def _resolve_obs_endpoint_and_headers(
+    obs_obj: Any, backend: str
+) -> tuple[str | None, dict[str, str] | None]:
+    """Resolve endpoint and headers for the given backend from observability config."""
+    if backend == 'cloudwatch':
+        endpoint = (
+            getattr(obs_obj, 'cloudwatch_otlp_endpoint', None)
+            if not isinstance(obs_obj, Mapping)
+            else obs_obj.get('cloudwatch_otlp_endpoint')
+        )
+        if endpoint is None:
+            endpoint = (
+                getattr(obs_obj, 'otlp_endpoint', None)
+                if not isinstance(obs_obj, Mapping)
+                else obs_obj.get('otlp_endpoint')
+            )
+        headers = (
+            getattr(obs_obj, 'cloudwatch_otlp_headers', None)
+            if not isinstance(obs_obj, Mapping)
+            else obs_obj.get('cloudwatch_otlp_headers')
+        )
+        if headers is None:
+            headers = (
+                getattr(obs_obj, 'otlp_headers', None)
+                if not isinstance(obs_obj, Mapping)
+                else obs_obj.get('otlp_headers')
+            )
+    else:  # otlp_endpoint
+        endpoint = (
+            getattr(obs_obj, 'otlp_endpoint_endpoint', None)
+            if not isinstance(obs_obj, Mapping)
+            else obs_obj.get('otlp_endpoint_endpoint')
+        )
+        if endpoint is None:
+            endpoint = (
+                getattr(obs_obj, 'otlp_endpoint', None)
+                if not isinstance(obs_obj, Mapping)
+                else obs_obj.get('otlp_endpoint')
+            )
+        headers = (
+            getattr(obs_obj, 'otlp_endpoint_headers', None)
+            if not isinstance(obs_obj, Mapping)
+            else obs_obj.get('otlp_endpoint_headers')
+        )
+        if headers is None:
+            headers = (
+                getattr(obs_obj, 'otlp_headers', None)
+                if not isinstance(obs_obj, Mapping)
+                else obs_obj.get('otlp_headers')
+            )
+    return endpoint, headers
+
+
 def _observability(config: Any) -> dict[str, Any]:
     obs_obj: Any = None
     if isinstance(config, Mapping):
         obs_obj = config.get('observability')
     elif config is not None:
         obs_obj = getattr(config, 'observability', None)
+
+    backend = _get_observability_backend(config)
+
     result: dict[str, Any] = {
         'service_name': 'finsight-ai',
         'otlp_endpoint': '',
         'otlp_headers': {},
         'trace_sample_rate': 1.0,
+        'observability_backend': backend,
     }
-    if isinstance(obs_obj, Mapping):
-        if obs_obj.get('service_name') is not None:
-            result['service_name'] = obs_obj.get('service_name')
-        if obs_obj.get('otlp_endpoint') is not None:
-            result['otlp_endpoint'] = obs_obj.get('otlp_endpoint')
-        if obs_obj.get('otlp_headers') is not None:
-            result['otlp_headers'] = obs_obj.get('otlp_headers')
-        if obs_obj.get('trace_sample_rate') is not None:
-            result['trace_sample_rate'] = obs_obj.get('trace_sample_rate')
-    elif obs_obj is not None:
-        if getattr(obs_obj, 'service_name', None) is not None:
+    if obs_obj is not None:
+        if isinstance(obs_obj, Mapping):
+            if obs_obj.get('service_name') is not None:
+                result['service_name'] = obs_obj.get('service_name')
+        elif getattr(obs_obj, 'service_name', None) is not None:
             result['service_name'] = obs_obj.service_name
-        if getattr(obs_obj, 'otlp_endpoint', None) is not None:
-            result['otlp_endpoint'] = obs_obj.otlp_endpoint
-        if getattr(obs_obj, 'otlp_headers', None) is not None:
-            result['otlp_headers'] = obs_obj.otlp_headers
-        if getattr(obs_obj, 'trace_sample_rate', None) is not None:
-            result['trace_sample_rate'] = obs_obj.trace_sample_rate
+
+        endpoint, headers = _resolve_obs_endpoint_and_headers(obs_obj, backend)
+        if endpoint is not None:
+            result['otlp_endpoint'] = endpoint
+        if headers is not None:
+            result['otlp_headers'] = headers
+
+        trace_sample_rate = (
+            obs_obj.get('trace_sample_rate')
+            if isinstance(obs_obj, Mapping)
+            else getattr(obs_obj, 'trace_sample_rate', None)
+        )
+        if trace_sample_rate is not None:
+            result['trace_sample_rate'] = trace_sample_rate
     elif config is not None:
         if isinstance(config, Mapping):
             if config.get('service_name') is not None:
