@@ -4,14 +4,13 @@ name: Advanced Quality Gates
 # Runs advanced quality checks including security tools
 # Issue #80: advanced quality gates with security scanning
 
-"on":
+"on":  # quoted to avoid yamllint truthy rule on 'on' key
   workflow_dispatch:
   pull_request:
     branches: [main, develop]
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   bandit:
@@ -39,12 +38,13 @@ jobs:
       - name: Run bandit
         run: uv run bandit -r src/finsight -c pyproject.toml -f json -o bandit-report.json || true
 
-      - name: Upload bandit report
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Upload bandit report as artifact
+        uses: actions/upload-artifact@v7
         if: always()
         with:
-          sarif_file: bandit-report.json
-          category: bandit
+          name: bandit-report
+          path: bandit-report.json
+          retention-days: 7
 
   pip-audit:
     name: pip-audit (Dependency Vulnerability Scan)
@@ -74,12 +74,13 @@ jobs:
             --local --skip-editable --progress-spinner off \
             --format json --output pip-audit-report.json || true
 
-      - name: Upload pip-audit report
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Upload pip-audit report as artifact
+        uses: actions/upload-artifact@v7
         if: always()
         with:
-          sarif_file: pip-audit-report.json
-          category: pip-audit
+          name: pip-audit-report
+          path: pip-audit-report.json
+          retention-days: 7
 
   trivy:
     name: Trivy (Container & FS Scanner)
@@ -94,16 +95,8 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-report.sarif'
+          format: 'table'
           severity: 'CRITICAL,HIGH,MEDIUM'
-
-      - name: Upload Trivy report
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-report.sarif
-          category: trivy
 
 env:
   UV_VERSION: "0.13.0"
