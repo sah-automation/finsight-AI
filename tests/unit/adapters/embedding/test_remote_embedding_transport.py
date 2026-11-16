@@ -27,6 +27,11 @@ EMBEDDING_RESPONSE: dict[str, Any] = {
 }
 
 
+def _fake_signer(method: str, url: str, headers: dict[str, str], body: bytes) -> dict[str, str]:
+    """Fake signer for tests: returns headers unchanged (no actual signing)."""
+    return dict(headers)
+
+
 class _FakePostJson:
     """Post-json double: records the request, returns a canned JSON body."""
 
@@ -63,7 +68,7 @@ class TestRemoteEmbeddingTransport:
 
     async def test_returns_litellm_shaped_response(self) -> None:
         fake = _FakePostJson(EMBEDDING_RESPONSE)
-        func = build_remote_embedding_func(BASE_SETTINGS, post_json=fake)
+        func = build_remote_embedding_func(BASE_SETTINGS, post_json=fake, signer=_fake_signer)
 
         result = await func(model='gemini/gemini-embedding-001', input=['a', 'b'], timeout=30)
 
@@ -76,7 +81,7 @@ class TestRemoteEmbeddingTransport:
 
     async def test_forwards_dimensions_when_given(self) -> None:
         fake = _FakePostJson(EMBEDDING_RESPONSE)
-        func = build_remote_embedding_func(BASE_SETTINGS, post_json=fake)
+        func = build_remote_embedding_func(BASE_SETTINGS, post_json=fake, signer=_fake_signer)
 
         _ = await func(model='gemini/gemini-embedding-001', input=['a'], dimensions=1024)
 
@@ -84,7 +89,7 @@ class TestRemoteEmbeddingTransport:
 
     async def test_omits_dimensions_when_not_given(self) -> None:
         fake = _FakePostJson(EMBEDDING_RESPONSE)
-        func = build_remote_embedding_func(BASE_SETTINGS, post_json=fake)
+        func = build_remote_embedding_func(BASE_SETTINGS, post_json=fake, signer=_fake_signer)
 
         _ = await func(model='gemini/gemini-embedding-001', input=['a'])
 
@@ -93,14 +98,16 @@ class TestRemoteEmbeddingTransport:
     async def test_sends_master_key_header_when_configured(self) -> None:
         fake = _FakePostJson(EMBEDDING_RESPONSE)
         settings = {**BASE_SETTINGS, 'auth_token': 'master-key'}
-        func = build_remote_embedding_func(settings, post_json=fake)
+        func = build_remote_embedding_func(settings, post_json=fake, signer=_fake_signer)
 
         _ = await func(model='gemini/gemini-embedding-001', input=['a'])
 
         assert fake.requests[0]['headers']['X-Gateway-Master-Key'] == 'master-key'
 
     async def test_transport_errors_propagate(self) -> None:
-        func = build_remote_embedding_func(BASE_SETTINGS, post_json=_ExplodingPostJson())
+        func = build_remote_embedding_func(
+            BASE_SETTINGS, post_json=_ExplodingPostJson(), signer=_fake_signer
+        )
 
         with pytest.raises(RemoteGatewayError, match='HTTP 500'):
             _ = await func(model='gemini/gemini-embedding-001', input=['a'])

@@ -28,6 +28,11 @@ from botocore.credentials import Credentials
 BASE_SETTINGS = {'base_url': 'https://gw.lambda-url.us-east-1.on.aws', 'region': 'us-east-1'}
 
 
+def _fake_signer(method: str, url: str, headers: dict[str, str], body: bytes) -> dict[str, str]:
+    """Fake signer for tests: returns headers unchanged (no actual signing)."""
+    return dict(headers)
+
+
 class _FakePostStream:
     """Post-stream double: records the request, yields NDJSON lines."""
 
@@ -88,7 +93,7 @@ class TestRemoteCompletionTransport:
 
     async def test_yields_litellm_shaped_chunks(self) -> None:
         fake = _FakePostStream(_ndjson(CHUNKS))
-        func = build_remote_completion_func(BASE_SETTINGS, post_stream=fake)
+        func = build_remote_completion_func(BASE_SETTINGS, post_stream=fake, signer=_fake_signer)
 
         yielded = [chunk async for chunk in func(**CHAT_KWARGS)]
 
@@ -102,7 +107,7 @@ class TestRemoteCompletionTransport:
 
     async def test_blank_lines_are_skipped(self) -> None:
         fake = _FakePostStream(['', *_ndjson(CHUNKS), '', ''])
-        func = build_remote_completion_func(BASE_SETTINGS, post_stream=fake)
+        func = build_remote_completion_func(BASE_SETTINGS, post_stream=fake, signer=_fake_signer)
 
         yielded = [chunk async for chunk in func(**CHAT_KWARGS)]
 
@@ -111,7 +116,7 @@ class TestRemoteCompletionTransport:
     async def test_sends_master_key_header_when_configured(self) -> None:
         fake = _FakePostStream(_ndjson(CHUNKS))
         settings = {**BASE_SETTINGS, 'auth_token': 'master-key'}
-        func = build_remote_completion_func(settings, post_stream=fake)
+        func = build_remote_completion_func(settings, post_stream=fake, signer=_fake_signer)
 
         _ = [chunk async for chunk in func(**CHAT_KWARGS)]
 
@@ -120,7 +125,7 @@ class TestRemoteCompletionTransport:
 
     async def test_omits_master_key_without_token_or_signer(self) -> None:
         fake = _FakePostStream(_ndjson(CHUNKS))
-        func = build_remote_completion_func(BASE_SETTINGS, post_stream=fake)
+        func = build_remote_completion_func(BASE_SETTINGS, post_stream=fake, signer=_fake_signer)
 
         _ = [chunk async for chunk in func(**CHAT_KWARGS)]
 
@@ -139,7 +144,9 @@ class TestRemoteCompletionTransport:
         assert fake.requests[0]['headers']['X-Sigv4'] == 'signed'
 
     async def test_transport_errors_propagate(self) -> None:
-        func = build_remote_completion_func(BASE_SETTINGS, post_stream=_ExplodingPostStream())
+        func = build_remote_completion_func(
+            BASE_SETTINGS, post_stream=_ExplodingPostStream(), signer=_fake_signer
+        )
 
         with pytest.raises(RemoteGatewayError, match='HTTP 502'):
             _ = [chunk async for chunk in func(**CHAT_KWARGS)]
@@ -152,6 +159,10 @@ class TestRemoteCompletionTransport:
         with pytest.raises(ValueError, match='SigV4'):
             build_remote_completion_func({'base_url': 'https://gw.example'})
 
+    @pytest.mark.skipif(
+        not __import__('os').environ.get('AWS_ACCESS_KEY_ID'),
+        reason='Requires AWS credentials for SigV4 signing',
+    )
     async def test_default_signer_is_sigv4_when_region_present(self) -> None:
         """With a region and no injected signer the request is SigV4-signed."""
         captured: dict[str, Any] = {}
