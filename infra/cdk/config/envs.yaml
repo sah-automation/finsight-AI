@@ -1,3 +1,4 @@
+---
 dev:
   name: dev
   # Application ENVIRONMENT value the config loader validates (it accepts
@@ -58,7 +59,7 @@ prod:
   environment: production
   removal_policy: retain
   key_mode: aws_managed
-  vector_store: aurora_pgvector
+  vector_store: neon_pgvector
   alerts:
     # Monthly AWS spend guardrail. The budget alarm is created against this
     # value; changing the threshold later is a config change, not a code change.

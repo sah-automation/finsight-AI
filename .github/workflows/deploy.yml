@@ -1,0 +1,171 @@
+---
+
+# Issue #322: "merge to main" means "deployed to production".
+# Assumes the existing GitHub OIDC deployment role (no long-lived AWS creds).
+# Builds api.zip + gateway.zip + container image, uploads as artifacts,
+# then runs `cdk deploy --all` for the prod CDK environment.
+# GitHub Environment `production` maps to CDK env `prod`.
+
+name: Deploy to Production
+
+"on":  # GitHub Actions trigger key # yamllint disable-line rule:truthy
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "GitHub Environment (maps to CDK env)"
+        type: choice
+        options:
+          - production
+          - staging
+        required: true
+        default: production
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  UV_VERSION: "0.13.0"
+  CDK_ENV: prod
+
+jobs:
+  build-artifacts:
+    name: Build Lambda zips + container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      api-zip-sha256: ${{ steps.checksum.outputs.api_sha256 }}
+      gateway-zip-sha256: ${{ steps.checksum.outputs.gateway_sha256 }}
+      image-digest: ${{ steps.image.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Build Lambda zips
+        run: make lambda-build
+
+      - name: Build container image
+        run: docker build -t finsight-ai:deploy .
+
+      - name: Compute checksums
+        id: checksum
+        run: |
+          sha256sum dist/lambda/api.zip dist/lambda/gateway.zip > dist/lambda/checksums.txt
+          cat dist/lambda/checksums.txt
+          echo "api_sha256=$(sha256sum dist/lambda/api.zip | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "gateway_sha256=$(sha256sum dist/lambda/gateway.zip | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+
+      - name: Upload Lambda zips as artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: lambda-zips
+          path: |
+            dist/lambda/api.zip
+            dist/lambda/api.zip.sha256
+            dist/lambda/gateway.zip
+            dist/lambda/gateway.zip.sha256
+            dist/lambda/checksums.txt
+          retention-days: 30
+
+      - name: Save container image digest
+        id: image
+        run: |
+          digest=$(docker images --digests finsight-ai:deploy --format '{{.Digest}}' | head -1)
+          echo "digest=$digest" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: CDK Deploy (prod)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: build-artifacts
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Download Lambda zips
+        uses: actions/download-artifact@v7
+        with:
+          name: lambda-zips
+          path: dist/lambda
+
+      - name: Verify checksums
+        run: |
+          cd dist/lambda
+          sha256sum -c checksums.txt
+
+      - name: Configure AWS credentials via OIDC
+        id: aws
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 3600
+          role-session-name: finsight-cdk-deploy
+
+      - name: Synthesize CDK stacks
+        working-directory: infra/cdk
+        run: |
+          npx --yes aws-cdk@2.162.1 synth \
+            --context env=prod \
+            --output cdk.out
+
+      - name: CDK Deploy --all
+        working-directory: infra/cdk
+        run: |
+          npx --yes aws-cdk@2.162.1 deploy --all \
+            --context env=prod \
+            --require-approval never \
+            --output cdk.out
+
+      - name: Post-deploy verification
+        if: success()
+        run: |
+          echo "✅ Deployment completed successfully"
+          echo "API Function: ${{ vars.API_FUNCTION_URL }}"
+          echo "Gateway Function: ${{ vars.GATEWAY_FUNCTION_URL }}"
+
+      - name: Deployment failed - leaving previous version serving
+        if: failure()
+        run: |
+          echo "::error::CDK deployment failed — previous version remains serving"
+          exit 1
