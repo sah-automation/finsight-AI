@@ -13,6 +13,8 @@ class SwitchesConfig(StrictBaseModel):
     answer_cache_enabled: bool = True
     # Vector store switch: neon_pgvector (pilot) or aurora_pgvector (standard)
     vector_store: Literal['neon_pgvector', 'aurora_pgvector'] = 'neon_pgvector'
+    # Secrets provider switch: parameter_store (pilot) or secrets_manager (standard)
+    secrets_provider: Literal['parameter_store', 'secrets_manager'] = 'parameter_store'
     # Legacy switches for compatibility
     reranker_enabled: bool = True
     async_textract_enabled: bool = True

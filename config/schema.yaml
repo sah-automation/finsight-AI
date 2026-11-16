@@ -19,6 +19,7 @@ switches:
   prompt_cache_enabled: true
   answer_cache_enabled: true
   vector_store: "neon_pgvector"
+  secrets_provider: "parameter_store"  # pragma: allowlist secret
   detailed_tracing_enabled: true
   usage_metering_enabled: true
   llm_content_capture_enabled: true

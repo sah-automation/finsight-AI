@@ -33,6 +33,7 @@ SWITCH_TO_TEST_FILE = {
     'usage_metering_enabled': 'test_metering_switch.py',
     'llm_content_capture_enabled': 'test_llm_content_capture_switch.py',
     'vector_store': 'test_vector_store_switch.py',
+    'secrets_provider': 'test_secrets_provider_switch.py',  # pragma: allowlist secret
 }
 
 

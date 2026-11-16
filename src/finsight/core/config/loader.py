@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from pathlib import Path
@@ -13,6 +14,8 @@ import yaml
 from pydantic import ValidationError
 
 from .models import Config, Environment, PermissionsConfig
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigError(Exception):
@@ -184,6 +187,16 @@ class ConfigLoader:
             config = Config.model_validate(merged)
         except ValidationError as e:
             raise ConfigError(f'Configuration validation failed:\n{e}') from e
+
+        # Log active switch values for traceability
+        switches = getattr(config, 'switches', None)
+        if switches is not None:
+            sp_val = getattr(switches, 'secrets_provider', None)
+            if sp_val is not None:
+                logger.info('Active provider mode: %s', sp_val)
+            vector_store = getattr(switches, 'vector_store', None)
+            if vector_store is not None:
+                logger.info('Active vector_store: %s', vector_store)
 
         self._config = config
         return config

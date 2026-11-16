@@ -326,7 +326,8 @@ def _collect_check_results() -> dict[str, Any]:  # noqa: PLR0912, PLR0915
         'adapters/cache',
     ]:
         violations.extend(
-            f'{p}:{line} {m}' for p, m, line in find_methods_without_company_id(SRC_ROOT / module)
+            f'{Path(p).relative_to(SRC_ROOT)}:{line} {m}'
+            for p, m, line in find_methods_without_company_id(SRC_ROOT / module)
         )
     record(
         'company_id_on_all_data_calls',
