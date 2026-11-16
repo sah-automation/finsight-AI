@@ -11,6 +11,7 @@ from aws_cdk import aws_apigatewayv2_authorizers as apigatewayv2_auth
 from aws_cdk import aws_apigatewayv2_integrations as integrations
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 
 from stacks.env_config import load_env_config
@@ -128,12 +129,13 @@ class ComputeStack(Stack):
             **lambda_kwargs,
         )
 
-        # Model-gateway function (issue #330): only for prod where
+        # Model-gateway function (issue #330): only for environments where
         # llm_transport=remote_gateway. The gateway runs behind the AWS Lambda
         # Web Adapter with handler=run.sh and response_stream invoke mode for
         # NDJSON streaming of litellm chunks.
         self.gateway_fn = None
-        if env_name == 'prod':
+        env_config = load_env_config(env_name)
+        if env_config.get('llm_transport') == 'remote_gateway':
             self.gateway_fn = self._create_gateway_function(
                 env_name, gateway_zip, vpc, observability
             )
@@ -322,7 +324,7 @@ class ComputeStack(Stack):
         - Layer: LambdaAdapterLayerX86 (public layer, us-east-1)
         - Runtime: Python 3.12 (the adapter boots uvicorn from run.sh)
         - Memory: 512 MB (enough for litellm + uvicorn)
-        - Env: MODEL_GATEWAY_MASTER_KEY from SSM, plus OTLP/ENVIRONMENT
+        - Master key read from SSM at startup (see gateway app)
         """
         # Web Adapter layer ARN for x86_64 in us-east-1 (pinned to v30)
         adapter_layer = lambda_.LayerVersion.from_layer_version_arn(
@@ -351,12 +353,20 @@ class ComputeStack(Stack):
         )
 
         # SSM parameter for the shared master key (SecureString)
-        master_key = f'{{{{resolve:ssmsecure:/finsight/{env_name}/model_gateway_master_key}}}}'
+        master_key_param = ssm.StringParameter(
+            self,
+            f'ModelGatewayMasterKey{env_name}',
+            parameter_name=f'/finsight/{env_name}/model_gateway_master_key',
+            description=f'Master key for FinSight model gateway ({env_name})',
+            string_value='PLACEHOLDER_REPLACE_AT_DEPLOY',
+            tier=ssm.ParameterTier.STANDARD,
+            type=ssm.ParameterType.SECURE_STRING,
+        )
 
         gateway_environment: dict[str, str] = {
             'OTLP_ENDPOINT': f'https://logs.{self.region}.amazonaws.com/v1/logs',
             'ENVIRONMENT': _app_environment(env_name),
-            'MODEL_GATEWAY_MASTER_KEY': master_key,
+            'MODEL_GATEWAY_MASTER_KEY_PARAM': master_key_param.parameter_name,
             'AWS_LAMBDA_EXEC_WRAPPER': '/opt/bootstrap',
             'AWS_LWA_INVOKE_MODE': 'response_stream',
             'PORT': '8080',
@@ -374,7 +384,7 @@ class ComputeStack(Stack):
         if vpc is not None:
             gateway_kwargs['vpc'] = vpc
 
-        return lambda_.Function(
+        gateway_fn = lambda_.Function(
             self,
             f'GatewayFunction{env_name}',
             function_name=f'finsight-{env_name}-gateway',
@@ -386,3 +396,8 @@ class ComputeStack(Stack):
             environment=gateway_environment,
             **gateway_kwargs,
         )
+
+        # Grant read access to the master key parameter
+        master_key_param.grant_read(gateway_fn)
+
+        return gateway_fn

@@ -7,7 +7,7 @@ gateway settings (issue #330) as plain values:
 - ``model_gateway_settings`` — caller-side settings the API function needs to
   reach the gateway (base URL, optional bearer token, signing region).
 - ``gateway_runtime_settings`` — settings the gateway function itself needs
-  (optional master key for the bearer check; IAM function-URL auth is the
+  (SSM parameter name for the master key; IAM function-URL auth is the
   enforced control, the key is defense in depth when configured).
 """
 
@@ -42,11 +42,14 @@ def model_gateway_settings() -> dict[str, str]:
 
 def gateway_runtime_settings() -> dict[str, str]:
     """Return gateway-side runtime settings sourced from the environment."""
-    master_key = os.environ.get('MODEL_GATEWAY_MASTER_KEY')
-    if not master_key:
+    master_key_param = os.environ.get('MODEL_GATEWAY_MASTER_KEY_PARAM')
+    if not master_key_param:
         return {}
 
-    return {'master_key': master_key}
+    return {
+        'master_key_param': master_key_param,
+        'region': os.environ.get('AWS_REGION', 'us-east-1'),
+    }
 
 
 __all__ = ['gateway_runtime_settings', 'model_gateway_settings']

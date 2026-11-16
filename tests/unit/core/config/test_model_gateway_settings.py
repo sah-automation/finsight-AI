@@ -50,12 +50,33 @@ class TestModelGatewaySettings:
 class TestGatewayRuntimeSettings:
     """Gateway-side runtime settings (the gateway function itself)."""
 
-    def test_reads_master_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv('MODEL_GATEWAY_MASTER_KEY', 'secret-key')
+    def test_reads_master_key_param_and_region(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(
+            'MODEL_GATEWAY_MASTER_KEY_PARAM', '/finsight/prod/model_gateway_master_key'
+        )
+        monkeypatch.setenv('AWS_REGION', 'us-west-2')
 
-        assert module.gateway_runtime_settings()['master_key'] == 'secret-key'
+        settings = module.gateway_runtime_settings()
 
-    def test_absent_master_key_yields_empty_settings(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv('MODEL_GATEWAY_MASTER_KEY', raising=False)
+        assert settings['master_key_param'] == '/finsight/prod/model_gateway_master_key'
+        assert settings['region'] == 'us-west-2'
+
+    def test_absent_master_key_param_yields_empty_settings(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv('MODEL_GATEWAY_MASTER_KEY_PARAM', raising=False)
+        monkeypatch.delenv('AWS_REGION', raising=False)
+        monkeypatch.delenv('AWS_DEFAULT_REGION', raising=False)
 
         assert module.gateway_runtime_settings() == {}
+
+    def test_region_defaults_to_us_east_1(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(
+            'MODEL_GATEWAY_MASTER_KEY_PARAM', '/finsight/prod/model_gateway_master_key'
+        )
+        monkeypatch.delenv('AWS_REGION', raising=False)
+        monkeypatch.delenv('AWS_DEFAULT_REGION', raising=False)
+
+        settings = module.gateway_runtime_settings()
+
+        assert settings['region'] == 'us-east-1'

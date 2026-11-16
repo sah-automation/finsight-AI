@@ -7,6 +7,7 @@ dev:
   removal_policy: destroy
   key_mode: aws_managed
   vector_store: neon_pgvector
+  llm_transport: in_process
   alerts:
     # Billing guardrails, applied by scripts/apply_billing_guardrails.py.
     # The amounts live here so the threshold changes by config, not code.
@@ -36,6 +37,7 @@ staging:
   removal_policy: destroy
   key_mode: aws_managed
   vector_store: aurora_pgvector
+  llm_transport: in_process
   alerts:
     monthly_budget_usd: 5
     anomaly_threshold_usd: 5
@@ -60,6 +62,7 @@ prod:
   removal_policy: retain
   key_mode: aws_managed
   vector_store: neon_pgvector
+  llm_transport: remote_gateway
   alerts:
     # Monthly AWS spend guardrail. The budget alarm is created against this
     # value; changing the threshold later is a config change, not a code change.

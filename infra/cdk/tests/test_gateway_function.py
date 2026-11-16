@@ -107,15 +107,24 @@ def test_gateway_function_runtime_is_python_3_12() -> None:
 
 
 def test_gateway_function_has_master_key_from_ssm() -> None:
-    """The gateway function gets MODEL_GATEWAY_MASTER_KEY from SSM."""
+    """The gateway function gets MODEL_GATEWAY_MASTER_KEY_PARAM pointing to SSM."""
     template = _compute_template_with_gateway('prod', gateway_zip=None)
     gateway = _gateway_lambda(template)
 
     env_vars = gateway['Properties']['Environment']['Variables']
-    master_key = env_vars.get('MODEL_GATEWAY_MASTER_KEY')
-    assert master_key is not None
-    # Should be an SSM dynamic reference
-    assert '{{resolve:ssmsecure:' in str(master_key)
+    param_name = env_vars.get('MODEL_GATEWAY_MASTER_KEY_PARAM')
+    assert param_name is not None
+    # CDK uses a Ref to the SSM parameter resource
+    assert isinstance(param_name, dict) and 'Ref' in param_name
+    param_ref = param_name['Ref']
+    assert param_ref.startswith('ModelGatewayMasterKeyprod')
+    # The parameter should exist as an SSM StringParameter resource
+    ssm_params = template.find_resources('AWS::SSM::Parameter')
+    gateway_params = {k: v for k, v in ssm_params.items() if 'ModelGatewayMasterKey' in k}
+    assert len(gateway_params) == 1
+    gateway_param = next(iter(gateway_params.values()))
+    assert gateway_param['Properties']['Name'] == '/finsight/prod/model_gateway_master_key'
+    assert gateway_param['Properties']['Type'] == 'SecureString'
 
 
 def test_gateway_function_has_response_stream_invoke_mode() -> None:

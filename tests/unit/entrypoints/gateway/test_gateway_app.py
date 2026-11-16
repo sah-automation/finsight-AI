@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from fastapi.testclient import TestClient
 
+import finsight.adapters.gateway as gateway_adapter_module
 from finsight.entrypoints.gateway import app as gateway_app
 
 if TYPE_CHECKING:
@@ -29,17 +30,22 @@ def client() -> TestClient:
 @pytest.fixture()
 def no_master_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gateway_app, 'runtime_settings', dict)
+    # Clear the SSM cache on the adapter module
+    monkeypatch.setattr(gateway_adapter_module, '_MASTER_KEY_CACHE', None)
 
 
 @pytest.fixture()
 def with_master_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gateway_app, 'runtime_settings', lambda: {'master_key': 'secret-key'})
+    # Set the SSM cache on the adapter module
+    monkeypatch.setattr(gateway_adapter_module, '_MASTER_KEY_CACHE', 'secret-key')
 
 
 @pytest.fixture(autouse=True)
 def _reset_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
     """Reset the lazy adapter factory between tests."""
     monkeypatch.setattr(gateway_app, '_adapter_factory', None)
+    monkeypatch.setattr(gateway_adapter_module, '_MASTER_KEY_CACHE', None)
 
 
 CHAT_CHUNKS: list[dict[str, Any]] = [

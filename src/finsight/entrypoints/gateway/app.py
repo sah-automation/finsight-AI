@@ -17,6 +17,7 @@ configuration layer (``finsight.core.config.model_gateway_settings``).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import TYPE_CHECKING, Any
@@ -55,7 +56,10 @@ def _get_adapter() -> Any:
     import importlib  # noqa: PLC0415 - runtime import avoids import-linter
 
     module = importlib.import_module('finsight.adapters.gateway')
-    return module.build_gateway_adapter()
+    runtime = gateway_runtime_settings()
+    master_key_param = runtime.get('master_key_param')
+    region = runtime.get('region')
+    return module.build_gateway_adapter(master_key_param=master_key_param, region=region)
 
 
 def set_adapter_factory(factory: Callable[[], Any]) -> None:
@@ -66,7 +70,15 @@ def set_adapter_factory(factory: Callable[[], Any]) -> None:
 
 def runtime_settings() -> dict[str, str]:
     """Resolve gateway runtime settings (indirection kept for tests)."""
-    return gateway_runtime_settings()
+    settings = gateway_runtime_settings()
+    # Merge in the SSM master key if not already present
+    if 'master_key' not in settings:
+        adapter = _get_adapter()
+        if hasattr(adapter, '_fetch_master_key'):
+            ssm_key = asyncio.run(adapter._fetch_master_key())
+            if ssm_key:
+                settings['master_key'] = ssm_key
+    return settings
 
 
 @app.middleware('http')
