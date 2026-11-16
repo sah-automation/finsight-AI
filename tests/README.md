@@ -39,3 +39,4 @@ Test organization mirroring src structure.
 - Failure: kill job halfway, duplicate message, block provider
 - 85%+ coverage on domain and application
 - Deterministic: no real model calls in unit tests
+# CI trigger
