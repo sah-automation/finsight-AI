@@ -276,7 +276,9 @@ The intended flow, once DI-22 closes:
 3. Run `cdk deploy --all` for the target environment.
 4. Run the smoke checks below.
 
-There is no release/tag workflow yet. Do not add a `v*` tag expecting a deploy.
+A release workflow (`.github/workflows/release.yml`) triggers on `v*` version tags.
+It builds artifacts, generates release notes from merged PRs, creates a GitHub Release,
+and deploys to production.
 
 ## Rollback
 

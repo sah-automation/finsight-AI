@@ -9,14 +9,20 @@ import pytest
 ROOT = Path(__file__).parent.parent
 PROPERTY_CANDIDATE_DIRS = [
     ROOT / 'property',
-    ROOT / 'properties',
-    ROOT / 'property_based',
-    ROOT / 'hypothesis',
-    ROOT / 'unit' / 'property',
-    ROOT / 'unit' / 'properties',
 ]
-MUTATION_CANDIDATE_DIRS = [ROOT / 'mutation', ROOT / 'mutmut', ROOT / 'mutation_testing']
+MUTATION_CANDIDATE_DIRS = [ROOT / 'mutmut']
 SECURITY_CANDIDATE_DIRS = [ROOT / 'security']
+
+# Genuine workflows that should exist after pruning scaffolding duplicates
+GENUINE_WORKFLOWS = [
+    'ci.yml',
+    'web.yml',
+    'openapi.yml',
+    'aws-role-smoke.yml',
+    'golden-live.yml',
+    'security-scan.yml',
+    'advanced-quality-gates.yml',
+]
 
 
 def _dirs(paths: list[Path]) -> list[Path]:
@@ -44,8 +50,37 @@ class TestAdvancedQualityGatesCoverage:
             security_dir.glob('*static*security*.py')
         )
 
-    def test_advanced_quality_workflow_exists(self) -> None:
-        assert (ROOT.parent / '.github' / 'workflows' / 'advanced-quality-gates.yml').exists()
+    def test_genuine_workflows_exist(self) -> None:
+        workflows_dir = ROOT.parent / '.github' / 'workflows'
+        for wf in GENUINE_WORKFLOWS:
+            assert (workflows_dir / wf).exists(), f'genuine workflow missing: {wf}'
+
+    def test_no_scaffolding_workflows_remain(self) -> None:
+        """Ensure byte-identical scaffolding stubs have been removed."""
+        workflows_dir = ROOT.parent / '.github' / 'workflows'
+        scaffolding_names = {
+            'advanced-quality.yml',
+            'quality-gates.yml',
+            'container-scan.yml',
+            'dependency-scan.yml',
+            'hypothesis.yml',
+            'infra-scan.yml',
+            'mutation-testing.yml',
+            'mutation.yml',
+            'mutmut.yml',
+            'property-tests.yml',
+            'property.yml',
+            'sast.yml',
+            'security-scanning.yml',
+            'static-security-scan.yml',
+            'static-security.yml',
+            'load.yml',
+            'load-performance.yml',
+            'perf.yml',
+            'performance.yml',
+        }
+        for wf in scaffolding_names:
+            assert not (workflows_dir / wf).exists(), f'scaffolding workflow still present: {wf}'
 
     def test_mutmut_config_exists(self) -> None:
         pyproject = (ROOT.parent / 'pyproject.toml').read_text()

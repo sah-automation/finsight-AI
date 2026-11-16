@@ -538,6 +538,7 @@ ignore_imports = [
 modules = [
     "finsight.adapters.llm",
     "finsight.adapters.embedding",
+    "finsight.adapters.gateway",
     "finsight.adapters.vector_store",
     "finsight.adapters.rerank",
     "finsight.adapters.readers",

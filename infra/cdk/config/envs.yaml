@@ -1,3 +1,4 @@
+---
 dev:
   name: dev
   # Application ENVIRONMENT value the config loader validates (it accepts
@@ -6,6 +7,7 @@ dev:
   removal_policy: destroy
   key_mode: aws_managed
   vector_store: neon_pgvector
+  llm_transport: in_process
   alerts:
     # Billing guardrails, applied by scripts/apply_billing_guardrails.py.
     # The amounts live here so the threshold changes by config, not code.
@@ -20,8 +22,7 @@ dev:
   api_gateway:
     custom_domain: api.finsight.sahcreatives.com
     # ACM certificate ARN in us-east-1. Required for custom domain.
-    # Set to empty string to allow synthesis without cert (follow-up adds cert).
-    acm_certificate_arn: ""
+    acm_certificate_arn: "arn:aws:acm:us-east-1:069632763967:certificate/27c3a5d3-ad9c-470d-9ae7-65fc56eef757"
     throttling:
       rate_limit: 10
       burst_limit: 20
@@ -35,6 +36,7 @@ staging:
   removal_policy: destroy
   key_mode: aws_managed
   vector_store: aurora_pgvector
+  llm_transport: in_process
   alerts:
     monthly_budget_usd: 5
     anomaly_threshold_usd: 5
@@ -45,7 +47,7 @@ staging:
     aurora_deletion_protection: false
   api_gateway:
     custom_domain: api.finsight.sahcreatives.com
-    acm_certificate_arn: ""
+    acm_certificate_arn: "arn:aws:acm:us-east-1:069632763967:certificate/27c3a5d3-ad9c-470d-9ae7-65fc56eef757"
     throttling:
       rate_limit: 10
       burst_limit: 20
@@ -58,7 +60,8 @@ prod:
   environment: production
   removal_policy: retain
   key_mode: aws_managed
-  vector_store: aurora_pgvector
+  vector_store: neon_pgvector
+  llm_transport: remote_gateway
   alerts:
     # Monthly AWS spend guardrail. The budget alarm is created against this
     # value; changing the threshold later is a config change, not a code change.
@@ -72,7 +75,7 @@ prod:
     aurora_deletion_protection: true
   api_gateway:
     custom_domain: api.finsight.sahcreatives.com
-    acm_certificate_arn: ""
+    acm_certificate_arn: "arn:aws:acm:us-east-1:069632763967:certificate/27c3a5d3-ad9c-470d-9ae7-65fc56eef757"
     throttling:
       rate_limit: 10
       burst_limit: 20

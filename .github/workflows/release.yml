@@ -1,0 +1,282 @@
+---
+name: Release
+
+# Issue #326: Release workflow — v* tag to notes, artifacts, and deploy
+# Triggered on version tags (v*), generates release notes from merged PRs,
+# attaches build artifacts (Lambda zips + checksums, container image),
+# creates the GitHub Release, and triggers the deploy workflow for production.
+
+"on":
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  id-token: write
+  contents: write
+  actions: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  # Application environment maps CDK env to config loader value
+  ENVIRONMENT: production
+
+jobs:
+  build:
+    name: Build Lambda packages & container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      api_zip: ${{ steps.build.outputs.api_zip }}
+      gateway_zip: ${{ steps.build.outputs.gateway_zip }}
+      api_sha256: ${{ steps.build.outputs.api_sha256 }}
+      gateway_sha256: ${{ steps.build.outputs.gateway_sha256 }}
+      container_image: ${{ steps.docker.outputs.image }}
+      ecr_repo: ${{ steps.ecr.outputs.repo_uri }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for generating release notes from git history
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Sync dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Build Lambda packages
+        id: build
+        run: |
+          uv run python scripts/build_lambda.py --output dist/lambda --package all
+          echo "api_zip=dist/lambda/api.zip" >> $GITHUB_OUTPUT
+          echo "gateway_zip=dist/lambda/gateway.zip" >> $GITHUB_OUTPUT
+          echo "api_sha256=$(cat dist/lambda/api.zip.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "gateway_sha256=$(cat dist/lambda/gateway.zip.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-build-${{ github.run_id }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push container image
+        id: docker
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.ref_name }}
+        run: |
+          REPO_URI="${ECR_REGISTRY}/finsight-ai"
+          docker build -t ${REPO_URI}:${IMAGE_TAG} .
+          docker push ${REPO_URI}:${IMAGE_TAG}
+          echo "image=${REPO_URI}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "repo_uri=${REPO_URI}" >> $GITHUB_OUTPUT
+
+      - name: Upload Lambda artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-packages-release
+          path: |
+            dist/lambda/api.zip
+            dist/lambda/api.zip.sha256
+            dist/lambda/gateway.zip
+            dist/lambda/gateway.zip.sha256
+          retention-days: 30
+
+  generate-notes:
+    name: Generate release notes
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      notes: ${{ steps.notes.outputs.notes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install gh CLI
+        run: |
+          sudo apt-get update && sudo apt-get install -y gh
+
+      - name: Generate release notes
+        id: notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_SHA256: ${{ needs.build.outputs.api_sha256 }}
+          GATEWAY_SHA256: ${{ needs.build.outputs.gateway_sha256 }}
+        run: |
+          uv run python scripts/generate_release_notes.py \
+            --tag "${{ github.ref_name }}" \
+            --api-sha256 "${API_SHA256}" \
+            --gateway-sha256 "${GATEWAY_SHA256}" \
+            --output release_notes.md
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release_notes.md
+          retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build, generate-notes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download Lambda artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-packages-release
+          path: dist/lambda
+
+      - name: Download release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: .
+
+      - name: Verify checksums
+        run: |
+          cd dist/lambda
+          sha256sum -c api.zip.sha256
+          sha256sum -c gateway.zip.sha256
+
+      - name: Update release notes with ECR image
+        run: |
+          sed -i \
+            "s|finsight-ai:${{ github.ref_name }}|${{ needs.build.outputs.ecr_repo }}:${{ github.ref_name }}|g" \
+            release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body_path: release_notes.md
+          files: |
+            dist/lambda/api.zip
+            dist/lambda/api.zip.sha256
+            dist/lambda/gateway.zip
+            dist/lambda/gateway.zip.sha256
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: false
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [build, create-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Lambda artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-packages-release
+          path: dist/lambda
+
+      - name: Verify checksums
+        run: |
+          cd dist/lambda
+          sha256sum -c api.zip.sha256
+          sha256sum -c gateway.zip.sha256
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-prod-${{ github.run_id }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Sync CDK dependencies
+        run: |
+          cd infra/cdk
+          uv sync --frozen --no-project --with-requirements requirements.txt
+
+      - name: Synthesize CDK stacks
+        run: |
+          cd infra/cdk
+          CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
+            uv run --no-project --with-requirements requirements.txt \
+            python -m app.app
+
+      - name: Deploy CDK stacks
+        id: deploy
+        env:
+          CDK_ENV: prod
+          LAMBDA_ZIP: dist/lambda/api.zip
+          GATEWAY_ZIP: dist/lambda/gateway.zip
+        run: |
+          cd infra/cdk
+          CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
+            uv run --no-project --with-requirements requirements.txt \
+            cdk deploy --all \
+            --require-approval never
+
+      - name: Capture custom domain from CDK output
+        if: success()
+        id: domain
+        run: |
+          # Query the custom domain from the deployed ApiGateway stack
+          DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name FinSight-${{ env.CDK_ENV }}-ApiGateway \
+            --query 'Stacks[0].Outputs[?OutputKey==`CustomDomainName`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "None" ]; then
+            echo "::error::Custom domain not found in stack outputs"
+            exit 1
+          fi
+          echo "custom_domain=$DOMAIN" >> $GITHUB_OUTPUT
+          echo "DEPLOYED_CUSTOM_DOMAIN=$DOMAIN" >> $GITHUB_ENV

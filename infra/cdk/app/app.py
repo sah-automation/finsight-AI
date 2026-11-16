@@ -33,6 +33,13 @@ def _lambda_asset() -> str | None:
     return str(candidate) if candidate.exists() else None
 
 
+def _gateway_asset() -> str | None:
+    """Return the gateway zip path when it has been built, otherwise None."""
+    default_zip = CDK_ROOT.parents[1] / 'dist' / 'lambda' / 'gateway.zip'
+    candidate = Path(os.getenv('GATEWAY_ZIP', str(default_zip)))
+    return str(candidate) if candidate.exists() else None
+
+
 def main() -> None:
     """Build the stack graph for one environment and synthesize it."""
     app = cdk.App()
@@ -86,6 +93,7 @@ def main() -> None:
         auth=auth,
         api_gateway=api_gateway,
         lambda_zip=_lambda_asset(),
+        gateway_zip=_gateway_asset(),
         step_functions=step_functions,
         observability=observability,
     )

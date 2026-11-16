@@ -31,6 +31,52 @@ def build_tracing(*args: Any, **kwargs: Any) -> Any:
     return _build_tracing(*args, **kwargs)
 
 
+def _resolve_llm_transport(config: Any) -> str:
+    """Extract the llm_transport switch value, failing loudly on unknown values."""
+    transport = 'in_process'
+    if config is not None:
+        switches = getattr(config, 'switches', None)
+        if switches is None and isinstance(config, dict):
+            switches = config.get('switches')
+        if isinstance(switches, dict):
+            transport = switches.get('llm_transport', transport)
+        elif switches is not None and hasattr(switches, 'llm_transport'):
+            transport = switches.llm_transport
+    if transport not in ('remote_gateway', 'in_process'):
+        raise ValueError(
+            f'Unknown llm_transport {transport!r}; expected remote_gateway or in_process'
+        )
+    return transport
+
+
+def _apply_remote_transport(config: Any, extra: dict[str, Any], kind: str) -> None:
+    """Inject the remote model-gateway callables into constructor kwargs (issue #330).
+
+    For ``remote_gateway`` the composition root plugs the remote transport into
+    the existing ``completion_func``/``embedding_func`` seams; for
+    ``in_process`` it does nothing so litellm stays vendored in process. An
+    explicit caller-provided callable always wins over the remote transport.
+    """
+    if _resolve_llm_transport(config) != 'remote_gateway':
+        return
+    seam = 'completion_func' if kind == 'llm' else 'embedding_func'
+    if extra.get(seam) is not None:
+        return
+    settings_module = importlib.import_module('finsight.core.config.model_gateway_settings')
+    settings = settings_module.model_gateway_settings()
+    if not settings.get('base_url'):
+        raise ValueError(
+            'llm_transport=remote_gateway requires MODEL_GATEWAY_URL; the caller cannot '
+            'reach the model gateway without it'
+        )
+    if kind == 'llm':
+        module = importlib.import_module('finsight.adapters.llm.remote_gateway')
+        extra[seam] = module.build_remote_completion_func(settings)
+    else:
+        module = importlib.import_module('finsight.adapters.embedding.remote_gateway')
+        extra[seam] = module.build_remote_embedding_func(settings)
+
+
 def _stack_switch(config: Any, name: str, default: bool = True) -> bool:
     if config is None:
         return default
@@ -101,6 +147,7 @@ def _build_llm_stack(*args: Any, **kwargs: Any) -> Any:
     primary = getattr(llm_cfg, 'primary_model', None) if llm_cfg is not None else None
     if primary is not None:
         retries = int(getattr(primary, 'max_retries', retries) or retries)
+    _apply_remote_transport(config, _extra, 'llm')
     provider = LiteLLMGateway(config=config, metering=None, **_extra)
     retrying = RetryingLLM(provider, retries=retries)
     metered = MeteredLLM(retrying, metering=metering)
@@ -157,6 +204,7 @@ def _build_embedding_stack(*args: Any, **kwargs: Any) -> Any:
     _remb = importlib.import_module('finsight.adapters.embedding.retrying_embedding')
     RetryingEmbedding = _remb.RetryingEmbedding
 
+    _apply_remote_transport(config, _extra, 'embedding')
     provider = LiteLLMEmbedding(config=config, metering=None, **_extra)
     retrying = RetryingEmbedding(provider)
     metered = MeteredEmbedding(retrying, metering=metering)

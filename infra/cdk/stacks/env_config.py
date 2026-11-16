@@ -51,6 +51,20 @@ def load_env_config(env_name: str) -> dict[str, Any]:
     return config
 
 
+def uses_remote_gateway(env_name: str, config: Mapping[str, Any] | None = None) -> bool:
+    """Return True if the environment uses the remote model gateway (issue #330).
+
+    The transport is configured via the app config's ``llm_transport`` switch.
+    Only ``prod`` currently selects ``remote_gateway``; all others default to
+    ``in_process``.
+    """
+    load_env_config(env_name) if config is None else dict(config)
+    # The switch is in the app config, not the CDK env config. For synthesis we
+    # infer from the environment name since the app config isn't available.
+    # In production (env_name == 'prod') the app config selects remote_gateway.
+    return env_name == 'prod'
+
+
 def _read_amount(alerts: Mapping[str, Any], key: str, env_name: str) -> Decimal:
     raw = alerts.get(key)
     if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):

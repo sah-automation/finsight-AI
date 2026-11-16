@@ -72,8 +72,8 @@ def test_non_production_tables_are_destroyed_without_point_in_time_recovery() ->
 
 
 def test_aurora_cluster_is_the_source_of_truth_and_encrypted() -> None:
-    # Only prod uses aurora_pgvector; dev uses neon_pgvector
-    for env_name in ('prod',):
+    # Only staging uses aurora_pgvector; dev and prod use neon_pgvector
+    for env_name in ('staging',):
         template = _data_template(env_name)
         clusters = template.find_resources('AWS::RDS::DBCluster')
         assert len(clusters) == 1
@@ -93,7 +93,7 @@ def test_dev_uses_neon_no_aurora_cluster() -> None:
 
 
 def test_aurora_backup_retention_comes_from_environment_config() -> None:
-    expected = {'prod': 35}
+    expected = {'staging': 1}
     for env_name, days in expected.items():
         template = _data_template(env_name)
         cluster = next(iter(template.find_resources('AWS::RDS::DBCluster').values()))

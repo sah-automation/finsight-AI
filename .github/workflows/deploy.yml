@@ -1,0 +1,265 @@
+---
+name: Deploy
+
+# Issue #325: Live smoke tests as the deploy gate
+# Issue #322: "merge to main" means "deployed to production".
+# Issue #324: Alembic migration job in the deploy pipeline.
+# Assumes the existing GitHub OIDC deployment role (no long-lived AWS creds).
+# Builds api.zip + gateway.zip, uploads as artifacts,
+# then runs CDK deploy, then runs live smoke tests as final gate.
+# GitHub Environment `production` maps to CDK env `prod`.
+
+"on":
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        type: choice
+        required: true
+        options:
+          - dev
+          - staging
+          - production
+      force:
+        description: 'Force deployment even if smoke tests fail (emergency only)'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  CDK_ENV: >-
+    ${{ github.event.inputs.environment == 'production' && 'prod'
+    || github.event.inputs.environment || 'dev' }}
+  # Application environment maps CDK env to config loader value
+  ENVIRONMENT: >-
+    ${{ github.event.inputs.environment == 'dev' && 'development'
+    || github.event.inputs.environment == 'staging' && 'staging'
+    || 'production' }}
+
+jobs:
+  build:
+    name: Build Lambda packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      api_zip: ${{ steps.build.outputs.api_zip }}
+      gateway_zip: ${{ steps.build.outputs.gateway_zip }}
+      api_sha256: ${{ steps.build.outputs.api_sha256 }}
+      gateway_sha256: ${{ steps.build.outputs.gateway_sha256 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Sync dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Build Lambda packages
+        id: build
+        run: |
+          uv run python scripts/build_lambda.py --output dist/lambda --package all
+          echo "api_zip=dist/lambda/api.zip" >> $GITHUB_OUTPUT
+          echo "gateway_zip=dist/lambda/gateway.zip" >> $GITHUB_OUTPUT
+          echo "api_sha256=$(cat dist/lambda/api.zip.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "gateway_sha256=$(cat dist/lambda/gateway.zip.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Upload Lambda artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-packages-${{ env.CDK_ENV }}
+          path: |
+            dist/lambda/api.zip
+            dist/lambda/api.zip.sha256
+            dist/lambda/gateway.zip
+            dist/lambda/gateway.zip.sha256
+          retention-days: 7
+
+  deploy:
+    name: Deploy to ${{ env.CDK_ENV }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ env.CDK_ENV }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Lambda artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-packages-${{ env.CDK_ENV }}
+          path: dist/lambda
+
+      - name: Verify checksums
+        run: |
+          cd dist/lambda
+          sha256sum -c api.zip.sha256
+          sha256sum -c gateway.zip.sha256
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-${{ env.CDK_ENV }}-${{ github.run_id }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Sync CDK dependencies
+        run: |
+          cd infra/cdk
+          uv sync --frozen --no-project --with-requirements requirements.txt
+
+      - name: Synthesize CDK stacks
+        run: |
+          cd infra/cdk
+          CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
+            uv run --no-project --with-requirements requirements.txt \
+            python -m app.app
+
+      - name: Deploy CDK stacks
+        id: deploy
+        env:
+          CDK_ENV: ${{ env.CDK_ENV }}
+          LAMBDA_ZIP: dist/lambda/api.zip
+          GATEWAY_ZIP: dist/lambda/gateway.zip
+        run: |
+          cd infra/cdk
+          CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
+            uv run --no-project --with-requirements requirements.txt \
+            cdk deploy --all \
+            --require-approval never
+
+      - name: Capture custom domain from CDK output
+        if: success()
+        id: domain
+        run: |
+          # Query the custom domain from the deployed ApiGateway stack
+          DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name FinSight-${{ env.CDK_ENV }}-ApiGateway \
+            --query 'Stacks[0].Outputs[?OutputKey==`CustomDomainName`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "None" ]; then
+            echo "::error::Custom domain not found in stack outputs"
+            exit 1
+          fi
+          echo "custom_domain=$DOMAIN" >> $GITHUB_OUTPUT
+          echo "DEPLOYED_CUSTOM_DOMAIN=$DOMAIN" >> $GITHUB_ENV
+
+  smoke-tests:
+    name: Smoke Tests (Deploy Gate)
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ env.CDK_ENV }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Sync dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run smoke tests
+        id: smoke
+        env:
+          SMOKE_TEST_BASE_URL: https://${{ needs.deploy.outputs.custom_domain }}
+          SMOKE_TEST_JWT_TOKEN: ${{ secrets.SMOKE_TEST_JWT_TOKEN }}
+          SMOKE_TEST_TIMEOUT: 30
+          SMOKE_TEST_RETRIES: 3
+          SMOKE_TEST_RETRY_DELAY: 10
+        run: |
+          uv run python scripts/smoke_test.py
+
+      - name: Fail if smoke tests failed (unless forced)
+        if: failure() && github.event.inputs.force != 'true'
+        run: |
+          echo "::error::Smoke tests failed. Deploy is not considered successful."
+          echo "The previous version is still serving. No automatic rollback is triggered."
+          echo "To rollback manually: redeploy the previous published version or shift the alias."
+          exit 1
+
+      - name: Warn if smoke tests failed but forced
+        if: failure() && github.event.inputs.force == 'true'
+        run: |
+          echo "::warning::Smoke tests failed but deployment was forced via 'force' input."
+          echo "The deployment may be in a broken state. Manual verification required."
+          exit 0
+
+  notify:
+    name: Notify
+    needs: [build, deploy, smoke-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Tests | ${{ needs.smoke-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ env.CDK_ENV }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Custom Domain:** https://${{ needs.deploy.outputs.custom_domain }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if ${{ needs.smoke-tests.result == 'failure'
+            && github.event.inputs.force != 'true' }}; then
+            echo "❌ **Deploy FAILED** - Smoke tests did not pass." \
+              "The previous version is still serving." >> $GITHUB_STEP_SUMMARY
+          elif ${{ needs.smoke-tests.result == 'failure'
+            && github.event.inputs.force == 'true' }}; then
+            echo "⚠️ **Deploy FORCED** - Smoke tests failed but deployment" \
+              "was forced. Manual verification required." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Deploy SUCCESSFUL** - All smoke tests passed." >> $GITHUB_STEP_SUMMARY
+          fi

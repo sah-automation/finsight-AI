@@ -82,7 +82,23 @@ def test_stage_has_access_log_settings() -> None:
 
 def test_custom_domain_mapping_skipped_when_cert_empty() -> None:
     """Test that custom domain mapping is NOT created when ACM certificate ARN is empty."""
-    template = _template('dev')
+    # Create a stack with an empty cert ARN to test the empty-cert behavior
+    app = cdk.App()
+    env_name = 'dev'
+    known_envs = load_envs()
+    config = dict(known_envs[env_name])
+    config['api_gateway']['acm_certificate_arn'] = ''
+    env = cdk.Environment(account='123456789012', region='us-east-1')
+
+    stack = ApiGatewayStack(
+        app,
+        f'FinSight-{env_name}-ApiGateway',
+        env=env,
+        env_name=env_name,
+        env_config=config,
+    )
+    template = Template.from_stack(stack)
+
     # When cert is empty, no DomainName or ApiMapping should be created
     domain_names = template.find_resources('AWS::ApiGatewayV2::DomainName')
     api_mappings = template.find_resources('AWS::ApiGatewayV2::ApiMapping')

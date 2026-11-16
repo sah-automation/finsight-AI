@@ -35,6 +35,7 @@ SWITCH_TO_TEST_FILE = {
     'vector_store': 'test_vector_store_switch.py',
     'secrets_provider': 'test_secrets_provider_switch.py',  # pragma: allowlist secret
     'observability_backend': 'test_observability_backend_switch.py',
+    'llm_transport': 'test_llm_transport_switch.py',
 }
 
 
