@@ -181,3 +181,18 @@ def test_custom_domain_name_is_exported_as_output() -> None:
     value = output['Value']
     # The value must come from the api_gateway config's custom domain.
     assert _CUSTOM_DOMAIN in json.dumps(value)
+
+
+def test_raw_api_endpoint_is_exported_as_output() -> None:
+    """The execute-api endpoint is exported so smoke tests can fall back to it.
+
+    When the custom domain's DNS is not (yet) resolving, the deploy gate must
+    still be able to smoke-test the live API against the raw endpoint.
+    """
+    template = _template('dev')
+    outputs = template.find_outputs('HttpApiUrldev')
+    assert len(outputs) == 1
+    output = next(iter(outputs.values()))
+    value = json.dumps(output['Value'])
+    # The endpoint is the HttpApi's ApiEndpoint attribute (Fn::GetAtt).
+    assert 'ApiEndpoint' in value

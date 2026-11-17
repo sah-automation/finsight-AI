@@ -3,7 +3,7 @@
 The smoke test script (Stage D-5) is the final gate of the deploy workflow.
 It hits the live custom domain and verifies:
 1. GET /health returns 200 with {"status": "ok"}
-2. POST /questions/ask returns a structured SSE answer envelope
+2. POST /ask returns a structured SSE answer envelope
 """
 
 from __future__ import annotations
@@ -227,6 +227,13 @@ class TestSmokeTestScript:
         assert len(result['events']) == 3
         assert 'status' in result['event_types']
         assert 'complete' in result['event_types']
+        # Regression: the ask endpoint lives at /ask (router prefix), not
+        # /questions/ask — the wrong path used to 401/404 in the deploy gate.
+        mock_client.stream.assert_called_once_with(
+            'POST',
+            'https://api.example.com/ask',
+            json={'question': 'health check', 'company_id': 'smoke-test-readonly-tenant'},
+        )
 
     @patch('httpx.Client')
     def test_test_questions_ask_failure_status_code(self, mock_client_class) -> None:

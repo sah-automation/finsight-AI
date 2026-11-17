@@ -339,6 +339,14 @@ class ApiGatewayStack(Stack):
             description='HTTPS entry point for the deployed API',
         )
         del cfn_output
+        # Raw execute-api endpoint: smoke tests fall back to it when the
+        # custom domain's DNS does not resolve yet.
+        CfnOutput(
+            self,
+            f'HttpApiUrl{env_name}',
+            value=self.http_api_url,
+            description='Raw API Gateway HTTPS endpoint (DNS-independent fallback)',
+        )
         if self.domain_mapping is not None:
             self.custom_domain_name = custom_domain
         if self.web_acl is not None:

@@ -5,7 +5,7 @@ This script is the final gate of the deploy workflow. It hits the live
 custom domain (never the raw API Gateway URL) and verifies:
 
 1. GET /health returns 200 with the expected JSON: {"status": "ok"}
-2. POST /questions/ask returns a structured answer envelope (SSE stream)
+2. POST /ask returns a structured answer envelope (SSE stream)
 
 No mutating operations are performed. A smoke failure fails the workflow
 loudly; no rollback is triggered automatically (documented manual/alias
@@ -129,12 +129,12 @@ def test_health(base_url: str, client: httpx.Client) -> dict[str, Any]:
 
 
 def test_questions_ask(base_url: str, client: httpx.Client) -> dict[str, Any]:
-    """Test POST /questions/ask endpoint.
+    """Test POST /ask endpoint.
 
     Expected: 200 OK with SSE stream containing a structured answer envelope.
     We verify the stream starts and contains at least a 'status' event.
     """
-    url = f'{base_url}/questions/ask'
+    url = f'{base_url}/ask'
     # Use a reserved test tenant that is guaranteed read-only
     payload = {
         'question': 'health check',
@@ -259,7 +259,7 @@ def run_smoke_tests(config: SmokeTestConfig) -> int:
     def ask_attempt(attempt: int) -> dict[str, Any]:
         return test_questions_ask(config.base_url, client)
 
-    ask_result = _retry_with_logging(ask_attempt, 'POST /questions/ask', config)
+    ask_result = _retry_with_logging(ask_attempt, 'POST /ask', config)
     print('  ✓ Questions ask passed')
     print(f'    Event types: {ask_result["event_types"]}')
 
