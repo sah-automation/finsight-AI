@@ -22,11 +22,12 @@ import argparse
 import os
 import subprocess
 import sys
-from dataclasses import dataclass
-from urllib.parse import unquote, urlparse
 
 import boto3  # type: ignore[import-untyped]
 from botocore.exceptions import BotoCoreError, ClientError  # type: ignore[import-untyped]
+
+# Re-exported for backwards compatibility with existing imports.
+from neon_connection import build_vector_db_env, parse_database_url
 
 # SSM parameter path pattern (matches app's secrets provider)
 SSM_PARAMETER_PATTERN = '/finsight/{env}/neon/database_url'
@@ -37,62 +38,11 @@ ENV_MAPPING = {
 }
 
 
-@dataclass(frozen=True)
-class VectorDbConfig:
-    """Vector database connection configuration."""
-
-    host: str
-    port: int
-    database: str
-    username: str
-    password: str
-    sslmode: str
-
-
 def get_ssm_parameter(parameter_name: str, region: str) -> str:
     """Retrieve a SecureString parameter from SSM Parameter Store."""
     client = boto3.client('ssm', region_name=region)
     response = client.get_parameter(Name=parameter_name, WithDecryption=True)
     return response['Parameter']['Value']  # type: ignore[no-any-return]
-
-
-def parse_database_url(url: str) -> VectorDbConfig:
-    """Parse a PostgreSQL connection URL into a VectorDbConfig.
-
-    Expected format: postgresql://user:pwd@host:port/db?sslmode=require # pragma: allowlist secret
-    """
-    parsed = urlparse(url)
-    if parsed.scheme not in ('postgresql', 'postgres'):
-        raise ValueError(f'Expected postgresql:// URL, got {parsed.scheme}://')
-
-    # Extract password (may contain special chars) and decode URL encoding
-    password = unquote(parsed.password or '')
-
-    # Parse query parameters for sslmode
-    sslmode = 'require'
-    if parsed.query:
-        query_params = dict(q.split('=') for q in parsed.query.split('&') if '=' in q)
-        sslmode = query_params.get('sslmode', 'require')
-
-    return VectorDbConfig(
-        host=parsed.hostname or '',
-        port=parsed.port or 5432,
-        database=parsed.path.lstrip('/') if parsed.path else '',
-        username=parsed.username or '',
-        password=password,
-        sslmode=sslmode,
-    )
-
-
-def build_vector_db_env(config: VectorDbConfig) -> dict[str, str]:
-    """Build VECTOR_DB_* environment variables dict for the config loader."""
-    return {
-        'VECTOR_DB_HOST': config.host,
-        'VECTOR_DB_PORT': str(config.port),
-        'VECTOR_DB_NAME': config.database,
-        'VECTOR_DB_USER': config.username,
-        'VECTOR_DB_PASSWORD': config.password,
-    }
 
 
 def run_alembic_upgrade(

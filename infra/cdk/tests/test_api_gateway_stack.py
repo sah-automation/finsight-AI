@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import aws_cdk as cdk
 from aws_cdk.assertions import Template
 from stacks.api_gateway import ApiGatewayStack, _load_api_gateway_config
@@ -47,13 +49,14 @@ def test_http_api_is_created() -> None:
 
 
 def test_http_api_has_throttle_settings() -> None:
+    """HTTP API stages configure throttling via DefaultRouteSettings (v2 spec)."""
     template = _template('dev')
     stages = template.find_resources('AWS::ApiGatewayV2::Stage')
     assert len(stages) == 1
     stage = _first_stage(template)
-    throttle = stage['Properties'].get('ThrottleSettings', {})
-    assert throttle.get('RateLimit') == _EXPECTED_RATE_LIMIT
-    assert throttle.get('BurstLimit') == _EXPECTED_BURST_LIMIT
+    route_settings = stage['Properties'].get('DefaultRouteSettings', {})
+    assert route_settings.get('ThrottlingRateLimit') == _EXPECTED_RATE_LIMIT
+    assert route_settings.get('ThrottlingBurstLimit') == _EXPECTED_BURST_LIMIT
 
 
 def test_access_log_group_is_created() -> None:
@@ -163,3 +166,33 @@ def test_config_validation_fails_on_invalid_throttling() -> None:
 
     # We can't easily test this without modifying the config file,
     # but the validation logic is covered by the config loader tests
+
+
+def test_custom_domain_name_is_exported_as_output() -> None:
+    """The deploy workflow captures the domain from the stack outputs.
+
+    ``aws cloudformation describe-stacks`` reads ``CustomDomainName``;
+    without the output the capture step fails loudly after every deploy.
+    """
+    template = _template('dev')
+    outputs = template.find_outputs('CustomDomainNamedev')
+    assert len(outputs) == 1
+    output = next(iter(outputs.values()))
+    value = output['Value']
+    # The value must come from the api_gateway config's custom domain.
+    assert _CUSTOM_DOMAIN in json.dumps(value)
+
+
+def test_raw_api_endpoint_is_exported_as_output() -> None:
+    """The execute-api endpoint is exported so smoke tests can fall back to it.
+
+    When the custom domain's DNS is not (yet) resolving, the deploy gate must
+    still be able to smoke-test the live API against the raw endpoint.
+    """
+    template = _template('dev')
+    outputs = template.find_outputs('HttpApiUrldev')
+    assert len(outputs) == 1
+    output = next(iter(outputs.values()))
+    value = json.dumps(output['Value'])
+    # The endpoint is the HttpApi's ApiEndpoint attribute (Fn::GetAtt).
+    assert 'ApiEndpoint' in value

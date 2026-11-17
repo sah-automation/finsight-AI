@@ -87,9 +87,9 @@ def _client(event: dict[str, Any]) -> tuple[str, int]:
     return (str(headers.get('x-forwarded-for') or '127.0.0.1'), 0)
 
 
-async def _asgi_response(app: Any, event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Translate an API Gateway event to ASGI, run the app, build a response."""
-    scope: dict[str, Any] = {
+def _asgi_scope(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Build the ASGI ``http`` scope for an API Gateway / Lambda URL event."""
+    return {
         'type': 'http',
         'asgi': {'version': '3.0'},
         'http_version': '1.1',
@@ -106,9 +106,27 @@ async def _asgi_response(app: Any, event: dict[str, Any], context: Any) -> dict[
         'aws.context': context,
     }
 
+
+async def _asgi_response(app: Any, event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Translate an API Gateway event to ASGI, run the app, build a response."""
+    scope = _asgi_scope(event, context)
+
     response: dict[str, Any] = {'status': 500, 'headers': [], 'body': b''}
+    body_sent = False
+    response_done = asyncio.Event()
 
     async def receive() -> dict[str, Any]:
+        # ASGI: after the full request body has been delivered, subsequent
+        # receive() calls (Starlette streaming responses wait for a client
+        # disconnect) must eventually yield ``http.disconnect`` — a second
+        # ``http.request`` is a protocol error and crashes the response.
+        # The disconnect is only signalled once the whole response has been
+        # sent: an early disconnect would cancel an in-flight stream.
+        nonlocal body_sent
+        if body_sent:
+            await response_done.wait()
+            return {'type': 'http.disconnect'}
+        body_sent = True
         return {
             'type': 'http.request',
             'body': _raw_body(event),
@@ -117,6 +135,8 @@ async def _asgi_response(app: Any, event: dict[str, Any], context: Any) -> dict[
 
     async def send(message: dict[str, Any]) -> None:
         message_type = message.get('type')
+        if message_type == 'http.response.body' and not message.get('more_body', False):
+            response_done.set()
         if message_type == 'http.response.start':
             response['status'] = int(message.get('status', 200))
             response['headers'] = [

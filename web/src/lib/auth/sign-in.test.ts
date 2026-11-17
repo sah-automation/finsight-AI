@@ -24,17 +24,17 @@ function user(permissions: string[]): CurrentUser {
 
 describe('sign-in request handling', () => {
   it('accepts a trimmed email and password', () => {
-    expect(parseSignInCredentials({ email: ' user@example.com ', password: 'secret' })).toEqual({
+    expect(parseSignInCredentials({ email: ' user@example.com ', password: 'secret' })).toEqual({  // pragma: allowlist secret
       email: 'user@example.com',
-      password: 'secret',
+      password: 'secret',  // pragma: allowlist secret
     });
   });
 
   it('rejects missing, malformed or oversized credentials', () => {
     expect(parseSignInCredentials(null)).toBeNull();
-    expect(parseSignInCredentials({ email: '', password: 'secret' })).toBeNull();
+    expect(parseSignInCredentials({ email: '', password: 'secret' })).toBeNull();  // pragma: allowlist secret
     expect(parseSignInCredentials({ email: 'user@example.com' })).toBeNull();
-    expect(parseSignInCredentials({ email: 'not-an-email', password: 'secret' })).toBeNull();
+    expect(parseSignInCredentials({ email: 'not-an-email', password: 'secret' })).toBeNull();  // pragma: allowlist secret
     expect(
       parseSignInCredentials({ email: 'user@example.com', password: 'x'.repeat(1_025) }),
     ).toBeNull();

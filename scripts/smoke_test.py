@@ -5,7 +5,7 @@ This script is the final gate of the deploy workflow. It hits the live
 custom domain (never the raw API Gateway URL) and verifies:
 
 1. GET /health returns 200 with the expected JSON: {"status": "ok"}
-2. POST /questions/ask returns a structured answer envelope (SSE stream)
+2. POST /ask returns a structured answer envelope (SSE stream)
 
 No mutating operations are performed. A smoke failure fails the workflow
 loudly; no rollback is triggered automatically (documented manual/alias
@@ -21,9 +21,12 @@ import os
 import sys
 import time
 import traceback
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 HTTP_OK = 200
 
@@ -63,7 +66,7 @@ def _make_http_client(config: SmokeTestConfig) -> httpx.Client:
 
 
 def _retry_with_logging(
-    attempt_fn: callable,
+    attempt_fn: Callable[[int], Any],
     label: str,
     config: SmokeTestConfig,
     *,
@@ -128,13 +131,13 @@ def test_health(base_url: str, client: httpx.Client) -> dict[str, Any]:
     return data
 
 
-def test_questions_ask(base_url: str, client: httpx.Client) -> dict[str, Any]:
-    """Test POST /questions/ask endpoint.
+def test_ask(base_url: str, client: httpx.Client) -> dict[str, Any]:
+    """Test POST /ask endpoint.
 
     Expected: 200 OK with SSE stream containing a structured answer envelope.
     We verify the stream starts and contains at least a 'status' event.
     """
-    url = f'{base_url}/questions/ask'
+    url = f'{base_url}/ask'
     # Use a reserved test tenant that is guaranteed read-only
     payload = {
         'question': 'health check',
@@ -257,9 +260,9 @@ def run_smoke_tests(config: SmokeTestConfig) -> int:
 
     # Test questions/ask endpoint with retries
     def ask_attempt(attempt: int) -> dict[str, Any]:
-        return test_questions_ask(config.base_url, client)
+        return test_ask(config.base_url, client)
 
-    ask_result = _retry_with_logging(ask_attempt, 'POST /questions/ask', config)
+    ask_result = _retry_with_logging(ask_attempt, 'POST /ask', config)
     print('  ✓ Questions ask passed')
     print(f'    Event types: {ask_result["event_types"]}')
 

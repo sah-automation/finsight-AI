@@ -4,10 +4,12 @@ name: Deploy
 # Issue #325: Live smoke tests as the deploy gate
 # Issue #322: "merge to main" means "deployed to production".
 # Issue #324: Alembic migration job in the deploy pipeline.
+# Issue #327: production deployment executed and verified.
 # Assumes the existing GitHub OIDC deployment role (no long-lived AWS creds).
-# Builds api.zip + gateway.zip, uploads as artifacts,
-# then runs CDK deploy, then runs live smoke tests as final gate.
-# GitHub Environment `production` maps to CDK env `prod`.
+# Pipeline: build api.zip + gateway.zip → deploy infrastructure stacks →
+# run Alembic migration → deploy the Compute stack → sync secret-backed
+# Lambda env vars from SSM → live smoke tests as final gate.
+# GitHub environment `production` maps to CDK env `prod`.
 
 "on":
   push:
@@ -38,18 +40,47 @@ concurrency:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
-  CDK_ENV: >-
-    ${{ github.event.inputs.environment == 'production' && 'prod'
-    || github.event.inputs.environment || 'dev' }}
-  # Application environment maps CDK env to config loader value
-  ENVIRONMENT: >-
-    ${{ github.event.inputs.environment == 'dev' && 'development'
-    || github.event.inputs.environment == 'staging' && 'staging'
-    || 'production' }}
 
 jobs:
+  resolve:
+    # GitHub does not allow the `env` context in a job's `environment` field,
+    # and a push to main must map to prod — resolve the targets once here and
+    # pass them to every later job through `needs` outputs (which ARE allowed
+    # in `environment`).
+    name: Resolve deployment target
+    runs-on: ubuntu-latest
+    outputs:
+      cdk_env: ${{ steps.target.outputs.cdk_env }}
+      deploy_env: ${{ steps.target.outputs.deploy_env }}
+    steps:
+      - name: Resolve environment mapping
+        id: target
+        env:
+          INPUT_ENV: ${{ github.event.inputs.environment }}
+        run: |
+          case "$INPUT_ENV" in
+            production)
+              echo "cdk_env=prod" >> "$GITHUB_OUTPUT"
+              echo "deploy_env=production" >> "$GITHUB_OUTPUT"
+              ;;
+            staging)
+              echo "cdk_env=staging" >> "$GITHUB_OUTPUT"
+              echo "deploy_env=staging" >> "$GITHUB_OUTPUT"
+              ;;
+            dev)
+              echo "cdk_env=dev" >> "$GITHUB_OUTPUT"
+              echo "deploy_env=dev" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              # push to main = production deploy (issue #322)
+              echo "cdk_env=prod" >> "$GITHUB_OUTPUT"
+              echo "deploy_env=production" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
   build:
     name: Build Lambda packages
+    needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -87,7 +118,7 @@ jobs:
       - name: Upload Lambda artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lambda-packages-${{ env.CDK_ENV }}
+          name: lambda-packages-${{ needs.resolve.outputs.cdk_env }}
           path: |
             dist/lambda/api.zip
             dist/lambda/api.zip.sha256
@@ -96,14 +127,17 @@ jobs:
           retention-days: 7
 
   deploy:
-    name: Deploy to ${{ env.CDK_ENV }}
-    needs: build
+    name: Deploy to ${{ needs.resolve.outputs.deploy_env }}
+    needs: [resolve, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: ${{ env.CDK_ENV }}
+    environment: ${{ needs.resolve.outputs.deploy_env }}
     permissions:
       id-token: write
       contents: read
+    outputs:
+      custom_domain: ${{ steps.endpoints.outputs.custom_domain }}
+      api_endpoint: ${{ steps.endpoints.outputs.api_endpoint }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -111,7 +145,7 @@ jobs:
       - name: Download Lambda artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lambda-packages-${{ env.CDK_ENV }}
+          name: lambda-packages-${{ needs.resolve.outputs.cdk_env }}
           path: dist/lambda
 
       - name: Verify checksums
@@ -125,7 +159,7 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActions-${{ env.CDK_ENV }}-${{ github.run_id }}
+          role-session-name: GitHubActions-${{ needs.resolve.outputs.cdk_env }}-${{ github.run_id }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -150,45 +184,91 @@ jobs:
             uv run --no-project --with-requirements requirements.txt \
             python -m app.app
 
-      - name: Deploy CDK stacks
-        id: deploy
+      - name: Deploy CDK infrastructure stacks
         env:
-          CDK_ENV: ${{ env.CDK_ENV }}
+          CDK_ENV: ${{ needs.resolve.outputs.cdk_env }}
           LAMBDA_ZIP: dist/lambda/api.zip
           GATEWAY_ZIP: dist/lambda/gateway.zip
         run: |
           cd infra/cdk
           CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
             uv run --no-project --with-requirements requirements.txt \
-            cdk deploy --all \
+            cdk deploy \
+            "FinSight-${CDK_ENV}-Network" \
+            "FinSight-${CDK_ENV}-Data" \
+            "FinSight-${CDK_ENV}-Messaging" \
+            "FinSight-${CDK_ENV}-Auth" \
+            "FinSight-${CDK_ENV}-StepFunctions" \
+            "FinSight-${CDK_ENV}-Observability" \
             --require-approval never
 
-      - name: Capture custom domain from CDK output
-        if: success()
-        id: domain
+      - name: Run database migration
+        if: needs.resolve.outputs.cdk_env == 'prod'
         run: |
-          # Query the custom domain from the deployed ApiGateway stack
-          DOMAIN=$(aws cloudformation describe-stacks \
-            --stack-name FinSight-${{ env.CDK_ENV }}-ApiGateway \
-            --query 'Stacks[0].Outputs[?OutputKey==`CustomDomainName`].OutputValue' \
-            --output text \
-            --region ${{ env.AWS_REGION }})
+          uv sync --frozen --all-extras
+          uv run python scripts/run_migration.py \
+            --environment ${{ needs.resolve.outputs.cdk_env }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Deploy CDK Compute and API Gateway stacks
+        env:
+          CDK_ENV: ${{ needs.resolve.outputs.cdk_env }}
+          LAMBDA_ZIP: dist/lambda/api.zip
+          GATEWAY_ZIP: dist/lambda/gateway.zip
+        run: |
+          cd infra/cdk
+          # The ApiGateway stack owns the HTTP API routes and their Lambda
+          # invoke permissions and imports the Compute function ARN, so CDK
+          # orders Compute before ApiGateway automatically.
+          CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
+            uv run --no-project --with-requirements requirements.txt \
+            cdk deploy "FinSight-${CDK_ENV}-Compute" "FinSight-${CDK_ENV}-ApiGateway" \
+            --require-approval never
+
+      - name: Sync secret-backed Lambda environment (SSM)
+        if: needs.resolve.outputs.cdk_env == 'prod'
+        run: |
+          # CDK resets the function env on every deploy; secret-backed values
+          # (Neon URL, gateway master key) never flow through CDK, so they are
+          # re-injected from SSM here. See scripts/sync_lambda_env.py.
+          uv run python scripts/sync_lambda_env.py \
+            --environment ${{ needs.resolve.outputs.cdk_env }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Capture API endpoints from CDK outputs
+        if: success()
+        id: endpoints
+        run: |
+          STACK=FinSight-${{ needs.resolve.outputs.cdk_env }}-ApiGateway
+          read_domain() {
+            aws cloudformation describe-stacks \
+              --stack-name "$STACK" \
+              --query 'Stacks[0].Outputs[?OutputKey==`'"$1"'`].OutputValue' \
+              --output text \
+              --region ${{ env.AWS_REGION }}
+          }
+          DOMAIN=$(read_domain CustomDomainName)
+          ENDPOINT=$(read_domain HttpApiUrl)
           if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "None" ]; then
             echo "::error::Custom domain not found in stack outputs"
             exit 1
           fi
           echo "custom_domain=$DOMAIN" >> $GITHUB_OUTPUT
-          echo "DEPLOYED_CUSTOM_DOMAIN=$DOMAIN" >> $GITHUB_ENV
+          echo "api_endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
 
   smoke-tests:
     name: Smoke Tests (Deploy Gate)
-    needs: [build, deploy]
+    needs: [resolve, build, deploy]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: ${{ env.CDK_ENV }}
+    environment: ${{ needs.resolve.outputs.deploy_env }}
     permissions:
       id-token: write
       contents: read
+    env:
+      # secrets is not available in step `if`, so expose the static-token
+      # switch at job level (empty unless the env secret is configured).
+      SMOKE_TEST_STATIC_JWT: ${{ secrets.SMOKE_TEST_JWT_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -207,11 +287,64 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen --all-extras
 
+      - name: Resolve smoke test base URL
+        run: |
+          DOMAIN="${{ needs.deploy.outputs.custom_domain }}"
+          ENDPOINT="${{ needs.deploy.outputs.api_endpoint }}"
+          if curl -fsS --max-time 10 "https://$DOMAIN/health" >/dev/null 2>&1; then
+            BASE_URL="https://$DOMAIN"
+          else
+            echo "::warning::Custom domain $DOMAIN unreachable; falling back to raw API endpoint"
+            BASE_URL="$ENDPOINT"
+          fi
+          echo "SMOKE_TEST_BASE_URL=$BASE_URL" >> $GITHUB_ENV
+
+      - name: Configure AWS credentials
+        if: env.SMOKE_TEST_STATIC_JWT == ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-smoke-${{ needs.resolve.outputs.cdk_env }}-${{ github.run_id }}
+
+      - name: Obtain smoke-test JWT (admin auth flow)
+        if: env.SMOKE_TEST_STATIC_JWT == ''
+        env:
+          USER_EMAIL: ${{ secrets.SMOKE_TEST_USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.SMOKE_TEST_USER_PASSWORD }}
+        run: |
+          # The API function's env carries the pool/client ids CDK wired from
+          # the Auth stack (no separate stack outputs needed).
+          read_env() {
+            aws lambda get-function-configuration \
+              --function-name finsight-${{ needs.resolve.outputs.cdk_env }}-api \
+              --query "Environment.Variables.$1" \
+              --output text \
+              --region ${{ env.AWS_REGION }}
+          }
+          POOL=$(read_env COGNITO_USER_POOL_ID)
+          CLIENT=$(read_env COGNITO_CLIENT_ID)
+          if [ -z "$POOL" ] || [ "$POOL" = "None" ]; then
+            echo "::error::COGNITO_USER_POOL_ID not found on the API function env"
+            exit 1
+          fi
+          TOKEN=$(aws cognito-idp admin-initiate-auth \
+            --user-pool-id "$POOL" \
+            --client-id "$CLIENT" \
+            --auth-flow ADMIN_USER_PASSWORD_AUTH \
+            --auth-parameters "USERNAME=$USER_EMAIL,PASSWORD=$USER_PASSWORD" \
+            --query 'AuthenticationResult.IdToken' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "None" ]; then
+            echo "::error::Failed to obtain smoke-test JWT from Cognito"
+            exit 1
+          fi
+          echo "SMOKE_TEST_JWT_TOKEN=$TOKEN" >> $GITHUB_ENV
+
       - name: Run smoke tests
         id: smoke
         env:
-          SMOKE_TEST_BASE_URL: https://${{ needs.deploy.outputs.custom_domain }}
-          SMOKE_TEST_JWT_TOKEN: ${{ secrets.SMOKE_TEST_JWT_TOKEN }}
           SMOKE_TEST_TIMEOUT: 30
           SMOKE_TEST_RETRIES: 3
           SMOKE_TEST_RETRY_DELAY: 10
@@ -235,7 +368,7 @@ jobs:
 
   notify:
     name: Notify
-    needs: [build, deploy, smoke-tests]
+    needs: [resolve, build, deploy, smoke-tests]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -249,7 +382,7 @@ jobs:
           echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Smoke Tests | ${{ needs.smoke-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ env.CDK_ENV }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.resolve.outputs.deploy_env }}" >> $GITHUB_STEP_SUMMARY
           echo "**Custom Domain:** https://${{ needs.deploy.outputs.custom_domain }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if ${{ needs.smoke-tests.result == 'failure'

@@ -29,7 +29,7 @@ export function parseSignInCredentials(payload: unknown): SignInCredentials | nu
   }
   const record = payload as Record<string, unknown>;
   const email = typeof record.email === 'string' ? record.email.trim() : '';
-  const password = typeof record.password === 'string' ? record.password : '';
+  const password = typeof record.password === 'string' ? record.password : '';  // pragma: allowlist secret
   if (
     !email ||
     !password ||

@@ -3,7 +3,7 @@
 The smoke test script (Stage D-5) is the final gate of the deploy workflow.
 It hits the live custom domain and verifies:
 1. GET /health returns 200 with {"status": "ok"}
-2. POST /questions/ask returns a structured SSE answer envelope
+2. POST /ask returns a structured SSE answer envelope
 """
 
 from __future__ import annotations
@@ -202,8 +202,8 @@ class TestSmokeTestScript:
         assert 'unexpected payload' in str(exc_info.value)
 
     @patch('httpx.Client')
-    def test_test_questions_ask_success(self, mock_client_class) -> None:
-        """Test questions ask success with valid SSE stream."""
+    def test_test_ask_success(self, mock_client_class) -> None:
+        """Test ask success with valid SSE stream."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
@@ -221,15 +221,22 @@ class TestSmokeTestScript:
 
         config = smoke_test_module.SmokeTestConfig(base_url='https://api.example.com')
         client = smoke_test_module._make_http_client(config)
-        result = smoke_test_module.test_questions_ask('https://api.example.com', client)
+        result = smoke_test_module.test_ask('https://api.example.com', client)
 
         assert 'events' in result
         assert len(result['events']) == 3
         assert 'status' in result['event_types']
         assert 'complete' in result['event_types']
+        # Regression: the ask endpoint lives at /ask (router prefix), not
+        # /questions/ask — the wrong path used to 401/404 in the deploy gate.
+        mock_client.stream.assert_called_once_with(
+            'POST',
+            'https://api.example.com/ask',
+            json={'question': 'health check', 'company_id': 'smoke-test-readonly-tenant'},
+        )
 
     @patch('httpx.Client')
-    def test_test_questions_ask_failure_status_code(self, mock_client_class) -> None:
+    def test_test_ask_failure_status_code(self, mock_client_class) -> None:
         """Test questions ask failure with non-200 status."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
@@ -241,12 +248,12 @@ class TestSmokeTestScript:
         config = smoke_test_module.SmokeTestConfig(base_url='https://api.example.com')
         client = smoke_test_module._make_http_client(config)
         with pytest.raises(smoke_test_module.SmokeTestError) as exc_info:
-            smoke_test_module.test_questions_ask('https://api.example.com', client)
+            smoke_test_module.test_ask('https://api.example.com', client)
 
         assert 'expected 200, got 401' in str(exc_info.value)
 
     @patch('httpx.Client')
-    def test_test_questions_ask_failure_wrong_content_type(self, mock_client_class) -> None:
+    def test_test_ask_failure_wrong_content_type(self, mock_client_class) -> None:
         """Test questions ask failure with wrong content type."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
@@ -259,12 +266,12 @@ class TestSmokeTestScript:
         config = smoke_test_module.SmokeTestConfig(base_url='https://api.example.com')
         client = smoke_test_module._make_http_client(config)
         with pytest.raises(smoke_test_module.SmokeTestError) as exc_info:
-            smoke_test_module.test_questions_ask('https://api.example.com', client)
+            smoke_test_module.test_ask('https://api.example.com', client)
 
         assert 'unexpected content-type' in str(exc_info.value)
 
     @patch('httpx.Client')
-    def test_test_questions_ask_failure_empty_stream(self, mock_client_class) -> None:
+    def test_test_ask_failure_empty_stream(self, mock_client_class) -> None:
         """Test questions ask failure with empty SSE stream."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
@@ -277,12 +284,12 @@ class TestSmokeTestScript:
         config = smoke_test_module.SmokeTestConfig(base_url='https://api.example.com')
         client = smoke_test_module._make_http_client(config)
         with pytest.raises(smoke_test_module.SmokeTestError) as exc_info:
-            smoke_test_module.test_questions_ask('https://api.example.com', client)
+            smoke_test_module.test_ask('https://api.example.com', client)
 
         assert 'empty SSE stream' in str(exc_info.value)
 
     @patch('httpx.Client')
-    def test_test_questions_ask_failure_no_status_event(self, mock_client_class) -> None:
+    def test_test_ask_failure_no_status_event(self, mock_client_class) -> None:
         """Test questions ask failure when status event is missing."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
@@ -298,12 +305,12 @@ class TestSmokeTestScript:
         config = smoke_test_module.SmokeTestConfig(base_url='https://api.example.com')
         client = smoke_test_module._make_http_client(config)
         with pytest.raises(smoke_test_module.SmokeTestError) as exc_info:
-            smoke_test_module.test_questions_ask('https://api.example.com', client)
+            smoke_test_module.test_ask('https://api.example.com', client)
 
         assert 'missing status event' in str(exc_info.value)
 
     @patch('httpx.Client')
-    def test_test_questions_ask_failure_no_complete(self, mock_client_class) -> None:
+    def test_test_ask_failure_no_complete(self, mock_client_class) -> None:
         """Test questions ask failure when stream doesn't complete properly."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
@@ -319,7 +326,7 @@ class TestSmokeTestScript:
         config = smoke_test_module.SmokeTestConfig(base_url='https://api.example.com')
         client = smoke_test_module._make_http_client(config)
         with pytest.raises(smoke_test_module.SmokeTestError) as exc_info:
-            smoke_test_module.test_questions_ask('https://api.example.com', client)
+            smoke_test_module.test_ask('https://api.example.com', client)
 
         assert 'did not complete properly' in str(exc_info.value)
 
