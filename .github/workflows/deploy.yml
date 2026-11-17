@@ -193,6 +193,7 @@ jobs:
           cd infra/cdk
           CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
             npx --yes aws-cdk@2.162.1 cdk deploy \
+            --app "python3 -m app.app" \
             "FinSight-${CDK_ENV}-Network" \
             "FinSight-${CDK_ENV}-Data" \
             "FinSight-${CDK_ENV}-Messaging" \
@@ -220,7 +221,9 @@ jobs:
           # invoke permissions and imports the Compute function ARN, so CDK
           # orders Compute before ApiGateway automatically.
           CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
-            npx --yes aws-cdk@2.162.1 cdk deploy "FinSight-${CDK_ENV}-Compute" "FinSight-${CDK_ENV}-ApiGateway" \
+            npx --yes aws-cdk@2.162.1 cdk deploy \
+            --app "python3 -m app.app" \
+            "FinSight-${CDK_ENV}-Compute" "FinSight-${CDK_ENV}-ApiGateway" \
             --require-approval never
 
       - name: Sync secret-backed Lambda environment (SSM)
