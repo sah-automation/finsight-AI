@@ -260,7 +260,7 @@ class TestSmokeTestScript:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.headers = {'content-type': 'application/json'}
-        mock_response.read.return_value = b'{}'
+        mock_response.iter_text.return_value = []
         mock_client.stream.return_value.__enter__.return_value = mock_response
 
         config = smoke_test_module.SmokeTestConfig(base_url='https://api.example.com')
@@ -268,7 +268,7 @@ class TestSmokeTestScript:
         with pytest.raises(smoke_test_module.SmokeTestError) as exc_info:
             smoke_test_module.test_ask('https://api.example.com', client)
 
-        assert 'unexpected content-type' in str(exc_info.value)
+        assert 'no valid SSE events' in str(exc_info.value)
 
     @patch('httpx.Client')
     def test_test_ask_failure_empty_stream(self, mock_client_class) -> None:
@@ -286,7 +286,7 @@ class TestSmokeTestScript:
         with pytest.raises(smoke_test_module.SmokeTestError) as exc_info:
             smoke_test_module.test_ask('https://api.example.com', client)
 
-        assert 'empty SSE stream' in str(exc_info.value)
+        assert 'no valid SSE events' in str(exc_info.value)
 
     @patch('httpx.Client')
     def test_test_ask_failure_no_status_event(self, mock_client_class) -> None:
