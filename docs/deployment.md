@@ -409,4 +409,20 @@ live custom domain (see "Deployment pipeline"); it asserts:
 - One read-only `POST /ask` (the dedicated `smoke-test-readonly-tenant`)
   streams a complete SSE answer envelope.
 
+## Deployment evidence (Stage D-7)
+
+- **Date:** 2026-11-18
+- **Green deploy run:** https://github.com/sah-automation/finsight-AI/actions/runs/44146564438
+  (workflow_dispatch, production; push-triggered mirror run 44146259303 also green)
+- **Custom domain:** https://api.finsight.sahcreatives.com → CNAME `d-qyvjxyznah.execute-api.us-east-1.amazonaws.com`
+- **`GET /health`:** 200 `{"status": "ok"}` (both custom domain and raw API endpoint)
+- **`POST /ask`:** 200 SSE stream with a complete answer envelope; returns the
+  documented graceful `insufficient_data` envelope (`no_evidence`) because the
+  LLM provider API keys (groq/gemini) are an owner-gated step still pending —
+  this satisfies the "complete envelope" requirement.
+- **ApiGateway stack:** `UPDATE_COMPLETE` with stack-managed `GET /health` route
+  (drift adopted by the guarded step in the deploy job).
+- **Compute stack:** `UPDATE_COMPLETE` with real Lambda code (79 MB) and 30 s
+  API / 900 s gateway timeouts.
+
 See [runbook.md](runbook.md) for operational procedures.
