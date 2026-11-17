@@ -59,11 +59,11 @@ SIGNING_KEY_PARAMETER_PATTERN = '/finsight/{env}/source_viewer_signing_key'
 # configure a subset of providers, so missing parameters are skipped (with a
 # warning) rather than aborting the sync.
 GATEWAY_PROVIDER_PARAMETERS: dict[str, str] = {
-    '/finsight/{env}/groq_api_key': 'GROQ_API_KEY',
-    '/finsight/{env}/gemini_api_key': 'GEMINI_API_KEY',
-    '/finsight/{env}/nvidia_nim_api_key': 'NVIDIA_NIM_API_KEY',
-    '/finsight/{env}/cohere_api_key': 'COHERE_API_KEY',
-    '/finsight/{env}/nvidia_api_key': 'NVIDIA_API_KEY',
+    '/finsight/{env}/groq_api_key': 'GROQ_API_KEY',  # pragma: allowlist secret
+    '/finsight/{env}/gemini_api_key': 'GEMINI_API_KEY',  # pragma: allowlist secret
+    '/finsight/{env}/nvidia_nim_api_key': 'NVIDIA_NIM_API_KEY',  # pragma: allowlist secret
+    '/finsight/{env}/cohere_api_key': 'COHERE_API_KEY',  # pragma: allowlist secret
+    '/finsight/{env}/nvidia_api_key': 'NVIDIA_API_KEY',  # pragma: allowlist secret
 }
 
 # A scaffold value would make every gateway call fail with 401 while

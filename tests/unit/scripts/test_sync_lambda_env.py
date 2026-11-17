@@ -158,8 +158,8 @@ class TestMergeEnv:
         )
 
         assert env_vars == {
-            'GROQ_API_KEY': 'gsk_test',
-            'GEMINI_API_KEY': 'gemini_test',
+            'GROQ_API_KEY': 'gsk_test',  # pragma: allowlist secret
+            'GEMINI_API_KEY': 'gemini_test',  # pragma: allowlist secret
         }
 
     def test_gateway_lambda_env_vars_skips_missing_keys(self) -> None:
