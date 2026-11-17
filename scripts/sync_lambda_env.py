@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Inject secret-backed runtime environment variables into the API Lambda.
 
-CDK must not own secret values: the Neon database URL and the model-gateway
-master key are SecureStrings in SSM and never flow through CDK synthesis,
+CDK must not own secret values: the Neon database URL, the model-gateway
+master key, and the source-viewer signing key are SecureStrings in SSM and
+never flow through CDK synthesis,
 GitHub secrets, or workflow logs. Because ``update-function-configuration``
 during a CDK deploy resets the function's environment to the CDK-owned set,
 this script re-injects the secret-backed variables after every deploy:
@@ -11,6 +12,8 @@ this script re-injects the secret-backed variables after every deploy:
    the migration script uses, matching the config loader's expectations).
 2. ``/finsight/{env}/model_gateway_master_key`` → ``MODEL_GATEWAY_AUTH_TOKEN``
    (the bearer defense-in-depth token for the remote model gateway).
+3. ``/finsight/{env}/source_viewer_signing_key`` → ``SOURCE_VIEWER_SIGNING_KEY``
+   (required by the config loader's ``documents`` section).
 
 Existing environment variables (CDK-managed buckets, tables, queues, Cognito
 ids) are preserved — only the secret-backed keys are added or overwritten.
@@ -43,9 +46,10 @@ from neon_connection import (  # noqa: E402
 
 NEON_PARAMETER_PATTERN = '/finsight/{env}/neon/database_url'
 MASTER_KEY_PARAMETER_PATTERN = '/finsight/{env}/model_gateway_master_key'
+SIGNING_KEY_PARAMETER_PATTERN = '/finsight/{env}/source_viewer_signing_key'
 
-# CDK creates the parameter with this scaffold value for fresh environments;
-# the real key is a one-time SSM rotation after the first deploy.
+# A scaffold value would make every gateway call fail with 401 while
+# looking "configured"; the real key is set in SSM by the owner step.
 PLACEHOLDER_MASTER_KEY = 'PLACEHOLDER_REPLACE_AT_DEPLOY'
 
 ParameterFetcher = Callable[[str, str], str]
@@ -83,9 +87,11 @@ def lambda_env_vars(fetch: ParameterFetcher, env: str, region: str) -> dict[str,
             f'aws ssm put-parameter --name {MASTER_KEY_PARAMETER_PATTERN.format(env=env)} '
             f'--type SecureString --value <generated-key> --overwrite'
         )
+    signing_key = fetch(SIGNING_KEY_PARAMETER_PATTERN.format(env=env), region)
 
     env_vars = vector_db_vars(database_url)
     env_vars['MODEL_GATEWAY_AUTH_TOKEN'] = master_key
+    env_vars['SOURCE_VIEWER_SIGNING_KEY'] = signing_key
     return env_vars
 
 

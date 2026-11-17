@@ -46,6 +46,7 @@ class TestLambdaEnvVars:
             'VECTOR_DB_NAME': 'finsight',
             'VECTOR_DB_USER': 'user',
             'VECTOR_DB_PASSWORD': 'p@ss',  # pragma: allowlist secret
+            'VECTOR_DB_SSLMODE': 'require',
         }
 
     def test_lambda_env_vars_includes_gateway_token(self) -> None:
@@ -57,11 +58,14 @@ class TestLambdaEnvVars:
                 return 'postgresql://u:p@host:5432/db'  # pragma: allowlist secret
             if name == '/finsight/prod/model_gateway_master_key':
                 return 'master-key-value'  # pragma: allowlist secret
+            if name == '/finsight/prod/source_viewer_signing_key':
+                return 'signing-key-value'  # pragma: allowlist secret
             raise AssertionError(f'unexpected parameter {name}')
 
         env_vars = sync_lambda_env.lambda_env_vars(fetch=fake_fetch, env='prod', region='us-east-1')
 
         assert env_vars['MODEL_GATEWAY_AUTH_TOKEN'] == 'master-key-value'
+        assert env_vars['SOURCE_VIEWER_SIGNING_KEY'] == 'signing-key-value'
         assert env_vars['VECTOR_DB_HOST'] == 'host'
         # No secrets in keys other than the documented ones.
         assert set(env_vars) == {
@@ -70,7 +74,9 @@ class TestLambdaEnvVars:
             'VECTOR_DB_NAME',
             'VECTOR_DB_USER',
             'VECTOR_DB_PASSWORD',
+            'VECTOR_DB_SSLMODE',
             'MODEL_GATEWAY_AUTH_TOKEN',
+            'SOURCE_VIEWER_SIGNING_KEY',
         }
 
     def test_missing_master_key_param_fails_loudly(self) -> None:
@@ -94,6 +100,8 @@ class TestLambdaEnvVars:
         def fake_fetch(name: str, region: str) -> str:
             if name.endswith('neon/database_url'):
                 return 'postgresql://u:p@host:5432/db'  # pragma: allowlist secret
+            if name.endswith('source_viewer_signing_key'):
+                return 'signing-key-value'  # pragma: allowlist secret
             return 'PLACEHOLDER_REPLACE_AT_DEPLOY'
 
         with pytest.raises(RuntimeError, match='model_gateway_master_key'):

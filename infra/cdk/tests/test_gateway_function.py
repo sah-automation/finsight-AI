@@ -106,25 +106,40 @@ def test_gateway_function_runtime_is_python_3_12() -> None:
     assert runtime == 'python3.12'
 
 
-def test_gateway_function_has_master_key_from_ssm() -> None:
-    """The gateway function gets MODEL_GATEWAY_MASTER_KEY_PARAM pointing to SSM."""
+def test_gateway_master_key_param_is_ssm_owned() -> None:
+    """MODEL_GATEWAY_MASTER_KEY_PARAM names the SSM parameter; CDK does not create it.
+
+    The parameter is owned by SSM and rotated by the owner step (like the
+    Neon URL parameter): CloudFormation cannot change an existing SSM
+    parameter's ``Type`` (early validation rejects the changeset) and a
+    CDK-managed value would overwrite the rotated key with the scaffold
+    placeholder on the next deploy. The stack only references the name and
+    grants the gateway read access.
+    """
     template = _compute_template_with_gateway('prod', gateway_zip=None)
     gateway = _gateway_lambda(template)
 
     env_vars = gateway['Properties']['Environment']['Variables']
     param_name = env_vars.get('MODEL_GATEWAY_MASTER_KEY_PARAM')
-    assert param_name is not None
-    # CDK uses a Ref to the SSM parameter resource
-    assert isinstance(param_name, dict) and 'Ref' in param_name
-    param_ref = param_name['Ref']
-    assert param_ref.startswith('ModelGatewayMasterKeyprod')
-    # The parameter should exist as an SSM StringParameter resource
+    assert param_name == '/finsight/prod/model_gateway_master_key'
+
+    # CDK must not manage the parameter itself.
     ssm_params = template.find_resources('AWS::SSM::Parameter')
-    gateway_params = {k: v for k, v in ssm_params.items() if 'ModelGatewayMasterKey' in k}
-    assert len(gateway_params) == 1
-    gateway_param = next(iter(gateway_params.values()))
-    assert gateway_param['Properties']['Name'] == '/finsight/prod/model_gateway_master_key'
-    assert gateway_param['Properties']['Type'] == 'SecureString'
+    assert not ssm_params, f'Compute stack must not create SSM parameters: {sorted(ssm_params)}'
+
+    # The gateway role still reads the parameter at runtime.
+    policies = template.find_resources('AWS::IAM::Policy')
+    grants = [
+        statement
+        for policy in policies.values()
+        for statement in policy['Properties']['PolicyDocument']['Statement']
+        if 'ssm:GetParameter' in statement.get('Action', [])
+    ]
+    assert grants, 'gateway role must keep ssm:GetParameter on the master key'
+    assert any(
+        '/finsight/prod/model_gateway_master_key' in str(statement.get('Resource', ''))
+        for statement in grants
+    ), grants
 
 
 def test_gateway_function_has_response_stream_invoke_mode() -> None:
