@@ -319,6 +319,21 @@ protection rules yet; secrets for the smoke user live on `production`.
 > owner creates the parameter directly in SSM and CDK never owns it.
 | `/finsight/<env>/source_viewer_signing_key` | `SOURCE_VIEWER_SIGNING_KEY` on the API Lambda (required by the config loader's `documents` section) | Owner, one-time per environment: `aws ssm put-parameter --name <param> --type SecureString --value <generated-key> --overwrite` (this creates the parameter when it does not exist yet). `sync_lambda_env.py` fails loudly if it is missing |
 
+> **Stack-state migration (2026-11-17, prod) — drifted `/health` route.** A
+> `GET /health` route exists on the prod HTTP API that CloudFormation never
+> created: it appears in no `FinSight-prod-ApiGateway` template and no stack
+> event history. Because the route physically exists, the stack's CREATE of
+> its own `GET /health` route fails with a 409
+> `ConflictException: Route with key GET /health already exists for this API`
+> and the stack rolls back. The deploy workflow therefore runs a guarded
+> "adopt drifted routes" step immediately before the Compute/ApiGateway
+> `cdk deploy`: it lists the physical API id from
+> `cloudformation list-stack-resources`, and deletes the physical
+> `GET /health` route via `apigatewayv2 delete-route` only when
+> `list-stack-resources` shows no stack-managed route (no logical id
+> containing `GEThealth`). Once a deploy succeeds the stack owns the route
+> and the step is a no-op. Fresh environments never need this.
+
 ### Smoke-test user
 
 The pipeline authenticates a dedicated read-only user (`smoke-test@finsight.local`,
