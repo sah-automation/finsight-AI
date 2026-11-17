@@ -22,23 +22,24 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import sys
 from collections.abc import Callable
 from pathlib import Path
 
 import boto3  # type: ignore[import-untyped]
 
-SCRIPTS_DIR = Path(__file__).resolve().parent
+# ``scripts/`` is not a package: running this file puts it on sys.path[0],
+# but importing it via importlib (as the tests do) needs the explicit entry.
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
-# Reuse the Neon URL parsing from the migration script so both entrypoints
-# decompose the connection string identically.
-_MIGRATION_PATH = SCRIPTS_DIR / 'run_migration.py'
-_spec = importlib.util.spec_from_file_location('run_migration', _MIGRATION_PATH)
-assert _spec is not None and _spec.loader is not None
-run_migration = importlib.util.module_from_spec(_spec)
-sys.modules.setdefault('run_migration', run_migration)
-_spec.loader.exec_module(run_migration)
+# Reuse the shared Neon URL parser so both deploy entrypoints (migration and
+# env sync) decompose the SSM-stored connection string identically.
+from neon_connection import (  # noqa: E402
+    build_vector_db_env,
+    parse_database_url,
+)
 
 NEON_PARAMETER_PATTERN = '/finsight/{env}/neon/database_url'
 MASTER_KEY_PARAMETER_PATTERN = '/finsight/{env}/model_gateway_master_key'
@@ -52,8 +53,7 @@ ParameterFetcher = Callable[[str, str], str]
 
 def vector_db_vars(database_url: str) -> dict[str, str]:
     """Build the VECTOR_DB_* variables from the Neon connection string."""
-    config = run_migration.parse_database_url(database_url)
-    return dict(run_migration.build_vector_db_env(config))
+    return build_vector_db_env(parse_database_url(database_url))
 
 
 def default_function_name(env: str) -> str:

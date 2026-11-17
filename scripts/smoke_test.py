@@ -21,6 +21,7 @@ import os
 import sys
 import time
 import traceback
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -63,7 +64,7 @@ def _make_http_client(config: SmokeTestConfig) -> httpx.Client:
 
 
 def _retry_with_logging(
-    attempt_fn: callable,
+    attempt_fn: Callable[[int], Any],
     label: str,
     config: SmokeTestConfig,
     *,
@@ -128,7 +129,7 @@ def test_health(base_url: str, client: httpx.Client) -> dict[str, Any]:
     return data
 
 
-def test_questions_ask(base_url: str, client: httpx.Client) -> dict[str, Any]:
+def test_ask(base_url: str, client: httpx.Client) -> dict[str, Any]:
     """Test POST /ask endpoint.
 
     Expected: 200 OK with SSE stream containing a structured answer envelope.
@@ -257,7 +258,7 @@ def run_smoke_tests(config: SmokeTestConfig) -> int:
 
     # Test questions/ask endpoint with retries
     def ask_attempt(attempt: int) -> dict[str, Any]:
-        return test_questions_ask(config.base_url, client)
+        return test_ask(config.base_url, client)
 
     ask_result = _retry_with_logging(ask_attempt, 'POST /ask', config)
     print('  ✓ Questions ask passed')

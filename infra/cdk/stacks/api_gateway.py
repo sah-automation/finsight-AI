@@ -332,13 +332,14 @@ class ApiGatewayStack(Stack):
         self.access_log_group_name = self.access_log_group.log_group_name
         # The deploy workflow captures the custom domain from this output
         # (``aws cloudformation describe-stacks ... CustomDomainName``).
-        cfn_output = CfnOutput(
+        # Without a domain mapping the output carries the raw endpoint so the
+        # capture step always finds a usable URL.
+        CfnOutput(
             self,
             f'CustomDomainName{env_name}',
             value=custom_domain if self.domain_mapping is not None else self.http_api_url,
             description='HTTPS entry point for the deployed API',
         )
-        del cfn_output
         # Raw execute-api endpoint: smoke tests fall back to it when the
         # custom domain's DNS does not resolve yet.
         CfnOutput(

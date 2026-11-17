@@ -403,7 +403,7 @@ show_error_codes = true
 pretty = true
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "src"
+mypy_path = "src:scripts"
 plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
