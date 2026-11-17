@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 # CDK constructs are accepted as opaque objects to avoid over-coupling this stack.
-from aws_cdk import Stack
+from aws_cdk import Duration, Stack
 from aws_cdk import aws_apigatewayv2 as apigatewayv2
 from aws_cdk import aws_apigatewayv2_authorizers as apigatewayv2_auth
 from aws_cdk import aws_apigatewayv2_integrations as integrations
@@ -131,6 +131,11 @@ class ComputeStack(Stack):
             code=code,
             role=role,
             memory_size=1024,
+            # The handler performs network calls (Neon, Cognito, gateway) on
+            # every request; CDK's 3-second default timed out on prod with
+            # real code, including GET /health. API Gateway HTTP API Lambda
+            # integrations cap at 30 seconds, so this matches the ceiling.
+            timeout=Duration.seconds(30),
             **lambda_kwargs,
         )
 
@@ -487,6 +492,9 @@ class ComputeStack(Stack):
             code=gateway_code,
             role=gateway_role,
             memory_size=512,
+            # Streams LLM chunks through the function URL (not bounded by API
+            # Gateway), so allow long-lived generation.
+            timeout=Duration.seconds(900),
             environment=gateway_environment,
             **gateway_kwargs,
         )
