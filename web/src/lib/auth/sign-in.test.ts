@@ -32,9 +32,9 @@ describe('sign-in request handling', () => {
 
   it('rejects missing, malformed or oversized credentials', () => {
     expect(parseSignInCredentials(null)).toBeNull();
-    expect(parseSignInCredentials({ email: '', password: 'secret' })).toBeNull();
+    expect(parseSignInCredentials({ email: '', password: 'secret' })).toBeNull();  // pragma: allowlist secret
     expect(parseSignInCredentials({ email: 'user@example.com' })).toBeNull();
-    expect(parseSignInCredentials({ email: 'not-an-email', password: 'secret' })).toBeNull();
+    expect(parseSignInCredentials({ email: 'not-an-email', password: 'secret' })).toBeNull();  // pragma: allowlist secret
     expect(
       parseSignInCredentials({ email: 'user@example.com', password: 'x'.repeat(1_025) }),
     ).toBeNull();

@@ -95,7 +95,7 @@ def test_step_functions_client_uses_the_same_localstack_configuration(
         endpoint_url='http://localhost:4566',
         region_name='us-west-2',
         aws_access_key_id='local-key',
-        aws_secret_access_key='local-secret',
+        aws_secret_access_key='local-secret',  # pragma: allowlist secret
     )
 
 
