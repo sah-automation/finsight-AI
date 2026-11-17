@@ -227,6 +227,10 @@ class TestSmokeTestScript:
         assert len(result['events']) == 3
         assert 'status' in result['event_types']
         assert 'complete' in result['event_types']
+        # Regression: the response stream must be consumed exactly once —
+        # calling iter_text() twice raises "content has already been
+        # streamed" in httpx and failed the prod deploy gate.
+        assert mock_response.iter_text.call_count == 1
         # Regression: the ask endpoint lives at /ask (router prefix), not
         # /questions/ask — the wrong path used to 401/404 in the deploy gate.
         mock_client.stream.assert_called_once_with(
