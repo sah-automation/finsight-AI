@@ -277,6 +277,19 @@ jobs:
             --environment ${{ needs.resolve.outputs.cdk_env }} \
             --region ${{ env.AWS_REGION }}
 
+      - name: Sync gateway provider API keys (SSM)
+        if: needs.resolve.outputs.cdk_env == 'prod'
+        run: |
+          # The model gateway runs litellm, which reads provider API keys
+          # from the process environment (GROQ_API_KEY, GEMINI_API_KEY, ...).
+          # CDK never owns these secrets, so they are re-injected from SSM
+          # here after every deploy. Missing parameters are skipped with a
+          # warning so a subset of providers can be configured.
+          uv run python scripts/sync_lambda_env.py \
+            --target gateway \
+            --environment ${{ needs.resolve.outputs.cdk_env }} \
+            --region ${{ env.AWS_REGION }}
+
       - name: Capture API endpoints from CDK outputs
         if: success()
         id: endpoints
