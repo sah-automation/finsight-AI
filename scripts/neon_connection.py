@@ -61,4 +61,5 @@ def build_vector_db_env(config: VectorDbConfig) -> dict[str, str]:
         'VECTOR_DB_NAME': config.database,
         'VECTOR_DB_USER': config.username,
         'VECTOR_DB_PASSWORD': config.password,
+        'VECTOR_DB_SSLMODE': config.sslmode,
     }

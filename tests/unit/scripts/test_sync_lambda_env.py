@@ -46,6 +46,7 @@ class TestLambdaEnvVars:
             'VECTOR_DB_NAME': 'finsight',
             'VECTOR_DB_USER': 'user',
             'VECTOR_DB_PASSWORD': 'p@ss',  # pragma: allowlist secret
+            'VECTOR_DB_SSLMODE': 'require',
         }
 
     def test_lambda_env_vars_includes_gateway_token(self) -> None:
@@ -70,6 +71,7 @@ class TestLambdaEnvVars:
             'VECTOR_DB_NAME',
             'VECTOR_DB_USER',
             'VECTOR_DB_PASSWORD',
+            'VECTOR_DB_SSLMODE',
             'MODEL_GATEWAY_AUTH_TOKEN',
         }
 
