@@ -31,7 +31,7 @@ cdk synth --all
 | Messaging | SQS queues and DLQ |
 | Auth | Cognito user pool and app client |
 | Compute | Placeholder Lambda function and execution role |
-| Observability | CloudWatch log group |
+| Observability | CloudWatch log group, dashboard, and alarms |
 | Step Functions | Ingestion workflow state machine with DLQ catch targets |
 
 The Data stack defines the rebuildable DynamoDB side of D2: answer cache, role
@@ -42,8 +42,10 @@ remains the source of truth for documents, jobs and chat metadata, so DynamoDB
 views and caches can be rebuilt from it. Environment settings (retention,
 point-in-time recovery, Aurora backups, key mode) come from `config/envs.yaml`.
 
-Not implemented yet: CloudWatch dashboards and alarms, Secrets
-Manager/SSM wiring, per-function IAM, and the deploy workflow.
+Implemented: CloudWatch dashboard and alarms (one dashboard per
+environment, five degradation-signal alarms). Still not implemented:
+Secrets Manager/SSM wiring beyond the stack, per-function IAM beyond the
+Lambda execution role, and the deploy workflow (see docs/deployment.md).
 
 ## Environment selection
 

@@ -285,6 +285,44 @@ class ObservabilityStack(Stack):
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
 
+        # CloudWatch dashboard (issue #328): single pane of glass for the
+        # environment — alarm states plus the structured log group the OTLP
+        # spans land in. One dashboard per environment to stay inside the
+        # budgeted CloudWatch cost envelope.
+        self.dashboard = cloudwatch.Dashboard(
+            self,
+            f'AppDashboard{env_name}',
+            dashboard_name=f'finsight-{env_name}',
+        )
+        self.dashboard.add_widgets(
+            cloudwatch.TextWidget(
+                markdown=f'# FinSight {env_name} — observability',
+                width=24,
+                height=1,
+            )
+        )
+        self.dashboard.add_widgets(
+            cloudwatch.GraphWidget(
+                title='Degradation signals',
+                left=[alarm.metric for alarm in self.alarms.values()],
+                width=24,
+                height=6,
+                period=period,
+            )
+        )
+        self.dashboard.add_widgets(
+            cloudwatch.LogQueryWidget(
+                title='Recent OTLP spans',
+                log_group_names=[self.log_group.log_group_name],
+                query_string=(
+                    'fields @timestamp, span.name, span.attributes.fallback_3_used '
+                    '| sort @timestamp desc | limit 20'
+                ),
+                width=24,
+                height=6,
+            )
+        )
+
     def otlp_routing_headers(self) -> dict[str, str]:
         """OTLP routing headers targeting this stack's Observability log group.
 

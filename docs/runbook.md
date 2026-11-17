@@ -1,9 +1,10 @@
 # Runbook
 
-**Status: active.** These procedures are exercised by the Deploy workflow
-(`.github/workflows/deploy.yml`) which runs on every push to `main`. See
-[deployment.md](deployment.md) for the deployment pipeline and the
-owner-gated steps.
+**Status: verified (Stage D-8).** These procedures are exercised by the Deploy
+workflow (`.github/workflows/deploy.yml`) which runs on every push to `main`,
+and the Lambda alias rollback path was exercised once against the live
+production function. See [deployment.md](deployment.md) for the deployment
+pipeline and the owner-gated steps.
 
 ## Overview
 
@@ -14,11 +15,43 @@ See [Deployment Guide](deployment.md).
 
 ## Rollback Procedures
 
-### Lambda Functions
-1. Identify previous successful deployment (GitHub Actions run or artifact)
-2. Redeploy previous Lambda package version
-3. Update alias to point to previous version if using aliases
-4. Verify health checks pass
+### Lambda Functions (alias-based, verified 2026-11-18)
+
+The deploy workflow publishes a new Lambda version on every deploy and keeps
+the `live` alias on the last known-good version until the smoke gate passes.
+
+1. List published versions:
+   ```bash
+   aws lambda list-versions-by-function --function-name finsight-prod-api --region us-east-1
+   ```
+2. Shift the `live` alias to the previous version:
+   ```bash
+   aws lambda update-alias --function-name finsight-prod-api --name live \
+     --function-version <previous-version> --region us-east-1
+   ```
+3. Verify the previous version still serves through the alias:
+   ```bash
+   aws lambda invoke --function-name arn:aws:lambda:us-east-1:069632763967:function:finsight-prod-api:live \
+     --cli-binary-format raw-in-base64-out --payload '{"version":"2.0","routeKey":"GET /health","rawPath":"/health","requestContext":{"http":{"method":"GET","path":"/health"}}}' /tmp/health.json
+   cat /tmp/health.json   # expect {"status":"ok"}
+   ```
+4. Re-run the smoke tests against the endpoint once the alias is stable.
+5. To move forward again, publish a new version and point the alias at it (or
+   re-run the deploy workflow).
+
+The endpoint (`GET /health`) is also reachable directly through API Gateway,
+which invokes `$LATEST`; the alias is the rollback lever and is exercised
+independently of the gateway integration.
+
+### Database Migrations
+**Critical**: Do not use `alembic downgrade` in production.
+- Schema changes are forward-only. A broken migration is fixed by a new
+  forward migration, never by `alembic downgrade`.
+- For catastrophic data loss/corruption, restore the Neon database from a
+  point-in-time backup (Neon console → Branches → Restore). Document the
+  restore point and re-run `alembic upgrade head` only after the restore.
+- `alembic downgrade` is forbidden in production; CI and runbooks must not
+  invoke it.
 
 ### Database Migrations
 **Critical**: Do not use `alembic downgrade` in production.
