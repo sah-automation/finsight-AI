@@ -139,9 +139,16 @@ async def _asgi_response(app: Any, event: dict[str, Any], context: Any) -> dict[
             response_done.set()
         if message_type == 'http.response.start':
             response['status'] = int(message.get('status', 200))
+
+            def _to_bytes(item: Any) -> bytes:
+                if isinstance(item, (bytes, bytearray)):
+                    return bytes(item)
+                if isinstance(item, str):
+                    return item.encode('latin-1')
+                return str(item).encode('latin-1')
+
             response['headers'] = [
-                (str(k).encode('latin-1'), str(v).encode('latin-1'))
-                for k, v in message.get('headers', [])
+                (_to_bytes(k), _to_bytes(v)) for k, v in message.get('headers', [])
             ]
         elif message_type == 'http.response.body':
             response['body'] = bytes(response.get('body', b'')) + bytes(message.get('body') or b'')

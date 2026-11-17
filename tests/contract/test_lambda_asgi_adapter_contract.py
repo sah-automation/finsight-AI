@@ -124,6 +124,12 @@ async def test_streaming_post_with_body_survives_middleware(monkeypatch: Any) ->
     body = response['body']
     assert 'event: status' in body
     assert 'event: complete' in body
+    # Regression: response headers must be str keys/values, not bytes reprs.
+    # Bytes keys (e.g. "b'content-type'") caused API Gateway to default the
+    # content-type to text/plain and broke SSE clients.
+    for key, value in response['headers'].items():
+        assert isinstance(key, str) and not key.startswith("b'")
+        assert isinstance(value, str) and not value.startswith("b'")
     assert json.loads(body.split('data: ', 1)[1].split('\n\n', 1)[0]) == {
         'received': {'question': 'health check'}
     }
