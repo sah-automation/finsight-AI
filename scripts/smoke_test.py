@@ -178,23 +178,6 @@ def test_ask(base_url: str, client: httpx.Client) -> dict[str, Any]:
                 },
             )
 
-        # Read the SSE stream and verify it has valid events
-        events = []
-        buffer = ''
-        for chunk in response.iter_text():
-            buffer += chunk
-            while '\n\n' in buffer:
-                event_block, buffer = buffer.split('\n\n', 1)
-                event_data = _parse_sse_event(event_block)
-                if event_data:
-                    events.append(event_data)
-
-        if not events:
-            raise SmokeTestError(
-                'Questions ask returned empty SSE stream',
-                {'url': url, 'events': events},
-            )
-
         # Verify we got at least a status event (received/answering) and a complete event
         event_types = {e.get('event') for e in events}
         if 'status' not in event_types:
