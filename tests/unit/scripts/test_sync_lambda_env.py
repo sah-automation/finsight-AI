@@ -82,6 +82,23 @@ class TestLambdaEnvVars:
         with pytest.raises(KeyError):
             sync_lambda_env.lambda_env_vars(fetch=fake_fetch, env='prod', region='us-east-1')
 
+    def test_placeholder_master_key_fails_loudly(self) -> None:
+        """The CDK scaffold value must never reach the deployed function.
+
+        CDK creates the master-key parameter with a placeholder for fresh
+        environments; the real key is set in SSM as a one-time rotation.
+        Syncing the placeholder would make every gateway call fail with
+        401 while looking "configured".
+        """
+
+        def fake_fetch(name: str, region: str) -> str:
+            if name.endswith('neon/database_url'):
+                return 'postgresql://u:p@host:5432/db'  # pragma: allowlist secret
+            return 'PLACEHOLDER_REPLACE_AT_DEPLOY'
+
+        with pytest.raises(RuntimeError, match='model_gateway_master_key'):
+            sync_lambda_env.lambda_env_vars(fetch=fake_fetch, env='prod', region='us-east-1')
+
 
 class TestMergeEnv:
     """Merging secret vars into the deployed function's environment."""

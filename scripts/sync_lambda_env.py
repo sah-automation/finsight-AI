@@ -43,6 +43,10 @@ _spec.loader.exec_module(run_migration)
 NEON_PARAMETER_PATTERN = '/finsight/{env}/neon/database_url'
 MASTER_KEY_PARAMETER_PATTERN = '/finsight/{env}/model_gateway_master_key'
 
+# CDK creates the parameter with this scaffold value for fresh environments;
+# the real key is a one-time SSM rotation after the first deploy.
+PLACEHOLDER_MASTER_KEY = 'PLACEHOLDER_REPLACE_AT_DEPLOY'
+
 ParameterFetcher = Callable[[str, str], str]
 
 
@@ -72,6 +76,13 @@ def lambda_env_vars(fetch: ParameterFetcher, env: str, region: str) -> dict[str,
     """
     database_url = fetch(NEON_PARAMETER_PATTERN.format(env=env), region)
     master_key = fetch(MASTER_KEY_PARAMETER_PATTERN.format(env=env), region)
+    if master_key == PLACEHOLDER_MASTER_KEY:
+        raise RuntimeError(
+            f'SSM parameter {MASTER_KEY_PARAMETER_PATTERN.format(env=env)} still holds '
+            f'the CDK scaffold placeholder. Set the real master key first: '
+            f'aws ssm put-parameter --name {MASTER_KEY_PARAMETER_PATTERN.format(env=env)} '
+            f'--type SecureString --value <generated-key> --overwrite'
+        )
 
     env_vars = vector_db_vars(database_url)
     env_vars['MODEL_GATEWAY_AUTH_TOKEN'] = master_key
