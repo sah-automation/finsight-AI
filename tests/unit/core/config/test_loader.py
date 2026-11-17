@@ -34,7 +34,7 @@ class TestConfigLoader:
         os.environ['VECTOR_DB_HOST'] = 'localhost'
         os.environ['VECTOR_DB_NAME'] = 'test'
         os.environ['VECTOR_DB_USER'] = 'test'
-        os.environ['VECTOR_DB_PASSWORD'] = 'test'
+        os.environ['VECTOR_DB_PASSWORD'] = 'test'  # pragma: allowlist secret
         os.environ['AWS_REGION'] = 'us-east-1'
         os.environ['ANSWER_CACHE_TABLE'] = 'test-answers'
         os.environ['ROLE_CACHE_TABLE'] = 'test-roles'
@@ -49,7 +49,9 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'test-client'
         os.environ['METERING_TABLE'] = 'test-metering'
         os.environ['OTLP_ENDPOINT'] = 'http://local:4317'
-        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = (
+            'test-source-viewer-key'  # pragma: allowlist secret
+        )
 
         try:
             config = load_config(Environment.DEVELOPMENT)
@@ -284,7 +286,7 @@ class TestConfigLoader:
         os.environ['VECTOR_DB_HOST'] = 'prod-host'
         os.environ['VECTOR_DB_NAME'] = 'prod'
         os.environ['VECTOR_DB_USER'] = 'prod'
-        os.environ['VECTOR_DB_PASSWORD'] = 'prod'
+        os.environ['VECTOR_DB_PASSWORD'] = 'prod'  # pragma: allowlist secret
         os.environ['AWS_REGION'] = 'us-east-1'
         os.environ['ANSWER_CACHE_TABLE'] = 'prod-answers'
         os.environ['ROLE_CACHE_TABLE'] = 'prod-roles'
@@ -301,7 +303,9 @@ class TestConfigLoader:
         os.environ['COGNITO_CLIENT_ID'] = 'prod-client'
         os.environ['METERING_TABLE'] = 'prod-metering'
         os.environ['OTLP_ENDPOINT'] = 'https://otel.example.com'
-        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = 'test-source-viewer-key'
+        os.environ['SOURCE_VIEWER_SIGNING_KEY'] = (
+            'test-source-viewer-key'  # pragma: allowlist secret
+        )
 
         try:
             loader = ConfigLoader(config_dir)

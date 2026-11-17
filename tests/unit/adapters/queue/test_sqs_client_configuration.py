@@ -39,7 +39,7 @@ def test_localstack_queue_url_configures_sqs_client(monkeypatch: pytest.MonkeyPa
         endpoint_url='http://localhost:4566',
         region_name='us-west-2',
         aws_access_key_id='local-key',
-        aws_secret_access_key='local-secret',
+        aws_secret_access_key='local-secret',  # pragma: allowlist secret
     )
 
 
@@ -73,7 +73,7 @@ def test_endpoint_falls_back_to_environment_when_queue_url_is_a_placeholder(
     kwargs = client_factory.call_args.kwargs
     assert kwargs['endpoint_url'] == 'http://localstack:4566'
     assert kwargs['aws_access_key_id'] == 'env-key'
-    assert kwargs['aws_secret_access_key'] == 'env-secret'
+    assert kwargs['aws_secret_access_key'] == 'env-secret'  # pragma: allowlist secret
 
 
 def test_step_functions_client_uses_the_same_localstack_configuration(

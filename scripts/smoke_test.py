@@ -21,10 +21,12 @@ import os
 import sys
 import time
 import traceback
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 HTTP_OK = 200
 

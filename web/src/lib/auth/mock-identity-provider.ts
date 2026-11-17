@@ -13,11 +13,11 @@ export class MockIdentityProvider implements IdentityProvider {
   constructor() {
     // Pre-seed a test user
     this.users.set('admin@testcompany.com', {
-      password: 'YourPassword123!',
+      password: 'YourPassword123!',  // pragma: allowlist secret
       permissions: ['system_admin'],
     });
     this.users.set('user@testcompany.com', {
-      password: 'password123',
+      password: 'password123',  // pragma: allowlist secret
       permissions: ['finance_manager'],
     });
   }
