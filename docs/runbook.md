@@ -1,8 +1,9 @@
 # Runbook
 
-**Status: active.** These procedures are exercised by the release workflow
-(`.github/workflows/release.yml`) which triggers on `v*` tags. See
-[deployment.md](deployment.md) for the deployment process.
+**Status: active.** These procedures are exercised by the Deploy workflow
+(`.github/workflows/deploy.yml`) which runs on every push to `main`. See
+[deployment.md](deployment.md) for the deployment pipeline and the
+owner-gated steps.
 
 ## Overview
 
@@ -31,9 +32,11 @@ See [Deployment Guide](deployment.md).
 3. Check logs
 
 ## Monitoring
-- CloudWatch Logs: `/aws/lambda/finsight-{env}`
+- CloudWatch Logs: `/aws/lambda/finsight-{env}-api` and
+  `/aws/lambda/finsight-{env}-gateway` (gateway writes NDJSON litellm chunks)
 - CloudWatch Dashboards/Alarms (via ObservabilityStack)
-- OpenTelemetry collector for traces
+- Structured OTLP spans exported to CloudWatch Logs via the
+  `OTLP_ENDPOINT`/`OTLP_HEADERS` env vars wired by the Compute stack
 
 ## Incidents
 1. Assess impact
@@ -41,8 +44,28 @@ See [Deployment Guide](deployment.md).
 3. Document in incident report
 4. Follow up with post-mortem
 
+## Environment surgery
+
+The API function's environment is CDK-managed plus secret-backed values:
+
+- CDK-managed (buckets, tables, queues, Cognito ids, gateway URL): changed
+  only by CDK deploys — never edit these by hand.
+- Secret-backed (`VECTOR_DB_*`, `MODEL_GATEWAY_AUTH_TOKEN`): re-injected by
+  `scripts/sync_lambda_env.py` after every deploy. If a deploy lands without
+  them, run it manually:
+
+  ```bash
+  uv run python scripts/sync_lambda_env.py --environment prod --region us-east-1
+  ```
+
+  The script fails loudly if the Neon URL is missing or the master key still
+  holds the CDK scaffold placeholder. It prints no secret values.
+
 ## Secrets Management
-- Use AWS Secrets Manager / SSM Parameter Store
-- Rotate credentials regularly
-- Never commit secrets
+- SSM Parameter Store (`/finsight/<env>/...` SecureStrings) for the Neon DSN
+  and the model-gateway master key; rotate with
+  `aws ssm put-parameter --overwrite`
+- `MODEL_GATEWAY_AUTH_TOKEN` on the API Lambda must be re-synced after every
+  master-key rotation
+- Never commit secrets; never route secrets through CDK synthesis
 - Use GitHub OIDC for CI/CD

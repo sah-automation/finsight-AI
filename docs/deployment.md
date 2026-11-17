@@ -1,21 +1,18 @@
 # Deployment Guide
 
-**Status: Stage B complete, no application deployed.** Stage B of the AWS
-plan (`docs/plans/aws-infra-cicd-plan.md`) provisioned the account-level
-plumbing: AWS credentials and CLI, a config-driven billing budget with anomaly
-alerts, an IAM deployment role trusting GitHub OIDC, GitHub Environments, the
-GitHub OIDC identity provider, a bootstrapped CDK environment, the Neon
-credential in SSM Parameter Store, and a manual OIDC smoke workflow that passes
-on all three environments. No application stack is deployed yet, and there is
-still no deploy/release workflow — that is Stage D. One step still needs the
-account owner: enabling the budget's email notifications, listed under
-"Remaining owner steps" below.
+**Status: production deployed (Stage D-7).** Stage B provisioned the
+account-level plumbing (see below), Stage C the application stacks, and the
+Deploy workflow (`.github/workflows/deploy.yml`) now builds, deploys, migrates
+and smoke-tests the live API on every push to `main`. The live production API
+serves `GET /health` and the read-only `/ask` endpoint. Remaining steps that
+need the account owner are listed under "Remaining owner steps" and
+"Owner-gated production steps" below.
 
 ## Overview
 
-FinSight AI will be deployed as AWS Lambda zip packages behind API Gateway.
-Infrastructure is defined with AWS CDK in `infra/cdk/`. Deployments are
-intended to use GitHub OIDC (no long-lived AWS keys).
+FinSight AI is deployed as AWS Lambda zip packages behind an API Gateway HTTP
+API. Infrastructure is defined with AWS CDK in `infra/cdk/`. Deployments use
+GitHub OIDC (no long-lived AWS keys) via the Deploy workflow.
 
 ## Environments
 
@@ -34,13 +31,14 @@ Target account: `069632763967` (region `us-east-1`).
 | Resource | Identifier | Where it is configured |
 |---|---|---|
 | IAM deployment role | `arn:aws:iam::069632763967:role/finsight-deploy-role` | Trust policy scoped to this repo's `dev`/`staging`/`production` environments |
-| Role permissions | `finsight-deploy-policy` (customer managed) | Deliberately light; tightened in Stage C |
+| Role permissions | `finsight-deploy-policy` (customer managed) | Policy document committed at `infra/iam/finsight-deploy-policy.json`; the owner applies it (the operator cannot create IAM policies) |
 | GitHub Environments | `dev`, `staging`, `production` | Each holds `AWS_ROLE_ARN` + `AWS_REGION` environment variables |
 | Billing budget | `finsight-monthly-budget` (monthly, USD) | Amount comes from `alerts.monthly_budget_usd` in `infra/cdk/config/envs.yaml`, applied by `scripts/apply_billing_guardrails.py` |
 | Cost anomaly monitor | `finsight-cost-anomaly` (per service) + `finsight-cost-anomaly-subscription` | Subscribed by email; threshold comes from `alerts.anomaly_threshold_usd` in the same file |
 | OIDC identity provider | `arn:aws:iam::069632763967:oidc-provider/token.actions.githubusercontent.com` | Client id `sts.amazonaws.com`; the role's trust policy points at it |
 | CDK environment | `CDKToolkit` stack in `us-east-1` | Bootstrap version 23; asset bucket `cdk-hnb659fds-assets-069632763967-us-east-1` |
 | Database credential | `/finsight/prod/neon/database_url` | `SecureString`; the value is never printed, logged or committed |
+| Gateway master key | `/finsight/prod/model_gateway_master_key` | `SecureString`; rotated from the CDK scaffold placeholder after the first deploy |
 | OIDC smoke workflow | `.github/workflows/aws-role-smoke.yml` | Manual trigger; proves GitHub can assume the role |
 | Operator user + guardrails | `aws-cli` IAM user, three deny policies | `infra/cdk/policies/`; see "Operator access model" below |
 
@@ -266,19 +264,98 @@ make infra-test    # CDK smoke tests, including the unknown-environment check
 
 The CI `Infra Synth` job runs both commands on every PR.
 
-## Deployment process (not implemented)
+## Deployment pipeline (Deploy workflow)
 
-The intended flow, once DI-22 closes:
+`.github/workflows/deploy.yml` runs on every push to `main` (and on manual
+dispatch for `dev`/`staging`/`production`). For `main` pushes the target is
+always `prod`; manual dispatch maps the chosen environment name to the CDK env
+(`production → prod`). The pipeline:
 
-1. Build artifacts with `make lambda-build` (zip + checksum) and
-   `make docker-build` (container image).
-2. Assume the environment role through GitHub OIDC.
-3. Run `cdk deploy --all` for the target environment.
-4. Run the smoke checks below.
+1. **Build** — `scripts/build_lambda.py` produces `api.zip` and
+   `gateway.zip` (uploaded as workflow artifacts, checksum-verified before
+   use).
+2. **Deploy infrastructure stacks** — CDK deploys Network, Data, Messaging,
+   Auth, StepFunctions and Observability. The ApiGateway stack is *not* in
+   this phase: it owns the HTTP API routes and their Lambda invoke
+   permissions and imports the Compute function ARN, so it must follow
+   Compute.
+3. **Database migration** (prod) — `scripts/run_migration.py` reads the Neon
+   DSN from SSM, runs `alembic upgrade head`, and verifies with
+   `alembic current`. A migration failure halts the deployment.
+4. **Deploy Compute + ApiGateway** — CDK deploys both (dependency order is
+   automatic).
+5. **Sync secret-backed Lambda environment** (prod) —
+   `scripts/sync_lambda_env.py` re-injects the values CDK must not own (the
+   Neon URL → `VECTOR_DB_*`, the gateway master key →
+   `MODEL_GATEWAY_AUTH_TOKEN`) into `finsight-prod-api`, merging into the
+   CDK-managed environment. CDK resets the function environment on every
+   deploy, so this step runs after every deploy.
+6. **Smoke tests (deploy gate)** — the smoke job resolves the custom domain
+   (falling back to the raw execute-api endpoint while DNS is not resolving),
+   obtains a JWT for the smoke-test user via `admin-initiate-auth`, and runs
+   `scripts/smoke_test.py`: `GET /health` must return 200
+   `{"status": "ok"}` and `POST /ask` must stream a complete SSE envelope. A
+   failure fails the deploy loudly (unless `force` was set).
 
-A release workflow (`.github/workflows/release.yml`) triggers on `v*` version tags.
-It builds artifacts, generates release notes from merged PRs, creates a GitHub Release,
-and deploys to production.
+GitHub Environments `dev`, `staging` and `production` exist with no
+protection rules yet; secrets for the smoke user live on `production`.
+
+### Secret-backed values (never through CDK)
+
+| Parameter | Feeds | How it is set |
+|---|---|---|
+| `/finsight/<env>/neon/database_url` | `VECTOR_DB_*` on the API Lambda | Owner, one-time per environment (see "Application secrets") |
+| `/finsight/<env>/model_gateway_master_key` | `MODEL_GATEWAY_AUTH_TOKEN` on the API Lambda; read at runtime by the gateway itself | CDK creates the parameter with the `PLACEHOLDER_REPLACE_AT_DEPLOY` scaffold value; the owner rotates it once after the first deploy. `sync_lambda_env.py` fails loudly while the placeholder is still in place |
+
+### Smoke-test user
+
+The pipeline authenticates a dedicated read-only user (`smoke-test@finsight.local`,
+custom attributes `role=executive_leadership`, `company_id=smoke-test-readonly-tenant`)
+with the Cognito `ADMIN_USER_PASSWORD_AUTH` flow, which the app client allows
+explicitly. Credentials are stored as the `SMOKE_TEST_USER_EMAIL` /
+`SMOKE_TEST_USER_PASSWORD` secrets on the `production` GitHub environment.
+JWTs expire within the hour, so the workflow obtains a fresh token per run
+instead of storing one.
+
+## Owner-gated production steps
+
+The agent-operator identity cannot perform these; each needs the account
+owner:
+
+1. **Deploy role permissions.** `finsight-deploy-role` has no attached
+   policies, so GitHub OIDC deployments fail with AccessDenied. The complete
+   customer-managed policy is committed at
+   `infra/iam/finsight-deploy-policy.json` (built from the synthesized
+   templates; roles/tables/queues/parameters are scoped to `FinSight-*` /
+   `finsight-*`, and `iam:PassRole`/`AttachRolePolicy` are constrained
+   accordingly). Apply it with:
+
+   ```bash
+   aws iam create-policy \
+     --policy-name finsight-deploy-policy \
+     --policy-document file://infra/iam/finsight-deploy-policy.json
+   aws iam attach-role-policy \
+     --role-name finsight-deploy-role \
+     --policy-arn "arn:aws:iam::069632763967:policy/finsight-deploy-policy"
+   ```
+
+2. **DNS for the custom domain.** The ACM certificate for
+   `api.finsight.sahcreatives.com` is validated, but the DNS zone is managed
+   outside this account: the CNAME for `api.finsight.sahcreatives.com` must
+   point at the HTTP API endpoint (region alias name of
+   `d-…​.execute-api.us-east-1.amazonaws.com` for the API id `bnf10a9j6l`,
+   resolvable with `aws apigatewayv2 get-domain-name`). Until the record is
+   corrected, the API is reachable only through the raw endpoint and the
+   smoke gate falls back to it.
+
+3. **LLM provider API keys.** The model gateway uses litellm provider
+   models (groq/gemini/nvidia_nim); their API keys are not stored anywhere in
+   the account yet, so `/ask` answers come back as the graceful
+   `insufficient_data` envelope instead of real answers. Provider keys can
+   be provided by the gateway's configuration channel once the owner shares
+   them (they must never be committed).
+
+4. **Budget email notifications** — see "Remaining owner steps" below.
 
 ## Rollback
 
