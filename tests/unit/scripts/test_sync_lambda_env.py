@@ -138,3 +138,52 @@ class TestMergeEnv:
     def test_default_function_name_matches_compute_stack(self) -> None:
         """The target function name mirrors the CDK compute stack naming."""
         assert sync_lambda_env.default_function_name('prod') == 'finsight-prod-api'
+
+    def test_default_gateway_function_name_matches_compute_stack(self) -> None:
+        """The gateway target function name mirrors the CDK compute stack naming."""
+        assert sync_lambda_env.default_gateway_function_name('prod') == 'finsight-prod-gateway'
+
+    def test_gateway_lambda_env_vars_collects_present_keys(self) -> None:
+        """Present provider parameters are collected into the conventional env vars."""
+
+        def fake_fetch(name: str, region: str) -> str:
+            if name == '/finsight/prod/groq_api_key':
+                return 'gsk_test'  # pragma: allowlist secret
+            if name == '/finsight/prod/gemini_api_key':
+                return 'gemini_test'  # pragma: allowlist secret
+            raise KeyError(name)
+
+        env_vars = sync_lambda_env.gateway_lambda_env_vars(
+            fetch=fake_fetch, env='prod', region='us-east-1'
+        )
+
+        assert env_vars == {
+            'GROQ_API_KEY': 'gsk_test',
+            'GEMINI_API_KEY': 'gemini_test',
+        }
+
+    def test_gateway_lambda_env_vars_skips_missing_keys(self) -> None:
+        """Missing parameters are skipped, not raised."""
+
+        def fake_fetch(name: str, region: str) -> str:
+            raise KeyError(name)
+
+        env_vars = sync_lambda_env.gateway_lambda_env_vars(
+            fetch=fake_fetch, env='prod', region='us-east-1'
+        )
+
+        assert env_vars == {}
+
+    def test_gateway_lambda_env_vars_skips_empty_values(self) -> None:
+        """Empty parameter values are skipped."""
+
+        def fake_fetch(name: str, region: str) -> str:
+            if name == '/finsight/prod/groq_api_key':
+                return '   '
+            raise KeyError(name)
+
+        env_vars = sync_lambda_env.gateway_lambda_env_vars(
+            fetch=fake_fetch, env='prod', region='us-east-1'
+        )
+
+        assert env_vars == {}
