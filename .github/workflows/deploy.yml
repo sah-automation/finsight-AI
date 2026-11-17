@@ -198,7 +198,6 @@ jobs:
             "FinSight-${CDK_ENV}-Data" \
             "FinSight-${CDK_ENV}-Messaging" \
             "FinSight-${CDK_ENV}-Auth" \
-            "FinSight-${CDK_ENV}-ApiGateway" \
             "FinSight-${CDK_ENV}-StepFunctions" \
             "FinSight-${CDK_ENV}-Observability" \
             --require-approval never
@@ -211,16 +210,19 @@ jobs:
             --environment ${{ needs.resolve.outputs.cdk_env }} \
             --region ${{ env.AWS_REGION }}
 
-      - name: Deploy CDK Compute stack
+      - name: Deploy CDK Compute and API Gateway stacks
         env:
           CDK_ENV: ${{ needs.resolve.outputs.cdk_env }}
           LAMBDA_ZIP: dist/lambda/api.zip
           GATEWAY_ZIP: dist/lambda/gateway.zip
         run: |
           cd infra/cdk
+          # The ApiGateway stack owns the HTTP API routes and their Lambda
+          # invoke permissions and imports the Compute function ARN, so CDK
+          # orders Compute before ApiGateway automatically.
           CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
             uv run --no-project --with-requirements requirements.txt \
-            cdk deploy "FinSight-${CDK_ENV}-Compute" \
+            cdk deploy "FinSight-${CDK_ENV}-Compute" "FinSight-${CDK_ENV}-ApiGateway" \
             --require-approval never
 
       - name: Sync secret-backed Lambda environment (SSM)
