@@ -38,7 +38,7 @@ Target account: `069632763967` (region `us-east-1`).
 | OIDC identity provider | `arn:aws:iam::069632763967:oidc-provider/token.actions.githubusercontent.com` | Client id `sts.amazonaws.com`; the role's trust policy points at it |
 | CDK environment | `CDKToolkit` stack in `us-east-1` | Bootstrap version 23; asset bucket `cdk-hnb659fds-assets-069632763967-us-east-1` |
 | Database credential | `/finsight/prod/neon/database_url` | `SecureString`; the value is never printed, logged or committed |
-| Gateway master key | `/finsight/prod/model_gateway_master_key` | `SecureString`; rotated from the CDK scaffold placeholder after the first deploy |
+| Gateway master key | `/finsight/prod/model_gateway_master_key` | `SecureString`; owner-rotated, never owned by CDK (see "Secret-backed values") |
 | OIDC smoke workflow | `.github/workflows/aws-role-smoke.yml` | Manual trigger; proves GitHub can assume the role |
 | Operator user + guardrails | `aws-cli` IAM user, three deny policies | `infra/cdk/policies/`; see "Operator access model" below |
 
@@ -305,7 +305,8 @@ protection rules yet; secrets for the smoke user live on `production`.
 | Parameter | Feeds | How it is set |
 |---|---|---|
 | `/finsight/<env>/neon/database_url` | `VECTOR_DB_*` on the API Lambda | Owner, one-time per environment (see "Application secrets") |
-| `/finsight/<env>/model_gateway_master_key` | `MODEL_GATEWAY_AUTH_TOKEN` on the API Lambda; read at runtime by the gateway itself | CDK creates the parameter with the `PLACEHOLDER_REPLACE_AT_DEPLOY` scaffold value; the owner rotates it once after the first deploy. `sync_lambda_env.py` fails loudly while the placeholder is still in place |
+| `/finsight/<env>/model_gateway_master_key` | `MODEL_GATEWAY_AUTH_TOKEN` on the API Lambda; read at runtime by the gateway itself | Owner, one-time per environment: `aws ssm put-parameter --name <param> --type SecureString --value <generated-key> --overwrite` (this creates the parameter when it does not exist yet). CDK only references the name and grants the gateway `ssm:GetParameter`; it never creates or updates the parameter, because CloudFormation cannot change an existing SSM parameter's `Type` and a CDK-managed value would overwrite the rotated key. `sync_lambda_env.py` fails loudly if the parameter is missing or still holds a scaffold placeholder |
+| `/finsight/<env>/source_viewer_signing_key` | `SOURCE_VIEWER_SIGNING_KEY` on the API Lambda (required by the config loader's `documents` section) | Owner, one-time per environment, as a `SecureString`. `sync_lambda_env.py` injects it after every deploy |
 
 ### Smoke-test user
 
@@ -373,9 +374,13 @@ owner:
 
 - Redeploy the previous image digest.
 
-## Smoke tests (once an entrypoint exists)
+## Smoke tests
 
-- Health endpoint responds.
-- One read-only check passes.
+The deploy workflow's final gate runs `scripts/smoke_test.py` against the
+live custom domain (see "Deployment pipeline"); it asserts:
+
+- `GET /health` returns 200 with `{"status": "ok"}`.
+- One read-only `POST /ask` (the dedicated `smoke-test-readonly-tenant`)
+  streams a complete SSE answer envelope.
 
 See [runbook.md](runbook.md) for operational procedures.

@@ -58,8 +58,9 @@ The API function's environment is CDK-managed plus secret-backed values:
   uv run python scripts/sync_lambda_env.py --environment prod --region us-east-1
   ```
 
-  The script fails loudly if the Neon URL is missing or the master key still
-  holds the CDK scaffold placeholder. It prints no secret values.
+  The script fails loudly if the Neon URL is missing, if the master key
+  still holds a scaffold placeholder, or if the source-viewer signing key
+  is missing. It prints no secret values.
 
 ## Secrets Management
 - SSM Parameter Store (`/finsight/<env>/...` SecureStrings) for the Neon DSN
