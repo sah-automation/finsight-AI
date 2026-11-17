@@ -26,7 +26,7 @@ describe('sign-in request handling', () => {
   it('accepts a trimmed email and password', () => {
     expect(parseSignInCredentials({ email: ' user@example.com ', password: 'secret' })).toEqual({  // pragma: allowlist secret
       email: 'user@example.com',
-      password: 'secret',
+      password: 'secret',  // pragma: allowlist secret
     });
   });
 
