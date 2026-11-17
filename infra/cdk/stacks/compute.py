@@ -11,7 +11,6 @@ from aws_cdk import aws_apigatewayv2_authorizers as apigatewayv2_auth
 from aws_cdk import aws_apigatewayv2_integrations as integrations
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 
 from stacks.env_config import load_env_config
@@ -448,22 +447,20 @@ class ComputeStack(Stack):
             ],
         )
 
-        # SSM parameter for the shared master key (SecureString; encrypted at
-        # rest with the AWS-managed SSM key, readable only by the gateway).
-        master_key_param = ssm.StringParameter(
-            self,
-            f'ModelGatewayMasterKey{env_name}',
-            parameter_name=f'/finsight/{env_name}/model_gateway_master_key',
-            description=f'Master key for FinSight model gateway ({env_name})',
-            string_value='PLACEHOLDER_REPLACE_AT_DEPLOY',
-            tier=ssm.ParameterTier.STANDARD,
-            type=ssm.ParameterType.SECURE_STRING,
-        )
+        # SSM Parameter Store owns the master key (SecureString, created and
+        # rotated by the owner step — see scripts/sync_lambda_env.py). CDK
+        # never creates or updates the parameter: CloudFormation cannot
+        # change an existing SSM parameter's ``Type`` (the changeset is
+        # rejected by early validation) and a CDK-managed value would
+        # overwrite the rotated key with the scaffold placeholder on the
+        # next deploy. The stack only references the parameter name, the
+        # same ownership pattern as the Neon URL parameter (issue #327).
+        master_key_param_name = f'/finsight/{env_name}/model_gateway_master_key'
 
         gateway_environment: dict[str, str] = {
             'OTLP_ENDPOINT': f'https://logs.{self.region}.amazonaws.com/v1/logs',
             'ENVIRONMENT': _app_environment(env_name),
-            'MODEL_GATEWAY_MASTER_KEY_PARAM': master_key_param.parameter_name,
+            'MODEL_GATEWAY_MASTER_KEY_PARAM': master_key_param_name,
             'AWS_LAMBDA_EXEC_WRAPPER': '/opt/bootstrap',
             'AWS_LWA_INVOKE_MODE': 'response_stream',
             'PORT': '8080',
@@ -494,8 +491,20 @@ class ComputeStack(Stack):
             **gateway_kwargs,
         )
 
-        # Grant read access to the master key parameter (ssm:GetParameter*;
-        # decryption uses the AWS-managed SSM key policy's ViaService grant)
-        master_key_param.grant_read(gateway_fn)
+        # Least-privilege read for the master key the gateway fetches at
+        # startup (ssm:GetParameter on this parameter only; decryption uses
+        # the AWS-managed SSM key policy's ViaService grant).
+        gateway_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=['ssm:GetParameter'],
+                resources=[
+                    self.format_arn(
+                        service='ssm',
+                        resource='parameter',
+                        resource_name=master_key_param_name.lstrip('/'),
+                    )
+                ],
+            )
+        )
 
         return gateway_fn
