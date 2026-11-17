@@ -69,13 +69,18 @@ class AuthStack(Stack):
             'company',
             'user',
         )
+        # Client can only write standard attributes (email) and not internal
+        # custom attributes like company_id, role, etc. which are set by admins.
+        writable_attributes = cognito.ClientAttributes().with_standard_attributes(
+            email=True,
+        )
 
         self.user_pool_client = self.user_pool.add_client(
             f'UserPoolClient{env_name}',
             user_pool_client_name=f'finsight-{env_name}-client',
             auth_flows=cognito.AuthFlow(user_srp=True),
             read_attributes=exposed_attributes,
-            write_attributes=exposed_attributes,
+            write_attributes=writable_attributes,
         )
 
         # One group per business role.

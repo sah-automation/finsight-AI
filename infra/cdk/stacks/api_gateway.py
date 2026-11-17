@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aws_cdk import Fn, RemovalPolicy, Stack
+from aws_cdk import CfnOutput, Fn, RemovalPolicy, Stack
 from aws_cdk import aws_apigatewayv2 as apigatewayv2
 from aws_cdk import aws_apigatewayv2_integrations as integrations
 from aws_cdk import aws_certificatemanager as acm
@@ -137,7 +137,7 @@ class ApiGatewayStack(Stack):
             RemovalPolicy.RETAIN if removal_policy_name == 'retain' else RemovalPolicy.DESTROY
         )
 
-        # Create the HTTP API (throttling is configured on the stage, not the API)
+        # Create the HTTP API.
         self.http_api = apigatewayv2.HttpApi(
             self,
             f'HttpApi{env_name}',
@@ -146,16 +146,18 @@ class ApiGatewayStack(Stack):
             default_domain_mapping=None,  # We'll add custom domain mapping separately
         )
 
-        # Configure the default stage with throttling and access logging
+        # Configure the default stage with throttling and access logging.
+        # HTTP API stages expose throttling via DefaultRouteSettings
+        # (ThrottlingRateLimit/ThrottlingBurstLimit); the REST-API-only
+        # ``ThrottleSettings`` property name is rejected by CloudFormation.
         default_stage = self.http_api.default_stage
         if default_stage is not None:
-            # Apply throttling settings via the underlying CfnStage
             cfn_stage = default_stage.node.default_child
             cfn_stage.add_property_override(
-                'ThrottleSettings',
+                'DefaultRouteSettings',
                 {
-                    'RateLimit': rate_limit,
-                    'BurstLimit': burst_limit,
+                    'ThrottlingRateLimit': rate_limit,
+                    'ThrottlingBurstLimit': burst_limit,
                 },
             )
 
@@ -328,6 +330,15 @@ class ApiGatewayStack(Stack):
         self.http_api_url = self.http_api.api_endpoint
         self.access_log_group_arn = self.access_log_group.log_group_arn
         self.access_log_group_name = self.access_log_group.log_group_name
+        # The deploy workflow captures the custom domain from this output
+        # (``aws cloudformation describe-stacks ... CustomDomainName``).
+        cfn_output = CfnOutput(
+            self,
+            f'CustomDomainName{env_name}',
+            value=custom_domain if self.domain_mapping is not None else self.http_api_url,
+            description='HTTPS entry point for the deployed API',
+        )
+        del cfn_output
         if self.domain_mapping is not None:
             self.custom_domain_name = custom_domain
         if self.web_acl is not None:

@@ -115,6 +115,12 @@ class ComputeStack(Stack):
         if observability_headers:
             environment['OTLP_HEADERS'] = json.dumps(observability_headers)
 
+        # Application config substitution (config/*.yaml ${VARS}): buckets,
+        # queues, DynamoDB tables and Cognito ids are owned by sibling stacks,
+        # so CDK wires them natively instead of requiring manual console
+        # updates that drift on the next deploy.
+        environment.update(self._app_config_environment(data, messaging, auth))
+
         lambda_kwargs['environment'] = environment
 
         self.api_fn = lambda_.Function(
@@ -141,6 +147,19 @@ class ComputeStack(Stack):
             )
             # Grant the API function permission to invoke the gateway
             self.gateway_fn.grant_invoke(self.api_fn)
+            # Function URLs with AWS_IAM auth additionally require
+            # ``lambda:InvokeFunctionUrl`` (with the auth-type condition);
+            # ``grant_invoke`` alone makes every SigV4 call to the URL fail
+            # with HTTP 403.
+            self.api_fn.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=['lambda:InvokeFunctionUrl'],
+                    resources=[self.gateway_fn.function_arn],
+                    conditions={
+                        'StringEquals': {'lambda:FunctionUrlAuthType': 'AWS_IAM'},
+                    },
+                )
+            )
             # Expose the gateway function URL to the API function via env
             gateway_url = self.gateway_fn.add_function_url(
                 auth_type=lambda_.FunctionUrlAuthType.AWS_IAM,
@@ -156,7 +175,6 @@ class ComputeStack(Stack):
         # Observability: allow the runtime to put structured span records on
         # the Observability log group (issue #276).
         self._grant_observability_permissions(role)
-
         # HTTP API from ApiGatewayStack with Cognito authorization.
         http_api = getattr(api_gateway, 'http_api', None) if api_gateway is not None else None
         if http_api is None:
@@ -201,6 +219,14 @@ class ComputeStack(Stack):
         authorizer: apigatewayv2_auth.HttpJwtAuthorizer,
     ) -> None:
         """Add standard routes to the HTTP API."""
+        # Public health endpoint (no authorizer)
+        self.http_api.add_routes(
+            path='/health',
+            methods=[apigatewayv2.HttpMethod.GET],
+            integration=integration,
+            # No authorizer for public health check
+        )
+        # All other routes require JWT authorization
         self.http_api.add_routes(
             path='/{proxy+}',
             methods=[apigatewayv2.HttpMethod.ANY],
@@ -213,6 +239,76 @@ class ComputeStack(Stack):
             integration=integration,
             authorizer=authorizer,
         )
+
+    def _app_config_environment(
+        self,
+        data: object,
+        messaging: object,
+        auth: object,
+    ) -> dict[str, str]:
+        """Resolve the config-loader substitution vars owned by sibling stacks.
+
+        ``config/{env}.yaml`` substitutes ``${VARS}`` from the environment at
+        startup (fail-loudly when unset), so every referenced variable must be
+        declared on the Lambda. Sibling-stack values (buckets, queues, tables,
+        Cognito ids) are read from the constructs; only the Neon credential is
+        injected after deploy from SSM (``scripts/sync_lambda_env.py``), which
+        keeps the secret out of CloudFormation state.
+        """
+        environment: dict[str, str] = {}
+
+        def _resolve(owner: object, name: str, resolve: object) -> str:
+            construct = getattr(owner, name, None)
+            if construct is None:
+                if owner is None:
+                    # The stack was synthesized without a sibling (tests);
+                    # the config loader would fail loudly at runtime instead.
+                    return ''
+                raise ValueError(
+                    f'{owner.__class__.__name__} must expose {name!r} for Lambda env wiring'
+                )
+            return str(resolve(construct))
+
+        buckets = data
+        if buckets is not None:
+            environment['DOCUMENTS_BUCKET'] = _resolve(
+                buckets, 'documents_bucket', lambda b: b.bucket_name
+            )
+            environment['REPORTS_BUCKET'] = _resolve(
+                buckets, 'reports_bucket', lambda b: b.bucket_name
+            )
+            environment['BACKUPS_BUCKET'] = _resolve(
+                buckets, 'backups_bucket', lambda b: b.bucket_name
+            )
+            environment['METERING_TABLE'] = _resolve(buckets, 'metering', lambda t: t.table_name)
+            environment['ANSWER_CACHE_TABLE'] = _resolve(
+                buckets, 'answer_cache', lambda t: t.table_name
+            )
+            environment['ROLE_CACHE_TABLE'] = _resolve(
+                buckets, 'role_cache', lambda t: t.table_name
+            )
+
+        queues = messaging
+        if queues is not None:
+            environment['INGESTION_QUEUE_URL'] = _resolve(
+                queues, 'ingestion', lambda q: q.queue_url
+            )
+            environment['REPROCESSING_QUEUE_URL'] = _resolve(
+                queues, 'reprocessing', lambda q: q.queue_url
+            )
+            environment['REPORTS_QUEUE_URL'] = _resolve(queues, 'reports', lambda q: q.queue_url)
+            environment['DLQ_URL'] = _resolve(queues, 'dlq', lambda q: q.queue_url)
+
+        cognito = auth
+        if cognito is not None:
+            environment['COGNITO_USER_POOL_ID'] = _resolve(
+                cognito, 'user_pool', lambda p: p.user_pool_id
+            )
+            environment['COGNITO_CLIENT_ID'] = _resolve(
+                cognito, 'user_pool_client', lambda c: c.user_pool_client_id
+            )
+
+        return environment
 
     def _grant_observability_permissions(self, role: object) -> None:
         """Grant the runtime role write access to the Observability log group."""
@@ -352,7 +448,8 @@ class ComputeStack(Stack):
             ],
         )
 
-        # SSM parameter for the shared master key (SecureString)
+        # SSM parameter for the shared master key (SecureString; encrypted at
+        # rest with the AWS-managed SSM key, readable only by the gateway).
         master_key_param = ssm.StringParameter(
             self,
             f'ModelGatewayMasterKey{env_name}',
@@ -397,7 +494,8 @@ class ComputeStack(Stack):
             **gateway_kwargs,
         )
 
-        # Grant read access to the master key parameter
+        # Grant read access to the master key parameter (ssm:GetParameter*;
+        # decryption uses the AWS-managed SSM key policy's ViaService grant)
         master_key_param.grant_read(gateway_fn)
 
         return gateway_fn

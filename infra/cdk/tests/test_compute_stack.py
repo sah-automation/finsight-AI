@@ -16,7 +16,10 @@ from aws_cdk.assertions import Template
 from stacks.api_gateway import ApiGatewayStack
 from stacks.auth import AuthStack
 from stacks.compute import ComputeStack, _app_environment
+from stacks.data import DataStack
 from stacks.env_config import load_envs
+from stacks.messaging import MessagingStack
+from stacks.network import NetworkStack
 from stacks.observability import ObservabilityStack
 
 # Pin the account/region so the region-derived OTLP endpoint is deterministic.
@@ -24,7 +27,18 @@ _ENV = cdk.Environment(account='123456789012', region='us-east-1')
 
 
 def _compute_template(env_name: str = 'dev') -> Template:
+    """Synthesize a compute stack wired like ``app.py`` (all sibling stacks)."""
     app = cdk.App()
+    network = NetworkStack(app, f'FinSight-{env_name}-Network', env=_ENV, env_name=env_name)
+    data = DataStack(
+        app,
+        f'FinSight-{env_name}-Data',
+        env=_ENV,
+        env_name=env_name,
+        vpc=network.vpc,
+        env_config=load_envs()[env_name],
+    )
+    messaging = MessagingStack(app, f'FinSight-{env_name}-Messaging', env=_ENV, env_name=env_name)
     auth = AuthStack(app, f'FinSight-{env_name}-Auth', env=_ENV, env_name=env_name)
     observability = ObservabilityStack(
         app, f'FinSight-{env_name}-Observability', env=_ENV, env_name=env_name
@@ -41,6 +55,9 @@ def _compute_template(env_name: str = 'dev') -> Template:
         f'FinSight-{env_name}-Compute',
         env=_ENV,
         env_name=env_name,
+        vpc=network.vpc,
+        data=data,
+        messaging=messaging,
         auth=auth,
         api_gateway=api_gateway,
         observability=observability,
@@ -140,3 +157,92 @@ def _actions(statement: dict[str, object]) -> list[str]:
     if isinstance(action, str):
         return [action]
     return [str(item) for item in action]
+
+
+def _statement_entries(document: dict[str, object]) -> list[object]:
+    """Normalize a policy document's Statement to a list of entries."""
+    entries = document.get('Statement', [])
+    if isinstance(entries, dict):
+        return [entries]
+    return list(entries)
+
+
+def _compute_template_with_gateway(env_name: str = 'prod') -> Template:
+    """Synthesize a compute stack including the model-gateway function (prod)."""
+    app = cdk.App()
+    auth = AuthStack(app, f'FinSight-{env_name}-Auth', env=_ENV, env_name=env_name)
+    observability = ObservabilityStack(
+        app, f'FinSight-{env_name}-Observability', env=_ENV, env_name=env_name
+    )
+    api_gateway = ApiGatewayStack(
+        app,
+        f'FinSight-{env_name}-ApiGateway',
+        env=_ENV,
+        env_name=env_name,
+        env_config=load_envs()[env_name],
+    )
+    compute = ComputeStack(
+        app,
+        f'FinSight-{env_name}-Compute',
+        env=_ENV,
+        env_name=env_name,
+        auth=auth,
+        api_gateway=api_gateway,
+        observability=observability,
+    )
+    return Template.from_stack(compute)
+
+
+def test_api_lambda_env_wires_storage_queues_tables_and_auth() -> None:
+    """The config loader substitutes ${VARS}; the stack must inject them.
+
+    DOCUMENTS/REPORTS/BACKUPS buckets, SQS queue URLs, DynamoDB table names and
+    the Cognito pool/client ids are all owned by sibling stacks, so CDK wires
+    them natively (no manual console updates, no drift).
+    """
+    template = _compute_template('dev')
+    env_vars = _environment_variables(template)
+
+    for key in (
+        'DOCUMENTS_BUCKET',
+        'REPORTS_BUCKET',
+        'BACKUPS_BUCKET',
+        'COGNITO_USER_POOL_ID',
+        'COGNITO_CLIENT_ID',
+        'METERING_TABLE',
+        'ANSWER_CACHE_TABLE',
+        'ROLE_CACHE_TABLE',
+        'INGESTION_QUEUE_URL',
+        'REPROCESSING_QUEUE_URL',
+        'REPORTS_QUEUE_URL',
+        'DLQ_URL',
+    ):
+        assert env_vars.get(key), f'API Lambda env missing {key}'
+
+    # Bucket names follow the finsight-<env>-<purpose> convention and must
+    # reference the data stack's buckets (cross-stack Ref), not literals.
+    assert 'FinSight-dev-Data' in str(env_vars['DOCUMENTS_BUCKET'])
+
+
+def test_api_fn_can_invoke_gateway_function_url() -> None:
+    """The API Lambda may call the gateway function URL over SigV4 (IAM auth).
+
+    Function URLs with AWS_IAM auth require ``lambda:InvokeFunctionUrl`` *and*
+    ``lambda:InvokeFunction``; ``grant_invoke`` only grants the latter
+    (regression: SigV4 calls to the gateway URL failed with HTTP 403).
+    """
+    template = _compute_template_with_gateway('prod')
+
+    url_statements = [
+        s
+        for policy in template.find_resources('AWS::IAM::Policy').values()
+        for s in _statement_entries(policy['Properties'].get('PolicyDocument', {}))
+        if isinstance(s, dict) and 'lambda:InvokeFunctionUrl' in s.get('Action', [])
+    ]
+    assert url_statements, 'expected a policy granting lambda:InvokeFunctionUrl'
+    statement = url_statements[0]
+    assert 'lambda:InvokeFunction' in statement['Action']
+    condition = statement.get('Condition') or {}
+    assert condition.get('StringEquals', {}).get('lambda:FunctionUrlAuthType') == 'AWS_IAM', (
+        statement
+    )
