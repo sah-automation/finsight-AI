@@ -265,6 +265,10 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    env:
+      # secrets is not available in step `if`, so expose the static-token
+      # switch at job level (empty unless the env secret is configured).
+      SMOKE_TEST_STATIC_JWT: ${{ secrets.SMOKE_TEST_JWT_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -295,10 +299,52 @@ jobs:
           fi
           echo "SMOKE_TEST_BASE_URL=$BASE_URL" >> $GITHUB_ENV
 
+      - name: Configure AWS credentials
+        if: env.SMOKE_TEST_STATIC_JWT == ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-smoke-${{ needs.resolve.outputs.cdk_env }}-${{ github.run_id }}
+
+      - name: Obtain smoke-test JWT (admin auth flow)
+        if: env.SMOKE_TEST_STATIC_JWT == ''
+        env:
+          USER_EMAIL: ${{ secrets.SMOKE_TEST_USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.SMOKE_TEST_USER_PASSWORD }}
+        run: |
+          # The API function's env carries the pool/client ids CDK wired from
+          # the Auth stack (no separate stack outputs needed).
+          read_env() {
+            aws lambda get-function-configuration \
+              --function-name finsight-${{ needs.resolve.outputs.cdk_env }}-api \
+              --query "Environment.Variables.$1" \
+              --output text \
+              --region ${{ env.AWS_REGION }}
+          }
+          POOL=$(read_env COGNITO_USER_POOL_ID)
+          CLIENT=$(read_env COGNITO_CLIENT_ID)
+          if [ -z "$POOL" ] || [ "$POOL" = "None" ]; then
+            echo "::error::COGNITO_USER_POOL_ID not found on the API function env"
+            exit 1
+          fi
+          TOKEN=$(aws cognito-idp admin-initiate-auth \
+            --user-pool-id "$POOL" \
+            --client-id "$CLIENT" \
+            --auth-flow ADMIN_USER_PASSWORD_AUTH \
+            --auth-parameters "USERNAME=$USER_EMAIL,PASSWORD=$USER_PASSWORD" \
+            --query 'AuthenticationResult.IdToken' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "None" ]; then
+            echo "::error::Failed to obtain smoke-test JWT from Cognito"
+            exit 1
+          fi
+          echo "SMOKE_TEST_JWT_TOKEN=$TOKEN" >> $GITHUB_ENV
+
       - name: Run smoke tests
         id: smoke
         env:
-          SMOKE_TEST_JWT_TOKEN: ${{ secrets.SMOKE_TEST_JWT_TOKEN }}
           SMOKE_TEST_TIMEOUT: 30
           SMOKE_TEST_RETRIES: 3
           SMOKE_TEST_RETRY_DELAY: 10
