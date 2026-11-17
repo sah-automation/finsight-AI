@@ -318,6 +318,11 @@ protection rules yet; secrets for the smoke user live on `production`.
 > parameter instead of deleting it. Fresh environments never need this: the
 > owner creates the parameter directly in SSM and CDK never owns it.
 | `/finsight/<env>/source_viewer_signing_key` | `SOURCE_VIEWER_SIGNING_KEY` on the API Lambda (required by the config loader's `documents` section) | Owner, one-time per environment: `aws ssm put-parameter --name <param> --type SecureString --value <generated-key> --overwrite` (this creates the parameter when it does not exist yet). `sync_lambda_env.py` fails loudly if it is missing |
+| `/finsight/<env>/groq_api_key` | `GROQ_API_KEY` on the gateway Lambda (litellm provider key) | Owner, one-time per environment: `aws ssm put-parameter --name <param> --type SecureString --value <key> --overwrite`. Missing parameters are skipped with a warning so a subset of providers can be configured |
+| `/finsight/<env>/gemini_api_key` | `GEMINI_API_KEY` on the gateway Lambda (litellm provider key) | Same as above |
+| `/finsight/<env>/nvidia_nim_api_key` | `NVIDIA_NIM_API_KEY` on the gateway Lambda (litellm provider key) | Same as above |
+| `/finsight/<env>/cohere_api_key` | `COHERE_API_KEY` on the gateway Lambda (litellm provider key) | Same as above |
+| `/finsight/<env>/nvidia_api_key` | `NVIDIA_API_KEY` on the gateway Lambda (litellm provider key) | Same as above |
 
 > **Stack-state migration (2026-11-17, prod) — drifted `/health` route.** A
 > `GET /health` route exists on the prod HTTP API that CloudFormation never
@@ -376,11 +381,18 @@ owner:
    smoke gate falls back to it.
 
 3. **LLM provider API keys.** The model gateway uses litellm provider
-   models (groq/gemini/nvidia_nim); their API keys are not stored anywhere in
-   the account yet, so `/ask` answers come back as the graceful
-   `insufficient_data` envelope instead of real answers. Provider keys can
-   be provided by the gateway's configuration channel once the owner shares
-   them (they must never be committed).
+    models (groq/gemini/nvidia_nim/cohere); their API keys are stored as
+    SecureStrings in SSM (`/finsight/<env>/groq_api_key`, etc.) and synced
+    to the gateway Lambda by `sync_lambda_env.py --target gateway` after
+    every deploy. To add or rotate a key:
+
+        aws ssm put-parameter --name /finsight/prod/groq_api_key --type SecureString --value <key> --overwrite
+        # then re-run the gateway sync (or trigger a deploy)
+        uv run python scripts/sync_lambda_env.py --target gateway --environment prod --region us-east-1
+
+    Until keys are set, `/ask` answers come back as the graceful
+    `insufficient_data` envelope instead of real answers. Keys must never
+    be committed.
 
 4. **Budget email notifications** — see "Remaining owner steps" below.
 
