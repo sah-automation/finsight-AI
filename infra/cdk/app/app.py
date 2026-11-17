@@ -28,16 +28,34 @@ CDK_ROOT = Path(__file__).resolve().parent.parent
 
 def _lambda_asset() -> str | None:
     """Return the API zip path when it has been built, otherwise None."""
-    default_zip = CDK_ROOT.parents[1] / 'dist' / 'lambda' / 'api.zip'
-    candidate = Path(os.getenv('LAMBDA_ZIP', str(default_zip)))
-    return str(candidate) if candidate.exists() else None
+    return _require_zip_or_none('LAMBDA_ZIP', CDK_ROOT.parents[1] / 'dist' / 'lambda' / 'api.zip')
 
 
 def _gateway_asset() -> str | None:
     """Return the gateway zip path when it has been built, otherwise None."""
-    default_zip = CDK_ROOT.parents[1] / 'dist' / 'lambda' / 'gateway.zip'
-    candidate = Path(os.getenv('GATEWAY_ZIP', str(default_zip)))
-    return str(candidate) if candidate.exists() else None
+    return _require_zip_or_none(
+        'GATEWAY_ZIP', CDK_ROOT.parents[1] / 'dist' / 'lambda' / 'gateway.zip'
+    )
+
+
+def _require_zip_or_none(env_var: str, default_zip: Path) -> str | None:
+    """Resolve a Lambda asset path, failing loudly when explicitly misconfigured.
+
+    An unset variable keeps the placeholder behavior (synth-only contexts may
+    not have built the packages). An explicitly-set variable that does not
+    exist is a configuration error — ``cdk deploy`` re-runs this app from
+    ``cdk.json``, so a wrong value there would otherwise silently deploy
+    placeholder code that raises on import.
+    """
+    candidate = Path(os.getenv(env_var, str(default_zip)))
+    if not candidate.exists():
+        if os.getenv(env_var):
+            raise SystemExit(
+                f'{env_var} is set to {candidate!s} but that path does not exist; '
+                'build the Lambda packages or unset the variable'
+            )
+        return None
+    return str(candidate)
 
 
 def main() -> None:

@@ -16,6 +16,32 @@ from pathlib import Path
 CDK_DIR = Path(__file__).resolve().parents[1]
 
 
+def test_explicit_missing_lambda_zip_fails_loudly(tmp_path: Path) -> None:
+    """An explicitly-set LAMBDA_ZIP that does not exist aborts synthesis.
+
+    ``cdk deploy`` re-runs the app (cdk.json), so a wrong LAMBDA_ZIP there
+    would otherwise silently deploy the raise-at-import placeholder code.
+    """
+    outdir = tmp_path / 'cdk.out'
+    env = os.environ.copy()
+    env['CDK_OUTDIR'] = str(outdir)
+    env['JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION'] = '1'
+    env['CDK_DEFAULT_ACCOUNT'] = '123456789012'
+    env['CDK_DEFAULT_REGION'] = 'us-east-1'
+    env['LAMBDA_ZIP'] = str(tmp_path / 'does-not-exist.zip')
+
+    result = subprocess.run(
+        [sys.executable, '-m', 'app.app'],
+        cwd=CDK_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert 'LAMBDA_ZIP' in (result.stderr + result.stdout)
+
+
 def test_synth_writes_every_stack(tmp_path: Path) -> None:
     """`python -m app.app` synthesizes a cloud assembly with all seven stacks."""
     outdir = tmp_path / 'cdk.out'
