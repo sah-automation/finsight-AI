@@ -306,7 +306,18 @@ protection rules yet; secrets for the smoke user live on `production`.
 |---|---|---|
 | `/finsight/<env>/neon/database_url` | `VECTOR_DB_*` on the API Lambda | Owner, one-time per environment (see "Application secrets") |
 | `/finsight/<env>/model_gateway_master_key` | `MODEL_GATEWAY_AUTH_TOKEN` on the API Lambda; read at runtime by the gateway itself | Owner, one-time per environment: `aws ssm put-parameter --name <param> --type SecureString --value <generated-key> --overwrite` (this creates the parameter when it does not exist yet). CDK only references the name and grants the gateway `ssm:GetParameter`; it never creates or updates the parameter, because CloudFormation cannot change an existing SSM parameter's `Type` and a CDK-managed value would overwrite the rotated key. `sync_lambda_env.py` fails loudly if the parameter is missing or still holds a scaffold placeholder |
-| `/finsight/<env>/source_viewer_signing_key` | `SOURCE_VIEWER_SIGNING_KEY` on the API Lambda (required by the config loader's `documents` section) | Owner, one-time per environment, as a `SecureString`. `sync_lambda_env.py` injects it after every deploy |
+
+> **Stack-state migration (2026-11-17, prod).** The `ModelGatewayMasterKeyprod`
+> parameter was originally created by the Compute stack as `Type: String` and
+> then rotated by the owner into a `SecureString`. A CDK-managed template would
+> have failed CloudFormation early validation on the `Type` change (and, had it
+> passed, overwritten the rotated key). Before the stack stopped managing the
+> parameter, a template-only changeset was executed against
+> `FinSight-prod-Compute` setting `DeletionPolicy: Retain` on the recorded
+> resource, so the deploy that removes the resource retains the physical
+> parameter instead of deleting it. Fresh environments never need this: the
+> owner creates the parameter directly in SSM and CDK never owns it.
+| `/finsight/<env>/source_viewer_signing_key` | `SOURCE_VIEWER_SIGNING_KEY` on the API Lambda (required by the config loader's `documents` section) | Owner, one-time per environment: `aws ssm put-parameter --name <param> --type SecureString --value <generated-key> --overwrite` (this creates the parameter when it does not exist yet). `sync_lambda_env.py` fails loudly if it is missing |
 
 ### Smoke-test user
 

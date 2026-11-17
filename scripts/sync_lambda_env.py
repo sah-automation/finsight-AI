@@ -48,8 +48,8 @@ NEON_PARAMETER_PATTERN = '/finsight/{env}/neon/database_url'
 MASTER_KEY_PARAMETER_PATTERN = '/finsight/{env}/model_gateway_master_key'
 SIGNING_KEY_PARAMETER_PATTERN = '/finsight/{env}/source_viewer_signing_key'
 
-# CDK creates the parameter with this scaffold value for fresh environments;
-# the real key is a one-time SSM rotation after the first deploy.
+# A scaffold value would make every gateway call fail with 401 while
+# looking "configured"; the real key is set in SSM by the owner step.
 PLACEHOLDER_MASTER_KEY = 'PLACEHOLDER_REPLACE_AT_DEPLOY'
 
 ParameterFetcher = Callable[[str, str], str]

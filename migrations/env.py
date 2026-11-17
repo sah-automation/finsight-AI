@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import os
 from logging.config import fileConfig
 from urllib.parse import quote_plus
@@ -22,12 +23,15 @@ from urllib.parse import quote_plus
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+_LOGGER = logging.getLogger('alembic.env')
+
 # The config loader import can fail (e.g., during migration when only the
 # VECTOR_DB_* env vars are set); the URL builder falls back to those vars.
 try:
     from finsight.core.config import load_config
-except Exception:  # noqa: BLE001 - import failure must not break the migration
+except Exception as exc:  # noqa: BLE001 - import failure must not break the migration
     load_config = None  # type: ignore[assignment]
+    _LOGGER.warning('Config loader unavailable (%s); using VECTOR_DB_* env vars', exc)
 
 config = context.config
 
@@ -37,21 +41,31 @@ if config.config_file_name is not None:
 target_metadata = None
 
 
+def _psycopg_url(username: str, password: str, target: str, ssl_mode: str) -> str:
+    """Build the synchronous psycopg URL shared by both resolution paths.
+
+    ``target`` is the ``host:port/database`` segment.
+    """
+    return (
+        f'postgresql+psycopg://{quote_plus(username)}:{quote_plus(password)}'
+        f'@{target}?sslmode={ssl_mode}'
+    )
+
+
 def _database_url() -> str:
     """Build a synchronous psycopg URL from the validated app config or VECTOR_DB_* env vars."""
     # The full app config is preferred when all of its env vars are set.
     if load_config is not None:
         try:
             vector_store = load_config().vector_store
-            username = quote_plus(vector_store.username)
-            password = quote_plus(vector_store.password)
-            url = (
-                f'postgresql+psycopg://{username}:{password}'
-                f'@{vector_store.host}:{vector_store.port}/{vector_store.database}'
-                f'?sslmode={vector_store.ssl_mode}'
+            url = _psycopg_url(
+                username=vector_store.username,
+                password=vector_store.password,
+                target=f'{vector_store.host}:{vector_store.port}/{vector_store.database}',
+                ssl_mode=vector_store.ssl_mode,
             )
-        except Exception:  # noqa: BLE001, S110 - fall through to the VECTOR_DB_* fallback
-            pass
+        except Exception as exc:  # noqa: BLE001 - fall through to the VECTOR_DB_* fallback
+            _LOGGER.warning('App config unusable (%s); using VECTOR_DB_* env vars', exc)
         else:
             return url
 
@@ -68,9 +82,11 @@ def _database_url() -> str:
             'Cannot build database URL: neither full config nor VECTOR_DB_* env vars are available'
         )
 
-    return (
-        f'postgresql+psycopg://{quote_plus(username)}:{quote_plus(password)}'
-        f'@{host}:{port}/{database}?sslmode={ssl_mode}'
+    return _psycopg_url(
+        username=username or '',
+        password=password or '',
+        target=f'{host}:{port}/{database}',
+        ssl_mode=ssl_mode,
     )
 
 
