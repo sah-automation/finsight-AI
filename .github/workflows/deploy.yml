@@ -193,8 +193,8 @@ jobs:
       - name: Deploy CDK infrastructure stacks
         env:
           CDK_ENV: ${{ needs.resolve.outputs.cdk_env }}
-          LAMBDA_ZIP: dist/lambda/api.zip
-          GATEWAY_ZIP: dist/lambda/gateway.zip
+          LAMBDA_ZIP: ${{ github.workspace }}/dist/lambda/api.zip
+          GATEWAY_ZIP: ${{ github.workspace }}/dist/lambda/gateway.zip
         run: |
           cd infra/cdk
           CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
@@ -252,8 +252,11 @@ jobs:
       - name: Deploy CDK Compute and API Gateway stacks
         env:
           CDK_ENV: ${{ needs.resolve.outputs.cdk_env }}
-          LAMBDA_ZIP: dist/lambda/api.zip
-          GATEWAY_ZIP: dist/lambda/gateway.zip
+          # Absolute paths are required: cdk deploy re-runs the app from
+          # infra/cdk (per cdk.json), so relative paths resolve there and
+          # silently fall back to the raise-at-import placeholder code.
+          LAMBDA_ZIP: ${{ github.workspace }}/dist/lambda/api.zip
+          GATEWAY_ZIP: ${{ github.workspace }}/dist/lambda/gateway.zip
         run: |
           cd infra/cdk
           # The ApiGateway stack owns the HTTP API routes and their Lambda
