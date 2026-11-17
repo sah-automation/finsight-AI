@@ -215,6 +215,40 @@ jobs:
             --environment ${{ needs.resolve.outputs.cdk_env }} \
             --region ${{ env.AWS_REGION }}
 
+      - name: Adopt drifted HTTP API routes (one-off prod remediation)
+        if: needs.resolve.outputs.cdk_env == 'prod'
+        run: |
+          # A GET /health route was created on the prod HTTP API outside of
+          # CloudFormation (it appears in no stack template and no stack event
+          # history), so the ApiGateway stack fails to CREATE its own route
+          # with a 409 "Route with key GET /health already exists" conflict.
+          # Adopt the API by deleting the unmanaged route right before CDK
+          # re-creates it as a stack-managed resource. After a successful
+          # deploy the stack owns the route and this step is a no-op.
+          # See docs/deployment.md (stack-state migration notes).
+          STACK=FinSight-${{ needs.resolve.outputs.cdk_env }}-ApiGateway
+          MANAGED=$(aws cloudformation list-stack-resources \
+            --stack-name "$STACK" \
+            --query "StackResourceSummaries[?contains(LogicalResourceId, 'GEThealth')].LogicalResourceId" \
+            --output text)
+          if [ -n "$MANAGED" ] && [ "$MANAGED" != "None" ]; then
+            echo "Stack already manages the /health route ($MANAGED); nothing to adopt."
+            exit 0
+          fi
+          API_ID=$(aws cloudformation list-stack-resources \
+            --stack-name "$STACK" \
+            --query "StackResourceSummaries[?ResourceType=='AWS::ApiGatewayV2::Api'].PhysicalResourceId" \
+            --output text)
+          ROUTE_ID=$(aws apigatewayv2 get-routes --api-id "$API_ID" \
+            --query "Items[?RouteKey=='GET /health'].RouteId" \
+            --output text)
+          if [ -n "$ROUTE_ID" ] && [ "$ROUTE_ID" != "None" ]; then
+            echo "Deleting unmanaged GET /health route $ROUTE_ID on API $API_ID"
+            aws apigatewayv2 delete-route --api-id "$API_ID" --route-id "$ROUTE_ID"
+          else
+            echo "No physical GET /health route found; nothing to adopt."
+          fi
+
       - name: Deploy CDK Compute and API Gateway stacks
         env:
           CDK_ENV: ${{ needs.resolve.outputs.cdk_env }}
