@@ -154,13 +154,28 @@ def test_ask(base_url: str, client: httpx.Client) -> dict[str, Any]:
                 {'url': url, 'status_code': response.status_code, 'body': body},
             )
 
-        # Verify content type is SSE
-        content_type = response.headers.get('content-type', '')
-        if 'text/event-stream' not in content_type:
-            body = response.read().decode('utf-8', errors='replace')
+        # Verify the response is a valid SSE stream. Some API Gateway
+        # configurations may not preserve the exact content-type header,
+        # so we accept the response if the body parses as SSE regardless
+        # of the header. Use iter_text() to match the existing test mocks.
+        events = []
+        buffer = ''
+        for chunk in response.iter_text():
+            buffer += chunk
+            while '\n\n' in buffer:
+                event_block, buffer = buffer.split('\n\n', 1)
+                event_data = _parse_sse_event(event_block)
+                if event_data:
+                    events.append(event_data)
+
+        if not events:
             raise SmokeTestError(
-                f'Questions ask returned unexpected content-type: {content_type}',
-                {'url': url, 'content_type': content_type, 'body': body[:500]},
+                'Questions ask returned no valid SSE events',
+                {
+                    'url': url,
+                    'content_type': response.headers.get('content-type', ''),
+                    'body': '(stream consumed)',
+                },
             )
 
         # Read the SSE stream and verify it has valid events
