@@ -78,7 +78,10 @@ class AuthStack(Stack):
         self.user_pool_client = self.user_pool.add_client(
             f'UserPoolClient{env_name}',
             user_pool_client_name=f'finsight-{env_name}-client',
-            auth_flows=cognito.AuthFlow(user_srp=True),
+            # SRP is the interactive default; ADMIN_USER_PASSWORD lets the
+            # deploy pipeline obtain a smoke-test JWT via admin-initiate-auth
+            # (there is no hosted UI to drive in CI).
+            auth_flows=cognito.AuthFlow(user_srp=True, admin_user_password=True),
             read_attributes=exposed_attributes,
             write_attributes=writable_attributes,
         )
