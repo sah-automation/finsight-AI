@@ -175,7 +175,7 @@ jobs:
       - name: Sync CDK dependencies
         run: |
           cd infra/cdk
-          uv sync --frozen --no-project --with-requirements requirements.txt
+          uv sync --frozen --project . --with-requirements requirements.txt
 
       - name: Synthesize CDK stacks
         run: |
