@@ -187,6 +187,11 @@ jobs:
       - name: Install CDK CLI
         run: npm install -g aws-cdk@2.162.1
 
+      - name: Install Python CDK dependencies globally
+        run: |
+          cd infra/cdk
+          pip install -r requirements.txt
+
       - name: Deploy CDK infrastructure stacks
         env:
           CDK_ENV: ${{ needs.resolve.outputs.cdk_env }}
@@ -194,8 +199,6 @@ jobs:
           GATEWAY_ZIP: dist/lambda/gateway.zip
         run: |
           cd infra/cdk
-          # Install Python CDK dependencies in the project's virtual environment
-          uv sync --frozen --project .
           CDK_OUTDIR=cdk.out JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1 \
             cdk deploy \
             "FinSight-${CDK_ENV}-Network" \
