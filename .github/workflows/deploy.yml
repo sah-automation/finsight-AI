@@ -185,7 +185,7 @@ jobs:
             python -m app.app
 
       - name: Install CDK CLI
-        run: npm install -g aws-cdk@2.1005.1
+        run: npm install -g aws-cdk@2.1005.0
 
       - name: Install Python CDK dependencies globally
         run: |
