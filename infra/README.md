@@ -22,8 +22,10 @@ We use AWS CDK in Python under `infra/cdk/` (decision record:
 - Compute (placeholder Lambda function and IAM role)
 - Observability (CloudWatch log group)
 
-**Not implemented yet:** Step Functions, CloudWatch dashboards and alarms,
-Secrets Manager/SSM wiring, real function packages, and the deploy workflow.
+**Implemented:** Step Functions, CloudWatch dashboard and alarms,
+Lambda execution role with scoped permissions. **Not implemented yet:**
+Secrets Manager/SSM wiring beyond the stack, real function packages, and
+the deploy workflow (see docs/deployment.md).
 
 ## CI
 `make infra-synth` and `make infra-test` run in the `Infra Synth` CI job on

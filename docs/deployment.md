@@ -437,4 +437,25 @@ live custom domain (see "Deployment pipeline"); it asserts:
 - **Compute stack:** `UPDATE_COMPLETE` with real Lambda code (79 MB) and 30 s
   API / 900 s gateway timeouts.
 
+## Deployment evidence (Stage D-8)
+
+- **Date:** 2026-11-18
+- **Rollback exercise:** published Lambda versions 1 and 2 of
+  `finsight-prod-api`; shifted the `live` alias 1 → 2 → 1. Each invocation
+  returned `{"status":"ok"}` with `ExecutedVersion` matching the alias target,
+  so the previous version serves correctly through the alias.
+- **CloudWatch dashboard:** `finsight-prod` dashboard is live (alarms +
+  OTLP span query widget) after the Observability stack update.
+- **Alarms:** all five `finsight-prod-*` alarms are in `OK` state
+  (treat-missing-data = not breaching).
+- **OTLP traces:** exported to `/aws/lambda/finsight-prod` log group via the
+  CloudWatch Logs OTLP endpoint using the `x-aws-logs-group` /
+  `x-aws-logs-stream` routing headers wired by the Compute stack
+  (`OTLP_HEADERS`).
+- **Cost guardrails:** owner confirmed in the AWS console on 2026-11-18 that
+  the `finsight-monthly-budget` budget alarm and the `finsight-cost-anomaly`
+  monitor/subscription are active, visible, and in OK state (no Cost Explorer
+  / Budgets API calls were made from scripts or CI; those calls bill per
+  request).
+
 See [runbook.md](runbook.md) for operational procedures.
