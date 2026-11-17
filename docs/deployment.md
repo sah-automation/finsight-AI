@@ -452,9 +452,10 @@ live custom domain (see "Deployment pipeline"); it asserts:
   CloudWatch Logs OTLP endpoint using the `x-aws-logs-group` /
   `x-aws-logs-stream` routing headers wired by the Compute stack
   (`OTLP_HEADERS`).
-- **Cost guardrails:** budget alarm `finsight-monthly-budget` and the
-  `finsight-cost-anomaly` monitor/subscription are left for the account owner
-  to confirm in the AWS console (no Cost Explorer / Budgets API calls from
-  scripts or CI; those calls bill per request).
+- **Cost guardrails:** owner confirmed in the AWS console on 2026-11-18 that
+  the `finsight-monthly-budget` budget alarm and the `finsight-cost-anomaly`
+  monitor/subscription are active, visible, and in OK state (no Cost Explorer
+  / Budgets API calls were made from scripts or CI; those calls bill per
+  request).
 
 See [runbook.md](runbook.md) for operational procedures.
