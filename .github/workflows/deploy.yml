@@ -286,8 +286,8 @@ jobs:
               --output text \
               --region ${{ env.AWS_REGION }}
           }
-          DOMAIN=$(read_domain CustomDomainName)
-          ENDPOINT=$(read_domain HttpApiUrl)
+          DOMAIN=$(read_domain "CustomDomainName${{ needs.resolve.outputs.cdk_env }}")
+          ENDPOINT=$(read_domain "HttpApiUrl${{ needs.resolve.outputs.cdk_env }}")
           if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "None" ]; then
             echo "::error::Custom domain not found in stack outputs"
             exit 1
