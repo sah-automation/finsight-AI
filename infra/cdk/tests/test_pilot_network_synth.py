@@ -112,11 +112,14 @@ def test_pilot_environments_have_no_network_stack(templates: Callable[[str], Tem
 
 
 def test_pilot_lambdas_have_no_vpc_config(templates: Callable[[str], TemplateMap]) -> None:
-    """Every dev/prod Lambda must use Lambda-managed network egress."""
+    """Every dev/prod Lambda, in every stack, uses Lambda-managed egress."""
     for env_name in PILOT_ENVS:
-        compute = templates(env_name)[f'FinSight-{env_name}-Compute']
-        functions = _lambda_functions(compute)
-        assert functions, f'{env_name} compute template has no Lambda functions'
+        functions = {
+            f'{stack}/{name}': function
+            for stack, template in templates(env_name).items()
+            for name, function in _lambda_functions(template).items()
+        }
+        assert functions, f'{env_name} synthesized no Lambda functions'
         for name, function in functions.items():
             properties = function.get('Properties', {})
             assert isinstance(properties, dict)

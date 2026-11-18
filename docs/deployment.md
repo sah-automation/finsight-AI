@@ -274,8 +274,10 @@ always `prod`; manual dispatch maps the chosen environment name to the CDK env
 1. **Build** — `scripts/build_lambda.py` produces `api.zip` and
    `gateway.zip` (uploaded as workflow artifacts, checksum-verified before
    use).
-2. **Deploy infrastructure stacks** — CDK deploys Network, Data, Messaging,
-   Auth, StepFunctions and Observability. The ApiGateway stack is *not* in
+2. **Deploy infrastructure stacks** — CDK deploys Data, Messaging, Auth,
+   StepFunctions and Observability. The Network stack is synthesized only for
+   the `aurora_pgvector` standard path (staging); the `neon_pgvector` pilot
+   (dev/prod) has no VPC or NAT gateway. The ApiGateway stack is *not* in
    this phase: it owns the HTTP API routes and their Lambda invoke
    permissions and imports the Compute function ARN, so it must follow
    Compute.
@@ -299,6 +301,37 @@ always `prod`; manual dispatch maps the chosen environment name to the CDK env
 
 GitHub Environments `dev`, `staging` and `production` exist with no
 protection rules yet; secrets for the smoke user live on `production`.
+
+### Removing the pilot NAT gateways (dev/prod)
+
+The pilot (`vector_store: neon_pgvector`) no longer synthesizes a Network
+stack. CloudFormation does **not** delete a stack merely because it was
+removed from the CDK app, so the already-deployed `FinSight-dev-Network` and
+`FinSight-prod-Network` stacks — and their NAT gateways — must be deleted
+explicitly. Until then the idle gateways keep billing.
+
+Sequence the cutover so there is never a window with no egress:
+
+1. **Detach the Lambdas first.** Deploy the new Compute stack revision (the
+   Deploy workflow, or `cdk deploy FinSight-<env>-Compute`) while the Network
+   stacks and NAT gateways are still present. The new templates carry no
+   Lambda `VpcConfig`, so the functions use Lambda-managed egress.
+2. **Prove egress.** Run the deploy smoke checks (`GET /health` and
+   `POST /ask`), plus a Neon read and a model call. **Stop if any of them
+   fails** — the gateways must not be removed until real egress is proven.
+3. **Delete the gateways.** Destroy each Network stack
+   (`cdk destroy FinSight-dev-Network` and
+   `cdk destroy FinSight-prod-Network`, or the equivalent CloudFormation
+   delete), then confirm with `aws ec2 describe-nat-gateways` that both are
+   gone. Leaving them `available` at zero traffic does not stop the hourly
+   charge.
+4. **Rollback:** while the Network stacks and NAT gateways still exist,
+   redeploy the previous Compute stack revision (the one whose Lambda
+   functions carry `VpcConfig`), then reassess before deleting anything.
+
+This is a manual operator runbook, not a CI test. The synth contract in
+`infra/cdk/tests/test_pilot_network_synth.py` proves the templates; only the
+smoke checks above prove real egress.
 
 ### Secret-backed values (never through CDK)
 
