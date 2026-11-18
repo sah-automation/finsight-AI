@@ -35,7 +35,7 @@
 
 Design rules that keep this low:
 
-- **No NAT gateway.** Lambda reaches S3/DynamoDB via free gateway VPC endpoints.
+- **No NAT gateway.** With `vector_store: neon_pgvector`, dev and prod Lambdas are outside a VPC and use Lambda-managed internet egress to reach Neon, the model providers, SSM Parameter Store and CloudWatch Logs. No VPC, NAT gateway or VPC endpoint is created — gateway endpoints would only cover S3/DynamoDB, not those public services. The VPC remains behind the undeployed `aurora_pgvector` standard path.
 - **No Aurora while the switch is off.** Aurora Serverless v2 has a ~$44/mo floor; the CDK stack stays in code but undeployed.
 - **SSM Parameter Store over Secrets Manager** while the pilot value is active.
 - **Log retention capped at 30 days** everywhere.
@@ -53,7 +53,7 @@ Both paths written and tested. Unknown values fail startup loudly. Active values
 
 | Switch | Pilot (default) | Standard path | Notes |
 | --- | --- | --- | --- |
-| `vector_store` | `neon_pgvector` | `aurora_pgvector` | Aurora adapter already exists; CDK stack stays undeployed. Flip later = config PR + data migration (`pg_dump`/`pg_restore`) |
+| `vector_store` | `neon_pgvector` | `aurora_pgvector` | The switch also decides whether CDK creates a VPC/Network stack: no VPC on the pilot path, VPC retained for the undeployed standard path. Flip later = config PR + data migration (`pg_dump`/`pg_restore`) |
 | `secrets.provider` | `parameter_store` | `secrets_manager` | Resolution layer in `core/config` (the one place allowed to touch AWS). LocalStack supports both paths for integration tests |
 | `observability.backend` | `cloudwatch` | `otlp_endpoint` | Generic OTLP path = same exporter, different endpoint/headers from config. Provider switch, never an on/off switch |
 
@@ -80,7 +80,7 @@ Both paths written and tested. Unknown values fail startup loudly. Active values
 1. `vector_store` switch extension + Neon pgvector adapter (`vector_store/neon_pgvector`)
 2. `secrets.provider` switch + SSM / Secrets Manager resolution layer
 3. `observability.backend` switch + generic OTLP path
-4. CDK lean stack: Aurora behind the switch (undeployed), no NAT, SSM wiring, per-function IAM, 30-day log retention
+4. CDK lean stack: Aurora and its VPC behind the switch (undeployed), no VPC/NAT on the pilot path, SSM wiring, per-function IAM, 30-day log retention
 5. Observability stacks: CloudWatch dashboard, alarms, Neon storage metric check
 6. API Gateway + custom domain mapping (`api.finsight.sahcreatives.com`), ACM cert (`us-east-1`), throttling from config
 7. Billing budget as configurable value (`alerts.monthly_budget_usd` in CDK env config), default $5

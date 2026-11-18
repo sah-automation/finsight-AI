@@ -26,7 +26,7 @@ cdk synth --all
 
 | Stack | Contents |
 | --- | --- |
-| Network | VPC, public/private/isolated subnets, one NAT gateway |
+| Network | Only for `aurora_pgvector`: VPC, public/private/isolated subnets, one NAT gateway. Not created for the `neon_pgvector` pilot (issue #361) |
 | Data | Aurora PostgreSQL (source of truth), rebuildable DynamoDB tables, S3 buckets |
 | Messaging | SQS queues and DLQ |
 | Auth | Cognito user pool and app client |
