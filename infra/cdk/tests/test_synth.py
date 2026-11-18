@@ -43,7 +43,7 @@ def test_explicit_missing_lambda_zip_fails_loudly(tmp_path: Path) -> None:
 
 
 def test_synth_writes_every_stack(tmp_path: Path) -> None:
-    """`python -m app.app` synthesizes a cloud assembly with all seven stacks."""
+    """`python -m app.app` synthesizes the dev pilot stacks (no Network stack)."""
     outdir = tmp_path / 'cdk.out'
     env = os.environ.copy()
     env['CDK_OUTDIR'] = str(outdir)
@@ -68,7 +68,6 @@ def test_synth_writes_every_stack(tmp_path: Path) -> None:
         if artifact.get('type') == 'aws:cloudformation:stack'
     }
     expected = {
-        'FinSight-dev-Network',
         'FinSight-dev-Data',
         'FinSight-dev-Messaging',
         'FinSight-dev-Auth',
