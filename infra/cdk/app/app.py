@@ -17,7 +17,7 @@ from stacks.api_gateway import ApiGatewayStack
 from stacks.auth import AuthStack
 from stacks.compute import ComputeStack
 from stacks.data import DataStack
-from stacks.env_config import load_envs
+from stacks.env_config import load_envs, uses_aurora_vpc
 from stacks.messaging import MessagingStack
 from stacks.network import NetworkStack
 from stacks.observability import ObservabilityStack
@@ -71,15 +71,32 @@ def main() -> None:
     region = app.node.try_get_context('region') or os.getenv('CDK_DEFAULT_REGION') or 'us-east-1'
     env = cdk.Environment(account=account, region=region)
 
+    # The vector_store switch decides whether infrastructure needs a VPC. The
+    # pilot (neon_pgvector) has none: Lambdas use their managed network to reach
+    # Neon, the model providers, SSM and CloudWatch Logs, so the Network stack
+    # and its NAT gateways are not synthesized at all (issue #361).
+    env_config = known_envs[env_name]
+    net = (
+        NetworkStack(
+            app,
+            f'FinSight-{env_name}-Network',
+            env=env,
+            env_name=env_name,
+            env_config=env_config,
+        )
+        if uses_aurora_vpc(env_name, env_config)
+        else None
+    )
+    vpc = net.vpc if net is not None else None
+
     # Stacks in dependency order.
-    net = NetworkStack(app, f'FinSight-{env_name}-Network', env=env, env_name=env_name)
     data = DataStack(
         app,
         f'FinSight-{env_name}-Data',
         env=env,
         env_name=env_name,
-        vpc=net.vpc,
-        env_config=known_envs[env_name],
+        vpc=vpc,
+        env_config=env_config,
     )
     msg = MessagingStack(app, f'FinSight-{env_name}-Messaging', env=env, env_name=env_name)
     auth = AuthStack(app, f'FinSight-{env_name}-Auth', env=env, env_name=env_name)
@@ -88,7 +105,7 @@ def main() -> None:
         f'FinSight-{env_name}-ApiGateway',
         env=env,
         env_name=env_name,
-        env_config=known_envs[env_name],
+        env_config=env_config,
     )
     step_functions = StepFunctionsStack(
         app,
@@ -105,7 +122,7 @@ def main() -> None:
         f'FinSight-{env_name}-Compute',
         env=env,
         env_name=env_name,
-        vpc=net.vpc,
+        vpc=vpc,
         data=data,
         messaging=msg,
         auth=auth,

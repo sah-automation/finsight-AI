@@ -122,7 +122,7 @@ def test_customer_managed_key_mode_uses_one_kms_key_for_data() -> None:
     env_config['vector_store'] = 'aurora_pgvector'
 
     app = cdk.App()
-    network = NetworkStack(app, 'FinSight-prod-Network', env_name='prod')
+    network = NetworkStack(app, 'FinSight-prod-Network', env_name='prod', env_config=env_config)
     data = DataStack(
         app,
         'FinSight-prod-Data',

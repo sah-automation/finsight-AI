@@ -10,7 +10,7 @@ from aws_cdk import aws_rds as rds
 from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
-from stacks.env_config import load_env_config
+from stacks.env_config import load_env_config, uses_aurora_vpc
 
 _ORIGIN_KEYS = (
     'cors_allowed_origins',
@@ -185,7 +185,7 @@ class DataStack(Stack):
         scope: Construct,
         construct_id: str,
         env_name: str,
-        vpc: ec2.Vpc,
+        vpc: ec2.Vpc | None = None,
         env_config: dict[str, Any] | None = None,
         **kwargs: object,
     ) -> None:
@@ -210,13 +210,11 @@ class DataStack(Stack):
             'removal_policy': removal_policy,
         }
 
-        # Vector store selection gates Aurora resources
-        vector_store = str(config.get('vector_store', 'aurora_pgvector'))
-        if vector_store not in ('neon_pgvector', 'aurora_pgvector'):
-            raise ValueError(
-                f'Unknown vector_store {vector_store!r}; expected neon_pgvector or aurora_pgvector'
-            )
-        use_aurora = vector_store == 'aurora_pgvector'
+        # The same switch gates Aurora and its VPC. The pilot needs only the
+        # VPC-independent buckets and tables, so no VPC is supplied there.
+        use_aurora = uses_aurora_vpc(env_name, config)
+        if use_aurora and vpc is None:
+            raise ValueError(f'Environment {env_name!r} uses aurora_pgvector and requires a VPC')
 
         cors_allowed_origins = _resolve_cors_allowed_origins(config, env_name)
         cors_rule = s3.CorsRule(
