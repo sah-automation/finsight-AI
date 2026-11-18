@@ -65,6 +65,26 @@ def uses_remote_gateway(env_name: str, config: Mapping[str, Any] | None = None) 
     return env_name == 'prod'
 
 
+def uses_aurora_vpc(env_name: str, config: Mapping[str, Any] | None = None) -> bool:
+    """Return True when the ``vector_store`` switch requires infrastructure VPC.
+
+    ``neon_pgvector`` is the pilot path: Neon is a public service, so Lambdas
+    stay outside a VPC and use Lambda-managed internet egress. That removes the
+    need for a NAT gateway. ``aurora_pgvector`` keeps the VPC for the undeployed
+    standard path. Unknown values fail loudly instead of silently adding cost.
+    """
+    env_config = load_env_config(env_name) if config is None else dict(config)
+    vector_store = env_config.get('vector_store')
+    if vector_store == 'neon_pgvector':
+        return False
+    if vector_store == 'aurora_pgvector':
+        return True
+    raise ValueError(
+        f'Environment {env_name!r} has unknown vector_store {vector_store!r}; '
+        'expected neon_pgvector or aurora_pgvector'
+    )
+
+
 def _read_amount(alerts: Mapping[str, Any], key: str, env_name: str) -> Decimal:
     raw = alerts.get(key)
     if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):

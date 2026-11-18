@@ -34,6 +34,21 @@ def _app_environment(env_name: str) -> str:
     return environment
 
 
+def _execution_policies(has_vpc: bool) -> list[iam.IManagedPolicy]:
+    """Basic execution is always needed; VPC access only when attached."""
+    policies: list[iam.IManagedPolicy] = [
+        iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSLambdaBasicExecutionRole'),
+    ]
+    if has_vpc:
+        policies.insert(
+            0,
+            iam.ManagedPolicy.from_aws_managed_policy_name(
+                'service-role/AWSLambdaVPCAccessExecutionRole'
+            ),
+        )
+    return policies
+
+
 class ComputeStack(Stack):
     """Lambda functions for the API entrypoints."""
 
@@ -61,19 +76,13 @@ class ComputeStack(Stack):
         self.env_name = env_name
         self.observability = observability
 
-        # Basic execution role. Least privilege is tightened below.
+        # Basic execution role. Least privilege is tightened below. The VPC
+        # access policy is only meaningful when the function is in a VPC.
         role = iam.Role(
             self,
             f'LambdaExecutionRole{env_name}',
             assumed_by=iam.ServicePrincipal('lambda.amazonaws.com'),
-            managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    'service-role/AWSLambdaVPCAccessExecutionRole'
-                ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    'service-role/AWSLambdaBasicExecutionRole'
-                ),
-            ],
+            managed_policies=_execution_policies(vpc is not None),
         )
 
         zip_path = lambda_zip
@@ -442,14 +451,7 @@ class ComputeStack(Stack):
             self,
             f'GatewayLambdaExecutionRole{env_name}',
             assumed_by=iam.ServicePrincipal('lambda.amazonaws.com'),
-            managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    'service-role/AWSLambdaVPCAccessExecutionRole'
-                ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    'service-role/AWSLambdaBasicExecutionRole'
-                ),
-            ],
+            managed_policies=_execution_policies(vpc is not None),
         )
 
         # SSM Parameter Store owns the master key (SecureString, created and
