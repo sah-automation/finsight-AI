@@ -11,6 +11,9 @@
 | EstimatedLabel | The `Estimated` marker on a KPI value spread from its DeclaredPeriod into a finer chart_period. _Avoid_: approximate, forecast, projection. |
 | DeclaredPeriod | The period a source document states for a figure, distinct from the finer chart_period a KPI may be charted under. _Avoid_: chart period, bucket. |
 | NeedsReview | The state of an item whose required inputs are missing; no value is guessed. Source conflicts keep both cited figures visible with labels, they are not `needs_review`. _Avoid_: pending, unverified. |
+| Supersession | Same-document history: a newer version of a document takes over as current while the older version stays viewable. It is not a conflict. _Avoid_: replacement, conflict. |
+| KPI Conflict | Two different documents giving different figures for the same company, KPI and period; both cited KPI rows remain visible under risk 28. _Avoid_: discrepancy, disagreement. |
+| KPI Rebuild | A recomputation of KPI rows from existing Metrics after a computation or estimation rule changes, run idempotently a few companies at a time. _Avoid_: backfill, reprocess. |
 | Answer | Generated response to a question, grounded in evidence with citations. |
 | Citation | Reference linking an answer back to a specific chunk/document. |
 | Role | User permission level (`executive_leadership`, `corporate_finance_planners`, `audit_compliance`, `system_admin`). |

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. Storage key refined by ADR-0009.
 
 ## Context
 
@@ -20,12 +20,12 @@ Three constraints shape the model. Numbers must be computed by code, never by th
 - `budget_vs_actual` compares a budget Metric with an actual Metric only when their source-declared `period`, `currency` and `units` match exactly. A mismatch is `needs_review`, not a converted or approximated comparison.
 - When a quarterly figure is spread across months for charting, each monthly row has `period` set to the source-declared period (e.g. `2026-Q3`), is `estimated`, labelled `Estimated`, and carries `chart_period` for the month (e.g. `2026-07`, `2026-08`, `2026-09`). An `Estimated` value is never presented as a figure the source document stated.
 - Conflict resolution follows risk 28: final beats draft and newer beats older for the value used, but when figures still differ both rows persist with their own citations and the chart shows both with distinguishing labels. Conflicting rows are `computed`, not `needs_review`. No conflicting row is silently overwritten.
-- The storage primary key is `(company_id, kpi_code, period, document_version_id)`. This admits two rows for the same company, code and period when a conflict persists (different document versions).
+- The storage primary key is `(company_id, kpi_code, period, document_version_id, chart_period)`, as refined by ADR-0009. `chart_period` is non-null and equals `period` for non-estimated rows; the extra component distinguishes the monthly rows of one quarterly spread. Different document versions still admit two rows for the same company, code and period when a conflict persists.
 - `Draft` and `Updating` are separate display states owned by the update cascade (#354); `Estimated` is the state this ADR defines. The chart payload and export labels are owned by #353.
 
 ## Consequences
 
-- KPI storage, materialisation, estimation mechanics and rebuilds remain with #352. The illustrative DDL in `research-neon-kpi-timeseries.md` is a sizing sketch; its single-row PK cannot hold conflicting rows. The canonical PK is `(company_id, kpi_code, period, document_version_id)`.
+- KPI materialisation, estimation mechanics and rebuilds were settled in #352 and ADR-0009. The illustrative DDL in `research-neon-kpi-timeseries.md` is a sizing sketch; its single-row PK cannot hold conflicting rows or multiple estimated months. The canonical PK is the five-column key in ADR-0009.
 - The Phase 2 API and chart/export contract (#353) must expose `computation_status`, `chart_period`, `source_citations`, `document_version_id` and the `Estimated` label.
 - Dashboard treatment of Draft, Estimated and Updating, and the cascade that sets them, stay with #354.
 - Phase 2 tests must cover a missing composite input, a mismatched budget/actual pair, an estimated monthly row and a final/draft conflict. No such test can pass by asserting a guessed number.
