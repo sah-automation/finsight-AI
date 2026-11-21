@@ -18,6 +18,9 @@
 | Chart Series | The ready-to-draw values for one figure in a chart, each value carrying its own period, source and status. _Avoid_: dataset, plot. |
 | Display Label | The user-facing marker on a KPI value or chart point — Draft, Estimated or Updating — distinct from its machine computation status. _Avoid_: badge, confidence. |
 | Export Payload | The chart series and document metadata used to produce a downloadable image or PDF, limited to what the current user may see. _Avoid_: export file, report. |
+| Dashboard Layout | A user's saved arrangement of KPI and chart identifiers on the dashboard; it holds no figures. _Avoid_: dashboard config, saved view. |
+| Freshness Fingerprint | A short signature of the KPI rows a chart currently shows, used to tell that its figures have changed since the page loaded. _Avoid_: version counter, cache key. |
+| Update Cascade | The path from a document update through Metric re-extraction and KPI recompute to a changed Freshness Fingerprint on the dashboard. _Avoid_: refresh chain, sync job. |
 | Answer | Generated response to a question, grounded in evidence with citations. |
 | Citation | Reference linking an answer back to a specific chunk/document. |
 | Role | User permission level (`executive_leadership`, `corporate_finance_planners`, `audit_compliance`, `system_admin`). |
