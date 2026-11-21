@@ -409,7 +409,6 @@ class Config(StrictBaseModel):
             return
 
         self._validate_chart_specs(charts)
-        self._validate_charts_export_formats(charts)
 
     def _validate_chart_specs(self, charts: 'ChartsConfig') -> None:
         expected_kpi_codes = frozenset(KPI_CODES)
@@ -417,7 +416,6 @@ class Config(StrictBaseModel):
             self._validate_chart_spec_id_match(spec_id, spec)
             self._validate_chart_spec_kpi_codes(spec_id, spec, expected_kpi_codes)
             self._validate_chart_spec_diverging(spec_id, spec)
-            self._validate_chart_spec_breakdown_keys(spec_id, spec)
 
     def _validate_chart_spec_id_match(self, spec_id: str, spec: 'ChartSpec') -> None:
         if spec_id != spec.chart_id:
@@ -443,20 +441,6 @@ class Config(StrictBaseModel):
             raise ValueError(
                 f'charts.specs.{spec_id}: diverging=true only allowed for budget_vs_actual'
             )
-
-    def _validate_chart_spec_breakdown_keys(self, spec_id: str, spec: 'ChartSpec') -> None:
-        for key in spec.breakdown_keys:
-            if key not in ('document_category',):
-                raise ValueError(f'charts.specs.{spec_id}: unknown breakdown_key {key}')
-
-    def _validate_charts_export_formats(self, charts: 'ChartsConfig') -> None:
-        allowed_formats = {'png', 'pdf'}
-        for fmt in charts.export_formats:
-            if fmt not in allowed_formats:
-                raise ValueError(
-                    f'charts.export_formats contains unknown format: {fmt}; '
-                    f'allowed: {sorted(allowed_formats)}'
-                )
 
     def _validate_dashboard_rules(self) -> None:
         dashboard = self.dashboard
@@ -492,11 +476,6 @@ class Config(StrictBaseModel):
                         f'dashboard.default_layout.charts contains unknown '
                         f'chart_id: {chart_entry.chart_id}'
                     )
-                if chart_entry.span not in ('full', 'half'):
-                    raise ValueError(
-                        f'dashboard.default_layout.charts span must be '
-                        f'"full" or "half": {chart_entry.span}'
-                    )
             # Check for duplicates
             chart_ids = [c.chart_id for c in dashboard.default_layout.charts]
             if len(chart_ids) != len(set(chart_ids)):
@@ -520,21 +499,9 @@ class Config(StrictBaseModel):
         if vercel.log_forwarding_enabled is not True:
             raise ValueError('web.vercel.log_forwarding_enabled must be true (fixed on)')
 
-        # preview_api_target must be 'mock' (only allowed value)
-        if vercel.preview_api_target != 'mock':
-            raise ValueError('web.vercel.preview_api_target must be "mock"')
-
-        # log_retention_days must be positive
-        if vercel.log_retention_days <= 0:
-            raise ValueError('web.vercel.log_retention_days must be positive')
-
         # never_log_file must be non-empty
         if not vercel.never_log_file:
             raise ValueError('web.vercel.never_log_file must be non-empty')
-
-        # otlp_log_group must be non-empty
-        if not vercel.otlp_log_group:
-            raise ValueError('web.vercel.otlp_log_group must be non-empty')
 
     def _validate_golden_set_rules(self) -> None:
         golden_set = self.golden_set
@@ -547,8 +514,6 @@ class Config(StrictBaseModel):
             raise ValueError(
                 f'golden_set.kpi_questions_path must be under tests/golden/questions/: {path}'
             )
-        if not path:
-            raise ValueError('golden_set.kpi_questions_path must be non-empty')
 
     @property
     def source_viewer_signing_key(self) -> str:
