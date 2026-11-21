@@ -116,3 +116,110 @@ reranker:
 encryption:
   key_mode: aws_managed
   kms_key_alias: ""
+
+# Phase 2 sections
+charts:
+  specs:
+    revenue_trend:
+      chart_id: revenue_trend
+      chart_type: trend_line
+      kpi_codes: [revenue]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: []
+      diverging: false
+      polarity: higher_is_better
+    margin_trend:
+      chart_id: margin_trend
+      chart_type: trend_line
+      kpi_codes: [gross_margin, net_margin]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: []
+      diverging: false
+      polarity: higher_is_better
+    cash_flow_comparison:
+      chart_id: cash_flow_comparison
+      chart_type: comparison_bar
+      kpi_codes: [cash_flow]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: []
+      diverging: false
+      polarity: higher_is_better
+    expense_comparison:
+      chart_id: expense_comparison
+      chart_type: comparison_bar
+      kpi_codes: [operating_expenses]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: []
+      diverging: false
+      polarity: lower_is_better
+    burn_comparison:
+      chart_id: burn_comparison
+      chart_type: comparison_bar
+      kpi_codes: [burn_rate]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: []
+      diverging: false
+      polarity: lower_is_better
+    runway_comparison:
+      chart_id: runway_comparison
+      chart_type: comparison_bar
+      kpi_codes: [runway]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: []
+      diverging: false
+      polarity: higher_is_better
+    collection_periods:
+      chart_id: collection_periods
+      chart_type: comparison_bar
+      kpi_codes: [dso, dpo]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: []
+      diverging: false
+      polarity: lower_is_better
+    budget_variance:
+      chart_id: budget_variance
+      chart_type: comparison_bar
+      kpi_codes: [budget_vs_actual]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: []
+      diverging: true
+      polarity: neutral
+    revenue_breakdown:
+      chart_id: revenue_breakdown
+      chart_type: breakdown_bar
+      kpi_codes: [revenue]
+      supported_periods: [4, 6, 8]
+      periods_selectable: [2, 3, 4]
+      breakdown_keys: [document_category]
+      diverging: false
+      polarity: higher_is_better
+  export_formats: [png, pdf]
+
+dashboard:
+  auto_refresh_seconds: 30
+  default_layout:
+    kpi_codes: [revenue, gross_margin, net_margin, operating_expenses, cash_flow, burn_rate]
+    charts:
+      - {chart_id: revenue_trend, span: full}
+      - {chart_id: margin_trend, span: half}
+  staleness_badge_enabled: true
+
+web:
+  vercel:
+    sync_enabled: true
+    preview_api_target: mock
+    log_forwarding_enabled: true
+    log_retention_days: 30
+    never_log_file: config/never_log.yaml
+    otlp_log_group: /aws/finsight/web-prod
+
+golden_set:
+  kpi_questions_path: tests/golden/questions/phase2_kpi.yaml

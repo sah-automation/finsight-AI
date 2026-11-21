@@ -9,16 +9,22 @@ from .approved_model_config import ApprovedModelConfig
 from .auth_config import AuthConfig
 from .cache_config import CacheConfig
 from .caches_config import CachesConfig
+from .chart_spec import BreakdownKey, ChartPolarity, ChartSpec, ChartType
+from .charts_config import ChartsConfig
 from .chunking_config import ChunkingConfig
 from .chunking_strategy import ChunkingStrategy
 from .config import Config
 from .consistency_config import ConsistencyConfig
+from .dashboard_config import DashboardConfig
 from .database_config import DatabaseConfig
+from .default_layout import DefaultLayout
+from .default_layout_chart import DefaultLayoutChart
 from .documents_config import DocumentsConfig
 from .edge_config import EdgeConfig
 from .embedding_model_config import EmbeddingModelConfig
 from .encryption_config import EncryptionConfig
 from .environment import Environment
+from .golden_set_config import GoldenSetConfig
 from .ingestion_config import IngestionConfig
 from .kpi_config import KPI_CODES, KpiConfig
 from .kpi_tolerance import (
@@ -63,6 +69,8 @@ from .tesseract_config import TesseractConfig
 from .textract_config import TextractConfig
 from .traffic_config import TrafficConfig
 from .vector_store_config import VectorStoreConfig
+from .vercel_config import VercelConfig
+from .web_config import WebConfig
 
 __all__ = [
     'KNOWN_READER_NAMES',
@@ -79,18 +87,27 @@ __all__ = [
     'ApprovedModelEntry',
     'ApprovedModelsConfig',
     'AuthConfig',
+    'BreakdownKey',
     'CacheConfig',
     'CachesConfig',
+    'ChartPolarity',
+    'ChartSpec',
+    'ChartType',
+    'ChartsConfig',
     'ChunkingConfig',
     'ChunkingStrategy',
     'Config',
     'ConsistencyConfig',
+    'DashboardConfig',
     'DatabaseConfig',
+    'DefaultLayout',
+    'DefaultLayoutChart',
     'DocumentsConfig',
     'EdgeConfig',
     'EmbeddingModelConfig',
     'EncryptionConfig',
     'Environment',
+    'GoldenSetConfig',
     'IngestionConfig',
     'KpiConfig',
     'LambdaConfig',
@@ -128,6 +145,8 @@ __all__ = [
     'TolerancePercentOfExpectedPlusAbsoluteFloor',
     'TrafficConfig',
     'VectorStoreConfig',
+    'VercelConfig',
+    'WebConfig',
 ]
 
 ApprovedModel = ApprovedModelConfig

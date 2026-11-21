@@ -8,12 +8,16 @@ from .app_config import AppConfig
 from .auth_config import AuthConfig
 from .cache_config import CacheConfig
 from .caches_config import CachesConfig
+from .chart_spec import ChartSpec  # noqa: TC001
+from .charts_config import ChartsConfig
 from .consistency_config import ConsistencyConfig
+from .dashboard_config import DashboardConfig
 from .database_config import DatabaseConfig
 from .documents_config import DocumentsConfig
 from .edge_config import EdgeConfig
 from .encryption_config import EncryptionConfig
 from .environment import Environment
+from .golden_set_config import GoldenSetConfig
 from .ingestion_config import IngestionConfig
 from .kpi_config import KPI_CODES, KpiConfig
 from .kpi_tolerance import (
@@ -44,6 +48,7 @@ from .strict_base_model import (
 from .switches_config import SwitchesConfig
 from .traffic_config import TrafficConfig
 from .vector_store_config import VectorStoreConfig
+from .web_config import WebConfig
 
 
 class Config(StrictBaseModel):
@@ -80,6 +85,11 @@ class Config(StrictBaseModel):
     edge: EdgeConfig | None = None
     scale: ScaleConfig | None = None
     kpi: KpiConfig | None = None
+    # Phase 2 typed sections
+    charts: ChartsConfig | None = None
+    dashboard: DashboardConfig | None = None
+    web: WebConfig | None = None
+    golden_set: GoldenSetConfig | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -123,6 +133,10 @@ class Config(StrictBaseModel):
         self._validate_document_and_ingestion_rules()
         self._validate_access_and_permission_rules()
         self._validate_kpi_rules()
+        self._validate_charts_rules()
+        self._validate_dashboard_rules()
+        self._validate_web_vercel_rules()
+        self._validate_golden_set_rules()
         return self
 
     def _validate_traffic_rules(self) -> None:
@@ -385,6 +399,156 @@ class Config(StrictBaseModel):
                 'exact_or_needs_review',
             ):
                 raise ValueError(f'kpi.tolerances.{code}.kind: unknown kind {kind!r}')
+
+    def _validate_charts_rules(self) -> None:
+        charts = self.charts
+        if charts is None:
+            return
+        kpi = self.kpi
+        if kpi is None:
+            return
+
+        self._validate_chart_specs(charts)
+        self._validate_charts_export_formats(charts)
+
+    def _validate_chart_specs(self, charts: 'ChartsConfig') -> None:
+        expected_kpi_codes = frozenset(KPI_CODES)
+        for spec_id, spec in charts.specs.items():
+            self._validate_chart_spec_id_match(spec_id, spec)
+            self._validate_chart_spec_kpi_codes(spec_id, spec, expected_kpi_codes)
+            self._validate_chart_spec_diverging(spec_id, spec)
+            self._validate_chart_spec_breakdown_keys(spec_id, spec)
+
+    def _validate_chart_spec_id_match(self, spec_id: str, spec: 'ChartSpec') -> None:
+        if spec_id != spec.chart_id:
+            raise ValueError(f'charts.specs.{spec_id}.chart_id must match key: {spec_id}')
+
+    def _validate_chart_spec_kpi_codes(
+        self, spec_id: str, spec: 'ChartSpec', expected_kpi_codes: frozenset[str]
+    ) -> None:
+        for kpi_code in spec.kpi_codes:
+            if kpi_code not in expected_kpi_codes:
+                raise ValueError(
+                    f'charts.specs.{spec_id}.kpi_codes contains unknown KPI code: {kpi_code}'
+                )
+
+    def _validate_chart_spec_diverging(self, spec_id: str, spec: 'ChartSpec') -> None:
+        if not spec.diverging:
+            return
+        if spec.chart_type != 'comparison_bar':
+            raise ValueError(
+                f'charts.specs.{spec_id}: diverging=true only allowed on comparison_bar type'
+            )
+        if spec.kpi_codes != ['budget_vs_actual']:
+            raise ValueError(
+                f'charts.specs.{spec_id}: diverging=true only allowed for budget_vs_actual'
+            )
+
+    def _validate_chart_spec_breakdown_keys(self, spec_id: str, spec: 'ChartSpec') -> None:
+        for key in spec.breakdown_keys:
+            if key not in ('document_category',):
+                raise ValueError(f'charts.specs.{spec_id}: unknown breakdown_key {key}')
+
+    def _validate_charts_export_formats(self, charts: 'ChartsConfig') -> None:
+        allowed_formats = {'png', 'pdf'}
+        for fmt in charts.export_formats:
+            if fmt not in allowed_formats:
+                raise ValueError(
+                    f'charts.export_formats contains unknown format: {fmt}; '
+                    f'allowed: {sorted(allowed_formats)}'
+                )
+
+    def _validate_dashboard_rules(self) -> None:
+        dashboard = self.dashboard
+        if dashboard is None:
+            return
+
+        # staleness_badge_enabled must be true (fixed on)
+        if dashboard.staleness_badge_enabled is not True:
+            raise ValueError('dashboard.staleness_badge_enabled must be true (fixed on)')
+
+        # Validate default_layout kpi_codes resolve to kpi.codes
+        kpi = self.kpi
+        if kpi is not None:
+            expected_kpi_codes = frozenset(KPI_CODES)
+            for code in dashboard.default_layout.kpi_codes:
+                if code not in expected_kpi_codes:
+                    raise ValueError(
+                        f'dashboard.default_layout.kpi_codes contains unknown KPI code: {code}'
+                    )
+            # Check for duplicates
+            if len(dashboard.default_layout.kpi_codes) != len(
+                set(dashboard.default_layout.kpi_codes)
+            ):
+                raise ValueError('dashboard.default_layout.kpi_codes must not contain duplicates')
+
+        # Validate default_layout charts resolve to charts.specs
+        charts = self.charts
+        if charts is not None:
+            expected_chart_ids = frozenset(charts.specs.keys())
+            for chart_entry in dashboard.default_layout.charts:
+                if chart_entry.chart_id not in expected_chart_ids:
+                    raise ValueError(
+                        f'dashboard.default_layout.charts contains unknown '
+                        f'chart_id: {chart_entry.chart_id}'
+                    )
+                if chart_entry.span not in ('full', 'half'):
+                    raise ValueError(
+                        f'dashboard.default_layout.charts span must be '
+                        f'"full" or "half": {chart_entry.span}'
+                    )
+            # Check for duplicates
+            chart_ids = [c.chart_id for c in dashboard.default_layout.charts]
+            if len(chart_ids) != len(set(chart_ids)):
+                raise ValueError(
+                    'dashboard.default_layout.charts must not contain duplicate chart_ids'
+                )
+
+    def _validate_web_vercel_rules(self) -> None:
+        web = self.web
+        if web is None:
+            return
+        vercel = web.vercel
+        if vercel is None:
+            return
+
+        # sync_enabled must be true (fixed on)
+        if vercel.sync_enabled is not True:
+            raise ValueError('web.vercel.sync_enabled must be true (fixed on)')
+
+        # log_forwarding_enabled must be true (fixed on)
+        if vercel.log_forwarding_enabled is not True:
+            raise ValueError('web.vercel.log_forwarding_enabled must be true (fixed on)')
+
+        # preview_api_target must be 'mock' (only allowed value)
+        if vercel.preview_api_target != 'mock':
+            raise ValueError('web.vercel.preview_api_target must be "mock"')
+
+        # log_retention_days must be positive
+        if vercel.log_retention_days <= 0:
+            raise ValueError('web.vercel.log_retention_days must be positive')
+
+        # never_log_file must be non-empty
+        if not vercel.never_log_file:
+            raise ValueError('web.vercel.never_log_file must be non-empty')
+
+        # otlp_log_group must be non-empty
+        if not vercel.otlp_log_group:
+            raise ValueError('web.vercel.otlp_log_group must be non-empty')
+
+    def _validate_golden_set_rules(self) -> None:
+        golden_set = self.golden_set
+        if golden_set is None:
+            return
+
+        # kpi_questions_path must be under tests/golden/questions/
+        path = golden_set.kpi_questions_path
+        if not path.startswith('tests/golden/questions/'):
+            raise ValueError(
+                f'golden_set.kpi_questions_path must be under tests/golden/questions/: {path}'
+            )
+        if not path:
+            raise ValueError('golden_set.kpi_questions_path must be non-empty')
 
     @property
     def source_viewer_signing_key(self) -> str:
