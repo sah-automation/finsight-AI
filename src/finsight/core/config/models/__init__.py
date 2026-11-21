@@ -9,7 +9,7 @@ from .approved_model_config import ApprovedModelConfig
 from .auth_config import AuthConfig
 from .cache_config import CacheConfig
 from .caches_config import CachesConfig
-from .chart_spec import BreakdownKey, ChartPolarity, ChartSpec, ChartType
+from .chart_spec import BreakdownKey, ChartPolarity, ChartSpec, ChartType, ExportFormat
 from .charts_config import ChartsConfig
 from .chunking_config import ChunkingConfig
 from .chunking_strategy import ChunkingStrategy
@@ -18,7 +18,7 @@ from .consistency_config import ConsistencyConfig
 from .dashboard_config import DashboardConfig
 from .database_config import DatabaseConfig
 from .default_layout import DefaultLayout
-from .default_layout_chart import DefaultLayoutChart
+from .default_layout_chart import DefaultLayoutChart, LayoutSpan
 from .documents_config import DocumentsConfig
 from .edge_config import EdgeConfig
 from .embedding_model_config import EmbeddingModelConfig
@@ -69,7 +69,7 @@ from .tesseract_config import TesseractConfig
 from .textract_config import TextractConfig
 from .traffic_config import TrafficConfig
 from .vector_store_config import VectorStoreConfig
-from .vercel_config import VercelConfig
+from .vercel_config import PreviewApiTarget, VercelConfig
 from .web_config import WebConfig
 
 __all__ = [
@@ -107,10 +107,12 @@ __all__ = [
     'EmbeddingModelConfig',
     'EncryptionConfig',
     'Environment',
+    'ExportFormat',
     'GoldenSetConfig',
     'IngestionConfig',
     'KpiConfig',
     'LambdaConfig',
+    'LayoutSpan',
     'LlmConfig',
     'LogFormat',
     'MeteringConfig',
@@ -123,6 +125,7 @@ __all__ = [
     'OutputGateConfig',
     'PermissionsConfig',
     'PiiAction',
+    'PreviewApiTarget',
     'ProtectionConfig',
     'QuestionFlowConfig',
     'QueueConfig',
