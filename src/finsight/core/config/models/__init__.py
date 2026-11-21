@@ -20,6 +20,13 @@ from .embedding_model_config import EmbeddingModelConfig
 from .encryption_config import EncryptionConfig
 from .environment import Environment
 from .ingestion_config import IngestionConfig
+from .kpi_config import KPI_CODES, KpiConfig
+from .kpi_tolerance import (
+    ToleranceAbsolute,
+    ToleranceExactOrNeedsReview,
+    TolerancePercentOfExpected,
+    TolerancePercentOfExpectedPlusAbsoluteFloor,
+)
 from .lambda_config import LambdaConfig
 from .llm_config import LlmConfig
 from .log_format import LogFormat
@@ -59,6 +66,7 @@ from .vector_store_config import VectorStoreConfig
 
 __all__ = [
     'KNOWN_READER_NAMES',
+    'KPI_CODES',
     'REGISTERED_READER_NAMES',
     'VALID_READER_NAMES',
     'AccessConfig',
@@ -84,6 +92,7 @@ __all__ = [
     'EncryptionConfig',
     'Environment',
     'IngestionConfig',
+    'KpiConfig',
     'LambdaConfig',
     'LlmConfig',
     'LogFormat',
@@ -113,6 +122,10 @@ __all__ = [
     'SwitchesConfig',
     'TesseractConfig',
     'TextractConfig',
+    'ToleranceAbsolute',
+    'ToleranceExactOrNeedsReview',
+    'TolerancePercentOfExpected',
+    'TolerancePercentOfExpectedPlusAbsoluteFloor',
     'TrafficConfig',
     'VectorStoreConfig',
 ]

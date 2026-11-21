@@ -335,3 +335,36 @@ access:
   roles: ["executive_leadership", "corporate_finance_planners", "audit_compliance", "system_admin"]
   permissions_file: "config/permissions.yaml"
   role_cache_seconds_privileged: 0
+
+# ============================================================
+# KPI Configuration (Phase 2)
+# ============================================================
+kpi:
+  codes: [revenue, gross_margin, net_margin, operating_expenses, cash_flow, burn_rate, runway, dso, dpo, budget_vs_actual]
+  budget_vs_actual_match: strict
+  estimation_methods:
+    revenue: quarterly_spread_equal
+    gross_margin: quarterly_spread_equal
+    net_margin: quarterly_spread_equal
+    operating_expenses: quarterly_spread_equal
+    cash_flow: quarterly_spread_equal
+    burn_rate: quarterly_spread_equal
+    runway: quarterly_spread_equal
+    dso: quarterly_spread_equal
+    dpo: quarterly_spread_equal
+    budget_vs_actual: quarterly_spread_equal
+  tolerances:
+    revenue: {kind: percent_of_expected_plus_absolute_floor, percent: 0.5, floor: 1000, floor_unit: kpi_currency}
+    gross_margin: {kind: absolute, value: 0.25, unit: percentage_points}
+    net_margin: {kind: absolute, value: 0.25, unit: percentage_points}
+    operating_expenses: {kind: percent_of_expected_plus_absolute_floor, percent: 0.5, floor: 1000, floor_unit: kpi_currency}
+    cash_flow: {kind: percent_of_expected_plus_absolute_floor, percent: 0.5, floor: 1000, floor_unit: kpi_currency}
+    burn_rate: {kind: percent_of_expected, percent: 5}
+    runway: {kind: percent_of_expected, percent: 5}
+    dso: {kind: absolute, value: 3, unit: days}
+    dpo: {kind: absolute, value: 3, unit: days}
+    budget_vs_actual: {kind: exact_or_needs_review}
+  page_size_default: 50
+  page_size_max: 100
+  rebuild_batch_size: 10
+  rebuild_priority: rebuilds

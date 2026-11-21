@@ -15,6 +15,11 @@ from .edge_config import EdgeConfig
 from .encryption_config import EncryptionConfig
 from .environment import Environment
 from .ingestion_config import IngestionConfig
+from .kpi_config import KPI_CODES, KpiConfig
+from .kpi_tolerance import (
+    ToleranceAbsolute,
+    TolerancePercentOfExpectedPlusAbsoluteFloor,
+)
 from .lambda_config import LambdaConfig
 from .llm_config import LlmConfig
 from .metering_config import MeteringConfig
@@ -74,6 +79,7 @@ class Config(StrictBaseModel):
     cache: CacheConfig | None = None
     edge: EdgeConfig | None = None
     scale: ScaleConfig | None = None
+    kpi: KpiConfig | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -116,6 +122,7 @@ class Config(StrictBaseModel):
         self._validate_model_rules()
         self._validate_document_and_ingestion_rules()
         self._validate_access_and_permission_rules()
+        self._validate_kpi_rules()
         return self
 
     def _validate_traffic_rules(self) -> None:
@@ -287,6 +294,97 @@ class Config(StrictBaseModel):
             ttl = getattr(role_cache, 'ttl_seconds', None)
             if ttl is not None and access.role_cache_seconds_privileged > ttl:
                 raise ValueError('role_cache_seconds_privileged must not exceed role_cache ttl')
+
+    def _validate_kpi_rules(self) -> None:
+        kpi = self.kpi
+        if kpi is None:
+            return
+
+        expected_codes = frozenset(KPI_CODES)
+        self._validate_kpi_codes(kpi, expected_codes)
+        self._validate_kpi_budget_match(kpi)
+        self._validate_kpi_tolerance_keys(kpi, expected_codes)
+        self._validate_kpi_page_sizes(kpi)
+        self._validate_kpi_rebuild_priority(kpi)
+        self._validate_kpi_estimation_methods(kpi, expected_codes)
+        self._validate_kpi_tolerance_kinds(kpi, expected_codes)
+
+    def _validate_kpi_codes(self, kpi: 'KpiConfig', expected_codes: frozenset[str]) -> None:
+        if kpi.code_set != expected_codes:
+            raise ValueError(f'kpi.codes must be exactly the closed set: {sorted(expected_codes)}')
+
+    def _validate_kpi_budget_match(self, kpi: 'KpiConfig') -> None:
+        if kpi.budget_vs_actual_match != 'strict':
+            raise ValueError("kpi.budget_vs_actual_match must be 'strict'")
+
+    def _validate_kpi_tolerance_keys(
+        self, kpi: 'KpiConfig', expected_codes: frozenset[str]
+    ) -> None:
+        tolerance_codes = frozenset(kpi.tolerances.keys())
+        if tolerance_codes != expected_codes:
+            raise ValueError(
+                f'kpi.tolerances keys must match kpi.codes exactly; '
+                f'missing: {sorted(expected_codes - tolerance_codes)}, '
+                f'extra: {sorted(tolerance_codes - expected_codes)}'
+            )
+
+    def _validate_kpi_page_sizes(self, kpi: 'KpiConfig') -> None:
+        if kpi.page_size_default > kpi.page_size_max:
+            raise ValueError('kpi.page_size_default must be <= kpi.page_size_max')
+
+    def _validate_kpi_rebuild_priority(self, kpi: 'KpiConfig') -> None:
+        if kpi.rebuild_priority not in ('rebuilds', 'background'):
+            raise ValueError(
+                "kpi.rebuild_priority must be 'rebuilds' or 'background' "
+                '(both rank below live questions and uploads)'
+            )
+
+    def _validate_kpi_estimation_methods(
+        self, kpi: 'KpiConfig', expected_codes: frozenset[str]
+    ) -> None:
+        estimation_codes = frozenset(kpi.estimation_methods.keys())
+        if estimation_codes != expected_codes:
+            raise ValueError(
+                f'kpi.estimation_methods keys must match kpi.codes exactly; '
+                f'missing: {sorted(expected_codes - estimation_codes)}, '
+                f'extra: {sorted(estimation_codes - expected_codes)}'
+            )
+
+    def _validate_kpi_tolerance_kinds(
+        self, kpi: 'KpiConfig', expected_codes: frozenset[str]
+    ) -> None:
+        for code in expected_codes:
+            tolerance = kpi.tolerances[code]  # type: ignore[index]
+            kind = tolerance.kind
+            if (
+                kind == 'percent_of_expected_plus_absolute_floor'
+                and isinstance(tolerance, TolerancePercentOfExpectedPlusAbsoluteFloor)
+                and tolerance.floor_unit != 'kpi_currency'
+            ):
+                raise ValueError(
+                    f'kpi.tolerances.{code}.floor_unit must be "kpi_currency" '
+                    f'for kind percent_of_expected_plus_absolute_floor'
+                )
+            if (
+                kind == 'absolute'
+                and isinstance(tolerance, ToleranceAbsolute)
+                and tolerance.unit not in ('percentage_points', 'days')
+            ):
+                raise ValueError(
+                    f'kpi.tolerances.{code}.unit must be "percentage_points" or "days" '
+                    f'for kind absolute'
+                )
+            if kind == 'percent_of_expected':
+                pass  # only percent field, validated by Field(gt=0)
+            elif kind == 'exact_or_needs_review':
+                pass  # no numeric fields
+            elif kind not in (
+                'percent_of_expected_plus_absolute_floor',
+                'absolute',
+                'percent_of_expected',
+                'exact_or_needs_review',
+            ):
+                raise ValueError(f'kpi.tolerances.{code}.kind: unknown kind {kind!r}')
 
     @property
     def source_viewer_signing_key(self) -> str:
