@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Consumes the `kpi_current` read view settled in ADR-0009. Owns the wire contract only; the RBAC matrix is settled in ADR-0012, dashboard layout and the `Updating` signal with ADR-0011, golden-set gates with ADR-0013, config key names and validation with #359, and screen acceptance with #357.
+Accepted. Consumes the `kpi_current` read view settled in ADR-0009. Owns the wire contract only; the RBAC matrix is settled in ADR-0012, dashboard layout and the `Updating` signal with ADR-0011, golden-set gates with ADR-0013, config key names and validation with #359, and screen acceptance with ADR-0014 (#357).
 
 ## Context
 
@@ -29,9 +29,9 @@ The research in `docs/research/accessible-charting-export.md:602-614` settles Re
 
 ## Consequences
 
-- ADR-0011 persists `chart_id`s and reads the `Updating` injection point from this contract without owning chart data. ADR-0012 guards both routes and the export action. ADR-0013 settles chart payload checks in the golden-set gates. #357 accepts screens against these shapes and the binding prototype. #359 owns the config keys named here.
+- ADR-0011 persists `chart_id`s and reads the `Updating` injection point from this contract without owning chart data. ADR-0012 guards both routes and the export action. ADR-0013 settles chart payload checks in the golden-set gates. ADR-0014 (#357) accepts screens against these shapes and the binding prototype. #359 owns the config keys named here.
 - The ADR records three deliberate deviations from the issue text — `breakdown_bar` instead of `breakdown_pie`, an opaque filename identifier instead of a company slug, and context-only company identity instead of `/companies/{company_id}` URLs — so none is "fixed" by a later reader.
 - Resolving `Draft` needs a source-document-version status lookup through an existing port; no new status field is stored on KPI rows. `kpi_current` remains the only read view.
-- The prototype computes deltas, shares and axis scales in page scripts even though its own comments say the UI never calculates figures. The real UI must use the server-provided `change`, `change_direction`, `share`, `variance_rows[]` and `data[]` values; screen acceptance in #357 must check this.
+- The prototype computes deltas, shares and axis scales in page scripts even though its own comments say the UI never calculates figures. The real UI must use the server-provided `change`, `change_direction`, `share`, `variance_rows[]` and `data[]` values; screen acceptance in ADR-0014 (#357) must check this.
 - Implementation is future work: no KPI table, repository port or API route exists in the Phase 1 baseline. New routes must be added to `docs/openapi.json` and `web/src/generated/api.d.ts` with the generated-client check passing.
 - Phase 2 tests must cover decimal-string fidelity, cursor pagination, config-bounded overrides versus a fixed `chart_id`, all three chart types including the diverging flag, per-point citations and statuses, `needs_review` nulls, empty data, server-side filtering for every role, and export metadata/filename redaction.

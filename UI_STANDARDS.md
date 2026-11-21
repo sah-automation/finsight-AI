@@ -31,6 +31,8 @@ What changed in v2: the final HTML prototype is now the visual source of truth. 
 - The reload on resize in `shell.js` (the real charts redraw without a reload).
 - Any number the prototype works out itself (deltas, shares, totals). The real app shows what the API sends (rule 2 in section 2).
 
+**Specified by standard or ticket, not drawn in the prototype** (see ADR-0014): the Cognito-hosted MFA challenge for privileged roles; API-driven pagination in Documents; `Draft`/`Estimated` dashboard badges alongside `Updating`; "Figures are being prepared."; the inline "layout changed elsewhere" notice; the source-viewer loading, error, newer-version, needs-review, unavailable/no-access and conditional "Open full document" states; chart export metadata and opaque filenames; and the absence of permission-denied controls. These have no prototype visual to compare against, so a person signs off their snapshots. The prototype's title-based export filenames, `window.print()` PDF, Push column, "Mentions" event and full-screen chart premise are not accepted behaviour.
+
 ---
 
 ## 1. Design direction (what we are copying and why)
@@ -241,19 +243,19 @@ The prototype shows more screens than Phase 1. Build in the phase shown. Do not 
 
 | Route | Prototype file | Who sees it | Phase |
 |---|---|---|---|
-| `/login` | `login.html` | Everyone | 1 |
+| `/sign-in` | `login.html` | Everyone | 1 |
 | `/ask` | `ask.html` | Executive Leadership, Corporate Finance & Planners, Audit & Compliance | 1 |
 | Source viewer (panel on Ask) | `ask.html` | Same as Ask | 1 |
-| `/documents` (Library and Recycle bin) | `documents.html` | All four roles (System Admin sees file details only) | 1 |
+| `/documents` (Library and Recycle bin) | `documents.html` | All roles except System Admin, which is denied by the as-built matrix | 1 |
 | `/upload` | `upload.html` | Corporate Finance & Planners | 1 |
 | Access denied | `not-allowed.html` | Anyone who opens a page they may not use | 1 |
-| `/settings/profile`, `/settings/notifications` | `settings.html` | All roles | Needs plan decision (section 21) |
-| `/settings/users` | `settings.html` | System Admin | Needs plan decision |
-| `/settings/audit` | `settings.html` | System Admin, Audit & Compliance | Needs plan decision |
-| `/settings/cost` | `settings.html` | System Admin, Executive Leadership | Needs plan decision |
+| `/settings/profile`, `/settings/notifications` | `settings.html` | All roles | 2 (all five panes accepted by #357 / ADR-0014) |
+| `/settings/users` | `settings.html` | System Admin | 2 |
+| `/settings/audit` | `settings.html` | System Admin, Audit & Compliance | 2 |
+| `/settings/cost` | `settings.html` | System Admin, Executive Leadership | 2 |
 | `/dashboard` | `dashboard.html` | All except System Admin | 2 |
-| `/charts` | `charts.html` | All except System Admin | 2 |
-| `/reports` | `reports.html` | All except System Admin (only Corporate Finance & Planners can change schedules or generate) | 2 or 3 (needs plan decision) |
+| `/charts` | `charts.html` | All except System Admin | 2; this is the chart detail view (ADR-0014) |
+| `/reports` | `reports.html` | All except System Admin (only Corporate Finance & Planners can change schedules or generate) | Not in Phase 2 acceptance; final placement with #360 |
 
 Home page after sign in: System Admin goes to Settings (Profile). Corporate Finance & Planners and Audit & Compliance go to Ask. Executive Leadership goes to Ask in Phase 1 and to Dashboard once Phase 2 ships. The API tells the UI the home page (section 17).
 
@@ -268,6 +270,7 @@ Home page after sign in: System Admin goes to Settings (Profile). Corporate Fina
 - Under the card: "Your data stays in your company workspace." and "Need access? Contact your administrator."
 - Messages (area above the fields, `role="alert"`): wrong details "That email or password doesn’t match. Check both and try again." (never say which one is wrong), session ended "Your session ended. Please sign in again." (info style), login down "Sign in is temporarily unavailable. Please try again in a few minutes." (warning style; fields and sign in button are disabled and a **Try again** button replaces it).
 - Cognito hosted or embedded. Never show raw Cognito errors.
+- The MFA challenge for System Admin and Executive Leadership is provider-hosted and recorded as "specified by standard, not drawn"; no new app-designed MFA screen is added in Phase 2 (ADR-0014).
 
 ### 7.2 Ask (chat screen)
 
@@ -342,6 +345,8 @@ Proves the citation promise. The prototype shows it as the Ask right panel.
 - Banner "A newer version exists." with a link, when the cited version is not the latest. Never swap content silently.
 - "This source is no longer available." when the document was deleted or access was lost. Never show another company's data.
 - "Open full document" link in the header if the role may open it.
+- "No longer available" and "no access" are the same non-leaking screen; a deleted citation must not be distinguishable from one the user may not see. The GET route must be mounted and enforce company, role and access scope before citation-click tests count (ADR-0014).
+- At each width, `Esc` closes the viewer, focus returns to the citation chip, and the bottom sheet traps focus. These states are "specified by standard, not drawn" and get human-signed snapshots rather than a prototype comparison.
 
 **Where it lives**
 
@@ -356,9 +361,9 @@ Proves the citation promise. The prototype shows it as the Ask right panel.
 Calm, dense, sortable. Two views switched by a segmented control: **Library** and **Recycle bin (N)**.
 
 **Page bar:** "Documents", a sub line, and the primary **Upload document** button (only for roles that may upload).
-**Notices (info style):** System Admin: "You can see file details only. Document content is hidden for your role." Recycle bin: "Deleted documents are kept for 30 days, then removed for good." (days come from the API).
+**Notices (info style):** System Admin is denied the Documents page entirely under the as-built permission matrix (§7.6); there is no details-only variant. Recycle bin: "Deleted documents are kept for 30 days, then removed for good." (days come from the API).
 **Filters:** search by name, category, status (Draft or Final), ingestion state. On phones also a **Sort by** select (Newest first, Oldest first, Name A to Z) because the column headers are hidden. The filters for status and state hide in the Recycle bin.
-**Count line:** "8 documents" (`aria-live="polite"`).
+**Count line:** "8 documents" (`aria-live="polite"`). The prototype has no pager; acceptance requires an API-driven pager styled with existing tokens and committed snapshots, recorded as "specified by ticket, not drawn" (ADR-0014).
 
 **Library table**
 
@@ -373,7 +378,7 @@ Calm, dense, sortable. Two views switched by a segmented control: **Library** an
 
 A newly uploaded row is highlighted with `--accent-subtle`. A row is focusable and opens on click or `Enter`.
 
-**Recycle bin table:** Name, Category, Period, Version, Deleted by, Deleted ("2 days ago"), Purges in ("28 days"), and actions **Restore** and **Delete permanently** (view-only roles see "View only"). Delete permanently asks first: "Delete permanently? This removes the document and all its versions for good. This can’t be undone." (see section 21, this action needs a plan decision).
+**Recycle bin table:** Name, Category, Period, Version, Deleted by, Deleted ("2 days ago"), Purges in ("28 days"), and actions **Restore** and **Delete permanently** for upload-capable roles (view-only roles see "View only"). Delete permanently asks first: "Delete permanently? This removes the document and all its versions for good. This can’t be undone." The backend must enforce the purge before the button renders; reuse the `delete` category action only if it covers permanent purge, otherwise a dedicated action must be agreed by #359/#360. System Admin never sees this page or action (ADR-0014).
 
 **Empty states:** "No documents match" with "Try a different search or clear the filters." and a **Clear filters** button; "The recycle bin is empty" with "Deleted documents stay here for 30 days."; "No documents yet" with an Upload button; partition missing shows the API message.
 
@@ -399,16 +404,17 @@ Behaviour:
 - Partition missing: the whole form is replaced by a warning notice with the API message (fallback: "This company isn’t set up for uploads yet. Please contact your administrator.") and a **Back to Documents** link. Do not let the user fill in the form first.
 - Low confidence or scanned documents show "Needs review" with the reason after processing.
 
-### 7.6 Role aware behaviour (Phase 1 gate)
+### 7.6 Role aware behaviour (Phase 1 and 2 gate)
 
-The four roles are Executive Leadership, Corporate Finance & Planners, Audit & Compliance, System Admin. Permissions come only from the API (which reads `permissions.yaml`).
+The four roles are Executive Leadership, Corporate Finance & Planners, Audit & Compliance, System Admin. Permissions come only from the API (which reads `permissions.yaml`); a page must never branch on a role name.
 
-- Hide navigation items the user cannot use.
-- Disable (with a tooltip) an action only when seeing it helps the user understand the product (for example report schedule controls for view-only roles).
-- System Admin sees no financial content: no Ask, no source viewer content, no Dashboard, Charts or Reports. Documents shows file details only.
-- Audit & Compliance gets a read only experience: no upload, update or delete buttons.
+- If the API does not grant an action, its control is **absent from the DOM** — not disabled, not merely hidden by CSS. There is no "disabled with a tooltip" option for permission cases.
+- Disabled state is reserved for reasons unrelated to access: Save before any change, a form awaiting required fields, or sign-in during an outage.
+- Hide navigation items the user cannot use. A test per role asserts the forbidden controls are missing from the rendered page, not just visually hidden.
+- System Admin sees no financial content: no Ask, no source viewer content, no Dashboard, Charts, Reports or Documents. "File details only" is not an as-built capability.
+- Audit & Compliance gets a read only experience: no upload, update, restore or delete buttons.
 - Role labels use the display names above, never raw group ids.
-- A direct visit to a forbidden URL shows the access denied page (5.5).
+- A direct visit to a forbidden URL shows the access denied page (5.5) with the plain "You don’t have access to this." message, never a blank screen.
 
 ---
 
@@ -470,6 +476,8 @@ Layout: page bar "Settings", then a centered column (max 840px). Desktop: sectio
 - Every chart has a table view, an accessible text summary and (where marked) image and PDF export.
 - On phones charts are drawn at the real width so text stays 11 to 12px. Value labels thin out (every second point) and quarter labels shorten ("Q3 26") when space is tight.
 - Values, changes and shares come from the API. The prototype works some out only to fill the sample screens.
+
+**Phase 2 acceptance additions (ADR-0014):** show a badge whenever the API's `display_label` is non-null, with `Updating > Estimated > Draft` precedence — the prototype draws only `Updating` and is not the ceiling. The stale warning appears when any visible chart is stale and a stale chart keeps its figures until interaction or reload; there is no visible refresh control. Empty states are "Figures are being prepared." when `documents_processing` is true, otherwise "No figures yet" with Upload only when `actions.upload` is true. A stale layout save returns the current layout with an inline "layout changed elsewhere" notice, not a modal. The charts page is the detail view: dashboard expansion navigates there with the selected `chart_id`; there is no full-screen expanded chart route, and export buttons stay where the prototype places them. Inline Ask charts are accepted only when the answer response carries a chart payload. Exports use the API metadata and opaque filenames from ADR-0010, not the prototype's title-based filename or `window.print()` PDF.
 
 ---
 
@@ -540,6 +548,9 @@ Approved system messages. Keep every string in one messages file so it can be tr
 | Situation | Message |
 |---|---|
 | Database waking (pilot) | "Waking up, please wait." |
+| Answer still working | "Still working on your question." |
+| Figures being prepared | "Figures are being prepared." |
+| Layout saved elsewhere | "The layout changed elsewhere. Check the current layout and save again to reapply." |
 | Capacity full or queue wait too long | "We’re busy right now. Please try again in a moment." |
 | All models or embedding failed | "Temporarily unavailable. Please try again." |
 | No evidence | "I don’t have enough data to answer this." |
@@ -595,7 +606,7 @@ Every screen works at every width from 320px up. The rules below match the final
 
 ## 14. Accessibility (required, not optional)
 
-- WCAG 2.2 AA is the target.
+- The UI aims for WCAG 2.2 AA, checked by the tests in section 18; no formal conformance is claimed without an audit.
 - Every interactive element is reachable and usable with the keyboard, with a visible focus ring (`--focus-ring`, 2px, 2px offset).
 - Add a "Skip to main content" link as the first focusable item (not in the prototype, required here).
 - Logical heading order. One `h1` per page.
@@ -663,7 +674,11 @@ Do not invent fields. If one is missing, stop and ask (section 19). The prototyp
 - **Width sweep (new):** open every screen for each role at the test widths in section 13. Fail the build on any sideways page scroll (`scrollWidth` larger than the window width, ignoring elements clipped by `overflow: hidden`), on any console error, or when a tap target on a phone is under 44px (inline citation chips excepted).
 - Touch test: emulate a touch phone. Tapping a citation chip opens the sheet (no stuck popover). Closing the sheet by backdrop, button and `Esc` works.
 - Accessibility tests with `axe` on every screen and at phone and desktop widths.
-- Visual snapshot tests at 390, 768 and 1280 for the Ask, Documents, Upload and Settings screens, compared with the prototype.
+- Visual snapshot tests at 390, 768 and 1280 for all nine accepted screens (ADR-0014), compared with the prototype. Approved snapshots are committed under `web/snapshots/` with an `APPROVALS.md` entry naming the approver, date and browser. There is no pixel-difference threshold; a person reviews the visible difference.
+- A token-parity test in `web/test/` reads `prototype/styles.css` and fails if the app's colour, type and spacing tokens differ. Tokens come from that one shared file, never hand-copied into components. Allowed differences are listed in ADR-0014: real data replacing samples, standard-wins accessibility, API capabilities, email-only notifications, the pager, MFA, "specified by standard, not drawn" states, absent permission controls and API-driven dashboard/export values.
+- Accessibility gate: component `vitest-axe` plus screen `@axe-core/playwright` with zero serious or critical violations; keyboard-only walkthrough per screen; chart table fallback tested with real data so numbers, units and periods read out the same as the chart; explicit contrast checks for chart colours and the evidence highlight; series never distinguished by colour alone.
+- One written manual pass per screen with NVDA + Firefox on desktop and VoiceOver + Safari on iOS for the phone sheet, recording tester, date, browser and screen reader so the pass can be repeated after major changes. A serious finding blocks that screen. This is "aims for WCAG 2.2 AA, checked by these tests", not a formal conformance claim.
+- Per-role tests assert forbidden controls are absent from the DOM, not merely hidden (§7.6). Citation-click tests require the mounted, authorised source-viewer route (§7.3).
 - No real model calls and no real network in unit tests. Use the generated API client with fakes.
 
 ---
@@ -704,21 +719,21 @@ Do not invent fields. If one is missing, stop and ask (section 19). The prototyp
 
 ---
 
-## 21. Open decisions (confirm before building these parts)
+## 21. Decisions and defaults (ADR-0014 settles the screen questions)
 
-The prototype and the plan do not fully agree. These need an answer from the product owner. Until then, follow the "Default" column.
+The prototype and the plan do not fully agree. The decided rows below are binding; the remaining defaults still apply until a later ticket changes them.
 
-| # | Question | Default until decided |
+| # | Question | Decision or default |
 |---|---|---|
-| 1 | **Settings screens** (Profile, Notifications, Users, Audit log, Cost view) are in the prototype but not in the Phase 1 UI list in `phase1_mvp_plan.md`. Users, audit and cost are backed by Phase 1 data (roles, audit logs, metering). | Do not build until the plan names the slice. Profile and Users first when added. |
-| 2 | **Dashboard, Charts, Reports** are Phase 2 (and scheduled reports may be Phase 3). Executive Leadership lands on Dashboard in the prototype. | Phase 1: Executive Leadership lands on Ask. Do not build these screens early. |
-| 3 | **Inline chart inside an Ask answer** appears in the prototype. Charts are Phase 2 in the plan. | Phase 1 answers are text, citations and a figures table only. |
+| 1 | **Settings screens** (Profile, Notifications, Users, Audit log, Cost view) are in the prototype but not in the Phase 1 UI list in `phase1_mvp_plan.md`. Users, audit and cost are backed by Phase 1 data (roles, audit logs, metering). | **Decided:** all five panes are in Phase 2 acceptance with the prototype's role visibility; unknown section falls back to Profile (ADR-0014). |
+| 2 | **Dashboard, Charts, Reports** are Phase 2 (and scheduled reports may be Phase 3). Executive Leadership lands on Dashboard in the prototype. | **Decided:** Dashboard and Charts are accepted in Phase 2; Reports is design reference only and its final placement is with #360. Phase 1 keeps Executive Leadership on Ask (ADR-0014). |
+| 3 | **Inline chart inside an Ask answer** appears in the prototype. Charts are Phase 2 in the plan. | **Decided:** accepted in Phase 2 only when the answer response carries a chart payload; the client never invents one (ADR-0014). |
 | 4 | **Delete from Upload.** The plan and `upload_types` list New, Update, Delete. The prototype upload form shows only New and Update and does Delete from Documents. | Keep API `upload_type: delete`. UI offers Delete from the Documents drawer only. |
-| 5 | **Delete permanently** (early purge from the recycle bin) is not in D5, which keeps soft deletes for the retention period. | Build Restore. Hide Delete permanently until decided (it affects audit and retention). |
-| 6 | **Permissions matrix** needs extra actions the UI uses: view documents list, view document contents, view dashboard, view charts, view reports, edit report schedules, view cost, manage users. | Add them to `permissions.yaml` and confirm with the client. Current table has 5 actions. |
-| 7 | **Notification events and Push channel.** The sample list includes "Mentions" (no such feature) and Push (needs a service worker, no mobile app in v1). | Email only, with events from the API. |
+| 5 | **Delete permanently** (early purge from the recycle bin) is not in D5, which keeps soft deletes for the retention period. | **Decided:** keep Delete permanently with the prototype's dialog and toast, for upload-capable roles only and with backend enforcement before the button renders; System Admin is denied (ADR-0014). |
+| 6 | **Permissions matrix** needs extra actions the UI uses: view documents list, view document contents, view dashboard, view charts, view reports, edit report schedules, view cost, manage users. | **Decided in ADR-0012:** add only `dashboard_view`, `dashboard_edit_layout`, `chart_export`, `kpi_view`, `kpi_export`; KPIs are not a category and #359/#360 own the enum and matrix updates. |
+| 7 | **Notification events and Push channel.** The sample list includes "Mentions" (no such feature) and Push (needs a service worker, no mobile app in v1). | **Decided:** email only with API-driven events; remove the Push column and "Mentions" as an approved difference from the prototype (ADR-0014). |
 | 8 | **Number format.** v1 said thin-space separators, the prototype uses en-US commas. | Use `Intl` with en-US now. Revisit per company locale later. |
-| 9 | **Cached badge, newer version banner, "Open full document", source not available state, citation `1/3` paging** are required by this file but not drawn in the prototype. | Build them from the descriptions in section 7. Add them to the prototype if a visual is needed. |
+| 9 | **Cached badge, newer version banner, "Open full document", source not available state, citation `1/3` paging** are required by this file but not drawn in the prototype. | **Decided:** build them from the descriptions in section 7, mark them "specified by standard, not drawn", and sign off their snapshots; no prototype visual is added. Unavailable and no access share one non-leaking screen (ADR-0014). |
 | 10 | **Metric hover** showing the inputs of a calculated figure. | Tag only for now. |
 
 ---

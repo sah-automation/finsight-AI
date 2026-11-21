@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Consumes ADR-0010 (metrics API and export contract) and ADR-0011 (dashboard layout and staleness). Config key names, enum values and validation stay with #359; screen acceptance with #357; the final spec with #360.
+Accepted. Consumes ADR-0010 (metrics API and export contract) and ADR-0011 (dashboard layout and staleness). Config key names, enum values and validation stay with #359; screen acceptance with ADR-0014 (#357); the final spec with #360.
 
 ## Context
 
