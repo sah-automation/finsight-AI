@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Consumes ADR-0008 (KPI rows), ADR-0009 (materialisation and the `kpi.recomputed` event), ADR-0010 (chart wire contract) and ADR-0012 (role/action matrix and content filtering). Owns the saved layout model, the `Updating` signal and the update cascade; config key names stay with #359, screen acceptance with #357 and the final spec with #360.
+Accepted. Consumes ADR-0008 (KPI rows), ADR-0009 (materialisation and the `kpi.recomputed` event), ADR-0010 (chart wire contract) and ADR-0012 (role/action matrix and content filtering). Owns the saved layout model, the `Updating` signal and the update cascade; golden-set gates are settled in ADR-0013, config key names stay with #359, screen acceptance with #357 and the final spec with #360.
 
 ## Context
 
@@ -23,6 +23,6 @@ Accepted. Consumes ADR-0008 (KPI rows), ADR-0009 (materialisation and the `kpi.r
 ## Consequences
 
 - This deliberately supersedes three parts of #354's proposal: Aurora instead of DynamoDB, per-user instead of per-role, and no `last_refreshed_at`/`source_kpi_versions` in the layout; the event never writes a stored row. It also replaces #359's `layout_store: dynamodb` key and #360's "dashboard layout in DynamoDB" spec line. Recorded here so a later reader does not "restore" the original plan.
-- ADR-0008 gains `computation_rule_version` on KPI rows; ADR-0009's rebuild gating already uses that version, and ADR-0010's wire contract gains one route and two additive `GET /kpis` envelope fields. ADR-0012 owns `dashboard_view`/`dashboard_edit_layout` and requires the API to filter saved ids before returning a layout; #356 must include fingerprint and layout cases in the golden-set gates; #357 accepts the top notice, badges and empty states against the binding prototype with no added refresh control.
+- ADR-0008 gains `computation_rule_version` on KPI rows; ADR-0009's rebuild gating already uses that version, and ADR-0010's wire contract gains one route and two additive `GET /kpis` envelope fields. ADR-0012 owns `dashboard_view`/`dashboard_edit_layout` and requires the API to filter saved ids before returning a layout; ADR-0013 settles fingerprint and layout cases in the golden-set gates; #357 accepts the top notice, badges and empty states against the binding prototype with no added refresh control.
 - Phase 2 tests must cover: default-on-miss without a write; first save with no row; concurrent save rejection with the current layout returned; role filtering of both saved ids and fingerprint entries; fingerprint stability for identical recomputes and change for document version, rule version, value, status, citation and conflict changes; lost, repeated and out-of-order events still yielding a correct badge; in-memory fingerprint comparison across loads; empty, processing and permission-denied upload states; fingerprint-only polling with no chart data; and OpenAPI/generated-client regeneration.
 - Implementation is future work: no layout table, port, adapter, fingerprint route or KPI table exists in the Phase 1 baseline. No code, config or infrastructure behaviour changes in this decision.
