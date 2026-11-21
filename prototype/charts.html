@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Charts | FinSight AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.lay{display:grid;grid-template-columns:280px minmax(0,1fr);gap:var(--s5);align-items:start}
+.panel{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4)}
+.panel h2{font:600 16px/24px var(--font)}
+.types{display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg-subtle);border-radius:var(--r-md);padding:3px;gap:3px}
+.types input{position:absolute;opacity:0}.types label{text-align:center;padding:7px 0;border-radius:6px;font-weight:500;color:var(--text-secondary);cursor:pointer;font-size:13px}
+.types input:checked+label{background:var(--bg-surface);color:var(--text-primary);box-shadow:0 0 0 1px var(--border-subtle)}
+.types input:focus-visible+label{outline:2px solid var(--focus-ring);outline-offset:2px}
+select.input{appearance:auto}
+.checks{display:flex;flex-direction:column;gap:var(--s2)}.checks label{display:flex;gap:var(--s2);align-items:center;cursor:pointer}
+.out{display:flex;flex-direction:column;gap:var(--s3);min-width:0}
+.out .fcard{padding:var(--s5)}.sumt{color:var(--text-secondary)}
+@media(max-width:900px){.lay{grid-template-columns:1fr}}
+</style></head>
+<!-- Accessibility: focus order - sidebar, chart type, data fields, output, save actions. -->
+<body>
+<svg width="0" height="0" style="position:absolute"><defs><symbol id="ck" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol></defs></svg>
+<div class="shell"><aside class="side" id="side" aria-label="Main"></aside>
+<section class="mainc" id="main">
+  <header class="pagebar"><div><h1>Charts</h1><p>Build a chart from your documents, then save it as an image or PDF. Sample data.</p></div></header>
+  <div class="pbody"><div class="lay">
+    <form class="panel" id="f" onsubmit="return false"><h2>Build a chart</h2>
+      <div class="field"><span style="font-weight:500" id="tl">Chart type</span><div class="types" role="radiogroup" aria-labelledby="tl">
+        <input type="radio" name="ty" id="t1" value="trend" checked><label for="t1">Trend</label><input type="radio" name="ty" id="t2" value="compare"><label for="t2">Comparison</label><input type="radio" name="ty" id="t3" value="break"><label for="t3">Breakdown</label></div></div>
+      <div class="field" id="g-m"><label for="m">Metric</label><select class="input" id="m"></select></div>
+      <div class="field" id="g-r"><label for="rg">Time range</label><select class="input" id="rg"><option value="4">Last 4 quarters</option><option value="6">Last 6 quarters</option><option value="8">Last 8 quarters</option></select></div>
+      <div class="field hidden" id="g-p"><span style="font-weight:500">Periods to compare</span><div class="checks" id="pc"></div><span class="hint">Choose 2 to 4.</span><span class="err" style="display:none;color:var(--negative);font-size:12px" id="pe">Choose at least 2 periods.</span></div>
+      <div class="field hidden" id="g-b"><label for="b">Breakdown of</label><select class="input" id="b"><option value="cogs">Cost of goods sold</option><option value="opex">Operating expenses</option></select></div>
+      <div class="field hidden" id="g-q"><label for="q">Period</label><select class="input" id="q"><option value="1">Q3 2026</option><option value="0">Q2 2026</option></select></div>
+    </form>
+    <div class="out" id="out" aria-live="polite"></div>
+  </div></div>
+</section></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="shell.js"></script><script src="charts.js"></script>
+<script>
+FS.mount({current:'charts'});
+const $=id=>document.getElementById(id);
+if(!FS.can.charts){FS.deny($('main'))}else init();
+function init(){
+/* Prototype data. In the real app everything here comes from the API. */
+const Q=['Q4 2024','Q1 2025','Q2 2025','Q3 2025','Q4 2025','Q1 2026','Q2 2026','Q3 2026'];
+const M={rev:['Revenue','USD thousands','usdk',[3980.2,4025.6,4120.9,4215.4,4310.7,4402.3,4608.0,4820.5],'Q3 Management Report, page 12, table 4'],
+ gm:['Gross margin','Percent of revenue','pct',[38.9,39.4,39.1,39.6,39.8,40.6,41.2,37.8],'Q3 Management Report, page 12, table 4'],
+ nm:['Net margin','Percent of revenue','pct',[8.1,8.6,8.4,9.0,9.2,9.8,10.1,7.3],'Q3 Management Report, page 12, table 4'],
+ opex:['Operating expenses','USD thousands','usdk',[820.4,835.0,842.7,850.3,861.9,870.2,884.6,912.8],'Q3 Management Report, page 13, table 5'],
+ cf:['Cash flow','USD thousands, operating','usdk',[310.5,298.2,325.9,340.1,352.7,361.4,388.0,244.6],'Bank statement, September, page 2, table 1'],
+ dso:['DSO','Days sales outstanding','days',[41,40,42,41,40,39,38,44],'Q3 Management Report, page 15, table 7']};
+const B={cogs:{n:'Cost of goods sold',s:'Q3 Cost Breakdown, page 3, table 1',p:[[['Raw materials',1402.6],['Freight and logistics',612.0],['Direct labour',695.5]],[['Raw materials',1511.9],['Freight and logistics',806.0],['Direct labour',680.3]]]},
+ opex:{n:'Operating expenses',s:'Q3 Management Report, page 13, table 5',p:[[['Salaries',505.1],['Marketing',139.0],['Rent and utilities',96.3],['Software',58.4],['Other',85.8]],[['Salaries',512.4],['Marketing',148.6],['Rent and utilities',96.3],['Software',61.2],['Other',94.3]]]}};
+const SHARE={cogs:[[51.8,22.6,25.7],[50.4,26.9,22.7]],opex:[[57.1,15.7,10.9,6.6,9.7],[56.1,16.3,10.5,6.7,10.3]]};
+$('m').innerHTML=Object.keys(M).map(k=>`<option value="${k}">${M[k][0]}</option>`).join('');
+$('pc').innerHTML=['Q3 2026','Q2 2026','Q1 2026','Q3 2025'].map((x,i)=>`<label><input type="checkbox" value="${[7,6,5,3][i]}" ${i<2?'checked':''}>${x}</label>`).join('');
+const ty=()=>document.querySelector('[name=ty]:checked').value;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function draw(){const t=ty();['g-m','g-r'].forEach(i=>$(i).classList.toggle('hidden',t==='break'));$('g-r').classList.toggle('hidden',t!=='trend');
+ $('g-p').classList.toggle('hidden',t!=='compare');['g-b','g-q'].forEach(i=>$(i).classList.toggle('hidden',t!=='break'));
+ let c,sumText;
+ if(t==='trend'){const m=M[$('m').value],n=+$('rg').value,lab=Q.slice(8-n),v=m[3].slice(8-n);
+  sumText=`${m[0]} went from ${FC.fmt(m[2],v[0])} in ${lab[0]} to ${FC.fmt(m[2],v[n-1])} in ${lab[n-1]}.`;
+  c=FC.card({exp:1,title:m[0]+' trend',sub:m[1],svg:FC.line({labels:lab,values:v,t:m[2],aria:'Line chart. '+sumText}),table:FC.table(['Quarter',m[0]],lab.map((x,i)=>[x,FC.fmt(m[2],v[i])]),[1]),cap:'Source: '+m[4]+'.'})}
+ else if(t==='compare'){const m=M[$('m').value],ids=[...document.querySelectorAll('#pc input:checked')].map(x=>+x.value).sort((a,b)=>a-b);
+  $('pe').style.display=ids.length<2?'block':'none';
+  if(ids.length<2){$('out').innerHTML='<div class="fcard"><b>Choose at least 2 periods to compare.</b><span class="sumt">Use the list on the left.</span></div>';return}
+  const lab=ids.map(i=>Q[i]),v=ids.map(i=>m[3][i]);sumText=`${m[0]} across ${lab.join(', ')}: ${lab.map((x,i)=>FC.fmt(m[2],v[i])).join(', ')}.`;
+  c=FC.card({exp:1,title:m[0]+', period comparison',sub:m[1],svg:FC.bars({labels:lab,values:v,t:m[2],aria:'Bar chart. '+sumText}),table:FC.table(['Period',m[0]],lab.map((x,i)=>[x,FC.fmt(m[2],v[i])]),[1]),cap:'Source: '+m[4]+'.'})}
+ else{const b=B[$('b').value],p=+$('q').value,rows=b.p[p],sh=SHARE[$('b').value][p],tot=rows.reduce((a,r)=>a+r[1],0),per=p?'Q3 2026':'Q2 2026';
+  const it=rows.map((r,i)=>({label:r[0],v:r[1],tone:'n',text:FC.num(r[1],1)+'  ('+FC.num(sh[i],1)+'%)'})).sort((a,b)=>b.v-a.v);
+  sumText=`${b.n} in ${per}: ${it.map(x=>x.label+' '+x.text).join('; ')}.`;
+  c=FC.card({exp:1,title:b.n+' breakdown, '+per,sub:'USD thousands and share of total',svg:FC.hbars({items:it,aria:'Bar chart. '+sumText}),table:FC.table(['Item','USD thousands','Share'],it.map(x=>[x.label,FC.num(x.v,1),x.text.split('(')[1].replace(')','')]),[1,2]),cap:'Source: '+b.s+'.'})}
+ $('out').innerHTML=c+`<p class="sumt">${esc(sumText)}</p>`}
+document.getElementById('f').addEventListener('input',draw);
+let tt;function flash(m){const t=$('toast');t.innerHTML='<svg class="i"><use href="#ck"/></svg><span></span>';t.lastChild.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2500)}
+FC.bind($('out'),flash);draw();
+}
+</script></body></html>

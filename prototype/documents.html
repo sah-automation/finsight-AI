@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documents | FinSight AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);padding:var(--s4) var(--s6);border-bottom:1px solid var(--border-subtle);background:var(--bg-surface)}
+.bar h1{font:600 24px/30px var(--font);letter-spacing:-.01em}.bar p{font-size:12px;line-height:16px;color:var(--text-muted);margin-top:2px}
+.body{flex:1;overflow:auto;padding:var(--s6);display:flex;flex-direction:column;gap:var(--s4)}
+.top{display:flex;flex-wrap:wrap;gap:var(--s3);align-items:center}
+.seg2{display:flex;background:var(--bg-subtle);border-radius:var(--r-md);padding:2px}
+.seg2 button{height:32px;padding:0 var(--s3);border-radius:6px;font-weight:500;color:var(--text-secondary)}
+.seg2 button[aria-pressed=true]{background:var(--bg-surface);color:var(--text-primary);box-shadow:0 0 0 1px var(--border-subtle)}
+.filters{display:flex;flex-wrap:wrap;gap:var(--s2);flex:1}
+.search{position:relative;flex:1;min-width:200px;max-width:300px}
+.search svg{position:absolute;left:10px;top:12px;color:var(--text-muted)}.search .input{padding-left:32px;height:36px}
+select.input{width:auto;height:36px;padding-right:var(--s2);appearance:auto}
+.tw{border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--bg-surface);overflow:auto}
+table{border-collapse:collapse;width:100%}
+th,td{height:40px;padding:0 var(--s3);text-align:left;border-bottom:1px solid var(--border-subtle);white-space:nowrap}
+th{position:sticky;top:0;background:var(--bg-subtle);font-weight:500;font-size:12px;z-index:1}
+th button{font-weight:500;display:inline-flex;gap:4px;align-items:center;color:inherit}
+tbody tr.lib{cursor:pointer}tbody tr:hover{background:var(--bg-subtle)}tbody tr.new{background:var(--accent-subtle)}tbody tr:last-child td{border-bottom:0}
+td .nm{font-weight:500;display:flex;align-items:center;gap:var(--s2)}td .nm svg{color:var(--text-muted)}.flag{color:var(--warning)}
+.empty{display:none;text-align:center;padding:var(--s8) var(--s4);color:var(--text-secondary)}
+.empty h2{font:600 18px/26px var(--font);color:var(--text-primary);margin-bottom:4px}.empty .btn{margin-top:var(--s4)}
+.count{font-size:12px;line-height:16px;color:var(--text-muted)}
+.sm{height:32px;font-size:13px;padding:0 var(--s3)}
+.btn-danger{color:var(--negative);border-color:#FDA29B}.btn-danger:hover{background:#FEF3F2}
+.btn-delete{background:var(--negative);color:#fff;border-color:var(--negative)}.btn-delete:hover{background:#912018}
+.ra{display:flex;gap:var(--s2)}
+.scrim{display:none;position:absolute;inset:0;background:rgba(24,24,27,.25);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--bg-surface);border-left:1px solid var(--border-subtle);box-shadow:var(--shadow-pop);z-index:5;transform:translateX(100%);transition:transform .18s ease-out;display:flex;flex-direction:column;visibility:hidden}
+.drawer.open{transform:none;visibility:visible}
+.dh{display:flex;gap:var(--s3);padding:var(--s5);border-bottom:1px solid var(--border-subtle)}.dh h2{font:600 18px/26px var(--font)}
+.dh .m{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center;margin-top:6px;font-size:12px;line-height:16px;color:var(--text-muted)}
+.db{flex:1;overflow:auto;padding:var(--s5);display:flex;flex-direction:column;gap:var(--s5)}.db h3{font:600 14px/20px var(--font);margin-bottom:var(--s2)}
+.dl{display:grid;grid-template-columns:120px 1fr;gap:var(--s2) var(--s3)}.dl dt{color:var(--text-muted)}.dl dd{margin:0}
+.ver{list-style:none;padding:0;border:1px solid var(--border-subtle);border-radius:var(--r-md)}
+.ver li{display:flex;align-items:center;gap:var(--s3);padding:var(--s3);border-bottom:1px solid var(--border-subtle)}.ver li:last-child{border-bottom:0}.ver .d{margin-left:auto;font-size:12px;color:var(--text-muted)}
+.df{display:flex;gap:var(--s2);padding:var(--s4) var(--s5);border-top:1px solid var(--border-subtle)}
+dialog{border:1px solid var(--border-subtle);border-radius:var(--r-lg);box-shadow:var(--shadow-pop);padding:var(--s6);max-width:420px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(24,24,27,.35)}dialog h2{font:600 18px/26px var(--font)}dialog p{color:var(--text-secondary);margin:var(--s2) 0 var(--s5)}
+dialog .row{display:flex;justify-content:flex-end;gap:var(--s2)}
+.mobsort{display:none;width:auto}
+@media(max-width:640px){.bar{flex-direction:column;align-items:stretch}.bar .btn{width:100%}.search{flex:1 1 100%;max-width:none}.filters{flex:1 1 100%}select.input{flex:1 1 140px;min-width:0;width:auto}.mobsort{display:block}.top .seg2{width:100%}.top .seg2 button{flex:1}}
+</style></head>
+<!-- Accessibility: focus order - sidebar, view switcher, search/filters, table, row actions, details drawer/confirm dialog. -->
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/></symbol>
+<symbol id="up" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+<symbol id="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="se" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+<symbol id="ck" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+<symbol id="cl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="sp" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></symbol>
+<symbol id="al" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol>
+<symbol id="er" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+<symbol id="ud" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+<symbol id="rs" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></symbol>
+</defs></svg>
+<div class="shell"><aside class="side" id="side" aria-label="Main"></aside>
+<section class="main" id="main">
+  <header class="bar"><div><h1>Documents</h1><p id="sub"></p></div><a class="btn btn-primary hidden" id="upl" href="upload.html"><svg class="i"><use href="#up"/></svg>Upload document</a></header>
+  <div class="body">
+    <div class="top">
+      <div class="seg2" role="group" aria-label="View"><button data-m="lib" aria-pressed="true">Library</button><button data-m="bin" aria-pressed="false">Recycle bin <span class="num" id="bn"></span></button></div>
+      <div class="filters" role="search">
+        <div class="search"><svg class="i"><use href="#se"/></svg><label class="sr" for="s">Search by name</label><input class="input" id="s" placeholder="Search by name"></div>
+        <label class="sr" for="fc">Category</label><select class="input" id="fc"><option value="">All categories</option><option>Invoice</option><option>Bank statement</option><option>Financial statement</option><option>Budget</option><option>Contract</option><option>Board report</option></select>
+        <label class="sr" for="srt">Sort by</label><select class="input libf mobsort" id="srt"><option value="ts:-1">Newest first</option><option value="ts:1">Oldest first</option><option value="name:1">Name A to Z</option></select>
+        <label class="sr" for="fs">Status</label><select class="input libf" id="fs"><option value="">All statuses</option><option>Draft</option><option>Final</option></select>
+        <label class="sr" for="fi">Ingestion state</label><select class="input libf" id="fi"><option value="">All states</option><option>Received</option><option>Stored</option><option>Processing</option><option>Ready</option><option>Needs review</option><option>Failed</option></select>
+      </div></div>
+    <div class="notice info hidden" id="adminnote"><svg class="i"><use href="#cl"/></svg><span>You can see file details only. Document content is hidden for your role.</span></div>
+    <div class="notice info hidden" id="binnote"><svg class="i"><use href="#cl"/></svg><span>Deleted documents are kept for 30 days, then removed for good.</span></div>
+    <div class="count" id="count" aria-live="polite"></div>
+    <div class="tw"><table><thead id="head"></thead><tbody id="rows"></tbody></table>
+      <div class="empty" id="empty"><h2 id="eh"></h2><p id="ep"></p><button class="btn" id="clear">Clear filters</button></div></div>
+  </div>
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-label="Document details">
+    <div class="dh"><div style="flex:1"><h2 id="dn"></h2><div class="m" id="dm"></div></div><button class="ib" id="dc" aria-label="Close details"><svg class="i"><use href="#x"/></svg></button></div>
+    <div class="db" id="db"></div>
+    <div class="df hidden" id="df"><a class="btn" href="upload.html">Update document</a><button class="btn btn-danger" id="del">Delete</button></div>
+  </aside>
+</section></div>
+<dialog id="dlg" aria-labelledby="dt"><h2 id="dt"></h2><p id="dp"></p><div class="row"><button class="btn" id="no">Cancel</button><button class="btn btn-delete" id="yes"></button></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="shell.js"></script>
+<script>
+FS.mount({current:'documents'});
+const $=id=>document.getElementById(id);
+if(!FS.can.docs){FS.deny($('main'))}else init();
+function init(){
+const ACT=FS.can.upload,KEEP=30;/* retention comes from the API in the real app */
+const ST={Ready:['ok','ck'],Processing:['info','sp'],Received:['','cl'],Stored:['','cl'],'Needs review':['warn','al'],Failed:['bad','er']};
+const D=[
+{name:'Supplier contract, Apex Freight',cat:'Contract',per:'Jul 2026',st:'Final',v:1,state:'Processing',by:'Ravi Menon',up:'Just now',ts:9,pages:14,isNew:1},
+{name:'Q3 Management Report',cat:'Board report',per:'Q3 2026',st:'Final',v:2,state:'Ready',by:'Asha Kapoor',up:'12 Oct 2026',ts:8,pages:48,aff:'Q3 Cost Breakdown was uploaded for the same period. Check that figures still agree.',vers:[['Version 2','Final','12 Oct 2026'],['Version 1','Draft','2 Oct 2026']]},
+{name:'Q3 Cost Breakdown',cat:'Financial statement',per:'Q3 2026',st:'Final',v:1,state:'Ready',by:'Ravi Menon',up:'10 Oct 2026',ts:7,pages:21,vers:[['Version 1','Final','10 Oct 2026']]},
+{name:'Bank statement, September',cat:'Bank statement',per:'Sep 2026',st:'Final',v:1,state:'Needs review',by:'Asha Kapoor',up:'9 Oct 2026',ts:6,pages:6,note:'Needs review. Some numbers couldn’t be read with confidence.',vers:[['Version 1','Final','9 Oct 2026']]},
+{name:'Budget Q4 2026',cat:'Budget',per:'Q4 2026',st:'Draft',v:3,state:'Ready',by:'Meera Shah',up:'8 Oct 2026',ts:5,pages:9,vers:[['Version 3','Draft','8 Oct 2026'],['Version 2','Draft','1 Oct 2026'],['Version 1','Draft','24 Sep 2026']]},
+{name:'Invoice INV-2291',cat:'Invoice',per:'Sep 2026',st:'Final',v:1,state:'Failed',by:'Asha Kapoor',up:'6 Oct 2026',ts:4,pages:2,note:'Processing failed. Please upload the document again.',vers:[['Version 1','Final','6 Oct 2026']]},
+{name:'Invoice INV-2310',cat:'Invoice',per:'Oct 2026',st:'Final',v:1,state:'Received',by:'Meera Shah',up:'5 Oct 2026',ts:3,pages:1,vers:[['Version 1','Final','5 Oct 2026']]},
+{name:'Q2 Management Report',cat:'Board report',per:'Q2 2026',st:'Final',v:1,state:'Ready',by:'Asha Kapoor',up:'14 Jul 2026',ts:2,pages:44,vers:[['Version 1','Final','14 Jul 2026']]},
+{name:'Old forecast.xlsx',cat:'Budget',per:'Q2 2026',st:'Final',v:1,state:'Ready',by:'Meera Shah',up:'1 Jun 2026',ts:1,pages:5,bin:1,delBy:'Meera Shah',since:2},
+{name:'Invoice INV-2188',cat:'Invoice',per:'Aug 2026',st:'Final',v:1,state:'Ready',by:'Asha Kapoor',up:'20 Aug 2026',ts:0,pages:2,bin:1,delBy:'Asha Kapoor',since:14}];
+const ico=n=>`<svg class="i"><use href="#${n}"/></svg>`,esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let mode='lib',sort={k:'ts',d:-1},cur=null,cb=null,tt;
+const badge=s=>{const[c,i]=ST[s];return`<span class="badge ${c}">${ico(i)}${s}</span>`},sb=s=>`<span class="badge ${s==='Final'?'ok':''}">${s}</span>`;
+function flash(m){const t=$('toast');t.innerHTML=ico('ck')+'<span></span>';t.lastChild.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200)}
+$('sub').textContent=ACT?'Sample data. Latest versions shown.':FS.role==='admin'?'Sample data. View only. Document contents aren’t shown to your role.':'Sample data. Latest versions shown. View only.';
+$('adminnote').classList.toggle('hidden',FS.role!=='admin');
+$('upl').classList.toggle('hidden',!ACT);
+const HL=`<tr><th scope="col"><button data-k="name">Name ${ico('ud')}</button></th><th scope="col">Category</th><th scope="col">Period</th><th scope="col">Status</th><th scope="col">Version</th><th scope="col">Ingestion state</th><th scope="col">Uploaded by</th><th scope="col" id="uh" aria-sort="descending"><button data-k="ts">Updated ${ico('ud')}</button></th></tr>`;
+const HB=`<tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Period</th><th scope="col">Version</th><th scope="col">Deleted by</th><th scope="col">Deleted</th><th scope="col">Purges in</th><th scope="col"><span class="sr">Actions</span></th></tr>`;
+function render(){const q=$('s').value.toLowerCase(),c=$('fc').value,s=$('fs').value,i=$('fi').value,bin=mode==='bin';
+  const inBin=D.filter(d=>d.bin).length;$('bn').textContent='('+inBin+')';
+  document.querySelectorAll('.libf').forEach(e=>e.classList.toggle('hidden',bin));$('binnote').classList.toggle('hidden',!bin);
+  let r=D.filter(d=>!!d.bin===bin&&(!q||d.name.toLowerCase().includes(q))&&(!c||d.cat===c)&&(bin||((!s||d.st===s)&&(!i||d.state===i))));
+  $('head').innerHTML=bin?HB:HL;
+  if(bin)r.sort((a,b)=>a.since-b.since);else r.sort((a,b)=>(a[sort.k]>b[sort.k]?1:-1)*sort.d);
+  const nm=d=>`<span class="nm">${ico('doc')}${esc(d.name)}${d.aff&&!bin?`<span class="flag" title="May be affected by a newer document">${ico('al')}</span>`:''}</span>`;
+  $('rows').innerHTML=r.map(d=>bin?
+   `<tr data-i="${D.indexOf(d)}"><td>${nm(d)}</td><td>${d.cat}</td><td>${d.per}</td><td class="num">v${d.v}</td><td>${esc(d.delBy)}</td><td>${d.since?d.since+' days ago':'Just now'}</td><td class="num">${KEEP-d.since} days</td>
+    <td>${ACT?`<div class="ra"><button class="btn sm" data-a="restore">${ico('rs')}Restore</button><button class="btn sm btn-danger" data-a="purge">Delete permanently</button></div>`:'<span class="count">View only</span>'}</td></tr>`:
+   `<tr class="lib ${d.isNew?'new':''}" tabindex="0" data-i="${D.indexOf(d)}"><td>${nm(d)}</td><td>${d.cat}</td><td>${d.per}</td><td>${sb(d.st)}</td><td class="num">v${d.v}</td><td>${badge(d.state)}</td><td>${d.by}</td><td>${d.up}</td></tr>`).join('');
+  const none=!r.length,filt=q||c||s||i;$('empty').style.display=none?'block':'none';
+  $('eh').textContent=bin&&!filt?'The recycle bin is empty':'No documents match';
+  $('ep').textContent=bin&&!filt?'Deleted documents stay here for 30 days.':'Try a different search or clear the filters.';
+  $('clear').classList.toggle('hidden',bin&&!filt);
+  $('count').textContent=`${r.length} ${bin?'deleted ':''}document${r.length===1?'':'s'}`}
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;document.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b));close();render()});
+$('head').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;sort={k,d:sort.k===k?-sort.d:(k==='ts'?-1:1)};render();$('uh').setAttribute('aria-sort',sort.k==='ts'?(sort.d>0?'ascending':'descending'):'none')});
+function ask(o){$('dt').textContent=o.t;$('dp').textContent=o.p;$('yes').textContent=o.ok;cb=o.f;$('dlg').showModal()}
+$('no').onclick=()=>$('dlg').close();$('yes').onclick=()=>{$('dlg').close();cb&&cb()};
+$('rows').addEventListener('click',e=>{const t=e.target.closest('tr');if(!t)return;const d=D[t.dataset.i],a=e.target.closest('[data-a]');
+  if(a){if(a.dataset.a==='restore'){d.bin=0;render();flash('Document restored to the library.')}
+   else ask({t:'Delete permanently?',p:'This removes the document and all its versions for good. This can’t be undone.',ok:'Delete permanently',f(){D.splice(D.indexOf(d),1);render();flash('Document deleted permanently.')}});return}
+  if(mode==='lib')open(d)});
+$('rows').addEventListener('keydown',e=>{if(e.key==='Enter'&&mode==='lib'){const t=e.target.closest('tr.lib');if(t)open(D[t.dataset.i])}});
+function open(d){cur=d;$('dn').textContent=d.name;$('dm').innerHTML=`<span>${d.cat}</span><span>${d.per}</span>${sb(d.st)}${badge(d.state)}`;
+  const nt=(t,i)=>`<div class="notice warn">${ico(i)}<span>${t}</span></div>`;
+  $('db').innerHTML=(d.note?nt(d.note,'al'):'')+(d.aff?nt('<b>May be affected.</b> '+d.aff,'al'):'')+
+   `<div><h3>Details</h3><dl class="dl"><dt>Pages</dt><dd class="num">${d.pages}</dd><dt>Uploaded by</dt><dd>${d.by}</dd><dt>Updated</dt><dd>${d.up}</dd></dl></div>`+
+   `<div><h3>Versions</h3>${d.vers?`<ul class="ver">${d.vers.map((x,k)=>`<li><b style="font-weight:500">${x[0]}</b>${sb(x[1])}${k?'':'<span class="badge info">Latest</span>'}<span class="d">${x[2]}</span></li>`).join('')}</ul><p class="count" style="margin-top:8px">Older versions are kept for 365 days.</p>`:'<p class="count">Versions appear when processing finishes.</p>'}</div>`;
+  $('df').classList.toggle('hidden',!ACT);$('drawer').classList.add('open');$('scrim').style.display='block';$('dc').focus()}
+function close(){$('drawer').classList.remove('open');$('scrim').style.display='none'}
+['s','fc','fs','fi'].forEach(k=>$(k).addEventListener('input',render));
+$('clear').onclick=()=>{['s','fc','fs','fi'].forEach(k=>$(k).value='');render()};
+$('srt').onchange=()=>{const[k,d]=$('srt').value.split(':');sort={k,d:+d};render()};
+$('dc').onclick=close;$('scrim').onclick=close;
+$('del').onclick=()=>ask({t:'Delete this document?',p:'It moves to the recycle bin. You can restore it for 30 days.',ok:'Delete document',f(){cur.bin=1;cur.since=0;cur.delBy=FS.persona.n;close();render();flash('Moved to the recycle bin.')}});
+addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+render();
+}
+</script></body></html>

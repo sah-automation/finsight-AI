@@ -1,0 +1,270 @@
+/* FinSight AI prototype: tokens + shared components (from UI_STANDARDS.md) */
+:root{
+  --bg-canvas:#FAFAF9;--bg-surface:#FFFFFF;--bg-subtle:#F4F4F2;--bg-inverse:#18181B;
+  --text-primary:#18181B;--text-secondary:#52525B;--text-muted:#71717A;--text-inverse:#FFFFFF;
+  --border-subtle:#E7E5E4;--border-strong:#D6D3D1;
+  --accent:#3B4BDB;--accent-subtle:#EEF0FF;--focus-ring:#3B4BDB;--highlight:#FFF3A3;
+  --positive:#15803D;--negative:#B42318;--warning:#B54708;--warning-subtle:#FFFAEB;--info:#175CD3;--info-subtle:#EFF8FF;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s7:32px;--s8:48px;
+  --r-sm:4px;--r-md:8px;--r-lg:12px;
+  --shadow-pop:0 8px 24px rgba(24,24,27,.12);
+  --font:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font:400 14px/20px var(--font);color:var(--text-primary);background:var(--bg-canvas);-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);height:36px;padding:0 var(--s4);border-radius:var(--r-md);font-weight:500;border:1px solid var(--border-strong);background:var(--bg-surface)}
+.btn:hover{background:var(--bg-subtle)}
+.btn-primary{background:var(--bg-inverse);color:var(--text-inverse);border-color:var(--bg-inverse)}
+.btn-primary:hover{background:#2c2c31}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:500}
+.field .hint{font-size:12px;line-height:16px;color:var(--text-muted)}
+.input{height:40px;padding:0 var(--s3);border:1px solid var(--border-strong);border-radius:var(--r-md);background:var(--bg-surface);font:inherit;width:100%}
+.input:hover{border-color:var(--text-muted)}
+.notice{display:flex;gap:var(--s2);padding:var(--s3);border-radius:var(--r-md);border:1px solid var(--border-subtle);font-size:13px;line-height:18px}
+.notice.info{background:var(--info-subtle);color:var(--info);border-color:#B2DDFF}
+.notice.warn{background:var(--warning-subtle);color:var(--warning);border-color:#FEDF89}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* App shell (shared by Ask, Documents and later pages) */
+.shell{display:grid;grid-template-columns:var(--sw,240px) 1fr;height:100%}
+.side{background:var(--bg-surface);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;padding:var(--s4);gap:var(--s5);min-height:0}
+.brand{display:flex;align-items:center;gap:var(--s2);font-weight:600;font-size:16px}
+.mark{width:24px;height:24px;border-radius:6px;background:var(--bg-inverse);color:#fff;display:grid;place-items:center;font-size:12px}
+.co{font-size:12px;line-height:16px;color:var(--text-muted);margin-top:2px}
+.nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.nav a{display:flex;align-items:center;gap:var(--s2);height:36px;padding:0 var(--s3);border-radius:var(--r-md);color:var(--text-secondary)}
+.nav a:hover{background:var(--bg-subtle);text-decoration:none}
+.nav a[aria-current]{background:var(--bg-subtle);color:var(--text-primary);font-weight:500}
+.user{display:flex;align-items:center;gap:var(--s3);padding-top:var(--s4);border-top:1px solid var(--border-subtle)}
+.av{width:32px;height:32px;border-radius:50%;background:var(--bg-subtle);display:grid;place-items:center;font-weight:500;font-size:12px}
+.user b{font-weight:500;display:block}.user span{font-size:12px;line-height:16px;color:var(--text-muted)}
+.ib{width:32px;height:32px;border-radius:var(--r-md);display:grid;place-items:center;color:var(--text-secondary)}
+.ib:hover{background:var(--bg-subtle)}
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:var(--r-sm);font-size:12px;font-weight:500;background:var(--bg-subtle);color:var(--text-secondary);white-space:nowrap}
+.badge svg.i{width:12px;height:12px}
+.badge.ok{background:#ECFDF3;color:var(--positive)}
+.badge.info{background:var(--info-subtle);color:var(--info)}
+.badge.warn{background:var(--warning-subtle);color:var(--warning)}
+.badge.bad{background:#FEF3F2;color:var(--negative)}
+
+
+/* Shared: Settings group, prototype preview box, threads, toast, access-denied panel */
+.gb{display:flex;align-items:center;gap:var(--s2);width:100%;height:36px;padding:0 var(--s3);border-radius:var(--r-md);color:var(--text-secondary);text-align:left}
+.gb:hover{background:var(--bg-subtle)}.gb[aria-current]{color:var(--text-primary);font-weight:500}
+.gb span{flex:1}.gb svg:last-child{width:14px;height:14px;transition:transform .15s}.gb[aria-expanded=true] svg:last-child{transform:rotate(90deg)}
+.subs{display:flex;flex-direction:column;gap:2px;margin:2px 0 0 var(--s5);padding-left:var(--s2);border-left:1px solid var(--border-subtle)}
+.subs[hidden]{display:none}
+.subs a{height:32px;display:flex;align-items:center;padding:0 var(--s3);border-radius:var(--r-md);color:var(--text-secondary);font-size:13px}
+.subs a:hover{background:var(--bg-subtle);text-decoration:none}.subs a[aria-current]{background:var(--bg-subtle);color:var(--text-primary);font-weight:500}
+.pv{border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:6px var(--s2);font-size:11px;line-height:14px;color:var(--text-muted);display:grid;grid-template-columns:auto 1fr;gap:4px 6px;align-items:center}
+.pv select{height:24px;font-size:11px;padding:0 4px;min-width:0;appearance:auto}
+.slot{flex:1;min-height:0;overflow:auto}
+.threads h2{font:500 12px/16px var(--font);color:var(--text-muted);padding:0 var(--s3) var(--s2)}
+.threads a{display:block;padding:6px var(--s3);border-radius:var(--r-md);color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.threads a:hover{background:var(--bg-subtle);text-decoration:none}.threads a[aria-current]{background:var(--bg-subtle);color:var(--text-primary)}
+.toast{position:fixed;bottom:var(--s5);right:var(--s5);background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-subtle);padding:10px var(--s4);border-radius:var(--r-lg);box-shadow:var(--shadow-pop);display:none;gap:var(--s2);align-items:center;z-index:30;max-width:calc(100% - 32px);font-size:13px}
+.toast.on{display:flex}.toast svg{color:var(--positive)}
+.deny{margin:auto;max-width:380px;text-align:center;padding:var(--s8) var(--s4);display:flex;flex-direction:column;align-items:center;gap:var(--s3)}
+.deny h1{font:600 24px/30px var(--font);letter-spacing:-.01em}.deny p{color:var(--text-secondary)}
+.deny .dic{width:40px;height:40px;border-radius:50%;background:var(--bg-subtle);display:grid;place-items:center;color:var(--text-secondary)}
+.hidden{display:none!important}
+
+/* Charts, tables and cards shared by Dashboard, Charts, Reports and Cost view */
+.seg2{display:flex;background:var(--bg-subtle);border-radius:var(--r-md);padding:2px}
+.seg2 button{height:28px;padding:0 var(--s3);border-radius:6px;font-size:13px;font-weight:500;color:var(--text-secondary)}
+.seg2 button[aria-pressed=true]{background:var(--bg-surface);color:var(--text-primary);box-shadow:0 0 0 1px var(--border-subtle)}
+.fcard{margin:0;border:1px solid var(--border-subtle);border-radius:var(--r-lg);background:var(--bg-surface);padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3);min-width:0}
+.fh{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);flex-wrap:wrap}
+.fh b{font-weight:600;display:block}.fh span{font-size:12px;line-height:16px;color:var(--text-muted)}
+.fa{display:flex;gap:var(--s2);align-items:center}
+.fcard figcaption{font-size:12px;line-height:16px;color:var(--text-muted)}
+.fig{border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--bg-surface);overflow:auto}
+.fig table{border-collapse:collapse;width:100%}
+.fig th,.fig td{height:40px;padding:0 var(--s3);text-align:left;border-bottom:1px solid var(--border-subtle);white-space:nowrap}
+.fig th{background:var(--bg-subtle);font-weight:500;font-size:12px}.fig tr:last-child td{border-bottom:0}
+.fig .r{text-align:right}.neg{color:var(--negative)}.pos{color:var(--positive)}
+.sm{height:32px;font-size:13px;padding:0 var(--s3)}
+.drow{display:flex;gap:var(--s2)}
+.sw{width:36px;height:20px;border-radius:999px;background:var(--border-strong);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw[aria-checked=true]{background:var(--bg-inverse)}.sw[aria-checked=true]::after{transform:translateX(16px)}.sw:disabled{opacity:.45;cursor:not-allowed}
+.pagebar{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);padding:var(--s4) var(--s6);border-bottom:1px solid var(--border-subtle);background:var(--bg-surface);flex-wrap:wrap}
+.pagebar h1{font:600 24px/30px var(--font);letter-spacing:-.01em}.pagebar p{font-size:12px;line-height:16px;color:var(--text-muted);margin-top:2px}
+.pbody{flex:1;overflow:auto;padding:var(--s6);display:flex;flex-direction:column;gap:var(--s5)}
+.mainc{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative;overflow:hidden}
+@media(max-width:640px){.pbody{padding:var(--s4)}.pagebar{padding:var(--s4)}}
+@media print{body *{visibility:hidden}.print-target,.print-target *{visibility:visible}.print-target{position:absolute;left:0;top:0;width:100%;border:0}.fa{display:none}}
+
+/* Phone menu, command menu, shortcuts help */
+.mbar{display:none;position:fixed;top:0;left:0;right:0;height:48px;align-items:center;gap:var(--s2);padding:0 var(--s3);background:var(--bg-surface);border-bottom:1px solid var(--border-subtle);z-index:40}
+.scrim2{display:none;position:fixed;inset:0;background:rgba(24,24,27,.35);z-index:45}
+@media(max-width:900px){
+ .shell{grid-template-columns:1fr}
+ .side{position:fixed;top:0;bottom:0;left:0;width:280px;max-width:86vw;z-index:50;transform:translateX(-100%);visibility:hidden;transition:transform .18s ease-out,visibility .18s;box-shadow:var(--shadow-pop);overflow:auto}
+ .side.open{transform:none;visibility:visible}
+ .mbar{display:flex}.has-mbar{padding-top:48px}.scrim2.on{display:block}
+}
+kbd{font:500 11px/16px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text-secondary);background:var(--bg-subtle);border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:4px;padding:0 5px}
+.cmdk{display:flex;align-items:center;gap:var(--s2);width:100%;height:36px;padding:0 var(--s3);border:1px solid var(--border-subtle);border-radius:var(--r-md);color:var(--text-muted);background:var(--bg-surface)}
+.cmdk:hover{background:var(--bg-subtle)}.cmdk span{flex:1;text-align:left}
+.kbh{display:flex;align-items:center;justify-content:space-between;width:100%;padding:6px var(--s3);font-size:12px;line-height:16px;color:var(--text-muted);border-radius:var(--r-md)}.kbh:hover{background:var(--bg-subtle)}
+.ov{position:fixed;inset:0;background:rgba(24,24,27,.35);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:12vh var(--s3) 0}.ov[hidden]{display:none}
+.cm{width:min(560px,100%);background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);box-shadow:var(--shadow-pop);overflow:hidden}
+.cm input{width:100%;height:52px;border:0;border-bottom:1px solid var(--border-subtle);padding:0 var(--s4);font:400 16px var(--font);background:transparent}
+.cm input:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-2px}
+.cl{list-style:none;margin:0;padding:4px;max-height:340px;overflow:auto}
+.cl li{display:flex;align-items:center;gap:var(--s2);padding:10px var(--s3);border-radius:var(--r-md);cursor:pointer}
+.cl li[aria-selected=true]{background:var(--bg-subtle)}.cl small{margin-left:auto;color:var(--text-muted);font-size:12px}.cl .no{color:var(--text-muted);cursor:default}
+.ch2{padding:8px var(--s4);border-top:1px solid var(--border-subtle);font-size:12px;line-height:16px;color:var(--text-muted)}
+.hp{padding:var(--s5)}.hh{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s3)}.hh h2{font:600 18px/26px var(--font)}
+.hp table{width:100%;border-collapse:collapse}.hp td{padding:10px 0;border-bottom:1px solid var(--border-subtle)}.hp tr:last-child td{border-bottom:0}.hp td:first-child{width:130px;white-space:nowrap}.hp kbd{margin-right:4px}
+
+/* Collapsible sidebar (desktop only; the phone menu is separate) */
+.sbt{display:none}
+@media(min-width:901px){
+ .side{position:relative}
+ .shell,.app{transition:grid-template-columns .15s ease-out}
+ .sbt{display:grid;place-items:center;position:absolute;right:-12px;top:20px;width:24px;height:24px;padding:0;border-radius:50%;border:1px solid var(--border-strong);background:var(--bg-surface);color:var(--text-secondary);z-index:30}
+ .sbt:hover{background:var(--bg-subtle);color:var(--text-primary)}
+ .sbt svg{width:14px;height:14px;transform:rotate(180deg);transition:transform .15s}
+ html[data-side=collapsed]{--sw:64px}
+ html[data-side=collapsed] .sbt svg{transform:none}
+ html[data-side=collapsed] .side{padding:var(--s4) 10px;align-items:stretch}
+ html[data-side=collapsed] .side .fs-bt,html[data-side=collapsed] .side .fs-lb,html[data-side=collapsed] .side .co,html[data-side=collapsed] .side .slot,html[data-side=collapsed] .side .pv,html[data-side=collapsed] .side .kbh,html[data-side=collapsed] .side .cmdk kbd,html[data-side=collapsed] .side .user>div,html[data-side=collapsed] .side .gb svg:last-child,html[data-side=collapsed] .side .subs{display:none!important}
+ html[data-side=collapsed] .side .brand,html[data-side=collapsed] .side .user{justify-content:center}
+ html[data-side=collapsed] .side .nav a,html[data-side=collapsed] .side .gb,html[data-side=collapsed] .side .cmdk{justify-content:center;padding:0}
+}
+
+/* ==========================================================================
+   MOBILE (phones and small tablets). Desktop rules above are untouched.
+   ========================================================================== */
+.sclose{display:none}
+@media(max-width:900px){
+ /* 1. Layout: one column. This beats the page-level .shell/.app rules that
+       kept a 240px column on Dashboard, Charts, Reports and Ask. */
+ html,body{height:100%}
+ @supports(height:100dvh){body{height:100dvh}}
+ .shell,.app{grid-template-columns:minmax(0,1fr)!important}
+ .main,.mainc{min-width:0}
+ .side{padding-bottom:calc(var(--s4) + env(safe-area-inset-bottom,0px))}
+ .sclose{display:grid;position:absolute;top:8px;right:8px}
+ .side .brand{padding-right:44px}
+ .kbh,.cmdk kbd{display:none}
+
+ /* 2. Touch size (44px) and no iOS zoom-on-focus (16px text in fields) */
+ .btn{height:44px}.btn.sm{height:40px}
+ .ib{width:44px;height:44px}
+ .input,select.input,textarea{font-size:16px!important}
+ .input,select.input{height:44px!important}
+ .seg2 button{height:36px!important}
+ .nav a,.gb{height:44px}.subs a{height:40px}.cmdk{height:44px}
+ .pv select{font-size:14px!important;height:32px!important}
+ .menu button,.rs button{padding:12px var(--s3)}
+ .tabs button{height:40px;min-width:40px}
+ .types label,.seg label{padding:11px 0}
+ .checks label{padding:6px 0}
+ input[type=checkbox],input[type=radio]{width:20px;height:20px}
+ .sw::before{content:"";position:absolute;inset:-12px -6px}
+ .chip>button{min-width:28px;height:28px}
+ .fchip{height:32px}
+
+ /* 3. Spacing and small things */
+ .bar{padding:var(--s3) var(--s4)!important}
+ .body,.scroll{padding:var(--s4)!important}
+ .bar{gap:var(--s2)}
+ .composer{padding:var(--s3) var(--s3) calc(var(--s3) + env(safe-area-inset-bottom,0px))!important}
+ .boxbar{flex-wrap:wrap}
+ .toast{left:var(--s3);right:var(--s3);bottom:calc(var(--s3) + env(safe-area-inset-bottom,0px));max-width:none}
+ .ov{padding-top:8vh}
+ .card{padding:var(--s4)}
+ .pop{display:none!important}               /* hover preview is for mouse only */
+ .drawer{width:100%!important}
+ .dh{padding:var(--s4)}.db{padding:var(--s4)}.df{padding:var(--s3) var(--s4)}
+ .drawer .df{padding-bottom:calc(var(--s3) + env(safe-area-inset-bottom,0px))}
+ dialog{padding:var(--s4)}
+ .fcard{padding:var(--s3)}
+ .out .fcard{padding:var(--s3)!important}
+ .kv{font-size:26px!important;line-height:30px!important}
+
+ /* 4. Source viewer on Ask: bottom sheet with a backdrop, hidden when closed */
+ .panel:not(.open){display:none}
+ .panel.open{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;height:min(78dvh,640px)!important;z-index:55!important;border:0;border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:var(--shadow-pop)}
+ .panel.open>*{min-width:0}
+ .panel.open::before{content:"";flex:none;align-self:center;width:36px;height:4px;border-radius:2px;background:var(--border-strong);margin-top:8px}
+ .panel .pf{flex-wrap:wrap;padding-bottom:calc(var(--s3) + env(safe-area-inset-bottom,0px))}
+ .pscrim{display:none;position:fixed;inset:0;background:rgba(24,24,27,.35);z-index:54}
+ .pscrim.on{display:block}
+ .ph,.tabs,.pb{padding-left:var(--s4);padding-right:var(--s4)}
+
+ /* 5. Charts page: compact controls so the chart is near the top */
+ #f.panel{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);padding:var(--s3)}
+ #f.panel>h2,#f.panel>.field:first-of-type,#g-p,#g-b{grid-column:1/-1}
+ #f.panel>h2{display:none}
+
+ /* 6. Dashboard */
+ .ctl{width:100%}.ctl select{flex:1 1 120px!important;min-width:110px!important;width:auto!important}
+ .kpis{grid-template-columns:1fr 1fr!important;gap:var(--s2)}
+ .kpi{padding:var(--s3)}
+ .kpi .badge{white-space:normal;height:auto;padding:2px 6px}
+ .kd{flex-wrap:wrap}
+ .ks{gap:4px}.ks svg{max-width:70px}
+ .bts{grid-template-columns:1fr 1fr!important}.bts .bt:last-child{grid-column:1/-1}
+ .vr{grid-template-columns:1fr auto!important}
+ .vr .vl{grid-column:1;grid-row:1}.vr>.badge{grid-column:2;grid-row:1}.vr .vt{grid-column:1/-1;grid-row:2}
+
+ /* 7. Settings */
+ .sub{position:sticky;top:0;z-index:3;background:var(--bg-canvas);padding:var(--s2) var(--s4);margin:calc(-1*var(--s4)) calc(-1*var(--s4)) var(--s4);border-bottom:1px solid var(--border-subtle)}
+ .sub a{flex:none;height:40px}
+ td.c,th.c{width:64px}
+ .fl .input{width:100%!important;max-width:none!important}
+ .code{flex-wrap:wrap}
+ .actions{flex-wrap:wrap}
+
+ /* 8. Upload: a phone has no drag and drop */
+ .files li>div{min-width:0}
+ .drop{padding:var(--s5) var(--s4)}
+}
+
+/* Wide tables that stay tables: keep the first column in view while scrolling sideways */
+@media(max-width:900px){
+ .fig,.tw{-webkit-overflow-scrolling:touch}
+ .fig th:first-child,.fig td:first-child{position:sticky;left:0;z-index:1;background:var(--bg-surface);box-shadow:1px 0 0 var(--border-subtle)}
+ .fig th:first-child{background:var(--bg-subtle)}
+}
+
+/* Tables with 4 or more columns become cards on phones (labels added by shell.js) */
+@media(max-width:640px){
+ .tw.cards{border:0;background:transparent;overflow:visible}
+ .tw.cards table,.tw.cards tbody{display:block;width:100%}
+ .tw.cards thead{display:none}
+ .tw.cards tr{display:flex;flex-direction:column;gap:2px;padding:var(--s3);margin-bottom:var(--s2);border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--bg-surface)}
+ .tw.cards tbody tr:hover{background:var(--bg-surface)}
+ .tw.cards tbody tr.new{background:var(--accent-subtle)}
+ .tw.cards td{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);height:auto;min-height:24px;padding:1px 0;border:0;white-space:normal;text-align:right;font-size:13px}
+ .tw.cards td[data-l]::before{content:attr(data-l);flex:none;color:var(--text-muted);font-size:12px;text-align:left}
+ .tw.cards td.k-t{display:block;text-align:left;font-size:14px;padding-bottom:6px;margin-bottom:4px;border-bottom:1px solid var(--border-subtle)}
+ .tw.cards td.k-x{justify-content:flex-end;padding-top:6px}
+ .tw.cards .ra{justify-content:flex-end;flex-wrap:wrap}
+ .tw.cards td .nm{font-weight:600}
+}
+
+/* Any size: keep visually-hidden text inside scrolling tables, and give very narrow phones one KPI column */
+.tw,.fig{position:relative}
+@media(max-width:380px){.kpis{grid-template-columns:1fr!important}}
+
+/* Source-sheet backdrop must never take a grid cell on wide screens */
+.pscrim{display:none}
+@media(min-width:901px){.pscrim,.pscrim.on{display:none!important}}
+
+/* Small laptops and landscape tablets: the source panel floats over the chat instead of squeezing it */
+@media(min-width:901px) and (max-width:1180px){
+ .panel.open{position:fixed;top:0;right:0;bottom:0;width:min(480px,92vw)!important;z-index:20;box-shadow:var(--shadow-pop)}
+}

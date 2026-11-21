@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings | FinSight AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.bar{padding:var(--s4) var(--s6);border-bottom:1px solid var(--border-subtle);background:var(--bg-surface)}
+.bar h1{font:600 24px/30px var(--font);letter-spacing:-.01em}
+.body{flex:1;overflow:auto;padding:var(--s6)}
+.wrap{max-width:840px;margin:0 auto}
+.sub{display:none;gap:2px;margin-bottom:var(--s4);overflow:auto}
+.sub a{height:36px;display:flex;align-items:center;padding:0 var(--s3);border-radius:var(--r-md);color:var(--text-secondary)}
+.sub a:hover{background:var(--bg-subtle);text-decoration:none}
+.sub a[aria-current]{background:var(--bg-subtle);color:var(--text-primary);font-weight:500}
+section.pane{display:none;flex-direction:column;gap:var(--s4)}section.pane.on{display:flex}
+.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:var(--s6);display:flex;flex-direction:column;gap:var(--s5)}
+.card h2,.ph h2{font:600 18px/26px var(--font)}.card .d,.ph .d{color:var(--text-secondary);margin-top:2px}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s4);flex-wrap:wrap}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:var(--s4)}
+.field.bad .input{border-color:var(--negative)}.err{display:none;font-size:12px;line-height:16px;color:var(--negative)}.field.bad .err{display:block}.field.bad .hint{display:none}
+.input[readonly]{background:var(--bg-subtle);color:var(--text-secondary);cursor:default}
+select.input{appearance:auto;width:100%}
+.avrow{display:flex;align-items:center;gap:var(--s4)}
+.avbig{width:64px;height:64px;border-radius:50%;background:var(--bg-subtle);display:grid;place-items:center;font:600 20px var(--font);overflow:hidden;border:1px solid var(--border-subtle)}
+.avbig img{width:100%;height:100%;object-fit:cover}
+.actions{display:flex;gap:var(--s2);justify-content:flex-end}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-delete{background:var(--negative);color:#fff;border-color:var(--negative)}.btn-delete:hover{background:#912018}
+.sm{height:32px;font-size:13px}
+.hidden{display:none!important}
+.code{display:none;gap:var(--s2);align-items:flex-end}.code.on{display:flex}
+/* switch */
+.sw{width:36px;height:20px;border-radius:999px;background:var(--border-strong);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw[aria-checked=true]{background:var(--bg-inverse)}.sw[aria-checked=true]::after{transform:translateX(16px)}
+table{border-collapse:collapse;width:100%}
+th,td{padding:var(--s3);text-align:left;border-bottom:1px solid var(--border-subtle);vertical-align:middle}
+th{background:var(--bg-subtle);font-weight:500;font-size:12px;height:40px;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+.tw{border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--bg-surface);overflow:auto}
+td.c,th.c{text-align:center;width:90px}
+.ev b{font-weight:500;display:block}.ev span{font-size:12px;line-height:16px;color:var(--text-muted)}
+.pol{display:flex;gap:var(--s4);align-items:flex-start;justify-content:space-between}
+.seats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2)}
+.seat{border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--bg-surface);padding:var(--s3);font-size:12px;line-height:16px;color:var(--text-muted)}
+.seat b{display:block;font:600 16px/24px var(--font);color:var(--text-primary)}
+.u b{font-weight:500;display:block}.u span{font-size:12px;line-height:16px;color:var(--text-muted)}
+.menu{position:fixed;z-index:20;min-width:180px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);box-shadow:var(--shadow-pop);padding:4px;display:none}
+.menu.on{display:block}
+.menu button{display:block;width:100%;text-align:left;padding:8px var(--s3);border-radius:var(--r-sm)}
+.menu button:hover:not(:disabled){background:var(--bg-subtle)}.menu button:disabled{color:var(--text-muted);cursor:not-allowed}
+.menu .dng{color:var(--negative)}
+.lock{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--text-muted)}
+.act{font:500 12px/16px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg-subtle);padding:2px 6px;border-radius:var(--r-sm);white-space:nowrap}
+.fl{display:flex;gap:var(--s2);flex-wrap:wrap}.fl .input{width:auto;height:36px;max-width:260px}
+dialog{border:1px solid var(--border-subtle);border-radius:var(--r-lg);box-shadow:var(--shadow-pop);padding:var(--s6);max-width:440px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(24,24,27,.35)}
+dialog h2{font:600 18px/26px var(--font)}#dbody{margin:var(--s2) 0 var(--s4);color:var(--text-secondary);display:flex;flex-direction:column;gap:var(--s3)}
+#derr{color:var(--negative);font-size:12px;min-height:16px;margin-bottom:var(--s2)}
+.toast{position:fixed;bottom:var(--s5);right:var(--s5);background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-subtle);padding:10px var(--s4);border-radius:var(--r-lg);box-shadow:var(--shadow-pop);display:none;gap:var(--s2);align-items:center;z-index:30;max-width:calc(100% - 32px);font-size:13px}
+.toast.on{display:flex}.toast svg{color:var(--positive)}
+.saved{display:inline-flex;gap:6px;align-items:center;font-size:12px;line-height:16px;color:var(--positive);opacity:0;transition:opacity .15s;white-space:nowrap}.saved.on{opacity:1}
+.nh{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s4)}
+.gb{display:flex;align-items:center;gap:var(--s2);width:100%;height:36px;padding:0 var(--s3);border-radius:var(--r-md);color:var(--text-secondary);text-align:left}
+.gb:hover{background:var(--bg-subtle)}.gb[aria-current]{color:var(--text-primary);font-weight:500}
+.gb span{flex:1}.gb svg:last-child{width:14px;height:14px;transition:transform .15s}.gb[aria-expanded=true] svg:last-child{transform:rotate(90deg)}
+.subs{display:flex;flex-direction:column;gap:2px;margin:2px 0 0 var(--s5);padding-left:var(--s2);border-left:1px solid var(--border-subtle)}
+.subs[hidden]{display:none}
+.subs a{height:32px;display:flex;align-items:center;padding:0 var(--s3);border-radius:var(--r-md);color:var(--text-secondary);font-size:13px}
+.subs a:hover{background:var(--bg-subtle);text-decoration:none}.subs a[aria-current]{background:var(--bg-subtle);color:var(--text-primary);font-weight:500}
+.pv{border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:6px var(--s2);font-size:11px;line-height:14px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+.pv select{height:24px;font-size:11px;padding:0 4px;flex:1;min-width:0}
+@media(max-width:900px){.sub{display:flex}.sub a{white-space:nowrap}.seats{grid-template-columns:1fr 1fr}.body{padding:var(--s4)}}
+@media(max-width:640px){.two{grid-template-columns:1fr}.pol{flex-direction:column}}
+</style></head>
+<!-- Accessibility: focus order - sidebar, section tabs, active pane fields/actions, then dialog/action menu. -->
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z"/></symbol>
+<symbol id="doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/></symbol>
+<symbol id="up" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+<symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+<symbol id="dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+<symbol id="lk" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+<symbol id="ck" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+<symbol id="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="pl" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+</defs></svg>
+<div class="shell">
+<aside class="side" id="side" aria-label="Main"></aside>
+<section class="main">
+<header class="bar"><h1>Settings</h1></header>
+<div class="body">
+<div class="wrap">
+<nav class="sub" id="sub" aria-label="Settings sections"></nav>
+<div>
+
+<section class="pane" id="profile"><div class="card">
+  <div><h2>Profile</h2><p class="d">Your name, email and photo.</p></div>
+  <div class="avrow"><span class="avbig" id="pav"></span>
+    <div style="display:flex;gap:var(--s2);flex-wrap:wrap"><button class="btn sm" id="chg" type="button">Change photo</button><button class="btn sm" id="rmv" type="button">Remove</button>
+    <input type="file" id="pf" accept="image/png,image/jpeg" class="sr"></div></div>
+  <p class="hint" id="pfe" style="margin-top:calc(-1 * var(--s3))">PNG or JPG, up to 2 MB.</p>
+  <div class="two">
+    <div class="field" id="f-n"><label for="pn">Full name</label><input class="input" id="pn" autocomplete="name"><span class="err">Enter your name.</span></div>
+    <div class="field" id="f-e"><label for="pe">Email</label><input class="input" id="pe" type="email" autocomplete="email"><span class="hint">Changing it sends a verification code to the new address.</span><span class="err">Enter a valid email address.</span></div>
+    <div class="field"><label for="pc">Company</label><input class="input" id="pc" readonly aria-readonly="true" value="Northwind Traders Ltd"></div>
+    <div class="field"><label for="pr">Role</label><input class="input" id="pr" readonly aria-readonly="true"></div>
+  </div>
+  <p class="lock"><svg class="i"><use href="#lk"/></svg>Company and role are set by your administrator.</p>
+  <div class="code" id="code"><div class="field" style="flex:1;max-width:220px"><label for="pcode">Verification code</label><input class="input num" id="pcode" inputmode="numeric" maxlength="6" placeholder="6 digits"><span class="err" id="pcode-e">Enter the 6-digit code.</span></div><button class="btn btn-primary" id="vfy" type="button">Verify email</button></div>
+  <div class="actions"><button class="btn" id="pcan" type="button">Cancel</button><button class="btn btn-primary" id="psav" type="button" disabled>Save changes</button></div>
+</div></section>
+
+<section class="pane" id="notifications"><div class="card">
+  <div class="nh"><div><h2>Notifications</h2><p class="d">Choose how we contact you. Changes save automatically.</p></div><span class="saved" id="nsaved" aria-live="polite"></span></div>
+  <div class="tw"><table><thead><tr><th scope="col">Event</th><th scope="col" class="c">Email</th><th scope="col" class="c">Push</th></tr></thead><tbody id="nrows"></tbody></table></div>
+  <p class="hint">Push notifications also need permission in your browser.</p>
+</div></section>
+
+<section class="pane" id="users">
+  <div class="ph"><div><h2>Users</h2><p class="d"><span id="ucount"></span> <span id="umax" class="hidden">Maximum reached.</span></p></div>
+    <button class="btn btn-primary" id="invite" type="button">Invite user</button></div>
+  <div class="seats" id="seats"></div>
+  <div class="card" style="padding:var(--s4)"><div class="pol">
+    <div><b style="font-weight:600">Require multi-factor sign-in</b><p class="d">Applies to System Admin and Executive Leadership. They set it up at next sign in.</p></div>
+    <button class="sw" id="mfa" role="switch" aria-checked="true" aria-label="Require multi-factor sign-in for System Admin and Executive Leadership"></button></div></div>
+  <div class="tw"><table><thead><tr><th scope="col">User</th><th scope="col">Role</th><th scope="col">MFA</th><th scope="col">Status</th><th scope="col">Last active</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody id="urows"></tbody></table></div>
+  <p class="hint">Role changes take effect within 60 seconds.</p>
+</section>
+
+<section class="pane" id="cost">
+  <div class="ph"><div><h2>Cost view</h2><p class="d">What this workspace spends on models, document reading and hosting. Estimates from usage.</p></div>
+    <label class="sr" for="cm">Month</label><select class="input" id="cm" style="width:auto"><option value="0">Nov 2026 (so far)</option><option value="1">Oct 2026</option></select></div>
+  <div class="seats" id="ck"></div>
+  <div class="card" style="padding:var(--s4)"><div style="display:flex;justify-content:space-between;gap:var(--s3);flex-wrap:wrap"><b style="font-weight:600">Monthly budget</b><span class="num" id="cbt"></span></div>
+    <div style="height:8px;border-radius:4px;background:var(--bg-subtle);overflow:hidden"><i id="cbb" style="display:block;height:100%;background:var(--bg-inverse)"></i></div><p class="hint" id="cbn"></p></div>
+  <div class="fcard" id="cdaily"></div>
+  <h3 style="font:600 16px/24px var(--font)">By service</h3><div class="tw"><table><thead><tr><th scope="col">Service</th><th scope="col">Usage</th><th scope="col" style="text-align:right">Cost (USD)</th><th scope="col" style="text-align:right">Share</th></tr></thead><tbody id="csv"></tbody></table></div>
+  <h3 style="font:600 16px/24px var(--font)">Model calls</h3><div class="tw"><table><thead><tr><th scope="col">Model</th><th scope="col">Used for</th><th scope="col" style="text-align:right">Calls</th><th scope="col" style="text-align:right">Tokens in / out</th><th scope="col" style="text-align:right">Cost (USD)</th></tr></thead><tbody id="cmd"></tbody></table></div>
+  <p class="hint" id="crc"></p>
+</section>
+
+<section class="pane" id="audit">
+  <div class="ph"><div><h2>Audit log</h2><p class="d">Every sensitive action in this workspace.</p></div><span class="lock"><svg class="i"><use href="#lk"/></svg>Read only. Entries can’t be edited or deleted.</span></div>
+  <div class="fl"><label class="sr" for="as1">Search</label><input class="input" id="as1" placeholder="Search actor, resource or detail"><label class="sr" for="aa">Action</label><select class="input" id="aa"></select></div>
+  <div class="tw"><table><thead><tr><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Resource</th><th scope="col">Detail</th><th scope="col">Timestamp</th></tr></thead><tbody id="arows"></tbody></table></div>
+  <div class="actions" style="justify-content:center"><button class="btn sm" id="more" type="button">Show more</button></div>
+</section>
+
+</div></div></div></section></div>
+
+<div class="menu" id="menu" role="menu"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="dlg" aria-labelledby="dt"><form id="dform" method="dialog">
+  <h2 id="dt"></h2><div id="dbody"></div><div id="derr" role="alert"></div>
+  <div class="actions"><button class="btn" type="button" id="dno">Cancel</button><button class="btn btn-primary" id="dok" type="submit"></button></div></form></dialog>
+
+<script src="shell.js"></script><script src="charts.js"></script>
+<script>
+FS.mount({current:'settings'});
+const $=id=>document.getElementById(id),ico=n=>`<svg class="i"><use href="#${n}"/></svg>`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const EM=/^[^@\s]+@[^@\s]+\.[^@\s]+$/,ROLES=['Executive Leadership','Corporate Finance & Planners','Audit & Compliance','System Admin'];
+const SEATS={'Executive Leadership':3,'Corporate Finance & Planners':4,'Audit & Compliance':2,'System Admin':1},MAXU=10,PRIV=['System Admin','Executive Leadership'];
+const PERSONA={admin:1,audit:7,fin:4,exec:2};
+let U=[{id:1,name:'Priya Nair',email:'priya.nair@northwind.example',role:'System Admin',st:'Active',mfa:'on',last:'Today'},
+{id:2,name:'Rohan Mehta',email:'rohan.mehta@northwind.example',role:'Executive Leadership',st:'Active',mfa:'on',last:'Today'},
+{id:3,name:'Neha Gupta',email:'neha.gupta@northwind.example',role:'Executive Leadership',st:'Active',mfa:'none',last:'2 days ago'},
+{id:4,name:'Asha Kapoor',email:'asha.kapoor@northwind.example',role:'Corporate Finance & Planners',st:'Active',mfa:'none',last:'Today'},
+{id:5,name:'Meera Shah',email:'meera.shah@northwind.example',role:'Corporate Finance & Planners',st:'Active',mfa:'none',last:'Yesterday'},
+{id:6,name:'Ravi Menon',email:'ravi.menon@northwind.example',role:'Corporate Finance & Planners',st:'Invited',mfa:'none',last:'Never'},
+{id:7,name:'Daniel Okoye',email:'daniel.okoye@northwind.example',role:'Audit & Compliance',st:'Active',mfa:'none',last:'Yesterday'}];
+let AUD=[['18 Nov 2026, 10:42','Priya Nair','user.invited','ravi.menon@…','Invited as Corporate Finance & Planners'],
+['18 Nov 2026, 09:15','Asha Kapoor','document.uploaded','Q3 Management Report','Version 2, Final'],
+['17 Nov 2026, 16:30','Priya Nair','mfa.reset','Neha Gupta','MFA reset by administrator'],
+['17 Nov 2026, 14:02','Meera Shah','document.deleted','Old forecast.xlsx','Soft delete, restorable for 30 days'],
+['17 Nov 2026, 11:48','Priya Nair','user.role_changed','Meera Shah','Executive Leadership to Corporate Finance & Planners'],
+['16 Nov 2026, 17:20','System','access.denied','Source viewer','Role not allowed to view this category'],
+['16 Nov 2026, 09:05','Rohan Mehta','login.success','Session','Signed in with MFA'],
+['15 Nov 2026, 13:44','Asha Kapoor','document.updated','Budget Q4 2026','Version 3, Draft'],
+['14 Nov 2026, 10:10','Priya Nair','mfa.policy_changed','Workspace','Required for privileged roles: on'],
+['13 Nov 2026, 15:36','Daniel Okoye','login.success','Session','Signed in'],
+['12 Nov 2026, 08:51','Priya Nair','user.deactivated','Former user','Access removed']].map(r=>({t:r[0],a:r[1],act:r[2],res:r[3],d:r[4]}));
+let as=FS.role,shown=8,mfaPolicy=true,dirtyAv=undefined;const AV={};
+const N={ingestion:['Ingestion complete','A document has finished processing.',1,0],failed:['Job failed','A document could not be processed.',1,1],stale:['Dashboard stale','Figures may change after a document update.',1,0],mention:['Mentions','Someone mentions you.',1,0],digest:['Weekly digest','A summary every Monday.',1,0]};
+const me=()=>U.find(u=>u.id===PERSONA[as]),isAdmin=()=>me().role==='System Admin',canAudit=()=>isAdmin()||me().role==='Audit & Compliance';
+const ini=n=>n.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+const av=(u,el)=>{el.innerHTML=AV[u.id]?`<img alt="" src="${AV[u.id]}">`:ini(u.name)};
+const now=()=>new Date().toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(' at',',');
+function log(act,res,d){AUD.unshift({t:now(),a:me().name,act,res,d});renderAudit()}
+let tt,st;function flash(m){const t=$('toast');t.innerHTML=ico('ck')+'<span></span>';t.lastChild.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200)}
+function saved(){const e=$('nsaved');e.innerHTML=ico('ck')+'Saved';e.classList.add('on');clearTimeout(st);st=setTimeout(()=>e.classList.remove('on'),2000)}
+const bad=(f,on)=>$(f).classList.toggle('bad',on);
+const sb=s=>`<span class="badge ${s==='Active'?'ok':s==='Invited'?'info':''}">${s}</span>`;
+function mfaB(u){return u.mfa==='on'?'<span class="badge ok">Enabled</span>':(mfaPolicy&&PRIV.includes(u.role)?'<span class="badge warn">Required, not set up</span>':'<span class="badge">Not set up</span>')}
+
+/* dialog helper */
+let cb=null;
+function ask(o){$('dt').textContent=o.title;$('dbody').innerHTML=o.body||'';$('derr').textContent='';const b=$('dok');b.textContent=o.ok;b.className='btn '+(o.danger?'btn-delete':'btn-primary');cb=o.onOk;$('dlg').showModal();const f=$('dbody').querySelector('input,select');if(f)f.focus()}
+$('dform').onsubmit=e=>{e.preventDefault();const r=cb&&cb();if(r){$('derr').textContent=r;return}$('dlg').close()};
+$('dno').onclick=()=>$('dlg').close();
+
+/* shell + role-aware nav */
+function renderShell(){const ad=isAdmin();
+ const secs=[['profile','Profile',1],['notifications','Notifications',1],['users','Users',ad],['audit','Audit log',canAudit()],['cost','Cost view',FS.can.cost]].filter(x=>x[2]);
+ $('sub').innerHTML=secs.map(x=>`<a href="#${x[0]}">${x[1]}</a>`).join('');route()}
+function route(){const ids=[...$('sub').children].map(a=>a.getAttribute('href').slice(1));let h=location.hash.slice(1);if(!ids.includes(h))h='profile';
+  document.querySelectorAll('section.pane').forEach(s=>s.classList.toggle('on',s.id===h));
+  document.querySelectorAll('#sub a,.subs a').forEach(a=>a.toggleAttribute('aria-current',(a.getAttribute('href')||'').endsWith('#'+h)))}
+addEventListener('hashchange',route);
+
+/* profile */
+function renderProfile(){const m=me();$('pn').value=m.name;$('pe').value=m.email;$('pr').value=m.role;av(m,$('pav'));$('code').classList.remove('on');dirtyAv=undefined;['f-n','f-e'].forEach(f=>bad(f,false));upd()}
+function upd(){const m=me();$('psav').disabled=!($('pn').value!==m.name||$('pe').value!==m.email||dirtyAv!==undefined)}
+['pn','pe'].forEach(i=>$(i).addEventListener('input',upd));
+$('chg').onclick=()=>$('pf').click();
+$('pf').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!['image/png','image/jpeg'].includes(f.type)||f.size>2097152){$('pfe').textContent='Use a PNG or JPG up to 2 MB.';$('pfe').style.color='var(--negative)';return}
+  $('pfe').textContent='PNG or JPG, up to 2 MB.';$('pfe').style.color='';const r=new FileReader();r.onload=()=>{dirtyAv=r.result;$('pav').innerHTML=`<img alt="" src="${r.result}">`;upd()};r.readAsDataURL(f)};
+$('rmv').onclick=()=>{dirtyAv=null;$('pav').textContent=ini($('pn').value||me().name);upd()};
+$('pcan').onclick=renderProfile;
+$('psav').onclick=()=>{const m=me(),n=$('pn').value.trim(),e=$('pe').value.trim();bad('f-n',!n);bad('f-e',!EM.test(e));if(!n||!EM.test(e))return;
+  if(dirtyAv!==undefined){if(dirtyAv)AV[m.id]=dirtyAv;else delete AV[m.id]}
+  m.name=n;FS.setUser(n);
+  if(e!==m.email){$('code').classList.add('on');$('pcode').focus();flash('We sent a 6-digit code to '+e+'.');dirtyAv=undefined;$('psav').disabled=true;log('settings.profile_updated','Profile','Name or photo updated');renderShell();return}
+  log('settings.profile_updated','Profile','Name or photo updated');dirtyAv=undefined;renderShell();renderProfile();flash('Profile saved.')};
+$('vfy').onclick=()=>{const ok=/^\d{6}$/.test($('pcode').value);$('pcode-e').style.display=ok?'none':'block';if(!ok)return;
+  const m=me();m.email=$('pe').value.trim();log('user.email_changed','Profile','Email verified and updated');$('pcode').value='';renderProfile();renderUsers();flash('Email updated.')};
+$('pcode').addEventListener('input',()=>$('pcode-e').style.display='none');
+
+/* notifications */
+function renderNotif(){$('nrows').innerHTML=Object.entries(N).map(([k,v])=>`<tr><td class="ev"><b>${v[0]}</b><span>${v[1]}</span></td>
+ ${[2,3].map(i=>`<td class="c"><button class="sw" role="switch" aria-checked="${!!v[i]}" data-k="${k}" data-i="${i}" aria-label="${v[0]} by ${i===2?'email':'push'}"></button></td>`).join('')}</tr>`).join('')}
+$('nrows').onclick=e=>{const b=e.target.closest('.sw');if(!b)return;const v=N[b.dataset.k],i=+b.dataset.i;v[i]=v[i]?0:1;b.setAttribute('aria-checked',!!v[i]);saved()};
+
+/* users */
+function roleOpts(cur){return ROLES.map(r=>{const full=U.filter(u=>u.role===r).length>=SEATS[r]&&r!==cur;return `<option value="${esc(r)}" ${r===cur?'selected':''} ${full?'disabled':''}>${esc(r)}${full?' (full)':''}</option>`}).join('')}
+function renderUsers(){const n=U.length;$('ucount').textContent=`${n} of ${MAXU} users`;$('umax').classList.toggle('hidden',n<MAXU);$('invite').disabled=n>=MAXU;
+ $('seats').innerHTML=ROLES.map(r=>`<div class="seat">${r}<b class="num">${U.filter(u=>u.role===r).length} of ${SEATS[r]}</b></div>`).join('');
+ $('urows').innerHTML=U.map(u=>`<tr><td class="u"><b>${esc(u.name)}${u.id===me().id?' <span class="badge">You</span>':''}</b><span>${esc(u.email)}</span></td><td>${esc(u.role)}</td><td>${mfaB(u)}</td><td>${sb(u.st)}</td><td>${u.last}</td>
+ <td><button class="ib" data-m="${u.id}" aria-haspopup="menu" aria-label="Actions for ${esc(u.name)}">${ico('dots')}</button></td></tr>`).join('')}
+$('invite').onclick=()=>ask({title:'Invite user',ok:'Send invite',body:`<div class="field"><label for="ie">Email</label><input class="input" id="ie" type="email" placeholder="name@company.com"></div><div class="field"><label for="ir">Role</label><select class="input" id="ir">${roleOpts('')}</select></div>`,
+ onOk(){const e=$('ie').value.trim(),r=$('ir').value;if(!EM.test(e))return 'Enter a valid email address.';if(U.some(u=>u.email===e))return 'This email already has an account.';if(!r)return 'Choose a role.';
+  U.push({id:Date.now(),name:e.split('@')[0],email:e,role:r,st:'Invited',mfa:'none',last:'Never'});log('user.invited',e,'Invited as '+r);renderUsers();flash('Invite sent to '+e+'.')}});
+function menu(id,btn){const u=U.find(x=>x.id==id),self=u.id===me().id,m=$('menu');
+ m.innerHTML=`<button role="menuitem" data-a="edit">Edit user</button><button role="menuitem" data-a="mfa" ${u.mfa==='on'?'':'disabled'}>Reset MFA</button>${self?'':`<button role="menuitem" data-a="deact">${u.st==='Deactivated'?'Reactivate':'Deactivate'}</button><button role="menuitem" class="dng" data-a="del">Delete user</button>`}`;
+ const r=btn.getBoundingClientRect();m.style.top=r.bottom+4+'px';m.style.left=Math.max(8,r.right-190)+'px';m.dataset.u=id;m.classList.add('on')}
+$('urows').onclick=e=>{const b=e.target.closest('[data-m]');if(b){e.stopPropagation();menu(b.dataset.m,b)}};
+addEventListener('click',()=>$('menu').classList.remove('on'));addEventListener('scroll',()=>$('menu').classList.remove('on'),true);
+$('menu').onclick=e=>{const a=e.target.dataset.a;if(!a)return;const u=U.find(x=>x.id==$('menu').dataset.u);acts[a](u)};
+const acts={
+ edit(u){const self=u.id===me().id;ask({title:'Edit user',ok:'Save changes',body:`<div class="field"><label for="ee">Email</label><input class="input" id="ee" type="email" value="${esc(u.email)}"></div><div class="field"><label for="er">Role</label><select class="input" id="er" ${self?'disabled':''}>${roleOpts(u.role)}</select>${self?'<span class="hint">You can’t change your own role.</span>':''}</div>`,
+  onOk(){const e=$('ee').value.trim(),r=$('er').value;if(!EM.test(e))return 'Enter a valid email address.';if(U.some(x=>x.email===e&&x.id!==u.id))return 'This email already has an account.';
+   const rc=r!==u.role,ec=e!==u.email;if(ec){log('user.email_changed',u.name,'Email updated');u.email=e}if(rc){log('user.role_changed',u.name,u.role+' to '+r);u.role=r}
+   renderUsers();flash(rc?'Role updated. It takes effect within 60 seconds.':ec?'Email updated.':'No changes.')}})},
+ mfa(u){ask({title:'Reset MFA?',ok:'Reset MFA',danger:1,body:`<p>${esc(u.name)} will set up multi-factor sign-in again at their next sign in.</p>`,onOk(){u.mfa='none';log('mfa.reset',u.name,'MFA reset by administrator');renderUsers();flash('MFA reset for '+u.name+'.')}})},
+ deact(u){const re=u.st==='Deactivated';ask({title:re?'Reactivate user?':'Deactivate user?',ok:re?'Reactivate':'Deactivate',danger:!re,body:`<p>${re?esc(u.name)+' will be able to sign in again.':esc(u.name)+' will lose access within 60 seconds. Their past activity stays in the audit log.'}</p>`,
+  onOk(){u.st=re?'Active':'Deactivated';log(re?'user.reactivated':'user.deactivated',u.name,re?'Access restored':'Access removed');renderUsers();flash(re?'User reactivated.':'User deactivated.')}})},
+ del(u){ask({title:'Delete user?',ok:'Delete user',danger:1,body:`<p>This permanently removes ${esc(u.name)}. Their past activity stays in the audit log.</p>`,onOk(){U=U.filter(x=>x!==u);log('user.deleted',u.name,'Account removed');renderUsers();flash('User deleted.')}})}};
+$('mfa').onclick=()=>{const b=$('mfa');if(!mfaPolicy){setP(true);return}
+ ask({title:'Turn off required MFA?',ok:'Turn off',danger:1,body:'<p>System Admin and Executive Leadership will no longer need multi-factor sign-in. This makes privileged accounts easier to break into.</p>',onOk(){setP(false)}})};
+function setP(v){mfaPolicy=v;$('mfa').setAttribute('aria-checked',v);log('mfa.policy_changed','Workspace','Required for privileged roles: '+(v?'on':'off'));renderUsers();flash(v?'MFA is now required.':'MFA is no longer required.')}
+
+/* audit */
+function renderAudit(){const q=$('as1').value.toLowerCase(),a=$('aa').value;
+ if($('aa').options.length<2)$('aa').innerHTML='<option value="">All actions</option>'+[...new Set(AUD.map(x=>x.act))].sort().map(x=>`<option>${x}</option>`).join('');
+ const r=AUD.filter(x=>(!a||x.act===a)&&(!q||(x.a+x.res+x.d).toLowerCase().includes(q)));
+ $('arows').innerHTML=r.slice(0,shown).map(x=>`<tr><td>${esc(x.a)}</td><td><span class="act">${x.act}</span></td><td>${esc(x.res)}</td><td>${esc(x.d)}</td><td style="white-space:nowrap">${x.t}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No entries match.</td></tr>';
+ $('more').classList.toggle('hidden',r.length<=shown)}
+['as1','aa'].forEach(i=>$(i).addEventListener('input',()=>{shown=8;renderAudit()}));
+$('more').onclick=()=>{shown+=8;renderAudit()};
+
+function renderAll(){renderShell();renderProfile();renderUsers();renderAudit()}
+
+/* cost view: prototype data, the real app reads usage rows from the API */
+const CO=[{tot:38.42,q:1284,docs:96,days:[1.1,1.4,1.2,0.9,0.3,0.2,1.6,1.8,2.1,1.7,1.5,0.4,0.3,2.0,2.2,1.9,2.4,2.1,0.6],
+ svc:[['Models (answers)','1,284 questions','16.80'],['Embeddings','2.1M tokens','2.35'],['Reranking','1,284 searches','2.57'],['Textract (document reading)','412 pages','6.18'],['Database','Always on, 0.5 ACU','6.20'],['Storage and transfer','38 GB','0.95'],['Compute and API','112k requests','3.37']],
+ mod:[['Gemini, strong','Hard questions','611','3.1M / 0.4M','11.20'],['Groq, small','Quick lookups','642','1.2M / 0.2M','1.85'],['NVIDIA NIM, fallback','Backup when slow','31','0.1M / 0.02M','3.75'],['Gemini, embeddings','Search vectors','2,408','2.1M / n/a','2.35']],rc:'Last compared with the real bills: 4.2% gap, within the 10% limit.'},
+ {tot:44.10,q:1530,docs:131,days:[1.4,1.5,1.3,1.1,.4,.3,1.7,1.9,2.2,1.8,1.6,.5,.4,2.1,2.3,2.0,2.5,2.2,.7,1.5,1.7,1.6,1.4,.5,.4,1.9,2.0,1.8,1.7,1.4,1.2],
+ svc:[['Models (answers)','1,530 questions','19.90'],['Embeddings','2.9M tokens','3.05'],['Reranking','1,530 searches','3.06'],['Textract (document reading)','590 pages','8.85'],['Database','Always on, 0.5 ACU','6.40'],['Storage and transfer','36 GB','0.90'],['Compute and API','141k requests','1.94']],
+ mod:[['Gemini, strong','Hard questions','702','3.6M / 0.5M','13.10'],['Groq, small','Quick lookups','821','1.5M / 0.3M','2.35'],['NVIDIA NIM, fallback','Backup when slow','7','0.03M / 0.01M','4.45'],['Gemini, embeddings','Search vectors','3,205','2.9M / n/a','3.05']],rc:'Reconciled with the real bills: 3.6% gap, within the 10% limit.'}];
+const BUD=50;
+function renderCost(){if(!FS.can.cost)return;const c=CO[+$('cm').value],pc=Math.round(c.tot/BUD*100);
+ $('ck').innerHTML=[['Total spend','USD '+c.tot.toFixed(2)],['Questions answered',c.q.toLocaleString('en-US')],['Documents processed',c.docs],['Cost per question','USD '+(c.svc[0][2]/c.q).toFixed(3)]].map(k=>`<div class="seat">${k[0]}<b class="num">${k[1]}</b></div>`).join('');
+ $('cbt').textContent=`USD ${c.tot.toFixed(2)} of ${BUD.toFixed(2)}`;$('cbb').style.width=pc+'%';$('cbn').textContent=`${pc}% used. We alert the team when the budget is reached. Alerts do not block questions.`;
+ const days=c.days.map((v,i)=>i+1);
+ $('cdaily').outerHTML=FC.card({title:'Spend per day',sub:'USD',svg:FC.bars({labels:days.map(d=>(FC.narrow()?(d-1)%5===0:d%2)?String(d):''),values:c.days,t:'usdk',hi:-1,aria:'Bar chart of daily spend in USD for the month.'}).replace(/<text[^>]*font-weight="600"[^>]*>[^<]*<\/text>/g,''),table:FC.table(['Day','USD'],c.days.map((v,i)=>[String(i+1),v.toFixed(2)]),[1]),cap:'Costs are estimates from usage records.'}).replace('<figure class="fcard"','<figure class="fcard" id="cdaily"');
+ $('csv').innerHTML=c.svc.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td class="num" style="text-align:right">${r[2]}</td><td class="num" style="text-align:right">${(r[2]/c.tot*100).toFixed(1)}%</td></tr>`).join('');
+ $('cmd').innerHTML=c.mod.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td class="num" style="text-align:right">${r[2]}</td><td class="num" style="text-align:right">${r[3]}</td><td class="num" style="text-align:right">${r[4]}</td></tr>`).join('');
+ $('crc').textContent=c.rc}
+$('cm').onchange=renderCost;FC.bind($('cost'),flash);
+renderNotif();renderAll();renderCost();
+</script></body></html>

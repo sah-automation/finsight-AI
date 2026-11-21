@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Upload | FinSight AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.bar{padding:var(--s4) var(--s6);border-bottom:1px solid var(--border-subtle);background:var(--bg-surface)}
+.bar h1{font:600 24px/30px var(--font);letter-spacing:-.01em}
+.bar p{font-size:12px;line-height:16px;color:var(--text-muted);margin-top:2px}
+.body{flex:1;overflow:auto;padding:var(--s6)}
+.form{max-width:640px;margin:0 auto;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:var(--s6);display:flex;flex-direction:column;gap:var(--s5)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg-subtle);border-radius:var(--r-md);padding:3px;gap:3px}
+.seg input{position:absolute;opacity:0}
+.seg label{text-align:center;padding:7px 0;border-radius:6px;font-weight:500;color:var(--text-secondary);cursor:pointer}
+.seg input:checked+label{background:var(--bg-surface);color:var(--text-primary);box-shadow:0 0 0 1px var(--border-subtle)}
+.seg input:focus-visible+label{outline:2px solid var(--focus-ring);outline-offset:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:var(--s4)}
+select.input{appearance:auto}
+.field.bad .input,.field.bad .drop{border-color:var(--negative)}
+.err{display:none;font-size:12px;line-height:16px;color:var(--negative)}
+.field.bad .err{display:block}.field.bad .hint{display:none}
+.drop{border:1.5px dashed var(--border-strong);border-radius:var(--r-md);padding:var(--s6);text-align:center;color:var(--text-secondary);background:var(--bg-canvas);cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-subtle)}
+.drop b{color:var(--text-primary);font-weight:500}
+.drop .tch{display:none}
+@media(hover:none){.drop .dsk{display:none}.drop .tch{display:inline}}
+.files{list-style:none;padding:0;display:flex;flex-direction:column;gap:var(--s2)}
+.files li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--s3);align-items:center;border:1px solid var(--border-subtle);border-radius:var(--r-md);padding:var(--s3)}
+.files .n{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.files .s{font-size:12px;line-height:16px;color:var(--text-muted)}
+.pbar{height:4px;background:var(--bg-subtle);border-radius:2px;margin-top:6px;overflow:hidden}
+.pbar i{display:block;height:100%;width:0;background:var(--accent)}
+.dup{display:none;border:1px solid #FEDF89;background:var(--warning-subtle);border-radius:var(--r-md);padding:var(--s4);gap:var(--s3);flex-direction:column}
+.dup.show{display:flex}
+.dup b{display:flex;gap:var(--s2);align-items:center;color:var(--warning);font-weight:600}
+.dup p{color:var(--text-primary)}.dup .row{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.actions{display:flex;justify-content:flex-end;gap:var(--s2)}
+.hidden{display:none!important}
+.done{display:none;flex-direction:column;gap:var(--s3)}.done.show{display:flex}
+.proto{max-width:640px;margin:var(--s4) auto 0;font-size:12px;color:var(--text-muted);text-align:center}
+@media(max-width:640px){.two{grid-template-columns:1fr}.form{padding:var(--s4)}.actions .btn{flex:1}}
+</style></head>
+<!-- Accessibility: focus order - sidebar, upload type/fields, drop zone, file actions, submit; disabled/error states keep order. -->
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z"/></symbol>
+<symbol id="doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/></symbol>
+<symbol id="up" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+<symbol id="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="al" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol>
+<symbol id="ck" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+</defs></svg>
+<div class="shell">
+<aside class="side" id="side" aria-label="Main"></aside>
+<section class="main" id="main">
+  <header class="bar"><h1>Upload document</h1><p>PDF, Excel, CSV or Word. Up to 50 MB per file.</p></header>
+  <div class="body">
+  <div class="form hidden" id="blocked">
+    <div class="notice warn" role="alert"><svg class="i"><use href="#al"/></svg><span>This company isn’t set up for uploads yet. Please contact your administrator.</span></div>
+    <div class="actions"><a class="btn" href="documents.html">Back to Documents</a></div>
+  </div>
+  <form class="form" id="form" novalidate>
+    <div class="field"><span id="tl" style="font-weight:500">Upload type</span>
+      <div class="seg" style="grid-template-columns:repeat(2,1fr);max-width:280px" role="radiogroup" aria-labelledby="tl">
+        <input type="radio" name="t" id="t1" value="new" checked><label for="t1">New</label>
+        <input type="radio" name="t" id="t2" value="update"><label for="t2">Update</label>
+        </div></div>
+
+    <div class="field" id="f-rep"><label for="rep">Document</label>
+      <input class="input" id="rep" list="docs" placeholder="Search by name" autocomplete="off">
+      <datalist id="docs"></datalist>
+      <span class="hint" id="rep-h">Choose the document this upload replaces.</span><span class="err">Choose a document from the list.</span></div>
+
+    <div id="meta" style="display:contents">
+    <div class="two">
+      <div class="field" id="f-cat"><label for="cat">Document category</label>
+        <select class="input" id="cat"><option value="">Select a category</option><option>Invoice</option><option>Bank statement</option><option>Financial statement</option><option>Budget</option><option>Contract</option><option>Board report</option></select>
+        <span class="err">Choose a category.</span></div>
+      <div class="field" id="f-per"><label for="per">Period</label>
+        <input class="input" id="per" placeholder="2026-Q3 or 2026-09" autocomplete="off">
+        <span class="hint">Use 2026-Q3 for a quarter or 2026-09 for a month.</span><span class="err">Use the format 2026-Q3 or 2026-09.</span></div>
+    </div>
+    <div class="field"><span id="sl" style="font-weight:500">Status</span>
+      <div class="seg" style="grid-template-columns:repeat(2,1fr);max-width:240px" role="radiogroup" aria-labelledby="sl">
+        <input type="radio" name="s" id="s1" value="Draft"><label for="s1">Draft</label>
+        <input type="radio" name="s" id="s2" value="Final" checked><label for="s2">Final</label></div></div>
+    <div class="field" id="f-file"><span style="font-weight:500">File</span>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose files to upload">
+        <svg class="i" style="width:24px;height:24px;margin-bottom:var(--s2)"><use href="#up"/></svg>
+        <div><b><span class="dsk">Drag files here</span><span class="tch">Tap to choose files</span></b><span class="dsk"> or choose from your computer</span></div>
+        <div class="hint" style="margin-top:4px">PDF, XLSX, XLS, CSV, DOCX. Up to 50 MB each.</div></div>
+      <input type="file" id="file" multiple accept=".pdf,.xlsx,.xls,.csv,.docx" class="sr">
+      <span class="err" id="file-e">Add at least one file.</span>
+      <ul class="files" id="files"></ul></div>
+    </div>
+
+
+    <div class="dup" id="dup" role="alert"><b><svg class="i"><use href="#al"/></svg>This looks like an existing document.</b>
+      <p>“Q3 Management Report” (Board report, 2026-Q3, version 2) already exists. Update it instead?</p>
+      <div class="row"><button type="button" class="btn btn-primary" id="dup-up">Update the existing one</button><button type="button" class="btn" id="dup-new">Upload as new anyway</button></div></div>
+
+    <div class="actions" id="actions"><a class="btn" href="documents.html">Cancel</a><button class="btn btn-primary" id="go" type="submit">Upload document</button></div>
+    <div class="done" id="done" aria-live="polite"></div>
+  </form>
+  <p class="proto">Prototype: <a href="#partition" onclick="setTimeout(()=>location.reload())">show the setup-missing state</a>. Upload a Board report for 2026-Q3 as New to see the duplicate warning.</p>
+  </div>
+</section></div>
+<script src="shell.js"></script>
+<script>
+FS.mount({current:'upload'});
+if(!FS.can.upload){FS.deny(document.getElementById('main'))}else{
+const $=id=>document.getElementById(id),DOCS={'Q3 Management Report':['Board report','2026-Q3','Final'],'Q3 Cost Breakdown':['Financial statement','2026-Q3','Final'],'Bank statement, September':['Bank statement','2026-09','Final'],'Budget Q4 2026':['Budget','2026-Q4','Draft'],'Invoice INV-2310':['Invoice','2026-10','Final'],'Q2 Management Report':['Board report','2026-Q2','Final']};
+$('docs').innerHTML=Object.keys(DOCS).map(n=>`<option value="${n}">`).join('');
+const OK=['pdf','xlsx','xls','csv','docx'],MAX=50*1024*1024;let files=[],ignoreDup=false;
+const type=()=>document.querySelector('[name=t]:checked').value;
+const bad=(f,on)=>$(f).classList.toggle('bad',on);
+const mb=b=>(b/1048576).toFixed(1)+' MB';
+if(location.hash==='#partition'){$('blocked').classList.remove('hidden');$('form').classList.add('hidden')}
+function mode(){const t=type();
+  $('f-rep').classList.toggle('hidden',t==='new');
+  document.querySelector('#f-rep label').textContent='Document to replace';
+  $('rep-h').textContent='Choose the document this upload replaces.';
+  $('dup').classList.remove('show')}
+document.querySelectorAll('[name=t]').forEach(r=>r.onchange=mode);
+$('rep').addEventListener('input',()=>{const d=DOCS[$('rep').value];if(d&&type()==='update'){$('cat').value=d[0];$('per').value=d[1];$('s'+(d[2]==='Draft'?1:2)).checked=true;}});
+function draw(){$('files').innerHTML=files.map((f,i)=>`<li><svg class="i"><use href="#doc"/></svg><div><div class="n">${f.name}</div><div class="s" id="st${i}">${mb(f.size)}</div><div class="pbar hidden" id="pb${i}"><i></i></div></div><button type="button" class="ib" data-r="${i}" aria-label="Remove ${f.name}"><svg class="i"><use href="#x"/></svg></button></li>`).join('')}
+function add(list){let msg='';for(const f of list){const e=f.name.split('.').pop().toLowerCase();
+  if(!OK.includes(e)){msg='“'+f.name+'” can’t be uploaded. Use PDF, XLSX, XLS, CSV or DOCX.';continue}
+  if(f.size>MAX){msg='“'+f.name+'” is larger than 50 MB.';continue}files.push(f)}
+  $('file-e').textContent=msg||'Add at least one file.';bad('f-file',!!msg);draw()}
+$('file').onchange=e=>{add([...e.target.files]);e.target.value=''};
+$('drop').onclick=()=>$('file').click();
+$('drop').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click()}};
+['dragover','dragenter'].forEach(v=>$('drop').addEventListener(v,e=>{e.preventDefault();$('drop').classList.add('over')}));
+['dragleave','drop'].forEach(v=>$('drop').addEventListener(v,e=>{e.preventDefault();$('drop').classList.remove('over')}));
+$('drop').addEventListener('drop',e=>add([...e.dataTransfer.files]));
+$('files').onclick=e=>{const b=e.target.closest('[data-r]');if(b){files.splice(+b.dataset.r,1);draw()}};
+$('per').onblur=()=>bad('f-per',!/^\d{4}-(Q[1-4]|0[1-9]|1[0-2])$/.test($('per').value.trim()));
+$('cat').onblur=()=>bad('f-cat',!$('cat').value);
+$('rep').onblur=()=>{if(type()!=='new')bad('f-rep',!DOCS[$('rep').value])};
+function valid(){const t=type();let ok=true;
+  if(t!=='new'){const v=!!DOCS[$('rep').value];bad('f-rep',!v);ok=ok&&v}
+  const c=!!$('cat').value,p=/^\d{4}-(Q[1-4]|0[1-9]|1[0-2])$/.test($('per').value.trim()),f=files.length>0;
+  bad('f-cat',!c);bad('f-per',!p);if(!f){$('file-e').textContent='Add at least one file.'}bad('f-file',!f);return ok&&c&&p&&f}
+$('dup-up').onclick=()=>{document.getElementById('t2').checked=true;mode();$('rep').value='Q3 Management Report';$('rep').dispatchEvent(new Event('input'));$('dup').classList.remove('show')};
+$('dup-new').onclick=()=>{ignoreDup=true;$('dup').classList.remove('show');$('form').requestSubmit()};
+$('form').onsubmit=e=>{e.preventDefault();if(!valid())return;
+  if(type()==='new'&&!ignoreDup&&$('cat').value==='Board report'&&$('per').value.trim()==='2026-Q3'){$('dup').classList.add('show');$('dup').scrollIntoView({block:'nearest'});return}
+  send()};
+function send(){$('actions').classList.add('hidden');$('form').querySelectorAll('input,select,button').forEach(x=>{if(x.closest('#done'))return;x.disabled=true});
+  let p=0;const t=setInterval(()=>{p=Math.min(100,p+8);files.forEach((f,i)=>{$('pb'+i).classList.remove('hidden');$('pb'+i).firstChild.style.width=p+'%';$('st'+i).textContent=p<100?'Uploading '+p+'%':'Checking file'});
+    if(p>=100){clearInterval(t);setTimeout(()=>{files.forEach((f,i)=>$('st'+i).textContent='Queued for processing');finish('Your upload is queued. It will show as Ready when processing finishes.')},1200)}},120)}
+function finish(m){$('done').innerHTML=`<div class="notice info"><svg class="i"><use href="#ck"/></svg><span>${m}</span></div><div class="actions"><a class="btn btn-primary" href="documents.html">View in Documents</a></div>`;$('done').classList.add('show');$('actions').classList.add('hidden')}
+mode();
+}
+</script></body></html>

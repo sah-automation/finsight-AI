@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reports | FinSight AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.sched{display:grid;grid-template-columns:1fr 1fr;gap:var(--s4)}
+.sc{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4)}
+.sc .top{display:flex;justify-content:space-between;gap:var(--s3);align-items:flex-start}
+.sc h2{font:600 16px/24px var(--font)}.sc p.d{color:var(--text-secondary)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+select.input{appearance:auto}
+.checks{display:flex;gap:var(--s4);flex-wrap:wrap}.checks label{display:flex;gap:var(--s2);align-items:center;cursor:pointer}
+h2.sec{font:600 18px/26px var(--font)}
+.tw{border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--bg-surface);overflow:auto}
+table{border-collapse:collapse;width:100%}th,td{height:44px;padding:0 var(--s3);text-align:left;border-bottom:1px solid var(--border-subtle);white-space:nowrap}
+th{background:var(--bg-subtle);font-weight:500;font-size:12px}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--bg-subtle)}
+.ra{display:flex;gap:var(--s2);justify-content:flex-end}.nm{font-weight:500}
+.scrim{display:none;position:absolute;inset:0;background:rgba(24,24,27,.25);z-index:4}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:560px;max-width:100%;background:var(--bg-surface);border-left:1px solid var(--border-subtle);box-shadow:var(--shadow-pop);z-index:5;transform:translateX(100%);transition:transform .18s ease-out;display:flex;flex-direction:column;visibility:hidden}
+.drawer.open{transform:none;visibility:visible}
+.dh{display:flex;gap:var(--s3);padding:var(--s5);border-bottom:1px solid var(--border-subtle)}.dh h2{font:600 18px/26px var(--font)}.dh .m{font-size:12px;line-height:16px;color:var(--text-muted);margin-top:4px}
+.db{flex:1;overflow:auto;padding:var(--s5)}.rpt{display:flex;flex-direction:column;gap:var(--s4)}.rpt h3{font:600 14px/20px var(--font);margin-bottom:var(--s2)}.rpt ul{padding-left:var(--s5);display:flex;flex-direction:column;gap:var(--s2)}
+.cite{display:inline-block;min-width:22px;height:20px;line-height:20px;text-align:center;border-radius:var(--r-sm);background:var(--accent-subtle);color:var(--accent);font-size:11px;font-weight:500;margin-left:2px}
+.df{display:flex;gap:var(--s2);padding:var(--s4) var(--s5);border-top:1px solid var(--border-subtle)}
+@media(max-width:900px){.sched{grid-template-columns:1fr}}
+@media print{.drawer{position:static;transform:none;visibility:visible;width:100%;box-shadow:none;border:0}.dh .ib,.df{display:none}}
+</style></head>
+<!-- Accessibility: focus order - sidebar, schedule switches, report fields, history, preview drawer, download. -->
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="ck" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+<symbol id="sp" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></symbol>
+<symbol id="er" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+<symbol id="pl" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+</defs></svg>
+<div class="shell"><aside class="side" id="side" aria-label="Main"></aside>
+<section class="mainc" id="main">
+  <header class="pagebar"><div><h1>Reports</h1><p id="sub"></p></div><button class="btn btn-primary hidden" id="gen"><svg class="i"><use href="#pl"/></svg>Generate report now</button></header>
+  <div class="pbody">
+    <div class="notice info hidden" id="ro"><svg class="i"><use href="#ck"/></svg><span>Only Corporate Finance &amp; Planners can change schedules or generate reports.</span></div>
+    <h2 class="sec">Schedule</h2>
+    <div class="sched" id="sched"></div>
+    <h2 class="sec">Past reports</h2>
+    <div class="tw"><table><thead><tr><th scope="col">Report</th><th scope="col">Type</th><th scope="col">Period covered</th><th scope="col">Generated</th><th scope="col">Status</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody id="rows"></tbody></table></div>
+  </div>
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-label="Report preview"><div class="dh"><div style="flex:1"><h2 id="dn"></h2><div class="m" id="dm"></div></div><button class="ib" id="dc" aria-label="Close report"><svg class="i"><use href="#x"/></svg></button></div><div class="db" id="db"></div><div class="df"><button class="btn btn-primary" id="pdf">Download PDF</button></div></aside>
+</section></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="shell.js"></script><script src="charts.js"></script>
+<script>
+FS.mount({current:'reports'});
+const $=id=>document.getElementById(id);
+if(!FS.can.reports){FS.deny($('main'))}else init();
+function init(){
+const EDIT=FS.can.upload;/* only Corporate Finance & Planners; the API decides in the real app */
+const ico=n=>`<svg class="i"><use href="#${n}"/></svg>`,dis=EDIT?'':'disabled';
+const R=[{n:'October 2026 summary',t:'Monthly',p:'1 to 31 Oct 2026',g:'1 Nov 2026',s:'Ready'},{n:'Week of 9 Nov 2026',t:'Weekly',p:'9 to 15 Nov 2026',g:'16 Nov 2026',s:'Ready'},{n:'Week of 2 Nov 2026',t:'Weekly',p:'2 to 8 Nov 2026',g:'9 Nov 2026',s:'Ready'},{n:'Week of 26 Oct 2026',t:'Weekly',p:'26 Oct to 1 Nov 2026',g:'2 Nov 2026',s:'Failed'},{n:'September 2026 summary',t:'Monthly',p:'1 to 30 Sep 2026',g:'1 Oct 2026',s:'Ready'}];
+const days=['Monday','Tuesday','Wednesday','Thursday','Friday'],opt=(a,s)=>a.map(x=>`<option ${x===s?'selected':''}>${x}</option>`).join('');
+$('sub').textContent=EDIT?'Weekly and monthly summaries, built from your latest final documents.':'Weekly and monthly summaries, built from your latest final documents. View only.';
+$('gen').classList.toggle('hidden',!EDIT);$('ro').classList.toggle('hidden',EDIT);
+$('sched').innerHTML=[['w','Weekly summary','Key changes and document activity from the past week.',`<div class="two"><div class="field"><label for="wd">Day</label><select class="input" id="wd" ${dis}>${opt(days,'Monday')}</select></div><div class="field"><label for="wt">Time</label><select class="input" id="wt" ${dis}>${opt(['07:00','08:00','09:00'],'08:00')}</select></div></div>`],
+ ['m','Monthly summary','Full month review with KPIs and budget variance.',`<div class="two"><div class="field"><label for="md">Day</label><select class="input" id="md" ${dis}>${opt(['1st business day','5th business day','Last business day'],'1st business day')}</select></div><div class="field"><label for="mt">Time</label><select class="input" id="mt" ${dis}>${opt(['07:00','08:00','09:00'],'08:00')}</select></div></div>`]].map(a=>`<div class="sc"><div class="top"><div><h2>${a[1]}</h2><p class="d">${a[2]}</p></div><button class="sw" role="switch" aria-checked="true" data-s="${a[0]}" aria-label="${a[1]} on or off" ${dis}></button></div>${a[3]}
+ <div class="field"><span style="font-weight:500">Send to</span><div class="checks"><label><input type="checkbox" checked ${dis}>Email</label><label><input type="checkbox" checked ${dis}>In app</label></div><span class="hint">Goes to everyone who can see reports in this company.</span></div></div>`).join('');
+const badge=s=>`<span class="badge ${s==='Ready'?'ok':s==='Failed'?'bad':'info'}">${ico(s==='Ready'?'ck':s==='Failed'?'er':'sp')}${s}</span>`;
+function rows(){$('rows').innerHTML=R.map((r,i)=>`<tr><td class="nm">${r.n}</td><td>${r.t}</td><td>${r.p}</td><td>${r.g}</td><td>${badge(r.s)}</td><td><div class="ra">${r.s==='Ready'?`<button class="btn sm" data-v="${i}">View</button><button class="btn sm" data-d="${i}">Download PDF</button>`:r.s==='Failed'?(EDIT?`<button class="btn sm" data-r="${i}">Try again</button>`:'<span class="hint">Failed</span>'):''}</div></td></tr>`).join('')}
+let tt;function flash(m){const t=$('toast');t.innerHTML=ico('ck')+'<span></span>';t.lastChild.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2800)}
+function view(i){const r=R[i],mo=r.t==='Monthly';$('dn').textContent=r.n;$('dm').textContent=r.t+' report. Covers '+r.p+'. Generated '+r.g+'.';
+ $('db').innerHTML=`<div class="rpt"><div><h3>Summary</h3><ul><li>Revenue was USD 4,820.5 thousand in Q3 2026, up 4.6% from Q2.<span class="cite">1</span></li><li>Gross margin fell 3.4 points to 37.8%, mainly from higher freight costs.<span class="cite">2</span></li><li>Operating cash flow was USD 244.6 thousand, down from USD 388.0 thousand.<span class="cite">3</span></li></ul></div>
+ <div><h3>Key figures</h3>${FC.table(['Metric','Value','Change'],[['Revenue','4,820.5','+4.6%'],['Gross margin','37.8%','−3.4 pts'],['Runway','25.2 months','−7.6 months'],['DSO','44 days','+6.0%']],[1,2])}</div>
+ ${mo?`<div><h3>Budget variance</h3><p>Revenue was 3.1% below budget. Freight and logistics was 25.9% over budget.<span class="cite">1</span><span class="cite">2</span></p></div>`:`<div><h3>Document activity</h3><p>5 documents were processed. 1 needs review: Bank statement, September.</p></div>`}
+ <div><h3>Needs attention</h3><p>Figures marked as updating may change after the latest document update.</p></div>
+ <div><h3>Sources</h3><ul><li>Q3 Management Report, page 12, table 4<span class="cite">1</span></li><li>Q3 Cost Breakdown, page 3, table 1<span class="cite">2</span></li><li>Bank statement, September, page 2, table 1<span class="cite">3</span></li></ul></div></div>`;
+ $('drawer').classList.add('open');$('scrim').style.display='block';$('dc').focus()}
+function close(){$('drawer').classList.remove('open');$('scrim').style.display='none'}
+$('rows').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.v)view(+b.dataset.v);else if(b.dataset.d){view(+b.dataset.d);setTimeout(()=>window.print(),150)}
+ else if(b.dataset.r){const r=R[+b.dataset.r];r.s='Generating';rows();setTimeout(()=>{r.s='Ready';rows();flash('Report is ready.')},1800)}});
+$('gen').onclick=()=>{R.unshift({n:'Report, '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),t:'On demand',p:'Latest final documents',g:'Just now',s:'Generating'});rows();flash('Generating your report.');setTimeout(()=>{R[0].s='Ready';rows();flash('Report is ready.')},2200)};
+$('sched').addEventListener('click',e=>{const b=e.target.closest('.sw');if(!b||b.disabled)return;b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true');flash('Schedule saved.')});
+$('sched').addEventListener('change',e=>{if(e.target.matches('select,input'))flash('Schedule saved.')});
+$('pdf').onclick=()=>window.print();$('dc').onclick=close;$('scrim').onclick=close;addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+rows();
+}
+</script></body></html>
