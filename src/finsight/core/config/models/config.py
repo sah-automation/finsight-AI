@@ -437,7 +437,7 @@ class Config(StrictBaseModel):
             raise ValueError(
                 f'charts.specs.{spec_id}: diverging=true only allowed on comparison_bar type'
             )
-        if spec.kpi_codes != ['budget_vs_actual']:
+        if 'budget_vs_actual' not in spec.kpi_codes:
             raise ValueError(
                 f'charts.specs.{spec_id}: diverging=true only allowed for budget_vs_actual'
             )
