@@ -21,7 +21,7 @@ Three constraints shape the model. Numbers must be computed by code, never by th
 - When a quarterly figure is spread across months for charting, each monthly row has `period` set to the source-declared period (e.g. `2026-Q3`), is `estimated`, labelled `Estimated`, and carries `chart_period` for the month (e.g. `2026-07`, `2026-08`, `2026-09`). An `Estimated` value is never presented as a figure the source document stated.
 - Conflict resolution follows risk 28: final beats draft and newer beats older for the value used, but when figures still differ both rows persist with their own citations and the chart shows both with distinguishing labels. Conflicting rows are `computed`, not `needs_review`. No conflicting row is silently overwritten.
 - The storage primary key is `(company_id, kpi_code, period, document_version_id, chart_period)`, as refined by ADR-0009. `chart_period` is non-null and equals `period` for non-estimated rows; the extra component distinguishes the monthly rows of one quarterly spread. Different document versions still admit two rows for the same company, code and period when a conflict persists.
-- `Draft` and `Updating` are separate display states owned by the update cascade (#354); `Estimated` is the state this ADR defines. The chart payload and export labels are owned by #353.
+- `Draft` and `Updating` are separate display states owned by the update cascade (#354); `Estimated` is the state this ADR defines. The chart payload and export labels are defined in ADR-0010.
 
 ## Consequences
 

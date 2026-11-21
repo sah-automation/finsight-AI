@@ -14,6 +14,10 @@
 | Supersession | Same-document history: a newer version of a document takes over as current while the older version stays viewable. It is not a conflict. _Avoid_: replacement, conflict. |
 | KPI Conflict | Two different documents giving different figures for the same company, KPI and period; both cited KPI rows remain visible under risk 28. _Avoid_: discrepancy, disagreement. |
 | KPI Rebuild | A recomputation of KPI rows from existing Metrics after a computation or estimation rule changes, run idempotently a few companies at a time. _Avoid_: backfill, reprocess. |
+| Chart Specification | A named chart recipe that fixes which KPIs, periods and chart form a chart uses; saved dashboard layouts refer to it by id. _Avoid_: chart config, chart widget. |
+| Chart Series | The ready-to-draw values for one figure in a chart, each value carrying its own period, source and status. _Avoid_: dataset, plot. |
+| Display Label | The user-facing marker on a KPI value or chart point — Draft, Estimated or Updating — distinct from its machine computation status. _Avoid_: badge, confidence. |
+| Export Payload | The chart series and document metadata used to produce a downloadable image or PDF, limited to what the current user may see. _Avoid_: export file, report. |
 | Answer | Generated response to a question, grounded in evidence with citations. |
 | Citation | Reference linking an answer back to a specific chunk/document. |
 | Role | User permission level (`executive_leadership`, `corporate_finance_planners`, `audit_compliance`, `system_admin`). |
