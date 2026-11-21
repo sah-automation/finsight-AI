@@ -24,6 +24,8 @@ The following are binding policies that must be followed for all implementation 
 
 
 ## Implementation pre-flight (Binding)
+Before implementing anything that touches Phase 1 behaviour, read `docs/plans/phase1/phase1_as_built_deviations.md`. It records where the as-built implementation differs from the parent plans and Config Switch Guide and is the source of truth for the current baseline. It does not override the Mandatory Policies or the Rules above: stop and escalate any conflict between the addendum, a parent plan and the code rather than changing behaviour to match either document.
+
 Before editing any file, the implementation agent must, in order:
 
 1. **Baseline gate** – run `make preflight` against the clean tree. Stop and escalate on any failure; never paper over a red baseline.
