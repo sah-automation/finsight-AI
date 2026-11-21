@@ -1015,6 +1015,16 @@ class TestGoldenSetConfig:
         with pytest.raises(ValidationError, match='String should have at least 1 character'):
             Config.model_validate(data)
 
+    def test_tolerances_file_forbidden(self) -> None:
+        data = _base_config_dict()
+        data['kpi'] = _valid_kpi_dict()
+        data['charts'] = _valid_charts_dict()
+        data['dashboard'] = _valid_dashboard_dict()
+        data['web'] = _valid_web_vercel_dict()
+        data['golden_set'] = _valid_golden_set_dict({'tolerances_file': 'some/file.yaml'})
+        with pytest.raises(ValidationError):
+            Config.model_validate(data)
+
 
 class TestChartsConfigModelDirectly:
     """Direct tests of ChartsConfig model validation."""
