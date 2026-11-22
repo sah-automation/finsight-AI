@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 import pytest
 
+from finsight.domain.entities.metric import Metric
 from finsight.domain.services.kpi_computation_service import KpiComputationService
 from tests.unit.kpi_test_helpers import COMPANY, RULE_VERSION, citation_id, make_metric
-
-if TYPE_CHECKING:
-    from finsight.domain.entities.metric import Metric
 
 
 def test_dso_divides_receivables_by_revenue_and_multiplies_by_quarter_days() -> None:
@@ -189,6 +186,32 @@ def test_budget_vs_actual_needs_review_for_missing_input(
     assert rows[0]['value'] is None
     assert rows[0]['computation_status'] == 'needs_review'
     assert rows[0]['reason'] == expected_reason
+
+
+def test_budget_vs_actual_needs_review_without_metric_provenance() -> None:
+    budget = Metric(
+        metric_id='budget-uncited',
+        company_id=COMPANY,
+        name='budget',
+        value=Decimal('410000'),
+        unit='USD',
+        currency='USD',
+        period='2026-Q3',
+        document_version_id='version-uncited',
+    )
+    actual = make_metric(
+        'actual',
+        Decimal('416161'),
+        metric_id='actual-1',
+        version='version-uncited',
+    )
+
+    rows = KpiComputationService(RULE_VERSION).compute_budget_vs_actual([budget, actual])
+
+    assert len(rows) == 1
+    assert rows[0]['value'] is None
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['reason'] == 'missing_citations'
 
 
 def test_budget_vs_actual_pairs_each_line_item_without_cross_comparing() -> None:

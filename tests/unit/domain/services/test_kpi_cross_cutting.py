@@ -30,6 +30,16 @@ def test_quarterly_spread_keeps_declared_period_and_estimates_each_month() -> No
     assert all(r['source_metric_ids'] == ['rev-1'] for r in rows)
 
 
+def test_quarterly_spread_rounds_equal_shares_consistently() -> None:
+    row = KpiComputationService(RULE_VERSION).compute_revenue(
+        [make_metric('revenue', Decimal('100.00'), metric_id='rev-1')]
+    )[0]
+
+    rows = KpiComputationService(RULE_VERSION).spread_quarterly([row])
+
+    assert [monthly['value'] for monthly in rows] == ['33.33'] * 3
+
+
 def test_quarterly_spread_leaves_non_quarterly_rows_untouched() -> None:
     row = KpiComputationService(RULE_VERSION).compute_revenue(
         [make_metric('revenue', Decimal('100.00'), metric_id='rev-1', period='2026-07')]
