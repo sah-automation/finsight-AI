@@ -89,6 +89,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/charts/{chart_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Chart
+         * @description Get chart series for the authenticated company.
+         */
+        get: operations["get_chart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/fingerprints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Fingerprints
+         * @description Get freshness fingerprints for all charts in the dashboard.
+         */
+        get: operations["get_dashboard_fingerprints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Layout
+         * @description Get saved dashboard layout or config default.
+         */
+        get: operations["get_dashboard_layout"];
+        /**
+         * Save Dashboard Layout
+         * @description Save dashboard layout with optimistic locking.
+         */
+        put: operations["save_dashboard_layout"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/documents/health": {
         parameters: {
             query?: never;
@@ -185,6 +249,26 @@ export interface paths {
         put?: never;
         /** Submit Route Slash */
         post: operations["_submit_route_slash_feedback__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kpis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Kpis
+         * @description List KPI rows for the authenticated company.
+         */
+        get: operations["list_kpis"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1641,6 +1725,74 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * ChartDatasetResponse
+         * @description Chart dataset response.
+         */
+        ChartDatasetResponse: {
+            /** Series Type */
+            series_type: string;
+            /** Label */
+            label: string;
+            /** Currency */
+            currency: string;
+            /** Units */
+            units: string;
+            /** Period */
+            period: string;
+            /** Data */
+            data: (string | null)[];
+            /** Points */
+            points: components["schemas"]["ChartPointResponse"][];
+        };
+        /**
+         * ChartPointResponse
+         * @description Single point in a chart dataset.
+         */
+        ChartPointResponse: {
+            /** Value */
+            value: string | null;
+            /** Period */
+            period: string;
+            /** Chart Period */
+            chart_period: string;
+            /** Source Citations */
+            source_citations: string[];
+            /** Computation Status */
+            computation_status: string;
+            /** Display Label */
+            display_label?: string | null;
+            /** Change */
+            change?: string | null;
+            /** Change Direction */
+            change_direction?: string | null;
+            /** Share */
+            share?: string | null;
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * ChartResponse
+         * @description Response for GET /charts/{chart_id}.
+         */
+        ChartResponse: {
+            /**
+             * Contract Version
+             * @default 1
+             */
+            contract_version: number;
+            /** Chart Id */
+            chart_id: string;
+            /** Labels */
+            labels: string[];
+            /** Datasets */
+            datasets: components["schemas"]["ChartDatasetResponse"][];
+            /** Variance Rows */
+            variance_rows?: components["schemas"]["VarianceRowResponse"][];
+            /** Reason */
+            reason?: string | null;
+            export: components["schemas"]["ExportMetadataResponse"];
+        };
+        /**
          * CurrentUser
          * @description Authenticated user context used for navigation and access decisions.
          */
@@ -1708,10 +1860,181 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        /**
+         * ExportMetadataResponse
+         * @description Export metadata for chart export.
+         */
+        ExportMetadataResponse: {
+            /** Generated At */
+            generated_at: string;
+            /** Company Name */
+            company_name: string;
+            /** Company Slug */
+            company_slug: string;
+            /** Period Range */
+            period_range: string;
+            /** Currency */
+            currency: string;
+            /** Units */
+            units: string;
+            /** Source Document List */
+            source_document_list: {
+                [key: string]: string;
+            }[];
+        };
+        /**
+         * FingerprintsResponse
+         * @description Response for GET /dashboard/fingerprints.
+         */
+        FingerprintsResponse: {
+            /**
+             * Contract Version
+             * @default 1
+             */
+            contract_version: number;
+            /** Charts */
+            charts: {
+                [key: string]: string;
+            };
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * KpiActions
+         * @description Role-derived actions included in the KPI list envelope.
+         */
+        KpiActions: {
+            /** Upload */
+            upload: boolean;
+        };
+        /**
+         * KpiListResponse
+         * @description Response for GET /kpis.
+         */
+        KpiListResponse: {
+            /**
+             * Contract Version
+             * @constant
+             * @enum {integer}
+             */
+            contract_version: 1;
+            /** Items */
+            items: components["schemas"]["KpiRow"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Documents Processing */
+            documents_processing: boolean;
+            actions: components["schemas"]["KpiActions"];
+        };
+        /**
+         * KpiRow
+         * @description One code-computed KPI row from ``kpi_current``.
+         */
+        KpiRow: {
+            /** Kpi Code */
+            kpi_code: string;
+            /** Period */
+            period: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Chart Period */
+            chart_period: string;
+            /**
+             * Chart Period Start
+             * Format: date
+             */
+            chart_period_start: string;
+            /** Currency */
+            currency: string;
+            /** Units */
+            units: string;
+            /** Value */
+            value: string | null;
+            /** Source Citations */
+            source_citations: string[];
+            /**
+             * Computation Status
+             * @enum {string}
+             */
+            computation_status: "computed" | "estimated" | "needs_review";
+            /** Estimation Method */
+            estimation_method?: string | null;
+            /**
+             * Document Version Id
+             * Format: uuid
+             */
+            document_version_id: string;
+            /** Computation Rule Version */
+            computation_rule_version: string;
+            /**
+             * Superseded By Document Version Id
+             * Format: uuid
+             */
+            superseded_by_document_version_id?: string | null;
+            /** Conflict Marker */
+            conflict_marker?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * LayoutChartRequest
+         * @description Chart in a layout request.
+         */
+        LayoutChartRequest: {
+            /** Chart Id */
+            chart_id: string;
+            /** Span */
+            span: string;
+        };
+        /**
+         * LayoutRequest
+         * @description Request body for PUT /dashboard/layout.
+         */
+        LayoutRequest: {
+            /**
+             * Contract Version
+             * @default 1
+             */
+            contract_version: number;
+            /** Kpi Codes */
+            kpi_codes: string[];
+            /** Charts */
+            charts: components["schemas"]["LayoutChartRequest"][];
+            /** Version */
+            version: number;
+        };
+        /**
+         * LayoutResponse
+         * @description Response for GET/PUT /dashboard/layout.
+         */
+        LayoutResponse: {
+            /**
+             * Contract Version
+             * @default 1
+             */
+            contract_version: number;
+            /** Kpi Codes */
+            kpi_codes: string[];
+            /** Charts */
+            charts: components["schemas"]["LayoutChartRequest"][];
+            /** Version */
+            version: number;
+            /** Updated At */
+            updated_at: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1725,6 +2048,22 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * VarianceRowResponse
+         * @description Variance row for budget vs actual charts.
+         */
+        VarianceRowResponse: {
+            /** Name */
+            name: string;
+            /** Actual */
+            actual: string | null;
+            /** Budget */
+            budget: string | null;
+            /** Variance */
+            variance: string | null;
+            /** Favourable */
+            favourable: boolean;
         };
         /** AskQuestionRequest */
         _AskQuestionRequest: {
@@ -2019,6 +2358,143 @@ export interface operations {
             };
         };
     };
+    get_chart: {
+        parameters: {
+            query?: {
+                context?: unknown;
+                chart_type?: string | null;
+                kpi_code?: string[] | null;
+                periods?: number[] | null;
+                breakdown_key?: string | null;
+                breakdown_period?: string | null;
+                period_from?: string | null;
+                period_to?: string | null;
+            };
+            header?: never;
+            path: {
+                chart_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dashboard_fingerprints: {
+        parameters: {
+            query?: {
+                context?: unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FingerprintsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dashboard_layout: {
+        parameters: {
+            query?: {
+                context?: unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_dashboard_layout: {
+        parameters: {
+            query?: {
+                context?: unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_documents_health_get: {
         parameters: {
             query?: never;
@@ -2204,6 +2680,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["_FeedbackModel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_kpis: {
+        parameters: {
+            query?: {
+                kpi_code?: ("revenue" | "gross_margin" | "net_margin" | "operating_expenses" | "cash_flow" | "burn_rate" | "runway" | "dso" | "dpo" | "budget_vs_actual")[];
+                period_from?: string;
+                period_to?: string;
+                currency?: string;
+                units?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KpiListResponse"];
                 };
             };
             /** @description Validation Error */
