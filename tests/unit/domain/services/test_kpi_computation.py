@@ -221,3 +221,85 @@ def test_compute_cash_flow_preserves_exact_decimal_scale() -> None:
     rows = KpiComputationService(RULE_VERSION).compute_cash_flow(metrics)
 
     assert rows[0]['value'] == '12345678901234567890.123456790'
+
+
+def test_compute_operating_expenses_from_one_metric_emits_full_row() -> None:
+    rows = KpiComputationService(RULE_VERSION).compute_operating_expenses(
+        [_metric('operating_expenses', Decimal('75.25'), metric_id='opex-single')]
+    )
+
+    assert len(rows) == 1
+    assert rows[0]['kpi_code'] == 'operating_expenses'
+    assert rows[0]['period'] == '2026-Q3'
+    assert rows[0]['chart_period'] == '2026-Q3'
+    assert rows[0]['period_start'] == '2026-07-01'
+    assert rows[0]['chart_period_start'] == '2026-07-01'
+    assert rows[0]['currency'] == 'USD'
+    assert rows[0]['units'] == 'USD'
+    assert rows[0]['value'] == '75.25'
+    assert rows[0]['source_citations'] == ['opex-single']
+    assert rows[0]['computation_status'] == 'computed'
+    assert rows[0]['estimation_method'] is None
+    assert rows[0]['document_version_id'] == 'version-1'
+    assert rows[0]['computation_rule_version'] == RULE_VERSION
+    assert rows[0]['superseded_by_document_version_id'] is None
+
+
+def test_compute_cash_flow_from_one_metric_emits_full_row() -> None:
+    rows = KpiComputationService(RULE_VERSION).compute_cash_flow(
+        [_metric('cash_flow', Decimal('-42.50'), metric_id='cash-single')]
+    )
+
+    assert len(rows) == 1
+    assert rows[0]['kpi_code'] == 'cash_flow'
+    assert rows[0]['period'] == '2026-Q3'
+    assert rows[0]['chart_period'] == '2026-Q3'
+    assert rows[0]['period_start'] == '2026-07-01'
+    assert rows[0]['chart_period_start'] == '2026-07-01'
+    assert rows[0]['currency'] == 'USD'
+    assert rows[0]['units'] == 'USD'
+    assert rows[0]['value'] == '-42.50'
+    assert rows[0]['source_citations'] == ['cash-single']
+    assert rows[0]['computation_status'] == 'computed'
+    assert rows[0]['estimation_method'] is None
+    assert rows[0]['document_version_id'] == 'version-1'
+    assert rows[0]['computation_rule_version'] == RULE_VERSION
+    assert rows[0]['superseded_by_document_version_id'] is None
+
+
+@pytest.mark.parametrize(
+    ('method_name', 'code'),
+    [
+        ('compute_operating_expenses', 'operating_expenses'),
+        ('compute_cash_flow', 'cash_flow'),
+    ],
+)
+def test_remaining_core_codes_reject_mixed_currency(method_name: str, code: str) -> None:
+    service = KpiComputationService(RULE_VERSION)
+    compute = getattr(service, method_name)
+    metrics = [
+        _metric(code, Decimal('10'), metric_id=f'{code}-usd'),
+        _metric(code, Decimal('10'), metric_id=f'{code}-eur', currency='EUR'),
+    ]
+
+    with pytest.raises(ValueError, match='currency'):
+        compute(metrics)
+
+
+@pytest.mark.parametrize(
+    ('method_name', 'code'),
+    [
+        ('compute_operating_expenses', 'operating_expenses'),
+        ('compute_cash_flow', 'cash_flow'),
+    ],
+)
+def test_remaining_core_codes_reject_mixed_units(method_name: str, code: str) -> None:
+    service = KpiComputationService(RULE_VERSION)
+    compute = getattr(service, method_name)
+    metrics = [
+        _metric(code, Decimal('10'), metric_id=f'{code}-units'),
+        _metric(code, Decimal('10'), metric_id=f'{code}-millions', units='millions'),
+    ]
+
+    with pytest.raises(ValueError, match='units'):
+        compute(metrics)
