@@ -31,10 +31,12 @@ def _add_equalities(clauses: list[str], params: dict[str, Any], values: dict[str
             params[key] = values[key]
     codes = values.get('kpi_codes')
     if codes is not None and not isinstance(codes, str):
-        codes = tuple(codes)
+        codes = list(dict.fromkeys(str(code) for code in codes))
         if codes:
-            clauses.append('kpi_code IN :kpi_codes')
-            params['kpi_codes'] = codes
+            placeholders = ', '.join(f':kpi_code_{index}' for index in range(len(codes)))
+            clauses.append(f'kpi_code IN ({placeholders})')
+            for index, code in enumerate(codes):
+                params[f'kpi_code_{index}'] = code
 
 
 def _add_ranges(clauses: list[str], params: dict[str, Any], values: dict[str, Any]) -> None:
