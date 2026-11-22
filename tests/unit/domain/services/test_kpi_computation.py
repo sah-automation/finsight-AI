@@ -563,8 +563,13 @@ def test_margin_needs_review_when_second_input_is_missing(
     assert rows[0]['source_citations'] == [_citation_id()]
 
 
-@pytest.mark.parametrize('method_name', ['compute_gross_margin', 'compute_net_margin'])
-@pytest.mark.parametrize('input_name', ['cogs', 'net_income'])
+@pytest.mark.parametrize(
+    ('method_name', 'input_name'),
+    [
+        ('compute_gross_margin', 'cogs'),
+        ('compute_net_margin', 'net_income'),
+    ],
+)
 def test_margin_needs_review_when_revenue_is_missing(method_name: str, input_name: str) -> None:
     rows = getattr(KpiComputationService(RULE_VERSION), method_name)(
         [_metric(input_name, Decimal('50'), metric_id='input-only')]

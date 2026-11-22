@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from finsight.domain.services.citation_factory import CitationFactory
 
 _GroupKey = tuple[str, str, str, date]
+_MISSING_INPUT_REASON = {'cogs': 'missing_cogs', 'net_income': 'missing_net_income'}
 
 
 def compute_margin(
@@ -36,13 +37,61 @@ def compute_margin(
     inputs = _input_groups(metrics, input_code, citations)
     rows: list[KpiRow] = []
     for key in sorted(set(revenue) | set(inputs)):
-        revenue_group = revenue.get(key)
-        input_group = inputs.get(key)
-        if revenue_group is None or input_group is None:
-            continue
-        value = _percentage(_total(revenue_group), _total(input_group))
-        rows.append(_row(kpi_code, key, revenue_group, input_group, value, None, rule_version))
+        rows.append(
+            _group_row(kpi_code, key, revenue.get(key), inputs.get(key), input_code, rule_version)
+        )
     return rows
+
+
+def _group_row(
+    kpi_code: str,
+    key: _GroupKey,
+    revenue_group: dict[str, Any] | None,
+    input_group: dict[str, Any] | None,
+    input_code: str,
+    rule_version: str,
+) -> KpiRow:
+    reason = _reason(revenue_group, input_group, input_code)
+    if reason or revenue_group is None or input_group is None:
+        value = None
+    else:
+        value = _percentage(_total(revenue_group), _total(input_group))
+    return _row(
+        kpi_code,
+        key,
+        revenue_group or _blank_group(),
+        input_group or _blank_group(),
+        value,
+        reason,
+        rule_version,
+    )
+
+
+def _reason(
+    revenue: dict[str, Any] | None, inputs: dict[str, Any] | None, input_code: str
+) -> str | None:
+    if revenue is None:
+        return 'missing_revenue'
+    if inputs is None:
+        return _MISSING_INPUT_REASON.get(input_code, f'missing_{input_code}')
+    if len(revenue['currencies'] | inputs['currencies']) > 1:
+        return 'currency_mismatch'
+    if len(revenue['unit_values'] | inputs['unit_values']) > 1:
+        return 'units_mismatch'
+    return None
+
+
+def _blank_group() -> dict[str, Any]:
+    return {
+        'currency': '',
+        'units': '',
+        'currencies': set(),
+        'unit_values': set(),
+        'amounts': [],
+        'metric_ids': [],
+        'citations': set(),
+        'missing_citation': False,
+    }
 
 
 def _input_groups(
@@ -59,6 +108,8 @@ def _input_groups(
         )
         key = (company, label, version, start)
         group = groups.setdefault(key, _new_group(metric))
+        group['currencies'].add(required(metric, 'currency', 'currency'))
+        group['unit_values'].add(required(metric, 'units', 'unit', 'units'))
         group['amounts'].append(amount(metric))
         metric_id = required(metric, 'metric_id', 'metric_id', 'id')
         if metric_id not in group['metric_ids']:
@@ -72,14 +123,14 @@ def _input_groups(
 
 
 def _new_group(metric: Metric) -> dict[str, Any]:
-    return {
-        'currency': required(metric, 'currency', 'currency'),
-        'units': required(metric, 'units', 'unit', 'units'),
-        'amounts': [],
-        'metric_ids': [],
-        'citations': set(),
-        'missing_citation': False,
-    }
+    group = _blank_group()
+    currency = required(metric, 'currency', 'currency')
+    units = required(metric, 'units', 'unit', 'units')
+    group['currency'] = currency
+    group['units'] = units
+    group['currencies'].add(currency)
+    group['unit_values'].add(units)
+    return group
 
 
 def _total(group: dict[str, Any]) -> Decimal:
@@ -102,6 +153,7 @@ def _row(
     rule_version: str,
 ) -> KpiRow:
     company, label, version, start = key
+    source = revenue if revenue['currency'] else inputs
     citations = sorted(revenue['citations'] | inputs['citations'])
     status = 'needs_review' if reason else 'computed'
     return {
@@ -111,8 +163,8 @@ def _row(
         'period_start': start.isoformat(),
         'chart_period': label,
         'chart_period_start': start.isoformat(),
-        'currency': revenue['currency'],
-        'units': revenue['units'],
+        'currency': source['currency'],
+        'units': source['units'],
         'value': value,
         'source_citations': citations,
         'source_metric_ids': revenue['metric_ids']
