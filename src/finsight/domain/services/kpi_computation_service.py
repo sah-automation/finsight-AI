@@ -197,14 +197,23 @@ class KpiComputationService:
     ) -> KpiRow:
         start = group['start'].isoformat()
 
-        # Build CitationIds from the metrics' provenance
-        citations = self._citation_factory.build_from_metrics(group['metrics_for_citations'])
+        # Build CitationIds from each metric's provenance individually
+        # Track which metrics failed to produce a citation
+        metrics_for_citations = group['metrics_for_citations']
+        citations: list[str] = []
+        any_missing_citation = False
+        for metric in metrics_for_citations:
+            cit = self._citation_factory.build_from_metric(metric)
+            if cit:
+                citations.append(cit)
+            else:
+                any_missing_citation = True
 
-        # Determine computation_status: "needs_review" if any metric lacked citations
-        computation_status = 'computed'
-        if citations is None or len(citations) == 0:
-            # No valid citations could be built for this group
-            computation_status = 'needs_review'
+        # Deduplicate and sort citations
+        citations = sorted(set(citations))
+
+        # Determine computation_status: "needs_review" if ANY metric lacked citations
+        computation_status = 'needs_review' if any_missing_citation else 'computed'
 
         return {
             'company_id': company,

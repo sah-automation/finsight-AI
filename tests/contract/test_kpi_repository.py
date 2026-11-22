@@ -38,6 +38,7 @@ def _row(
     currency: str = 'USD',
     units: str = 'USD',
     citations: list[str] | None = None,
+    metric_ids: list[str] | None = None,
     computation_rule_version: str = 'rule-v1',
     superseded_by: str | None = None,
 ) -> dict[str, Any]:
@@ -56,7 +57,10 @@ def _row(
         'value': value,
         'computation_status': computation_status,
         'estimation_method': None,
-        'source_citations': ['cite-1'] if citations is None else citations,
+        'source_citations': ['cit:v1:10000000-0000-4000-8000-000000000001:p1']
+        if citations is None
+        else citations,
+        'source_metric_ids': ['metric-1'] if metric_ids is None else metric_ids,
         'computation_rule_version': computation_rule_version,
         'superseded_by_document_version_id': superseded_by,
     }
@@ -76,6 +80,7 @@ _FINGERPRINT_FIELDS = {
     'value',
     'computation_status',
     'source_citations',
+    'source_metric_ids',
     'conflict_marker',
     'superseded_by_document_version_id',
 }

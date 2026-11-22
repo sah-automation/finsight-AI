@@ -471,8 +471,8 @@ def test_kpi_computation_marks_needs_review_when_no_citations() -> None:
     assert rows[0]['source_metric_ids'] == ['m1']
 
 
-def test_kpi_computation_marks_computed_when_some_metrics_have_citations() -> None:
-    # One metric with page, one without
+def test_kpi_computation_marks_needs_review_when_any_metric_lacks_citation() -> None:
+    # One metric with page, one without - spec says "if either is missing... needs review"
     metrics = [
         _metric('revenue', Decimal('100'), metric_id='m1', page=1),  # Has citation
         Metric(
@@ -492,6 +492,7 @@ def test_kpi_computation_marks_computed_when_some_metrics_have_citations() -> No
     rows = KpiComputationService(RULE_VERSION).compute_revenue(metrics)
 
     assert len(rows) == 1
-    assert rows[0]['computation_status'] == 'computed'  # At least one citation
+    # Per spec: "If either is missing, no citation is created and the KPI is marked 'needs review'"
+    assert rows[0]['computation_status'] == 'needs_review'
     assert rows[0]['source_citations'] == [_citation_id()]  # Only one valid citation
     assert rows[0]['source_metric_ids'] == ['m1', 'm2']
