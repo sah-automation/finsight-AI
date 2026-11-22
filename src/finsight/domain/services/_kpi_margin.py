@@ -8,7 +8,7 @@ document version. A margin row keeps the provenance of both input Metrics.
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, localcontext
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 from typing import TYPE_CHECKING, Any
 
 from ._kpi_metric_fields import amount, exact_sum, matches_code, period_fields, required
@@ -22,6 +22,16 @@ if TYPE_CHECKING:
 
 _GroupKey = tuple[str, str, str, date]
 _MISSING_INPUT_REASON = {'cogs': 'missing_cogs', 'net_income': 'missing_net_income'}
+_NO_VALUE_REASONS = frozenset(
+    {
+        'missing_revenue',
+        'missing_cogs',
+        'missing_net_income',
+        'currency_mismatch',
+        'units_mismatch',
+        'zero_revenue',
+    }
+)
 
 
 def compute_margin(
@@ -52,7 +62,7 @@ def _group_row(
     rule_version: str,
 ) -> KpiRow:
     reason = _reason(revenue_group, input_group, input_code)
-    if reason or revenue_group is None or input_group is None:
+    if reason in _NO_VALUE_REASONS or revenue_group is None or input_group is None:
         value = None
     else:
         value = _percentage(_total(revenue_group), _total(input_group))
@@ -78,6 +88,10 @@ def _reason(
         return 'currency_mismatch'
     if len(revenue['unit_values'] | inputs['unit_values']) > 1:
         return 'units_mismatch'
+    if _total(revenue) == 0:
+        return 'zero_revenue'
+    if revenue['missing_citation'] or inputs['missing_citation']:
+        return 'missing_citations'
     return None
 
 
@@ -140,7 +154,8 @@ def _total(group: dict[str, Any]) -> Decimal:
 def _percentage(revenue: Decimal, input_amount: Decimal) -> str:
     with localcontext() as context:
         context.prec = 34
-        return str((revenue - input_amount) / revenue * Decimal('100'))
+        percentage = (revenue - input_amount) / revenue * Decimal('100')
+        return str(percentage.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
 
 def _row(
