@@ -1,4 +1,4 @@
-"""Unit tests for the pure core KPI aggregation service (issue #372)."""
+"""Unit tests for the pure core KPI aggregation service (issue #372, #397)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,64 @@ COMPANY = CompanyId('7e1a0000-0000-4000-8000-000000000001')
 RULE_VERSION = 'rule-v1'
 
 
+def _metric(
+    name: str,
+    value: object,
+    *,
+    metric_id: str,
+    period: str = '2026-Q3',
+    currency: str = 'USD',
+    units: str = 'USD',
+    version: str = 'version-1',
+    page: int = 1,
+    table_id: str | None = None,
+    chunk_id: str | None = None,
+    start_char: int | None = None,
+    end_char: int | None = None,
+) -> Metric:
+    source_location = {'page': page}
+    if table_id:
+        source_location['table'] = table_id
+    if chunk_id:
+        source_location['chunk'] = chunk_id
+    if start_char is not None:
+        source_location['start_char'] = start_char
+    if end_char is not None:
+        source_location['end_char'] = end_char
+
+    return Metric(
+        metric_id=metric_id,
+        company_id=COMPANY,
+        name=name,
+        value=value,
+        unit=units,
+        currency=currency,
+        period=period,
+        document_id='doc-1',
+        document_version_id=version,
+        source_location=source_location,
+    )
+
+
+def _citation_id(
+    version: str = 'version-1',
+    page: int = 1,
+    table_id: str | None = None,
+    chunk_id: str | None = None,
+    start_char: int | None = None,
+    end_char: int | None = None,
+) -> str:
+    """Build expected CitationId for tests."""
+    parts = ['cit:v1', str(version), f'p{page}']
+    if table_id:
+        parts.append(f't{table_id}')
+    if chunk_id:
+        parts.append(f'c{chunk_id}')
+    if start_char is not None and end_char is not None:
+        parts.append(f'o{start_char}-{end_char}')
+    return ':'.join(parts)
+
+
 def test_compute_revenue_emits_one_computed_row_with_exact_decimal_string() -> None:
     metric = Metric(
         metric_id='metric-revenue-1',
@@ -25,6 +83,7 @@ def test_compute_revenue_emits_one_computed_row_with_exact_decimal_string() -> N
         period='2026-Q3',
         document_id='doc-1',
         document_version_id='version-1',
+        source_location={'page': 1},
     )
 
     rows = KpiComputationService(RULE_VERSION).compute_revenue([metric])
@@ -40,7 +99,8 @@ def test_compute_revenue_emits_one_computed_row_with_exact_decimal_string() -> N
             'currency': 'USD',
             'units': 'USD',
             'value': '1234.50',
-            'source_citations': ['metric-revenue-1'],
+            'source_citations': [_citation_id()],
+            'source_metric_ids': ['metric-revenue-1'],
             'computation_status': 'computed',
             'estimation_method': None,
             'document_version_id': 'version-1',
@@ -48,29 +108,6 @@ def test_compute_revenue_emits_one_computed_row_with_exact_decimal_string() -> N
             'superseded_by_document_version_id': None,
         }
     ]
-
-
-def _metric(
-    name: str,
-    value: object,
-    *,
-    metric_id: str,
-    period: str = '2026-Q3',
-    currency: str = 'USD',
-    units: str = 'USD',
-    version: str = 'version-1',
-) -> Metric:
-    return Metric(
-        metric_id=metric_id,
-        company_id=COMPANY,
-        name=name,
-        value=value,
-        unit=units,
-        currency=currency,
-        period=period,
-        document_id='doc-1',
-        document_version_id=version,
-    )
 
 
 def test_compute_revenue_sums_metrics_per_period_and_ignores_other_codes() -> None:
@@ -84,7 +121,9 @@ def test_compute_revenue_sums_metrics_per_period_and_ignores_other_codes() -> No
 
     assert len(rows) == 1
     assert rows[0]['value'] == '300.30'
-    assert rows[0]['source_citations'] == ['metric-1', 'metric-2']
+    # Same page/version -> deduplicated to single citation
+    assert rows[0]['source_citations'] == [_citation_id()]
+    assert rows[0]['source_metric_ids'] == ['metric-1', 'metric-2']
     assert rows[0]['kpi_code'] == 'revenue'
 
 
@@ -187,7 +226,9 @@ def test_compute_operating_expenses_sums_metrics_without_decimal_rounding() -> N
 
     assert len(rows) == 1
     assert rows[0]['value'] == '12345678901234567890.123456790'
-    assert rows[0]['source_citations'] == ['opex-large', 'opex-small']
+    # Same page/version -> deduplicated to single citation
+    assert rows[0]['source_citations'] == [_citation_id()]
+    assert rows[0]['source_metric_ids'] == ['opex-large', 'opex-small']
 
 
 def test_compute_cash_flow_sums_metrics_and_keeps_provenance_fields() -> None:
@@ -201,7 +242,9 @@ def test_compute_cash_flow_sums_metrics_and_keeps_provenance_fields() -> None:
     assert len(rows) == 1
     assert rows[0]['value'] == '149.75'
     assert rows[0]['kpi_code'] == 'cash_flow'
-    assert rows[0]['source_citations'] == ['cash-1', 'cash-2']
+    # Same page/version -> deduplicated to single citation
+    assert rows[0]['source_citations'] == [_citation_id()]
+    assert rows[0]['source_metric_ids'] == ['cash-1', 'cash-2']
     assert rows[0]['computation_status'] == 'computed'
     assert rows[0]['estimation_method'] is None
     assert rows[0]['computation_rule_version'] == RULE_VERSION
@@ -237,7 +280,8 @@ def test_compute_operating_expenses_from_one_metric_emits_full_row() -> None:
     assert rows[0]['currency'] == 'USD'
     assert rows[0]['units'] == 'USD'
     assert rows[0]['value'] == '75.25'
-    assert rows[0]['source_citations'] == ['opex-single']
+    assert rows[0]['source_citations'] == [_citation_id()]
+    assert rows[0]['source_metric_ids'] == ['opex-single']
     assert rows[0]['computation_status'] == 'computed'
     assert rows[0]['estimation_method'] is None
     assert rows[0]['document_version_id'] == 'version-1'
@@ -259,7 +303,8 @@ def test_compute_cash_flow_from_one_metric_emits_full_row() -> None:
     assert rows[0]['currency'] == 'USD'
     assert rows[0]['units'] == 'USD'
     assert rows[0]['value'] == '-42.50'
-    assert rows[0]['source_citations'] == ['cash-single']
+    assert rows[0]['source_citations'] == [_citation_id()]
+    assert rows[0]['source_metric_ids'] == ['cash-single']
     assert rows[0]['computation_status'] == 'computed'
     assert rows[0]['estimation_method'] is None
     assert rows[0]['document_version_id'] == 'version-1'
@@ -303,3 +348,150 @@ def test_remaining_core_codes_reject_mixed_units(method_name: str, code: str) ->
 
     with pytest.raises(ValueError, match='units'):
         compute(metrics)
+
+
+# --- CitationFactory tests (issue #397) ---
+
+from finsight.domain.services.citation_factory import CitationFactory
+
+
+def test_citation_factory_builds_basic_citation_id() -> None:
+    metric = _metric('revenue', Decimal('100'), metric_id='m1', version='ver-1', page=5)
+    factory = CitationFactory()
+
+    cit = factory.build_from_metric(metric)
+
+    assert cit == 'cit:v1:ver-1:p5'
+
+
+def test_citation_factory_includes_table_id_when_present() -> None:
+    metric = _metric(
+        'revenue', Decimal('100'), metric_id='m1', version='ver-1', page=3, table_id='tbl-42'
+    )
+    factory = CitationFactory()
+
+    cit = factory.build_from_metric(metric)
+
+    assert cit == 'cit:v1:ver-1:p3:ttbl-42'
+
+
+def test_citation_factory_includes_chunk_id_when_present() -> None:
+    metric = _metric(
+        'revenue', Decimal('100'), metric_id='m1', version='ver-1', page=2, chunk_id='chk-7'
+    )
+    factory = CitationFactory()
+
+    cit = factory.build_from_metric(metric)
+
+    assert cit == 'cit:v1:ver-1:p2:cchk-7'
+
+
+def test_citation_factory_includes_char_range_when_present() -> None:
+    metric = _metric(
+        'revenue',
+        Decimal('100'),
+        metric_id='m1',
+        version='ver-1',
+        page=1,
+        start_char=100,
+        end_char=200,
+    )
+    factory = CitationFactory()
+
+    cit = factory.build_from_metric(metric)
+
+    assert cit == 'cit:v1:ver-1:p1:o100-200'
+
+
+def test_citation_factory_returns_none_when_no_document_version() -> None:
+    metric = _metric('revenue', Decimal('100'), metric_id='m1', version='', page=1)
+    factory = CitationFactory()
+
+    cit = factory.build_from_metric(metric)
+
+    assert cit is None
+
+
+def test_citation_factory_returns_none_when_no_page() -> None:
+    # Metric with no page in source_location
+    metric = Metric(
+        metric_id='m1',
+        company_id=COMPANY,
+        name='revenue',
+        value=Decimal('100'),
+        unit='USD',
+        currency='USD',
+        period='2026-Q3',
+        document_id='doc-1',
+        document_version_id='ver-1',
+        source_location={},  # No page
+    )
+    factory = CitationFactory()
+
+    cit = factory.build_from_metric(metric)
+
+    assert cit is None
+
+
+def test_citation_factory_deduplicates_and_sorts() -> None:
+    metrics = [
+        _metric('revenue', Decimal('100'), metric_id='m1', version='ver-1', page=2),
+        _metric('revenue', Decimal('200'), metric_id='m2', version='ver-1', page=1),
+        _metric(
+            'revenue', Decimal('300'), metric_id='m3', version='ver-1', page=1
+        ),  # Same page as m2
+    ]
+    factory = CitationFactory()
+
+    citations = factory.build_from_metrics(metrics)
+
+    assert citations == ['cit:v1:ver-1:p1', 'cit:v1:ver-1:p2']
+
+
+def test_kpi_computation_marks_needs_review_when_no_citations() -> None:
+    # Metric without page in source_location
+    metric = Metric(
+        metric_id='m1',
+        company_id=COMPANY,
+        name='revenue',
+        value=Decimal('100'),
+        unit='USD',
+        currency='USD',
+        period='2026-Q3',
+        document_id='doc-1',
+        document_version_id='ver-1',
+        source_location={},  # No page
+    )
+
+    rows = KpiComputationService(RULE_VERSION).compute_revenue([metric])
+
+    assert len(rows) == 1
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['source_citations'] == []
+    assert rows[0]['source_metric_ids'] == ['m1']
+
+
+def test_kpi_computation_marks_computed_when_some_metrics_have_citations() -> None:
+    # One metric with page, one without
+    metrics = [
+        _metric('revenue', Decimal('100'), metric_id='m1', page=1),  # Has citation
+        Metric(
+            metric_id='m2',
+            company_id=COMPANY,
+            name='revenue',
+            value=Decimal('200'),
+            unit='USD',
+            currency='USD',
+            period='2026-Q3',
+            document_id='doc-1',
+            document_version_id='version-1',
+            source_location={},  # No page
+        ),
+    ]
+
+    rows = KpiComputationService(RULE_VERSION).compute_revenue(metrics)
+
+    assert len(rows) == 1
+    assert rows[0]['computation_status'] == 'computed'  # At least one citation
+    assert rows[0]['source_citations'] == [_citation_id()]  # Only one valid citation
+    assert rows[0]['source_metric_ids'] == ['m1', 'm2']

@@ -13,6 +13,8 @@ from datetime import date
 from decimal import Decimal, InvalidOperation, localcontext
 from typing import TYPE_CHECKING, Any, cast
 
+from .citation_factory import CitationFactory
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -120,6 +122,7 @@ class KpiComputationService:
         if not version:
             raise ValueError('computation_rule_version is required')
         self._computation_rule_version = version
+        self._citation_factory = CitationFactory()
 
     def compute_revenue(self, metrics: Sequence[Metric]) -> list[KpiRow]:
         """Sum revenue Metrics into one computed KPI row per period."""
@@ -157,14 +160,17 @@ class KpiComputationService:
                     'currency': currency,
                     'units': units,
                     'amounts': [],
-                    'citations': [],
+                    'source_metric_ids': [],
+                    'metrics_for_citations': [],
                 },
             )
             self._check_group(group, start, currency, units)
             group['amounts'].append(_amount(metric))
-            citation = _required(metric, 'metric_id', 'metric_id', 'id')
-            if citation not in group['citations']:
-                group['citations'].append(citation)
+            metric_id = _required(metric, 'metric_id', 'metric_id', 'id')
+            if metric_id not in group['source_metric_ids']:
+                group['source_metric_ids'].append(metric_id)
+            # Track the metric for citation building
+            group['metrics_for_citations'].append(metric)
         return [
             self._row(kpi_code, company, label, version, group)
             for (company, label, version), group in sorted(
@@ -190,6 +196,16 @@ class KpiComputationService:
         group: dict[str, Any],
     ) -> KpiRow:
         start = group['start'].isoformat()
+
+        # Build CitationIds from the metrics' provenance
+        citations = self._citation_factory.build_from_metrics(group['metrics_for_citations'])
+
+        # Determine computation_status: "needs_review" if any metric lacked citations
+        computation_status = 'computed'
+        if citations is None or len(citations) == 0:
+            # No valid citations could be built for this group
+            computation_status = 'needs_review'
+
         return {
             'company_id': company,
             'kpi_code': kpi_code,
@@ -200,8 +216,9 @@ class KpiComputationService:
             'currency': group['currency'],
             'units': group['units'],
             'value': str(_exact_sum(group['amounts'])),
-            'source_citations': list(group['citations']),
-            'computation_status': 'computed',
+            'source_citations': citations,
+            'source_metric_ids': list(group['source_metric_ids']),
+            'computation_status': computation_status,
             'estimation_method': None,
             'document_version_id': version,
             'computation_rule_version': self._computation_rule_version,

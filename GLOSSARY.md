@@ -23,6 +23,7 @@
 | Update Cascade | The path from a document update through Metric re-extraction and KPI recompute to a changed Freshness Fingerprint on the dashboard. _Avoid_: refresh chain, sync job. |
 | Answer | Generated response to a question, grounded in evidence with citations. |
 | Citation | Reference linking an answer back to a specific chunk/document. |
+| CitationId | Canonical token identifying the exact location in a document version where a Metric was extracted. Format: `cit:v1:{document_version_id}:p{page}[:t{table_id}][:c{chunk_id}][:o{start}-{end}]`. Distinct from Metric ID; two Metrics can share a CitationId, and a Metric can be re-extracted while its location stays the same. Built from `source_location` by `CitationFactory`. |
 | Role | User permission level (`executive_leadership`, `corporate_finance_planners`, `audit_compliance`, `system_admin`). |
 | Switch | Config-driven feature flag with both ON/OFF paths tested. |
 | RAG | Retrieval-Augmented Generation combining vector/keyword search with LLM. |

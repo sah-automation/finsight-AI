@@ -23,9 +23,24 @@ Three constraints shape the model. Numbers must be computed by code, never by th
 - The storage primary key is `(company_id, kpi_code, period, document_version_id, chart_period)`, as refined by ADR-0009. `chart_period` is non-null and equals `period` for non-estimated rows; the extra component distinguishes the monthly rows of one quarterly spread. Different document versions still admit two rows for the same company, code and period when a conflict persists.
 - `Draft` and `Updating` are separate display states owned by the update cascade in ADR-0011; `Estimated` is the state this ADR defines. The chart payload and export labels are defined in ADR-0010.
 
+## CitationId format (issue #397)
+
+A CitationId identifies the exact location in a document version where a Metric was extracted. It is distinct from the Metric ID, which identifies the figure itself. Two Metrics can share a CitationId (same table), and a Metric can be re-extracted on an update while its location stays the same.
+
+Format: `cit:v1:{document_version_id}:p{page}[:t{table_id}][:c{chunk_id}][:o{start}-{end}]`
+
+- Page is always required. Table, chunk and character range are added when the Metric has them.
+- It points to a document version, not just a document. If the document is updated, old citations stay accurate and get marked "newer version exists" instead of silently pointing at new content.
+- It is built by code from `source_location`, so the same Metric always gives the same CitationId. Sort and de-duplicate the list before saving.
+- It holds only ids and numbers, no text, so it is safe in logs.
+
+Mapping rule:
+- `document_version_id` + `source_location.page` is the minimum. If either is missing, no citation is created and the KPI is marked `needs_review`. Never guess.
+- The KPI row stores both `source_citations` (array of CitationIds) and `source_metric_ids` (array of Metric IDs, for tracing and recomputation triggers).
+
 ## Consequences
 
 - KPI materialisation, estimation mechanics and rebuilds were settled in #352 and ADR-0009. The illustrative DDL in `research-neon-kpi-timeseries.md` is a sizing sketch; its single-row PK cannot hold conflicting rows or multiple estimated months. The canonical PK is the five-column key in ADR-0009.
-- The Phase 2 API and chart/export contract (ADR-0010) must expose `computation_status`, `chart_period`, `source_citations`, `document_version_id`, `computation_rule_version` and the `Estimated` label.
+- The Phase 2 API and chart/export contract (ADR-0010) must expose `computation_status`, `chart_period`, `source_citations`, `source_metric_ids`, `document_version_id`, `computation_rule_version` and the `Estimated` label.
 - Dashboard treatment of Draft, Estimated and Updating, and the cascade that sets them, are defined in ADR-0011.
 - Phase 2 tests must cover a missing composite input, a mismatched budget/actual pair, an estimated monthly row and a final/draft conflict. No such test can pass by asserting a guessed number.
