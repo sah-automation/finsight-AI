@@ -64,11 +64,13 @@ default local suite.
 - `kpi_rebuild_state` — global gate table keyed by
   `computation_rule_version` with `pending`/`running`/`complete`.
 - `kpi_current` — the single read view: final > newer selection, both cited
-  rows kept on cross-document conflict, supersession excluded as history, and
-  retention (`version_retention_days`, `deleted_retention_days`) honoured at
-  read time.  Retention defaults are baked from the active config profile at
-  migration time (like the URL in `env.py`) and can be overridden per session
-  with `app.version_retention_days` / `app.deleted_retention_days`.
+  rows kept on cross-document conflict (including equal values in different
+  currencies), supersession excluded as history — the superseded rows stay
+  queryable in `kpi_values` — and retention (`version_retention_days`,
+  `deleted_retention_days`) honoured at read time.  Retention defaults are
+  baked from the active config profile at migration time (like the URL in
+  `env.py`) and can be overridden per session with
+  `app.version_retention_days` / `app.deleted_retention_days`.
 
 Its tests live in `tests/integration/test_kpi_migration.py` and are
 profile-driven: point `ENVIRONMENT` at any profile (local/CI Postgres or a

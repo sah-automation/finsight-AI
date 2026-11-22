@@ -203,6 +203,8 @@ def _seed_kpi(
     chart_period: str | None = None,
     period_start: str = '2026-09-01',
     chart_period_start: str | None = None,
+    currency: str = 'USD',
+    units: str = 'usd',
     value: str | None = '100.00',
     computation_status: str = 'computed',
     estimation_method: str | None = None,
@@ -235,8 +237,8 @@ def _seed_kpi(
             'chart_period': chart_period or period,
             'period_start': period_start,
             'chart_period_start': chart_period_start or period_start,
-            'currency': 'USD',
-            'units': 'usd',
+            'currency': currency,
+            'units': units,
             'value': value,
             'computation_status': computation_status,
             'estimation_method': estimation_method,
@@ -548,6 +550,39 @@ def test_kpi_current_returns_single_row_when_documents_agree(kpi_db: SimpleNames
     assert len(rows) == 1, 'identical figures from two documents are not a conflict'
     assert str(rows[0].document_version_id) == second_version
     assert rows[0].conflict_marker is None
+
+
+def test_kpi_current_treats_different_currencies_as_conflict(
+    kpi_db: SimpleNamespace,
+) -> None:
+    """100 USD and 100 EUR are different numbers: both cited rows persist."""
+    conn = kpi_db.conn
+    _seed_company(conn, kpi_db.company_id)
+
+    usd_doc = _seed_document(conn, kpi_db.company_id, status='final')
+    usd_version = _seed_version(
+        conn,
+        kpi_db.company_id,
+        usd_doc,
+        created_at=datetime.now(UTC) - timedelta(days=10),
+    )
+    _seed_kpi(conn, kpi_db.company_id, usd_version, currency='USD', units='usd')
+
+    eur_doc = _seed_document(conn, kpi_db.company_id, status='final')
+    eur_version = _seed_version(
+        conn,
+        kpi_db.company_id,
+        eur_doc,
+        created_at=datetime.now(UTC) - timedelta(days=2),
+    )
+    _seed_kpi(conn, kpi_db.company_id, eur_version, currency='EUR', units='eur')
+
+    rows = _view_rows(conn, kpi_db.company_id)
+    assert len(rows) == 2, 'equal values in different currencies still conflict'
+    by_version = {str(row.document_version_id): row for row in rows}
+    assert by_version[eur_version].is_selected is True
+    assert by_version[usd_version].is_selected is False
+    assert by_version[usd_version].conflict_marker == 'revenue|2026-09'
 
 
 # ---------------------------------------------------------------------------

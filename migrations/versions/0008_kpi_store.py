@@ -180,6 +180,8 @@ def upgrade() -> None:
         -- A real conflict is derived on read: different documents still show
         -- different numbers for the same company, KPI and period (ADR-0009).
         -- Same-document rows never conflict; they are supersession history.
+        -- Different currencies or units are different numbers even when the
+        -- numeric value matches (100 USD is not 100 EUR).
         conflicted_groups AS (
             SELECT
                 a.company_id,
@@ -193,7 +195,7 @@ def upgrade() -> None:
                AND b.document_id <> a.document_id
                AND a.value IS NOT NULL
                AND b.value IS NOT NULL
-               AND a.value <> b.value
+               AND (a.value <> b.value OR a.currency <> b.currency OR a.units <> b.units)
             GROUP BY a.company_id, a.kpi_code, a.period
         )
         SELECT
