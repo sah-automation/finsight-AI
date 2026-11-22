@@ -53,6 +53,4 @@ class KpiListResponse(BaseModel):
     actions: KpiActions = Field(...)
 
 
-KpiRowResponse = KpiRow
-
-__all__ = ['KpiActions', 'KpiListResponse', 'KpiRow', 'KpiRowResponse']
+__all__ = ['KpiActions', 'KpiListResponse', 'KpiRow']

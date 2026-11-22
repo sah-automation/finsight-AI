@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException, Request
 
@@ -14,9 +13,25 @@ from ._permissions import (
     _get_role_entry,
     _load_permissions_config,
 )
+from ._shared import _context_lookup
 from .api_principal import ApiPrincipal
 
-_SCOPE_KEYS = ('access_scope', 'accessScope', 'allowed_categories', 'allowedCategories')
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+_SCOPE_KEYS = (
+    'access_scope',
+    'accessScope',
+    'scope',
+    'AccessScope',
+    'access',
+    'permission_scope',
+    'allowed_categories',
+    'allowedCategories',
+    'document_categories',
+    'allowed_document_categories',
+    'categories',
+)
 
 
 def _text(value: Any) -> str | None:
@@ -33,25 +48,24 @@ def _normalize_role(value: Any) -> str | None:
     return text.lower().replace(' ', '_').replace('-', '_')
 
 
-def _scope_value(source: Any, key: str) -> Any:
-    if isinstance(source, Mapping):
-        return source.get(key)
-    return getattr(source, key, None)
-
-
-def _scope_from_request(request: Request) -> list[str] | None:
+def _scope_from_request(request: Request) -> tuple[str, ...] | None:
     for source in (getattr(request, 'state', None), getattr(request, 'scope', None)):
         if source is None:
             continue
-        for key in _SCOPE_KEYS:
-            value = _scope_value(source, key)
-            if value is not None:
-                if isinstance(value, str):
-                    return [value]
-                try:
-                    return [item for item in value if _text(item) is not None]
-                except TypeError:
-                    return [value]
+        value = _context_lookup(source, *_SCOPE_KEYS)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            text = _text(value)
+            return (text,) if text is not None else ()
+        if not isinstance(value, (list, tuple, set, frozenset)):
+            return ()
+        values: list[str] = []
+        for item in value:
+            text = _text(item)
+            if text is not None:
+                values.append(text)
+        return tuple(values)
     return None
 
 
@@ -99,6 +113,4 @@ class ActionPermission:
         declared = _scope_from_request(request)
         if declared is None:
             return readable
-        return tuple(
-            category for category in readable if category in {_text(item) for item in declared}
-        )
+        return tuple(category for category in readable if category in set(declared))

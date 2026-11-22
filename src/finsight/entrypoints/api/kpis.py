@@ -166,7 +166,7 @@ async def list_kpis(
             cursor=params.cursor,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail='Invalid pagination parameters.') from exc
 
     return KpiListResponse(
         contract_version=1,
