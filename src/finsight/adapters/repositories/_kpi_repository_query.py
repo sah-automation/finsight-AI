@@ -58,7 +58,7 @@ def build_select_sql(values: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     where_clause = ' AND '.join(clauses)
     sql = (
         f'SELECT * FROM kpi_current WHERE {where_clause} '  # noqa: S608
-        'ORDER BY period_start DESC, kpi_code, chart_period'
+        'ORDER BY period_start DESC, kpi_code, chart_period, document_version_id'
     )
     if values.get('limit') is not None:
         sql += ' LIMIT :limit'

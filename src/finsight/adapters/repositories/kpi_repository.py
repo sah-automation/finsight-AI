@@ -1,9 +1,10 @@
 """Postgres/Neon KPI repository implementing the KpiRepository port.
 
 Writes use ``INSERT ... ON CONFLICT`` on the ADR-0009 storage key and never
-issue a DELETE. Reads go through the ``kpi_current`` view so selection,
-conflicts and retention stay in one place. With no wired session the adapter
-keeps state in memory for contract tests and the pilot path.
+issue a DELETE. They do not commit, so ingestion can include them in its own
+transaction. Reads go through the ``kpi_current`` view so selection, conflicts
+and retention stay in one place. With no wired session the adapter uses an
+in-memory seam for the contract suite.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from finsight.domain.ports.kpi_repository import KpiRepository as KpiRepositoryPort
+from finsight.domain.ports.kpi_repository import KpiRow, KpiRows
 
 from . import _kpi_repository_memory as _memory
 from . import _kpi_repository_query as _query
@@ -111,7 +113,7 @@ class KpiRepository(KpiRepositoryPort, BaseRepository):
 
     async def upsert_batch(
         self,
-        rows: Sequence[Mapping[str, Any]],
+        rows: Sequence[KpiRow],
         *,
         company_id: CompanyId | None = None,
         **kwargs: Any,
@@ -131,18 +133,26 @@ class KpiRepository(KpiRepositoryPort, BaseRepository):
                 written += _memory.upsert_rows(self._memory, [row], str(row['company_id']))
             return written
 
+        await self._write_prepared(prepared)
+        return len(prepared)
+
+    async def _write_prepared(self, prepared: list[KpiRow]) -> None:
+        # _raw_execute never commits: the caller owns the transaction so KPI
+        # rows land with the source version, metrics and change events.
         for row in prepared:
             tenant = str(row['company_id'])
-            await self._set_rls_context(tenant)
-            await self._execute(_INSERT_SQL, _row_params(row, tenant), company_id=tenant)
-        return len(prepared)
+            await self._raw_execute(
+                "SELECT set_config('app.company_id', :company_id, true)",
+                {'company_id': tenant},
+            )
+            await self._raw_execute(_INSERT_SQL, _row_params(row, tenant))
 
     async def get_current(
         self,
         company_id: CompanyId,
         filters: Mapping[str, Any] | None = None,
         **kwargs: Any,
-    ) -> list[dict[str, Any]]:
+    ) -> KpiRows:
         values: dict[str, Any] = dict(kwargs)
         if filters:
             values = {**dict(filters), **values}
@@ -163,7 +173,7 @@ class KpiRepository(KpiRepositoryPort, BaseRepository):
         period_from: str | None = None,
         period_to: str | None = None,
         **kwargs: Any,
-    ) -> list[dict[str, Any]]:
+    ) -> KpiRows:
         filters = {
             'kpi_codes': list(kpi_codes),
             'period_from': period_from,
@@ -177,8 +187,8 @@ class KpiRepository(KpiRepositoryPort, BaseRepository):
         company_id: CompanyId,
         chart_specs: Sequence[Any],
         **kwargs: Any,
-    ) -> dict[str, list[dict[str, Any]]]:
-        result: dict[str, list[dict[str, Any]]] = {}
+    ) -> dict[str, KpiRows]:
+        result: dict[str, KpiRows] = {}
         for spec in chart_specs:
             chart_id = str(_spec_value(spec, 'chart_id'))
             codes = _spec_value(spec, 'kpi_codes') or []

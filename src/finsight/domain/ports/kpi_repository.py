@@ -25,7 +25,7 @@ class KpiRepository(ABC):
     @abstractmethod
     async def upsert_batch(
         self,
-        rows: Sequence[Mapping[str, Any]],
+        rows: Sequence[KpiRow],
         *,
         company_id: CompanyId | None = None,
         **kwargs: Any,
