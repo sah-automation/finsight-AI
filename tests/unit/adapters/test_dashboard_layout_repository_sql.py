@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 
+from finsight.adapters.repositories import _dashboard_layout_repository_config as layout_config
 from finsight.adapters.repositories.dashboard_layout_repository import DashboardLayoutRepository
 from finsight.core.types import CompanyId, UserId
 from finsight.domain.ports.dashboard_layout_repository import (
@@ -86,6 +87,12 @@ def _sql(session: _RecordingSession) -> str:
 
 def _params(session: _RecordingSession, fragment: str) -> dict[str, Any]:
     return next(params for statement, params in session.statements if fragment in statement)
+
+
+def test_config_default_uses_contract_version_constant(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(layout_config, 'CONTRACT_VERSION', 7)
+
+    assert layout_config.default_record(config(), visible_all()).contract_version == 7
 
 
 def test_constructor_rejects_missing_config() -> None:
