@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from finsight.adapters.waiting_line import waiting_line_settings
 from finsight.composition import CompositionContainer, providers
 from finsight.composition.providers import (
     ProviderError,
@@ -19,6 +18,7 @@ from finsight.composition.providers import (
     get_upload_use_case,
     init,
 )
+from finsight.core import work_priority
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -118,14 +118,14 @@ def test_provider_raises_before_initialisation() -> None:
 def test_init_rejects_rebuild_priority_above_live_or_upload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    original_rank = waiting_line_settings.priority_rank
+    original_rank = work_priority.priority_rank
 
     def broken_rank(value: object) -> int:
         if str(value).lower() == 'rebuilds':
             return 0
         return original_rank(value)
 
-    monkeypatch.setattr(waiting_line_settings, 'priority_rank', broken_rank)
+    monkeypatch.setattr(work_priority, 'priority_rank', broken_rank)
     container = CompositionContainer()
     for name in ('ask', 'upload', 'documents', 'onboarding', 'source_viewer'):
         container.use_cases[name] = object()

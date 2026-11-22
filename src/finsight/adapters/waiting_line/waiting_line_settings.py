@@ -5,22 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from finsight.core.work_priority import priority_rank
+
 _QUICK_FIRST = 'quick_first'
 _FIRST_COME = 'first_come'
 _ORDERINGS = frozenset({_QUICK_FIRST, _FIRST_COME})
-_PRIORITY_RANKS = {
-    'quick': 0,
-    'question': 0,
-    'search': 0,
-    'rerank': 0,
-    'model': 0,
-    'upload': 1,
-    'ingestion': 1,
-    'report': 2,
-    'reprocess': 2,
-    'rebuilds': 3,
-    'background': 4,
-}
 
 
 def _text(value: object) -> str:
@@ -105,15 +94,6 @@ def _float(value: object, default: float) -> float:
         return float(str(value))
     except (TypeError, ValueError):
         return default
-
-
-def priority_rank(value: object) -> int:
-    """Map a work kind or numeric priority to a quick-first rank."""
-    if value is None:
-        return 0
-    if isinstance(value, (int, float)):
-        return int(value)
-    return _PRIORITY_RANKS.get(_text(value).lower(), 1)
 
 
 @dataclass(frozen=True)
