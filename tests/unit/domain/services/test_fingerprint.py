@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pytest
+
 from finsight.core.types import CompanyId
 from finsight.domain.services.fingerprint import FingerprintService
+from finsight.domain.services.kpi_computation_service import KpiComputationService
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -35,10 +38,12 @@ class _StubRepository:
 
     def __init__(self, rows: Sequence[Mapping[str, Any]]) -> None:
         self._rows = [dict(row) for row in rows]
+        self.calls: list[tuple[CompanyId, list[Any]]] = []
 
     async def get_fingerprint_data(
         self, company_id: CompanyId, chart_specs: Sequence[Any], **kwargs: Any
     ) -> dict[str, list[dict[str, Any]]]:
+        self.calls.append((company_id, list(chart_specs)))
         return {str(chart_specs[0]['chart_id']): [dict(row) for row in self._rows]}
 
 
@@ -62,3 +67,105 @@ async def test_fingerprint_changes_when_the_exact_value_changes() -> None:
     )
 
     assert changed != original
+
+
+@pytest.mark.parametrize(
+    ('field', 'new_value'),
+    [
+        ('kpi_code', 'gross_margin'),
+        ('period', '2026-Q4'),
+        ('chart_period', '2026-08'),
+        ('document_version_id', 'version-2'),
+        ('computation_rule_version', 'rule-v2'),
+        ('computation_status', 'estimated'),
+        ('source_citations', ['cit:v1:doc-1:p2']),
+        ('conflict_marker', 'revenue|2026-Q3'),
+        ('superseded_by_document_version_id', 'version-0'),
+    ],
+)
+async def test_fingerprint_changes_when_an_included_field_changes(
+    field: str, new_value: Any
+) -> None:
+    original = await FingerprintService(_StubRepository([_row()])).compute_fingerprint(
+        COMPANY, SPEC
+    )
+    changed = await FingerprintService(
+        _StubRepository([_row(**{field: new_value})])
+    ).compute_fingerprint(COMPANY, SPEC)
+
+    assert changed != original
+
+
+async def test_fingerprint_excludes_timestamps_and_injected_display_labels() -> None:
+    with_timestamps = _row(created_at='2026-01-01T00:00:00Z', updated_at='2026-01-01T00:00:00Z')
+    recomputed = _row(
+        created_at='2026-11-23T12:00:00Z',
+        updated_at='2026-11-23T12:00:00Z',
+        display_label='Updating',
+        estimation_method='quarterly_spread_equal',
+    )
+
+    first = await FingerprintService(_StubRepository([with_timestamps])).compute_fingerprint(
+        COMPANY, SPEC
+    )
+    second = await FingerprintService(_StubRepository([recomputed])).compute_fingerprint(
+        COMPANY, SPEC
+    )
+
+    assert first == second
+
+
+async def test_fingerprint_is_independent_of_row_and_citation_order() -> None:
+    revenue = _row(kpi_code='revenue', source_citations=['cit-a', 'cit-b'])
+    margin = _row(kpi_code='gross_margin', source_citations=['cit-c'])
+
+    first = await FingerprintService(_StubRepository([revenue, margin])).compute_fingerprint(
+        COMPANY, SPEC
+    )
+    reordered = _row(kpi_code='revenue', source_citations=['cit-b', 'cit-a'])
+    second = await FingerprintService(_StubRepository([margin, reordered])).compute_fingerprint(
+        COMPANY, SPEC
+    )
+
+    assert first == second
+
+
+async def test_empty_chart_has_a_deterministic_fingerprint() -> None:
+    first = await FingerprintService(_StubRepository([])).compute_fingerprint(COMPANY, SPEC)
+    second = await FingerprintService(_StubRepository([])).compute_fingerprint(COMPANY, SPEC)
+
+    assert first == second
+    assert len(first) == 64
+
+
+async def test_compute_fingerprint_reads_only_the_requested_chart_for_the_company() -> None:
+    repository = _StubRepository([_row()])
+
+    await FingerprintService(repository).compute_fingerprint(COMPANY, SPEC)
+
+    assert repository.calls == [(COMPANY, [SPEC])]
+
+
+async def test_updating_badge_precedence_does_not_change_the_fingerprint() -> None:
+    computation = KpiComputationService('rule-v1')
+    estimated = _row(computation_status='estimated')
+    statuses = {'version-1': 'draft'}
+    labels = [
+        computation.apply_display_labels([estimated], document_statuses=statuses, updating=True)[0][
+            'display_label'
+        ],
+        computation.apply_display_labels([estimated], document_statuses=statuses)[0][
+            'display_label'
+        ],
+        computation.apply_display_labels([_row()], document_statuses=statuses)[0]['display_label'],
+        computation.apply_display_labels([_row()])[0]['display_label'],
+    ]
+
+    assert labels == ['Updating', 'Estimated', 'Draft', None]
+
+    plain = await FingerprintService(_StubRepository([_row()])).compute_fingerprint(COMPANY, SPEC)
+    labelled = await FingerprintService(
+        _StubRepository([_row(display_label='Updating')])
+    ).compute_fingerprint(COMPANY, SPEC)
+
+    assert labelled == plain
