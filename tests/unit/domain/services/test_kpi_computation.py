@@ -636,3 +636,88 @@ def test_margin_never_pairs_inputs_from_different_periods(
     assert len(rows) == 2
     assert all(row['value'] is None for row in rows)
     assert {row['reason'] for row in rows} == {'missing_revenue', f'missing_{input_name}'}
+
+
+def test_gross_margin_sums_input_metrics_before_dividing() -> None:
+    metrics = [
+        _metric('revenue', Decimal('100'), metric_id='rev-a'),
+        _metric('Revenue', Decimal('100'), metric_id='rev-b', page=2),
+        _metric('COGS', Decimal('60'), metric_id='cogs-a'),
+        _metric('cogs', Decimal('40'), metric_id='cogs-b', page=2),
+    ]
+
+    rows = KpiComputationService(RULE_VERSION).compute_gross_margin(metrics)
+
+    assert len(rows) == 1
+    assert rows[0]['value'] == '50.00'
+    assert rows[0]['computation_status'] == 'computed'
+    assert rows[0]['reason'] is None
+    assert rows[0]['source_metric_ids'] == ['rev-a', 'rev-b', 'cogs-a', 'cogs-b']
+    assert rows[0]['source_citations'] == [_citation_id(page=1), _citation_id(page=2)]
+
+
+def test_margin_needs_review_when_an_input_lacks_a_citation() -> None:
+    uncited_cogs = Metric(
+        metric_id='cogs-uncited',
+        company_id=COMPANY,
+        name='cogs',
+        value=Decimal('100'),
+        unit='USD',
+        currency='USD',
+        period='2026-Q3',
+        document_id='doc-1',
+        document_version_id='version-1',
+        source_location={},
+    )
+
+    rows = KpiComputationService(RULE_VERSION).compute_gross_margin(
+        [_metric('revenue', Decimal('200'), metric_id='rev-1'), uncited_cogs]
+    )
+
+    assert len(rows) == 1
+    assert rows[0]['value'] == '50.00'
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['reason'] == 'missing_citations'
+    assert rows[0]['source_citations'] == [_citation_id()]
+
+
+def test_margin_needs_review_when_revenue_is_zero() -> None:
+    rows = KpiComputationService(RULE_VERSION).compute_net_margin(
+        [
+            _metric('revenue', Decimal('0'), metric_id='rev-zero'),
+            _metric('net_income', Decimal('50'), metric_id='income-1'),
+        ]
+    )
+
+    assert len(rows) == 1
+    assert rows[0]['value'] is None
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['reason'] == 'zero_revenue'
+
+
+def test_margin_keeps_periods_and_document_versions_separate() -> None:
+    metrics = [
+        _metric('revenue', Decimal('200'), metric_id='rev-q3-v1'),
+        _metric('cogs', Decimal('50'), metric_id='cogs-q3-v1'),
+        _metric('revenue', Decimal('400'), metric_id='rev-q3-v2', version='version-2'),
+        _metric('cogs', Decimal('100'), metric_id='cogs-q3-v2', version='version-2'),
+        _metric('revenue', Decimal('100'), metric_id='rev-q4', period='2026-Q4'),
+    ]
+
+    rows = KpiComputationService(RULE_VERSION).compute_gross_margin(metrics)
+
+    assert [(row['period'], row['document_version_id'], row['value']) for row in rows] == [
+        ('2026-Q3', 'version-1', '75.00'),
+        ('2026-Q3', 'version-2', '75.00'),
+        ('2026-Q4', 'version-1', None),
+    ]
+    assert rows[-1]['reason'] == 'missing_cogs'
+
+
+def test_net_margin_ignores_unrelated_cogs_metrics() -> None:
+    assert (
+        KpiComputationService(RULE_VERSION).compute_net_margin(
+            [_metric('cogs', Decimal('50'), metric_id='cogs-only')]
+        )
+        == []
+    )
