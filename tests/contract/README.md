@@ -34,6 +34,7 @@ tests/contract/
 | `HybridSearch` | `finsight.adapters.vector_store.aurora_pg_vector_search.AuroraPgVectorSearch` | `tests/contract/test_hybrid_search_contract.py` |
 | `Reranker` | `finsight.adapters.rerank.cohere_reranker.CohereReranker` | `tests/contract/test_reranker_contract.py` |
 | `MetricRepository` | `finsight.adapters.repositories.postgres_metric_repository.PostgresMetricRepository` | `tests/contract/test_metric_repository_contract.py` |
+| `KpiRepository` | `finsight.adapters.repositories.kpi_repository.KpiRepository` | `tests/contract/test_kpi_repository.py` |
 | `WaitingLine` | `finsight.adapters.waiting_line.waiting_line_adapter.WaitingLineAdapter` | `tests/contract/test_waiting_line_contract.py` |
 | `MeteringPort` | `finsight.adapters.metering.dynamo_metering.DynamoMetering` | `tests/contract/test_metering_port_contract.py` |
 | `LLMGateway` | `finsight.adapters.llm.lite_llm_gateway.LiteLLMGateway` | `tests/contract/test_llm_gateway_contract.py` |

@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from finsight.adapters.repositories.kpi_repository import KpiRepository
 
+from finsight.adapters.repositories.kpi_repository import KpiRepository
 from finsight.core.types import CompanyId
 
 if TYPE_CHECKING:
@@ -67,6 +67,41 @@ def repository() -> KpiRepositoryPort:
     return KpiRepository()
 
 
+_FINGERPRINT_FIELDS = {
+    'kpi_code',
+    'period',
+    'chart_period',
+    'document_version_id',
+    'computation_rule_version',
+    'value',
+    'computation_status',
+    'source_citations',
+    'conflict_marker',
+    'superseded_by_document_version_id',
+}
+
+
+async def _seed(repository: KpiRepositoryPort) -> None:
+    await repository.upsert_batch(
+        [
+            _row(kpi_code='revenue', period='2025-Q1', period_start='2025-01-01'),
+            _row(kpi_code='revenue', period='2025-Q2', period_start='2025-04-01', value='120.00'),
+            _row(
+                kpi_code='gross_margin', period='2025-Q1', period_start='2025-01-01', value='40.00'
+            ),
+            _row(
+                kpi_code='revenue',
+                period='2025-Q1',
+                period_start='2025-01-01',
+                document_version_id='10000000-0000-4000-8000-000000000099',
+                value='95.00',
+                computation_rule_version='rule-v2',
+            ),
+            _row(company=OTHER_COMPANY, value='900.00'),
+        ]
+    )
+
+
 class TestKpiRepositoryContract:
     async def test_upsert_batch_is_idempotent_on_storage_key(
         self, repository: KpiRepositoryPort
@@ -79,3 +114,93 @@ class TestKpiRepositoryContract:
         current = await repository.get_current(COMPANY)
         assert len(current) == 1
         assert current[0]['value'] == '125.00'
+
+    async def test_upsert_rejects_another_tenant(self, repository: KpiRepositoryPort) -> None:
+        with pytest.raises(ValueError):
+            await repository.upsert_batch([_row(company=OTHER_COMPANY)], company_id=COMPANY)
+
+    async def test_get_current_is_company_isolated(self, repository: KpiRepositoryPort) -> None:
+        await _seed(repository)
+
+        current = await repository.get_current(COMPANY)
+
+        assert current
+        assert all(row['company_id'] == str(COMPANY) for row in current)
+        assert all(row['value'] != '900.00' for row in current)
+
+    async def test_get_current_combines_filters(self, repository: KpiRepositoryPort) -> None:
+        await _seed(repository)
+
+        by_code_and_period = await repository.get_current(
+            COMPANY, {'kpi_codes': ['revenue'], 'period_from': '2025-04-01'}
+        )
+        by_code_and_status = await repository.get_current(
+            COMPANY, {'kpi_code': 'gross_margin', 'computation_status': 'computed'}
+        )
+        limited = await repository.get_current(COMPANY, {'limit': 1})
+
+        assert [row['value'] for row in by_code_and_period] == ['120.00']
+        assert [row['value'] for row in by_code_and_status] == ['40.00']
+        assert len(limited) == 1
+
+    async def test_get_current_keeps_both_rows_of_a_real_conflict(
+        self, repository: KpiRepositoryPort
+    ) -> None:
+        await _seed(repository)
+
+        conflicted = await repository.get_current(
+            COMPANY,
+            {'kpi_codes': ['revenue'], 'period_from': '2025-01-01', 'period_to': '2025-01-31'},
+        )
+
+        assert len(conflicted) == 2
+        assert {row['value'] for row in conflicted} == {'100.00', '95.00'}
+        assert all(row['conflict_marker'] == 'revenue|2025-Q1' for row in conflicted)
+
+    async def test_get_by_company_codes_periods_filters(
+        self, repository: KpiRepositoryPort
+    ) -> None:
+        await _seed(repository)
+
+        margin = await repository.get_by_company_codes_periods(
+            COMPANY, ['gross_margin'], '2025-01-01', '2025-03-31'
+        )
+        later_revenue = await repository.get_by_company_codes_periods(
+            COMPANY, ['revenue'], '2025-04-01'
+        )
+        other_tenant = await repository.get_by_company_codes_periods(OTHER_COMPANY, ['revenue'])
+
+        assert [row['value'] for row in margin] == ['40.00']
+        assert [row['value'] for row in later_revenue] == ['120.00']
+        assert [row['value'] for row in other_tenant] == ['900.00']
+
+    async def test_get_fingerprint_data_groups_by_chart_and_projects_stable_fields(
+        self, repository: KpiRepositoryPort
+    ) -> None:
+        await _seed(repository)
+        specs = [
+            {'chart_id': 'revenue-trend', 'kpi_codes': ['revenue']},
+            {'chart_id': 'margin-trend', 'kpi_codes': ['gross_margin']},
+        ]
+
+        data = await repository.get_fingerprint_data(COMPANY, specs)
+
+        assert set(data) == {'revenue-trend', 'margin-trend'}
+        assert len(data['revenue-trend']) == 3
+        assert len(data['margin-trend']) == 1
+        assert all(set(row) == _FINGERPRINT_FIELDS for rows in data.values() for row in rows)
+
+    async def test_get_fingerprint_data_changes_with_provenance(
+        self, repository: KpiRepositoryPort
+    ) -> None:
+        await _seed(repository)
+        specs = [{'chart_id': 'margin-trend', 'kpi_codes': ['gross_margin']}]
+        before = await repository.get_fingerprint_data(COMPANY, specs)
+
+        await repository.upsert_batch(
+            [_row(kpi_code='gross_margin', period='2025-Q1', value='42.00')]
+        )
+        after = await repository.get_fingerprint_data(COMPANY, specs)
+
+        assert before['margin-trend'][0]['value'] == '40.00'
+        assert after['margin-trend'][0]['value'] == '42.00'

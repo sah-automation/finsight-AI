@@ -14,6 +14,7 @@ from .embedding_provider import EmbeddingGateway, EmbeddingProvider, Embeddings
 from .hybrid_search import HybridSearch, HybridSearchPort, VectorSearch
 from .job_progress_port import JobProgressPort
 from .job_repository import JobRepository
+from .kpi_repository import KpiRepository, KpiRepositoryPort
 from .llm_gateway import LLM, LLMGateway
 from .metering_port import MeteringPort
 from .metric_repository import MetricRepository, MetricsRepository
@@ -57,6 +58,8 @@ __all__ = [
     'HybridSearchPort',
     'JobProgressPort',
     'JobRepository',
+    'KpiRepository',
+    'KpiRepositoryPort',
     'LLMGateway',
     'MeteringPort',
     'MetricRepository',
