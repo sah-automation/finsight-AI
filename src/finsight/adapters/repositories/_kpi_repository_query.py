@@ -24,19 +24,25 @@ _RANGE_COLUMNS = (
 )
 
 
+def _add_in_clause(clauses: list[str], params: dict[str, Any], column: str, values: Any) -> None:
+    if values is None or isinstance(values, str):
+        return
+    items = list(dict.fromkeys(str(item) for item in values))
+    if not items:
+        return
+    placeholders = ', '.join(f':{column}_{index}' for index in range(len(items)))
+    clauses.append(f'{column} IN ({placeholders})')
+    for index, item in enumerate(items):
+        params[f'{column}_{index}'] = item
+
+
 def _add_equalities(clauses: list[str], params: dict[str, Any], values: dict[str, Any]) -> None:
     for key, column in _EQUALITY_COLUMNS:
         if values.get(key) is not None:
             clauses.append(f'{column} = :{key}')
             params[key] = values[key]
-    codes = values.get('kpi_codes')
-    if codes is not None and not isinstance(codes, str):
-        codes = list(dict.fromkeys(str(code) for code in codes))
-        if codes:
-            placeholders = ', '.join(f':kpi_code_{index}' for index in range(len(codes)))
-            clauses.append(f'kpi_code IN ({placeholders})')
-            for index, code in enumerate(codes):
-                params[f'kpi_code_{index}'] = code
+    _add_in_clause(clauses, params, 'kpi_code', values.get('kpi_codes'))
+    _add_in_clause(clauses, params, 'chart_period', values.get('chart_periods'))
 
 
 def _add_ranges(clauses: list[str], params: dict[str, Any], values: dict[str, Any]) -> None:

@@ -35,14 +35,20 @@ def _row() -> dict[str, Any]:
     }
 
 
+class _EmptyResult:
+    def fetchall(self) -> list[Any]:
+        return []
+
+
 class _RecordingSession:
     def __init__(self) -> None:
         self.statements: list[str] = []
         self.commits = 0
 
-    def execute(self, statement: Any, params: dict[str, Any] | None = None) -> None:
+    def execute(self, statement: Any, params: dict[str, Any] | None = None) -> _EmptyResult:
         del params
         self.statements.append(str(statement))
+        return _EmptyResult()
 
     def commit(self) -> None:
         self.commits += 1
@@ -53,16 +59,19 @@ def test_select_sql_binds_codes_individually_and_orders_stably() -> None:
         {
             'company_id': str(COMPANY),
             'kpi_codes': ['revenue', 'gross_margin'],
+            'chart_periods': ['2025-Q1'],
             'period_from': '2025-01-01',
         }
     )
 
     assert 'kpi_code IN (:kpi_code_0, :kpi_code_1)' in sql
+    assert 'chart_period IN (:chart_period_0)' in sql
     assert 'ORDER BY period_start DESC, kpi_code, chart_period, document_version_id' in sql
     assert params == {
         'company_id': str(COMPANY),
         'kpi_code_0': 'revenue',
         'kpi_code_1': 'gross_margin',
+        'chart_period_0': '2025-Q1',
         'period_from': '2025-01-01',
     }
 
@@ -77,3 +86,19 @@ def test_upsert_batch_upserts_without_committing() -> None:
     assert session.commits == 0
     assert any('ON CONFLICT' in statement for statement in session.statements)
     assert all('DELETE' not in statement for statement in session.statements)
+    assert any(
+        'set_config' in statement and 'NULL' in statement for statement in session.statements
+    )
+
+
+def test_get_current_does_not_commit_and_resets_tenant_context() -> None:
+    session = _RecordingSession()
+    repository = KpiRepository(session=session)
+
+    rows = asyncio.run(repository.get_current(COMPANY, {'kpi_codes': ['revenue']}))
+
+    assert rows == []
+    assert session.commits == 0
+    assert any(
+        'set_config' in statement and 'NULL' in statement for statement in session.statements
+    )

@@ -147,5 +147,13 @@ def apply_filters(rows: list[dict[str, Any]], filters: dict[str, Any]) -> list[d
         'computation_status': filters.get('computation_status'),
     }
     filtered = [row for row in rows if _matches(row, criteria)]
+
+    # Stable multi-pass sort mirrors the SQL view's ORDER BY exactly.
+    def sort_key(row: dict[str, Any], field: str) -> str:
+        return str(row.get(field, ''))
+
+    for field in ('document_version_id', 'chart_period', 'kpi_code'):
+        filtered.sort(key=lambda row: sort_key(row, field))
+    filtered.sort(key=lambda row: sort_key(row, 'period_start'), reverse=True)
     limit = filters.get('limit')
     return filtered[: int(limit)] if limit is not None else filtered

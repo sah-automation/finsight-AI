@@ -136,16 +136,24 @@ class KpiRepository(KpiRepositoryPort, BaseRepository):
         await self._write_prepared(prepared)
         return len(prepared)
 
+    async def _set_tenant(self, tenant: str) -> None:
+        await self._raw_execute(
+            "SELECT set_config('app.company_id', :company_id, true)",
+            {'company_id': tenant},
+        )
+
+    async def _clear_tenant(self) -> None:
+        await self._raw_execute("SELECT set_config('app.company_id', CAST(NULL AS text), true)")
+        self._rls_company_id = None
+
     async def _write_prepared(self, prepared: list[KpiRow]) -> None:
         # _raw_execute never commits: the caller owns the transaction so KPI
         # rows land with the source version, metrics and change events.
         for row in prepared:
             tenant = str(row['company_id'])
-            await self._raw_execute(
-                "SELECT set_config('app.company_id', :company_id, true)",
-                {'company_id': tenant},
-            )
+            await self._set_tenant(tenant)
             await self._raw_execute(_INSERT_SQL, _row_params(row, tenant))
+        await self._clear_tenant()
 
     async def get_current(
         self,
@@ -162,9 +170,11 @@ class KpiRepository(KpiRepositoryPort, BaseRepository):
             return _memory.apply_filters(_memory.current_rows(self._memory, tenant), values)
 
         sql, params = _query.build_select_sql({**values, 'company_id': tenant})
-        await self._set_rls_context(company_id)
-        result = await self._execute(sql, params, company_id=company_id)
-        return [_as_mapping(row) for row in await self._fetchall(result)]
+        await self._set_tenant(tenant)
+        result = await self._raw_execute(sql, params)
+        rows = [_as_mapping(row) for row in await self._fetchall(result)]
+        await self._clear_tenant()
+        return rows
 
     async def get_by_company_codes_periods(
         self,
