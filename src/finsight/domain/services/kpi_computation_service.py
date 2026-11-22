@@ -7,111 +7,21 @@ name; the LLM never supplies a KPI value.
 
 from __future__ import annotations
 
-import re
-from collections.abc import Mapping
-from datetime import date
-from decimal import Decimal, InvalidOperation, localcontext
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
+from ._kpi_metric_fields import amount as _amount
+from ._kpi_metric_fields import exact_sum as _exact_sum
+from ._kpi_metric_fields import matches_code as _matches_code
+from ._kpi_metric_fields import period_fields as _period_fields
+from ._kpi_metric_fields import required as _required
 from .citation_factory import CitationFactory
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from datetime import date
 
     from finsight.domain.entities.metric import Metric
     from finsight.domain.ports.kpi_repository import KpiRow
-
-_QUARTER_START_MONTHS = (1, 4, 7, 10)
-
-
-def _attr(value: Any, *names: str) -> Any:
-    """Read the first present field from a mapping or an object."""
-    if isinstance(value, Mapping):
-        for name in names:
-            if name in value:
-                return value[name]
-        return None
-    for name in names:
-        found = getattr(value, name, None)
-        if found is not None:
-            return found
-    return None
-
-
-def _code_name(value: Any) -> str:
-    text = '' if value is None else str(value).strip().lower()
-    return re.sub(r'[^a-z0-9]+', '_', text).strip('_')
-
-
-def _matches_code(metric: Metric, kpi_code: str) -> bool:
-    explicit = _attr(metric, 'kpi_code')
-    if explicit is not None:
-        return _code_name(explicit) == kpi_code
-    for field in ('name', 'metric_name', 'metric', 'label'):
-        name = _attr(metric, field)
-        if name is not None:
-            return _code_name(name) == kpi_code
-    return False
-
-
-def _period_start(period: Any) -> date:
-    start = getattr(period, 'start_date', None)
-    if isinstance(start, date):
-        return start
-    label = '' if period is None else str(period).strip()
-    try:
-        return date.fromisoformat(label)
-    except ValueError:
-        pass
-    match = re.fullmatch(r'(\d{4})-(Q[1-4])', label, re.IGNORECASE)
-    if match:
-        quarter = int(match.group(2)[1])
-        return date(int(match.group(1)), _QUARTER_START_MONTHS[quarter - 1], 1)
-    match = re.fullmatch(r'(\d{4})-(\d{2})', label)
-    if match:
-        return date(int(match.group(1)), int(match.group(2)), 1)
-    raise ValueError(f'Unsupported KPI period label: {label!r}')
-
-
-def _period_fields(metric: Metric) -> tuple[str, date]:
-    period = _attr(metric, 'period', 'fiscal_period', 'reporting_period')
-    start = _period_start(period)
-    label = period if isinstance(period, str) else getattr(period, 'label', None)
-    text = start.isoformat() if label is None else str(label).strip()
-    return text, start
-
-
-def _required(metric: Metric, field: str, *names: str) -> str:
-    value = _attr(metric, *names)
-    text = '' if value is None else str(value).strip()
-    if not text:
-        raise ValueError(f'KPI Metrics require {field}')
-    return text
-
-
-def _amount(metric: Metric) -> Decimal:
-    value = _attr(metric, 'value', 'amount', 'figure')
-    if isinstance(value, (bool, float)):
-        raise TypeError('KPI Metric values must be Decimal, int or str, never float')
-    try:
-        amount = Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError):
-        raise ValueError(f'Invalid KPI Metric value: {value!r}') from None
-    if not amount.is_finite():
-        raise ValueError(f'KPI Metric value must be finite: {value!r}')
-    return amount
-
-
-def _exact_sum(values: list[Decimal]) -> Decimal:
-    """Add exact decimals without letting the ambient context round them."""
-    if not values:
-        return Decimal('0')
-    highest = max(value.adjusted() for value in values)
-    lowest = min(cast('int', value.as_tuple().exponent) for value in values)
-    required_precision = max(highest - lowest + 1, 1)
-    with localcontext() as context:
-        context.prec = max(context.prec, required_precision)
-        return sum(values, Decimal('0'))
 
 
 class KpiComputationService:
