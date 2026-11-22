@@ -308,7 +308,20 @@ def test_stale_save_is_rejected_and_current_layout_is_readable(layout_db: Simple
         allowed_charts,
     )
 
-    for stale_version in (0, 1):
+    updated = _save_layout(
+        conn,
+        layout_db.company_id,
+        layout_db.user_id,
+        1,
+        _json(['cash_flow']),
+        _json([]),
+        allowed_kpis,
+        allowed_charts,
+    )
+    assert updated is not None
+    assert updated['version'] == 2
+
+    for stale_version in (0, 1, 3):
         rejected = _save_layout(
             conn,
             layout_db.company_id,
@@ -319,15 +332,15 @@ def test_stale_save_is_rejected_and_current_layout_is_readable(layout_db: Simple
             allowed_kpis,
             allowed_charts,
         )
-        assert rejected is None, f'version {stale_version} must not overwrite version 1'
+        assert rejected is None, f'version {stale_version} must not overwrite version 2'
 
     current = _get_layout(
         conn, layout_db.company_id, layout_db.user_id, allowed_kpis, allowed_charts
     )
     assert current is not None
-    assert current['version'] == 1
-    assert current['kpi_codes'] == original['kpi_codes']
-    assert current['charts'] == original['charts']
+    assert current['version'] == 2
+    assert current['kpi_codes'] == ['cash_flow']
+    assert current['charts'] == []
 
 
 # ---------------------------------------------------------------------------
