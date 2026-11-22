@@ -252,6 +252,30 @@ def test_handler_filters_rows_by_cited_category_and_access_scope(api: Any) -> No
     assert all(item['document_version_id'] == INVOICE_VERSION for item in items)
 
 
+def test_handler_drops_rows_with_any_hidden_citation(api: Any) -> None:
+    client, app, kpi_repository, _ = api
+    mixed = _row(kpi_code='revenue')
+    mixed['source_citations'] = [
+        f'cit:v1:{INVOICE_VERSION}:p1',
+        f'cit:v1:{BOARD_VERSION}:p2',
+    ]
+    kpi_repository.rows = [mixed]
+    principal = ApiPrincipal(
+        company_id=COMPANY,
+        user_id='user-1',
+        role_id='corporate_finance_planners',
+        access_scope=('invoice',),
+        role_actions=('kpi_view',),
+        category_permissions={'invoice': ('read',), 'board_report': ('read',)},
+    )
+    app.dependency_overrides[kpis.kpi_view_dependency] = lambda: principal
+
+    response = client.get('/kpis', headers=HEADERS)
+
+    assert response.status_code == 200
+    assert response.json()['items'] == []
+
+
 def test_asgi_identity_overrides_dev_headers(api: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     client, _, kpi_repository, _ = api
     monkeypatch.setattr(

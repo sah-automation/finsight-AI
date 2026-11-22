@@ -112,10 +112,19 @@ class KpiVisibilityFilter:
         primary_version_id = _text(row.get('document_version_id'))
         if primary_version_id is None or categories.get(primary_version_id) not in allowed:
             return None
+        citations = [
+            (_citation_version_id(citation), citation)
+            for citation in row.get('source_citations') or ()
+        ]
+        if any(
+            version_id is not None and categories.get(version_id) not in allowed
+            for version_id, _ in citations
+        ):
+            return None
         visible = dict(row)
         visible['source_citations'] = [
             citation
-            for citation in row.get('source_citations') or ()
-            if categories.get(str(_citation_version_id(citation))) in allowed
+            for version_id, citation in citations
+            if version_id is not None and categories.get(version_id) in allowed
         ]
         return visible
