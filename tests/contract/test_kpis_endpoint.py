@@ -12,6 +12,7 @@ from starlette.testclient import TestClient
 from finsight.core.config import reset_config
 from finsight.core.config.loader import ConfigError
 from finsight.entrypoints.api import action_permission, kpis
+from finsight.entrypoints.api import app as app_module
 from finsight.entrypoints.api.api_principal import ApiPrincipal
 from finsight.entrypoints.api.app import create_app
 
@@ -170,10 +171,11 @@ def test_query_filters_are_passed_to_repository(api: Any) -> None:
     }
 
 
-def test_documents_processing_covers_received_stored_and_processing(api: Any) -> None:
+@pytest.mark.parametrize('state', ['received', 'stored', 'processing'])
+def test_documents_processing_covers_processing_states(api: Any, state: str) -> None:
     client, _, _, document_repository = api
     document_repository.versions = [
-        _version(INVOICE_VERSION, 'invoice', state='received'),
+        _version(INVOICE_VERSION, 'invoice', state=state),
         _version(BOARD_VERSION, 'board_report', state='committed'),
     ]
 
@@ -314,6 +316,22 @@ def test_missing_repository_returns_friendly_server_error(
 
     assert response.status_code == 500
     assert response.json() == {'detail': 'KPI data is temporarily unavailable.'}
+
+
+def test_openapi_limit_bounds_follow_config() -> None:
+    app = FastAPI()
+    app.include_router(kpis.router)
+    config = SimpleNamespace(kpi=SimpleNamespace(page_size_default=7, page_size_max=9))
+    app_module._install_kpi_openapi_schema(app, config)
+
+    parameters = app.openapi()['paths']['/kpis']['get']['parameters']
+    limit_schema = next(
+        parameter['schema'] for parameter in parameters if parameter['name'] == 'limit'
+    )
+
+    assert limit_schema['minimum'] == 1
+    assert limit_schema['maximum'] == 9
+    assert limit_schema['default'] == 7
 
 
 def test_openapi_schema_publishes_kpis_contract(monkeypatch: pytest.MonkeyPatch) -> None:

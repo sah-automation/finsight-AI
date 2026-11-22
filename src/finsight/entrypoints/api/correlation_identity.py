@@ -54,34 +54,40 @@ _SCOPE_KEYS = (
     'categories',
 )
 
-_CLAIM_KEYS = {
-    'custom:company_id',
-    'company_id',
-    'companyId',
-    'sub',
-    'user_id',
-    'userId',
-    'cognito:groups',
-    'groups',
-    'role',
-    *_SCOPE_KEYS,
-}
+_IDENTITY_CLAIM_KEYS = frozenset(
+    {
+        'custom:company_id',
+        'company_id',
+        'companyId',
+        'sub',
+        'user_id',
+        'userId',
+        'cognito:groups',
+        'groups',
+        'role',
+    }
+)
+_SCOPE_CLAIM_KEYS = frozenset(_SCOPE_KEYS)
 
 
-def _find_claims(obj: Any, depth: int = 0) -> list[dict[str, Any]]:
+def _find_claims(
+    obj: Any,
+    depth: int = 0,
+    claim_keys: frozenset[str] = _IDENTITY_CLAIM_KEYS,
+) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     if depth > _MAX_CLAIMS_DEPTH or obj is None:
         return results
     if isinstance(obj, dict):
-        if _CLAIM_KEYS & set(obj.keys()):
+        if claim_keys & set(obj.keys()):
             results.append(obj)
         for value in obj.values():
-            results.extend(_find_claims(value, depth + 1))
+            results.extend(_find_claims(value, depth + 1, claim_keys))
     elif isinstance(obj, (list, tuple, set)):
         for item in obj:
-            results.extend(_find_claims(item, depth + 1))
+            results.extend(_find_claims(item, depth + 1, claim_keys))
     elif hasattr(obj, 'claims'):
-        results.extend(_find_claims(obj.claims, depth + 1))
+        results.extend(_find_claims(obj.claims, depth + 1, claim_keys))
 
     return results
 
@@ -150,8 +156,8 @@ def _extract_access_scope(request: Request) -> tuple[str, ...] | None:
 
     claims_list: list[dict[str, Any]] = []
     for candidate in candidates:
-        claims_list.extend(_find_claims(candidate))
-    claims_list.extend(_find_claims(scope))
+        claims_list.extend(_find_claims(candidate, claim_keys=_SCOPE_CLAIM_KEYS))
+    claims_list.extend(_find_claims(scope, claim_keys=_SCOPE_CLAIM_KEYS))
     for claims in claims_list:
         declared = _first_scope_value(claims)
         if declared is not None:
