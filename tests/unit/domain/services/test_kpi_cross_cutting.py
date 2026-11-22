@@ -37,7 +37,7 @@ def test_quarterly_spread_rounds_equal_shares_consistently() -> None:
 
     rows = KpiComputationService(RULE_VERSION).spread_quarterly([row])
 
-    assert [monthly['value'] for monthly in rows] == ['33.33'] * 3
+    assert [monthly['value'] for monthly in rows] == ['33.33', '33.33', '33.34']
 
 
 def test_quarterly_spread_leaves_non_quarterly_rows_untouched() -> None:
@@ -76,6 +76,25 @@ def test_cross_document_conflict_keeps_both_computed_rows_with_markers() -> None
         ['cit:v1:version-1:p1'],
         ['cit:v1:version-2:p1'],
     ]
+
+
+def test_conflict_requires_different_figures_not_just_different_versions() -> None:
+    older = _computed_row(version='version-1', value='100')
+    newer = _computed_row(version='version-2', value='100.00')
+
+    rows = KpiComputationService(RULE_VERSION).mark_conflicts([older, newer])
+
+    assert [row.get('conflict_marker') for row in rows] == [None, None]
+
+
+def test_conflict_uses_declared_period_across_estimated_chart_months() -> None:
+    service = KpiComputationService(RULE_VERSION)
+    older = service.spread_quarterly([_computed_row(version='version-1', value='100.00')])[0]
+    newer = service.spread_quarterly([_computed_row(version='version-2', value='120.00')])[1]
+
+    rows = service.mark_conflicts([older, newer])
+
+    assert [row['conflict_marker'] for row in rows] == ['revenue|2026-Q3'] * 2
 
 
 def test_same_document_rows_are_not_marked_as_conflicts() -> None:
