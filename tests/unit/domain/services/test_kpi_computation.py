@@ -502,18 +502,22 @@ def test_kpi_computation_marks_needs_review_when_any_metric_lacks_citation() -> 
 
 
 @pytest.mark.parametrize(
-    ('method_name', 'kpi_code', 'input_name'),
+    ('method_name', 'kpi_code', 'input_name', 'input_value', 'expected_value'),
     [
-        ('compute_gross_margin', 'gross_margin', 'cogs'),
-        ('compute_net_margin', 'net_margin', 'net_income'),
+        ('compute_gross_margin', 'gross_margin', 'cogs', Decimal('150.00'), '25.00'),
+        ('compute_net_margin', 'net_margin', 'net_income', Decimal('150.00'), '75.00'),
     ],
 )
 def test_margin_computes_percentage_from_revenue_and_input_metric(
-    method_name: str, kpi_code: str, input_name: str
+    method_name: str,
+    kpi_code: str,
+    input_name: str,
+    input_value: Decimal,
+    expected_value: str,
 ) -> None:
     metrics = [
         _metric('revenue', Decimal('200.00'), metric_id='rev-1'),
-        _metric(input_name, Decimal('150.00'), metric_id='input-1'),
+        _metric(input_name, input_value, metric_id='input-1'),
     ]
 
     rows = getattr(KpiComputationService(RULE_VERSION), method_name)(metrics)
@@ -528,7 +532,7 @@ def test_margin_computes_percentage_from_revenue_and_input_metric(
             'chart_period_start': '2026-07-01',
             'currency': 'USD',
             'units': 'USD',
-            'value': '25.00',
+            'value': expected_value,
             'source_citations': [_citation_id()],
             'source_metric_ids': ['rev-1', 'input-1'],
             'computation_status': 'computed',
