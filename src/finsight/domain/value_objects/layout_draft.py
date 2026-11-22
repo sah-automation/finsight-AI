@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .layout_chart import LayoutChart
@@ -16,11 +16,3 @@ class LayoutDraft:
     contract_version: int
     kpi_codes: tuple[str, ...]
     charts: tuple[LayoutChart, ...]
-
-    def to_mapping(self) -> dict[str, Any]:
-        """Return the storage/wire shape of this proposed layout."""
-        return {
-            'contract_version': self.contract_version,
-            'kpi_codes': list(self.kpi_codes),
-            'charts': [chart.to_mapping() for chart in self.charts],
-        }

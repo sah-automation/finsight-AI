@@ -12,6 +12,7 @@ from finsight.domain.value_objects.layout_chart import LayoutChart
 from finsight.domain.value_objects.layout_record import LayoutRecord
 from finsight.domain.value_objects.visible_ids import VisibleIds
 
+from ._dashboard_layout_repository_fields import CONTRACT_VERSION
 from ._dashboard_layout_repository_visibility import visible_json_fields
 
 
@@ -68,7 +69,7 @@ def default_record(config: Any, visible_ids: VisibleIds) -> LayoutRecord:
     """Build the visible config default at version 0 without touching storage."""
     fields = visible_json_fields(default_fields(config), visible_ids)
     return LayoutRecord(
-        1,
+        CONTRACT_VERSION,
         tuple(fields['kpi_codes']),
         tuple(LayoutChart(**chart) for chart in fields['charts']),
         0,

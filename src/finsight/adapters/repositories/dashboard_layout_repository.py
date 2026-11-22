@@ -13,9 +13,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from finsight.domain.ports.dashboard_layout_repository import (
-    DashboardLayoutRepository as DashboardLayoutRepositoryPort,
-)
-from finsight.domain.ports.dashboard_layout_repository import (
+    DashboardLayoutRepositoryPort,
     LayoutConflictError,
     LayoutDraft,
     LayoutRecord,

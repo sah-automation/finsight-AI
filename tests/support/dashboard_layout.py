@@ -2,7 +2,9 @@
 
 The fake session answers the same SQL shapes as migration 0009's
 ``dashboard_layout_get``/``dashboard_layout_save`` functions, so the shared
-contract runs through the production adapter without a database.
+contract runs through the production adapter without a database. Its field
+filtering deliberately mirrors migration 0009's SQL; keep the two aligned when
+the layout schema changes.
 """
 
 from __future__ import annotations

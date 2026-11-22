@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -20,13 +20,3 @@ class LayoutRecord:
     charts: tuple[LayoutChart, ...]
     version: int
     updated_at: datetime | None = None
-
-    def to_mapping(self) -> dict[str, Any]:
-        """Return the wire/storage shape of this layout."""
-        return {
-            'contract_version': self.contract_version,
-            'kpi_codes': list(self.kpi_codes),
-            'charts': [chart.to_mapping() for chart in self.charts],
-            'version': self.version,
-            'updated_at': self.updated_at,
-        }

@@ -1115,6 +1115,9 @@ class TestFileClassNaming:
         # Files where class name doesn't match filename (legacy/existing)
         allowed_name_mismatch = {
             'loader.py': 'ConfigLoader',
+            # Issue #371 fixes this port's module path while naming the class
+            # DashboardLayoutRepositoryPort.
+            'dashboard_layout_repository.py': 'DashboardLayoutRepositoryPort',
         }
 
         for filepath in SRC_ROOT.rglob('*.py'):

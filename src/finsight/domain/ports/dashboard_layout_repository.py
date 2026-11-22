@@ -1,12 +1,16 @@
 """Port for reading and writing a user's saved dashboard layout.
 
-A layout holds only identifiers and positions (ADR-0011). A miss returns the
-config-defined default at version 0 and writes nothing. Saves are optimistic:
-the caller sends the loaded version, and a mismatch raises LayoutConflictError
-carrying the current layout so the handler can return HTTP 409.
+The public class keeps the ticket-facing ``DashboardLayoutRepositoryPort`` name;
+the module path is fixed by issue #371. A layout holds only identifiers and
+positions (ADR-0011). A miss returns the config-defined default at version 0 and
+writes nothing. Saves are optimistic: the caller sends the loaded version, and a
+mismatch raises LayoutConflictError carrying the current layout so the handler
+can return HTTP 409.
 
-``visible_ids`` is mandatory. It is the caller's role-filtered id set; the
-repository intersects it with the config catalogue and never widens it.
+``visible_ids`` is a required keyword extension to issue #371's shorthand
+method signatures. Phase 2 spec §3.4 requires reads and saves to drop ids the
+role may not see and skip ids unknown to config; migration 0009 expects the
+caller to supply that role/config intersection. The repository never widens it.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ if TYPE_CHECKING:
     from finsight.core.types import CompanyId, UserId
 
 
-class DashboardLayoutRepository(ABC):
+class DashboardLayoutRepositoryPort(ABC):
     """Tenant- and user-scoped saved-layout store."""
 
     @abstractmethod
@@ -57,8 +61,8 @@ class DashboardLayoutRepository(ABC):
         raise NotImplementedError
 
 
-# Ticket-facing alias; the concrete class name follows the repo's file/class rule.
-DashboardLayoutRepositoryPort = DashboardLayoutRepository
+# Backwards-compatible alias for callers that used the pre-review class name.
+DashboardLayoutRepository = DashboardLayoutRepositoryPort
 
 __all__ = [
     'DashboardLayoutRepository',

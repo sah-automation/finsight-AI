@@ -27,9 +27,7 @@ from tests.support.dashboard_layout import (
 )
 
 if TYPE_CHECKING:
-    from finsight.domain.ports.dashboard_layout_repository import (
-        DashboardLayoutRepository as DashboardLayoutRepositoryPort,
-    )
+    from finsight.domain.ports.dashboard_layout_repository import DashboardLayoutRepositoryPort
 
 pytestmark = pytest.mark.contract
 
