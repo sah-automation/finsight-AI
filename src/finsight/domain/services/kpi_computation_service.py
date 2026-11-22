@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ._kpi_budget import compute_budget_vs_actual as _compute_budget_vs_actual
 from ._kpi_derived import compute_burn_rate as _compute_burn_rate
 from ._kpi_derived import compute_runway as _compute_runway
 from ._kpi_margin import compute_margin as _compute_margin
@@ -91,6 +92,14 @@ class KpiComputationService:
             kpi_code='dpo',
             numerator_code='accounts_payable',
             denominator_code='cogs',
+            metrics=metrics,
+            rule_version=self._computation_rule_version,
+            citations=self._citation_factory,
+        )
+
+    def compute_budget_vs_actual(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Compare budget and actual Metrics under strict dimension matching."""
+        return _compute_budget_vs_actual(
             metrics=metrics,
             rule_version=self._computation_rule_version,
             citations=self._citation_factory,
