@@ -95,8 +95,17 @@ def _config_default() -> dict[str, Any]:
     }
 
 
-def _json(values: object) -> str:
-    return json.dumps(values)
+def _visible_ids(kpis: list[str] | None = None, charts: list[str] | None = None) -> str:
+    """Role-permitted ids the caller also knows from config; unknown ids never enter this set."""
+    default = _config_default()
+    return json.dumps(
+        {
+            'kpi_codes': default['kpi_codes'] if kpis is None else kpis,
+            'chart_ids': [chart['chart_id'] for chart in default['charts']]
+            if charts is None
+            else charts,
+        }
+    )
 
 
 def _layout_dict(row: object | None) -> dict[str, Any] | None:
@@ -111,76 +120,70 @@ def _layout_dict(row: object | None) -> dict[str, Any] | None:
     }
 
 
-def _get_layout(
-    conn: object,
-    company_id: str,
-    user_id: str,
-    allowed_kpis: str,
-    allowed_charts: str,
+def _get(
+    db: SimpleNamespace,
+    visible: str | None = None,
 ) -> dict[str, Any] | None:
-    row = conn.execute(
-        text(
-            'SELECT * FROM dashboard_layout_get('
-            ':company_id, :user_id, CAST(:allowed_kpis AS jsonb), CAST(:allowed_charts AS jsonb))'
-        ),
+    row = db.conn.execute(
+        text('SELECT * FROM dashboard_layout_get(:company_id, :user_id, CAST(:visible AS jsonb))'),
         {
-            'company_id': company_id,
-            'user_id': user_id,
-            'allowed_kpis': allowed_kpis,
-            'allowed_charts': allowed_charts,
+            'company_id': db.company_id,
+            'user_id': db.user_id,
+            'visible': visible or _visible_ids(),
         },
     ).fetchone()
     return _layout_dict(row)
 
 
-def _save_layout(
-    conn: object,
-    company_id: str,
-    user_id: str,
+def _save(
+    db: SimpleNamespace,
     version: int,
-    kpi_codes: str,
-    charts: str,
-    allowed_kpis: str,
-    allowed_charts: str,
+    kpis: list[str],
+    charts: list[dict[str, str]],
+    visible: str | None = None,
 ) -> dict[str, Any] | None:
-    row = conn.execute(
+    """One save attempt; no result means stale (the handler maps that to 409)."""
+    row = db.conn.execute(
         text(
             'SELECT * FROM dashboard_layout_save('
             ':company_id, :user_id, :version, '
-            'CAST(:kpi_codes AS jsonb), CAST(:charts AS jsonb), '
-            'CAST(:allowed_kpis AS jsonb), CAST(:allowed_charts AS jsonb))'
+            'CAST(:kpis AS jsonb), CAST(:charts AS jsonb), CAST(:visible AS jsonb))'
         ),
         {
-            'company_id': company_id,
-            'user_id': user_id,
+            'company_id': db.company_id,
+            'user_id': db.user_id,
             'version': version,
-            'kpi_codes': kpi_codes,
-            'charts': charts,
-            'allowed_kpis': allowed_kpis,
-            'allowed_charts': allowed_charts,
+            'kpis': json.dumps(kpis),
+            'charts': json.dumps(charts),
+            'visible': visible or _visible_ids(),
         },
     ).fetchone()
     return _layout_dict(row)
 
 
-def _allowed() -> tuple[str, str]:
-    default = _config_default()
-    return (
-        _json(default['kpi_codes']),
-        _json([chart['chart_id'] for chart in default['charts']]),
+def _seed_layout(db: SimpleNamespace, kpis: list[str], charts: list[dict[str, str]]) -> None:
+    """Store ids directly, simulating config drift or a legacy row."""
+    db.conn.execute(
+        text(
+            'INSERT INTO dashboard_layouts '
+            '(company_id, user_id, contract_version, kpi_codes, charts, version, updated_at) '
+            'VALUES (:company_id, :user_id, 1, CAST(:kpis AS jsonb), '
+            'CAST(:charts AS jsonb), 1, now())'
+        ),
+        {
+            'company_id': db.company_id,
+            'user_id': db.user_id,
+            'kpis': json.dumps(kpis),
+            'charts': json.dumps(charts),
+        },
     )
 
 
-def _stored(conn: object, company_id: str) -> list[object]:
-    return conn.execute(
+def _stored(db: SimpleNamespace) -> list[object]:
+    return db.conn.execute(
         text('SELECT * FROM dashboard_layouts WHERE company_id = :company_id'),
-        {'company_id': company_id},
+        {'company_id': db.company_id},
     ).fetchall()
-
-
-# ---------------------------------------------------------------------------
-# schema
-# ---------------------------------------------------------------------------
 
 
 def test_dashboard_layouts_schema_matches_spec(layout_db: SimpleNamespace) -> None:
@@ -228,18 +231,8 @@ def test_no_layout_store_configuration_key() -> None:
     assert 'layout_store' not in load_config().dashboard.model_dump()
 
 
-# ---------------------------------------------------------------------------
-# read: config default on miss
-# ---------------------------------------------------------------------------
-
-
 def test_get_returns_config_default_without_writing_on_miss(layout_db: SimpleNamespace) -> None:
-    conn = layout_db.conn
-    allowed_kpis, allowed_charts = _allowed()
-
-    layout = _get_layout(
-        conn, layout_db.company_id, layout_db.user_id, allowed_kpis, allowed_charts
-    )
+    layout = _get(layout_db)
 
     default = _config_default()
     assert layout is not None
@@ -248,186 +241,89 @@ def test_get_returns_config_default_without_writing_on_miss(layout_db: SimpleNam
     assert layout['charts'] == default['charts']
     assert layout['version'] == 0
     assert layout['updated_at'] is None
-    assert _stored(conn, layout_db.company_id) == [], 'opening the dashboard never writes a row'
-
-
-# ---------------------------------------------------------------------------
-# save: optimistic locking
-# ---------------------------------------------------------------------------
+    assert _stored(layout_db) == [], 'opening the dashboard never writes a row'
 
 
 def test_first_save_creates_row_then_version_must_match(layout_db: SimpleNamespace) -> None:
-    conn = layout_db.conn
-    allowed_kpis, allowed_charts = _allowed()
-    first = {'kpi_codes': ['revenue'], 'charts': [{'chart_id': 'revenue_trend', 'span': 'full'}]}
-
-    saved = _save_layout(
-        conn,
-        layout_db.company_id,
-        layout_db.user_id,
-        0,
-        _json(first['kpi_codes']),
-        _json(first['charts']),
-        allowed_kpis,
-        allowed_charts,
-    )
+    first_charts = [{'chart_id': 'revenue_trend', 'span': 'full'}]
+    saved = _save(layout_db, 0, ['revenue'], first_charts)
     assert saved is not None
     assert saved['version'] == 1
-    assert saved['kpi_codes'] == first['kpi_codes']
-    assert saved['charts'] == first['charts']
+    assert saved['kpi_codes'] == ['revenue']
+    assert saved['charts'] == first_charts
 
-    second = {'kpi_codes': ['cash_flow'], 'charts': [{'chart_id': 'margin_trend', 'span': 'half'}]}
-    saved = _save_layout(
-        conn,
-        layout_db.company_id,
-        layout_db.user_id,
-        1,
-        _json(second['kpi_codes']),
-        _json(second['charts']),
-        allowed_kpis,
-        allowed_charts,
-    )
+    saved = _save(layout_db, 1, ['cash_flow'], [{'chart_id': 'margin_trend', 'span': 'half'}])
     assert saved is not None
     assert saved['version'] == 2
-    assert saved['kpi_codes'] == second['kpi_codes']
+    assert saved['kpi_codes'] == ['cash_flow']
 
 
 def test_stale_save_is_rejected_and_current_layout_is_readable(layout_db: SimpleNamespace) -> None:
-    """A stale version yields no save result; the handler maps that to 409 + current layout."""
-    conn = layout_db.conn
-    allowed_kpis, allowed_charts = _allowed()
-    original = {'kpi_codes': ['revenue'], 'charts': [{'chart_id': 'revenue_trend', 'span': 'full'}]}
-    _save_layout(
-        conn,
-        layout_db.company_id,
-        layout_db.user_id,
-        0,
-        _json(original['kpi_codes']),
-        _json(original['charts']),
-        allowed_kpis,
-        allowed_charts,
-    )
-
-    updated = _save_layout(
-        conn,
-        layout_db.company_id,
-        layout_db.user_id,
-        1,
-        _json(['cash_flow']),
-        _json([]),
-        allowed_kpis,
-        allowed_charts,
-    )
+    """A stale save yields no result; the handler maps that to 409 + the current layout."""
+    _save(layout_db, 0, ['revenue'], [{'chart_id': 'revenue_trend', 'span': 'full'}])
+    updated = _save(layout_db, 1, ['cash_flow'], [])
     assert updated is not None
     assert updated['version'] == 2
 
     for stale_version in (0, 1, 3):
-        rejected = _save_layout(
-            conn,
-            layout_db.company_id,
-            layout_db.user_id,
-            stale_version,
-            _json(['burn_rate']),
-            _json([]),
-            allowed_kpis,
-            allowed_charts,
-        )
-        assert rejected is None, f'version {stale_version} must not overwrite version 2'
+        assert _save(layout_db, stale_version, ['burn_rate'], []) is None
 
-    current = _get_layout(
-        conn, layout_db.company_id, layout_db.user_id, allowed_kpis, allowed_charts
-    )
+    current = _get(layout_db)
     assert current is not None
     assert current['version'] == 2
     assert current['kpi_codes'] == ['cash_flow']
     assert current['charts'] == []
 
 
-# ---------------------------------------------------------------------------
-# role filtering on read and save
-# ---------------------------------------------------------------------------
-
-
 def test_read_drops_unpermitted_and_unknown_ids(layout_db: SimpleNamespace) -> None:
-    conn = layout_db.conn
-    stored_payload = {
-        'kpi_codes': ['gross_margin', 'unknown_code', 'revenue'],
-        'charts': [
-            {'chart_id': 'unknown_chart', 'span': 'full'},
-            {'chart_id': 'revenue_trend', 'span': 'half'},
-        ],
-    }
-    _save_layout(
-        conn,
-        layout_db.company_id,
-        layout_db.user_id,
-        0,
-        _json(stored_payload['kpi_codes']),
-        _json(stored_payload['charts']),
-        _json(['revenue', 'gross_margin', 'burn_rate', 'unknown_code']),
-        _json(['revenue_trend', 'margin_trend', 'unknown_chart']),
-    )
+    stored_kpis = ['gross_margin', 'unknown_code', 'revenue']
+    stored_charts = [
+        {'chart_id': 'unknown_chart', 'span': 'full'},
+        {'chart_id': 'revenue_trend', 'span': 'half'},
+    ]
+    _seed_layout(layout_db, stored_kpis, stored_charts)
 
-    visible = _get_layout(
-        conn,
-        layout_db.company_id,
-        layout_db.user_id,
-        _json(['revenue']),
-        _json(['revenue_trend']),
-    )
+    visible = _get(layout_db, _visible_ids(['revenue'], ['revenue_trend']))
     assert visible is not None
     assert visible['kpi_codes'] == ['revenue']
     assert visible['charts'] == [{'chart_id': 'revenue_trend', 'span': 'half'}]
 
-    rows = _stored(conn, layout_db.company_id)
+    rows = _stored(layout_db)
     assert len(rows) == 1, 'filtering on read is non-destructive'
-    assert list(rows[0].kpi_codes) == stored_payload['kpi_codes']
+    assert list(rows[0].kpi_codes) == stored_kpis
+    assert [chart['chart_id'] for chart in rows[0].charts] == ['unknown_chart', 'revenue_trend']
 
 
-def test_save_drops_unpermitted_and_unknown_ids_before_persisting(
-    layout_db: SimpleNamespace,
-) -> None:
-    conn = layout_db.conn
-    saved = _save_layout(
-        conn,
-        layout_db.company_id,
-        layout_db.user_id,
+def test_save_drops_unknown_ids_and_role_unpermitted_ids(layout_db: SimpleNamespace) -> None:
+    visibility = _visible_ids(['revenue', 'burn_rate'], ['revenue_trend'])
+    saved = _save(
+        layout_db,
         0,
-        _json(['unknown_code', 'revenue', 'burn_rate']),
-        _json(
-            [
-                {'chart_id': 'unknown_chart', 'span': 'full'},
-                {'chart_id': 'revenue_trend', 'span': 'full'},
-            ]
-        ),
-        _json(['revenue', 'burn_rate']),
-        _json(['revenue_trend']),
+        ['unknown_code', 'revenue', 'burn_rate'],
+        [
+            {'chart_id': 'unknown_chart', 'span': 'full'},
+            {'chart_id': 'revenue_trend', 'span': 'full'},
+        ],
+        visibility,
     )
     assert saved is not None
     assert saved['kpi_codes'] == ['revenue', 'burn_rate']
     assert saved['charts'] == [{'chart_id': 'revenue_trend', 'span': 'full'}]
 
-    rows = _stored(conn, layout_db.company_id)
+    rows = _stored(layout_db)
     assert len(rows) == 1
     assert list(rows[0].kpi_codes) == ['revenue', 'burn_rate']
     assert [chart['chart_id'] for chart in rows[0].charts] == ['revenue_trend']
 
 
 def test_empty_after_filtering_falls_back_to_config_default(layout_db: SimpleNamespace) -> None:
-    conn = layout_db.conn
-    allowed_kpis, allowed_charts = _allowed()
-    default = _config_default()
-
-    saved = _save_layout(
-        conn,
-        layout_db.company_id,
-        layout_db.user_id,
+    saved = _save(
+        layout_db,
         0,
-        _json(['unknown_code']),
-        _json([{'chart_id': 'unknown_chart', 'span': 'full'}]),
-        allowed_kpis,
-        allowed_charts,
+        ['unknown_code'],
+        [{'chart_id': 'unknown_chart', 'span': 'full'}],
     )
     assert saved is not None
+    default = _config_default()
     assert saved['kpi_codes'] == default['kpi_codes']
     assert saved['charts'] == default['charts']

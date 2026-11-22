@@ -8,73 +8,43 @@ The saved-layout store of phase2_spec.md section 3.4: one company/user-keyed
 table holding only identifiers and positions, plus the database primitives
 the layout repository calls.  Reads return the config default on a miss
 without writing; saves are optimistic (the loaded version must match, then
-increments).  Role-permitted and config-known ids are supplied by the caller
-and unknown/unpermitted ids are dropped on both paths.  No second store path
-and no ``layout_store`` switch exist (ADR-0011).
+increments).  The caller supplies the visible id set - the intersection of
+role permissions and the config catalogue - so ids that are unpermitted or
+unknown to config are dropped on both paths.  No second store path and no
+``layout_store`` switch exist (ADR-0011).
 
-The default layout comes from the active config profile at migration time,
-the same way ``migrations/env.py`` and revision 0008 resolve their values.
+The default layout comes from the active config profile at migration time;
+missing config fails the migration rather than baking a silent fallback.
 """
 
 from __future__ import annotations
 
-import copy
 import json
-import logging
 from typing import TYPE_CHECKING, Any
 
 from alembic import op
 
+from finsight.core.config import load_config
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-_LOGGER = logging.getLogger('alembic.versions.0009_dashboard_layouts')
-
-# The config loader import can fail during migration runs that only carry
-# database env vars; the documented schema defaults are baked instead.
-try:
-    from finsight.core.config import load_config
-except Exception as exc:  # import failure must not break the migration
-    load_config = None  # type: ignore[assignment]
-    _LOGGER.warning('Config loader unavailable (%s); baking schema defaults', exc)
 
 revision: str = '0009_dashboard_layouts'
 down_revision: str | None = '0008_kpi_store'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Documented defaults from config/schema.yaml (dashboard.default_layout),
-# used only when the config loader cannot answer.
-_DEFAULT_LAYOUT: dict[str, Any] = {
-    'kpi_codes': [
-        'revenue',
-        'gross_margin',
-        'net_margin',
-        'operating_expenses',
-        'cash_flow',
-        'burn_rate',
-    ],
-    'charts': [
-        {'chart_id': 'revenue_trend', 'span': 'full'},
-        {'chart_id': 'margin_trend', 'span': 'half'},
-    ],
-}
-
 
 def _default_layout() -> dict[str, Any]:
-    """Resolve ``dashboard.default_layout`` from config with a documented fallback."""
-    if load_config is not None:
-        try:
-            default = load_config().dashboard.default_layout
-            return {
-                'kpi_codes': list(default.kpi_codes),
-                'charts': [
-                    {'chart_id': chart.chart_id, 'span': chart.span} for chart in default.charts
-                ],
-            }
-        except Exception as exc:
-            _LOGGER.warning('Config unavailable (%s); baking schema defaults', exc)
-    return copy.deepcopy(_DEFAULT_LAYOUT)
+    """Resolve ``dashboard.default_layout`` from the active config profile."""
+    dashboard = load_config().dashboard
+    if dashboard is None:
+        raise RuntimeError('dashboard config section is required by the layout migration')
+    default = dashboard.default_layout
+    return {
+        'kpi_codes': list(default.kpi_codes),
+        'charts': [{'chart_id': chart.chart_id, 'span': chart.span} for chart in default.charts],
+    }
 
 
 def _json_literal(value: object) -> str:
@@ -89,14 +59,11 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS dashboard_layouts (
             company_id       UUID        NOT NULL,
             user_id          UUID        NOT NULL,
-            contract_version INTEGER     NOT NULL DEFAULT 1
-                CHECK (contract_version = 1),
-            kpi_codes        JSONB       NOT NULL
-                CHECK (jsonb_typeof(kpi_codes) = 'array'),
-            charts           JSONB       NOT NULL
-                CHECK (jsonb_typeof(charts) = 'array'),
-            version          INTEGER     NOT NULL DEFAULT 0 CHECK (version >= 0),
-            updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+            contract_version INTEGER     NOT NULL,
+            kpi_codes        JSONB       NOT NULL,
+            charts           JSONB       NOT NULL,
+            version          INTEGER     NOT NULL,
+            updated_at       TIMESTAMPTZ NOT NULL,
             PRIMARY KEY (company_id, user_id)
         )
         """
@@ -114,16 +81,13 @@ def upgrade() -> None:
         """
     )
 
-    # Keep identifier order, dropping ids the role may not see or that are no
-    # longer known to config.  The caller's allowed sets are the intersection
-    # of role permissions and the config catalogue.
+    # Keep identifier order, dropping ids outside the caller's visible set.
     op.execute(
         """
         CREATE OR REPLACE FUNCTION _dashboard_layout_filter_ids(
             p_kpi_codes JSONB,
             p_charts JSONB,
-            p_allowed_kpi_codes JSONB,
-            p_allowed_chart_ids JSONB
+            p_visible_ids JSONB
         ) RETURNS JSONB
         LANGUAGE sql IMMUTABLE
         AS $function$
@@ -132,14 +96,14 @@ def upgrade() -> None:
                     (SELECT jsonb_agg(item.code ORDER BY item.position)
                      FROM jsonb_array_elements_text(p_kpi_codes) WITH ORDINALITY
                          AS item(code, position)
-                     WHERE p_allowed_kpi_codes ? item.code),
+                     WHERE p_visible_ids -> 'kpi_codes' ? item.code),
                     '[]'::jsonb
                 ),
                 'charts', COALESCE(
                     (SELECT jsonb_agg(item.chart ORDER BY item.position)
                      FROM jsonb_array_elements(p_charts) WITH ORDINALITY
                          AS item(chart, position)
-                     WHERE p_allowed_chart_ids ? (item.chart ->> 'chart_id')),
+                     WHERE p_visible_ids -> 'chart_ids' ? (item.chart ->> 'chart_id')),
                     '[]'::jsonb
                 )
             )
@@ -156,8 +120,7 @@ def upgrade() -> None:
         CREATE OR REPLACE FUNCTION dashboard_layout_get(
             p_company_id UUID,
             p_user_id UUID,
-            p_allowed_kpi_codes JSONB,
-            p_allowed_chart_ids JSONB
+            p_visible_ids JSONB
         ) RETURNS TABLE (
             contract_version INTEGER,
             kpi_codes JSONB,
@@ -178,8 +141,7 @@ def upgrade() -> None:
 
             IF NOT FOUND THEN
                 v_visible := _dashboard_layout_filter_ids(
-                    v_default -> 'kpi_codes', v_default -> 'charts',
-                    p_allowed_kpi_codes, p_allowed_chart_ids);
+                    v_default -> 'kpi_codes', v_default -> 'charts', p_visible_ids);
                 RETURN QUERY
                     SELECT 1, v_visible -> 'kpi_codes', v_visible -> 'charts',
                            0, NULL::TIMESTAMPTZ;
@@ -187,13 +149,11 @@ def upgrade() -> None:
             END IF;
 
             v_visible := _dashboard_layout_filter_ids(
-                v_saved.kpi_codes, v_saved.charts,
-                p_allowed_kpi_codes, p_allowed_chart_ids);
+                v_saved.kpi_codes, v_saved.charts, p_visible_ids);
             IF jsonb_array_length(v_visible -> 'kpi_codes') = 0
                AND jsonb_array_length(v_visible -> 'charts') = 0 THEN
                 v_visible := _dashboard_layout_filter_ids(
-                    v_default -> 'kpi_codes', v_default -> 'charts',
-                    p_allowed_kpi_codes, p_allowed_chart_ids);
+                    v_default -> 'kpi_codes', v_default -> 'charts', p_visible_ids);
             END IF;
 
             RETURN QUERY
@@ -215,8 +175,7 @@ def upgrade() -> None:
             p_expected_version INTEGER,
             p_kpi_codes JSONB,
             p_charts JSONB,
-            p_allowed_kpi_codes JSONB,
-            p_allowed_chart_ids JSONB
+            p_visible_ids JSONB
         ) RETURNS TABLE (
             contract_version INTEGER,
             kpi_codes JSONB,
@@ -232,12 +191,11 @@ def upgrade() -> None:
             v_visible JSONB;
         BEGIN
             v_visible := _dashboard_layout_filter_ids(
-                p_kpi_codes, p_charts, p_allowed_kpi_codes, p_allowed_chart_ids);
+                p_kpi_codes, p_charts, p_visible_ids);
             IF jsonb_array_length(v_visible -> 'kpi_codes') = 0
                AND jsonb_array_length(v_visible -> 'charts') = 0 THEN
                 v_visible := _dashboard_layout_filter_ids(
-                    v_default -> 'kpi_codes', v_default -> 'charts',
-                    p_allowed_kpi_codes, p_allowed_chart_ids);
+                    v_default -> 'kpi_codes', v_default -> 'charts', p_visible_ids);
             END IF;
 
             UPDATE dashboard_layouts AS dl
@@ -272,11 +230,10 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop the saved-layout primitives, policy and table."""
     op.execute(
-        'DROP FUNCTION IF EXISTS dashboard_layout_save('
-        'uuid, uuid, integer, jsonb, jsonb, jsonb, jsonb)'
+        'DROP FUNCTION IF EXISTS dashboard_layout_save(uuid, uuid, integer, jsonb, jsonb, jsonb)'
     )
-    op.execute('DROP FUNCTION IF EXISTS dashboard_layout_get(uuid, uuid, jsonb, jsonb)')
-    op.execute('DROP FUNCTION IF EXISTS _dashboard_layout_filter_ids(jsonb, jsonb, jsonb, jsonb)')
+    op.execute('DROP FUNCTION IF EXISTS dashboard_layout_get(uuid, uuid, jsonb)')
+    op.execute('DROP FUNCTION IF EXISTS _dashboard_layout_filter_ids(jsonb, jsonb, jsonb)')
     op.execute('DROP POLICY IF EXISTS dashboard_layouts_company_isolation ON dashboard_layouts')
     op.execute('ALTER TABLE dashboard_layouts NO FORCE ROW LEVEL SECURITY')
     op.execute('ALTER TABLE dashboard_layouts DISABLE ROW LEVEL SECURITY')
