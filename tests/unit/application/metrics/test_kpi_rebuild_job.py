@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from types import SimpleNamespace
 from typing import Any
 
@@ -80,6 +79,14 @@ class _Compute:
                 'computation_rule_version': VERSION,
             }
         ]
+
+
+class _Logger:
+    def __init__(self) -> None:
+        self.messages: list[str] = []
+
+    def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
+        self.messages.append(message % args)
 
 
 class _Tracing:
@@ -268,13 +275,16 @@ async def test_each_company_emits_rebuild_span_with_batch_and_version() -> None:
     assert first_attributes['duration_ms'] >= 0
 
 
-async def test_failed_company_is_logged_with_trace_id(caplog: pytest.LogCaptureFixture) -> None:
+async def test_failed_company_is_logged_with_trace_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logger = _Logger()
+    monkeypatch.setattr('finsight.application.metrics.kpi_rebuild._LOGGER', logger)
     metrics = _Metrics()
     metrics.fail_once.add('c0')
-    caplog.set_level(logging.WARNING)
 
     result = await _job(metrics=metrics).run(['c0'])
 
     assert result['failed'] == ['c0']
-    assert any('kpi rebuild failed' in record.getMessage() for record in caplog.records)
-    assert any('trace_id=' in record.getMessage() for record in caplog.records)
+    assert any('kpi rebuild failed' in message for message in logger.messages)
+    assert any('trace_id=' in message for message in logger.messages)
