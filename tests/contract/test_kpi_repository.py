@@ -80,7 +80,6 @@ _FINGERPRINT_FIELDS = {
     'value',
     'computation_status',
     'source_citations',
-    'source_metric_ids',
     'conflict_marker',
     'superseded_by_document_version_id',
 }
