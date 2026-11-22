@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from ._kpi_budget import compute_budget_vs_actual as _compute_budget_vs_actual
 from ._kpi_derived import compute_burn_rate as _compute_burn_rate
 from ._kpi_derived import compute_runway as _compute_runway
+from ._kpi_display_label import apply_display_labels as _apply_display_labels
 from ._kpi_estimation import spread_quarterly as _spread_quarterly
 from ._kpi_history import mark_conflicts as _mark_conflicts
 from ._kpi_history import mark_supersession as _mark_supersession
@@ -25,7 +26,7 @@ from ._kpi_period import compute_collection_period as _compute_collection_period
 from .citation_factory import CitationFactory
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Collection, Mapping, Sequence
     from datetime import date
 
     from finsight.domain.entities.metric import Metric
@@ -121,6 +122,16 @@ class KpiComputationService:
     ) -> list[KpiRow]:
         """Mark rows replaced by a newer version of the same document."""
         return _mark_supersession(rows, superseded_by)
+
+    def apply_display_labels(
+        self,
+        rows: Sequence[KpiRow],
+        *,
+        document_statuses: Mapping[str, str] | None = None,
+        updating: bool | Collection[str] = False,
+    ) -> list[KpiRow]:
+        """Label rows with Updating > Estimated > Draft > null precedence."""
+        return _apply_display_labels(rows, document_statuses=document_statuses, updating=updating)
 
     def _margin(
         self,
