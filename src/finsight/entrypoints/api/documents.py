@@ -24,7 +24,7 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException
 from finsight.composition.providers import get_documents_use_case
 from finsight.core.errors import AuthorizationError, ValidationError, to_user_message
-from finsight.core.types import Action, Role
+from finsight.core.types import Role
 
 # Backwards-compatible alias (singular) used by container wiring and legacy callers.
 get_document_use_case = get_documents_use_case
@@ -120,8 +120,8 @@ def _normalise_action(value: Any) -> str:
 
 
 def _is_privileged(value: Any) -> bool:
-    # Backwards-compatible shim: permanent purge is now governed by the
-    # ``document_purge`` action in the permission matrix (planners only).
+    # Permanent purge is granted only to upload-capable roles (planners),
+    # matching ``document_purge`` in ``config/permissions.yaml``.
     if value is None:
         return False
     if hasattr(value, 'role') and not isinstance(value, (str, Role, dict)):
@@ -136,36 +136,8 @@ def _is_privileged(value: Any) -> bool:
                 return _is_privileged(value.get(key))
         return False
 
-    role_text = str(value).strip().lower().replace(' ', '_').replace('-', '_')
-    if not role_text or role_text in {'none', 'null', 'anonymous', 'guest'}:
-        return False
-
-    try:
-        from finsight.core.config.loader import get_config, load_config
-        from finsight.domain.services.permission_policy import is_permission_allowed
-
-        try:
-            config = get_config()
-        except Exception:  # noqa: BLE001
-            config = load_config('test')
-        permissions_cfg = getattr(config, 'permissions', None)
-        role_entries = (
-            getattr(permissions_cfg, 'permissions', None) if permissions_cfg is not None else None
-        )
-        if role_entries is None and isinstance(permissions_cfg, dict):
-            role_entries = permissions_cfg.get('permissions', permissions_cfg)
-        if (
-            role_entries is None
-            and permissions_cfg is not None
-            and hasattr(permissions_cfg, 'model_dump')
-        ):
-            dumped = permissions_cfg.model_dump()
-            role_entries = dumped.get('permissions', dumped)
-        if not isinstance(role_entries, dict):
-            role_entries = {}
-        return bool(is_permission_allowed(role_entries, role_text, None, Action.DOCUMENT_PURGE))
-    except Exception:  # noqa: BLE001
-        return role_text == 'corporate_finance_planners'
+    text = str(value).strip().lower().replace(' ', '_').replace('-', '_')
+    return text == 'corporate_finance_planners'
 
 
 __all__ = [
