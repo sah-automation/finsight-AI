@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ._kpi_derived import compute_burn_rate as _compute_burn_rate
+from ._kpi_derived import compute_runway as _compute_runway
 from ._kpi_margin import compute_margin as _compute_margin
 from ._kpi_metric_fields import amount as _amount
 from ._kpi_metric_fields import exact_sum as _exact_sum
@@ -46,6 +48,22 @@ class KpiComputationService:
     def compute_cash_flow(self, metrics: Sequence[Metric]) -> list[KpiRow]:
         """Sum cash-flow Metrics into one computed KPI row per period."""
         return self._aggregate('cash_flow', metrics)
+
+    def compute_burn_rate(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Compute burn rate from operating-expense and cash-flow Metrics."""
+        return _compute_burn_rate(
+            metrics=metrics,
+            rule_version=self._computation_rule_version,
+            citations=self._citation_factory,
+        )
+
+    def compute_runway(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Compute runway in months from cash and derived burn-rate Metrics."""
+        return _compute_runway(
+            metrics=metrics,
+            rule_version=self._computation_rule_version,
+            citations=self._citation_factory,
+        )
 
     def compute_gross_margin(self, metrics: Sequence[Metric]) -> list[KpiRow]:
         """Compute gross margin percentages from revenue and COGS Metrics."""
