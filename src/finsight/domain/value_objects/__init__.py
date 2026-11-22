@@ -13,6 +13,8 @@ from .citation import Citation
 from .confidence import Confidence
 from .currency import Currency
 from .document_change_event import DocumentChangeEvent
+from .layout_chart import LayoutChart
+from .layout_record import LayoutRecord
 from .money import Money
 from .money_units import MoneyUnits
 from .period import Period
@@ -21,6 +23,7 @@ from .reader_result import ReaderResult
 from .span import Span
 from .usage_record import UsageRecord
 from .virus_scan_result import VirusScanResult
+from .visible_ids import VisibleIds
 
 __all__ = [
     'ChangeEventType',
@@ -29,6 +32,8 @@ __all__ = [
     'Confidence',
     'Currency',
     'DocumentChangeEvent',
+    'LayoutChart',
+    'LayoutRecord',
     'Money',
     'MoneyUnits',
     'Period',
@@ -37,6 +42,7 @@ __all__ = [
     'Span',
     'UsageRecord',
     'VirusScanResult',
+    'VisibleIds',
     'mint_citation_locator',
     'verify_citation_locator',
 ]

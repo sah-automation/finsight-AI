@@ -1,9 +1,10 @@
-"""Postgres/Neon saved-layout repository implementing the layout port.
+"""SQL-only Postgres/Neon saved-layout repository implementing the layout port.
 
-Reads and conditional saves go through the ``dashboard_layout_get`` and
+Reads and conditional saves call the ``dashboard_layout_get`` and
 ``dashboard_layout_save`` functions from migration 0009 with the company RLS
-context set for the transaction. With no wired session the adapter uses an
-in-memory seam for the contract suite.
+context set for the transaction. The caller supplies the role-filtered visible
+id set; this adapter never substitutes an alternate store when no session is
+wired.
 """
 
 from __future__ import annotations
@@ -21,12 +22,11 @@ from finsight.domain.ports.dashboard_layout_repository import (
     VisibleIds,
 )
 
-from . import _dashboard_layout_repository_layout as _layout
-from . import _dashboard_layout_repository_memory as _memory
+from . import _dashboard_layout_repository_records as _records
 from .base_repository import BaseRepository
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Mapping
 
     from finsight.core.types import CompanyId, UserId
 
@@ -40,16 +40,12 @@ _DELETE_SQL = 'DELETE FROM dashboard_layouts WHERE company_id = :company_id AND 
 
 
 class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
-    """Tenant- and user-scoped layout store; SQL when wired, in-memory otherwise."""
+    """Tenant- and user-scoped layout store backed only by the relational table."""
 
-    def __init__(self, config: Any | None = None, **kwargs: Any) -> None:
+    def __init__(self, config: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        _records.validate_config(config)
         self._config = config
-        self._memory: _memory.LayoutMemory = {}
-
-    @staticmethod
-    def _key(company_id: Any, user_id: Any) -> tuple[str, str]:
-        return (str(company_id), str(user_id))
 
     async def _set_tenant(self, tenant: str) -> None:
         await self._raw_execute(
@@ -69,78 +65,75 @@ class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
         finally:
             await self._clear_tenant()
 
-    async def _fetch_record(self, company_id: Any, user_id: Any, context: Any) -> LayoutRecord:
+    async def _fetch_record(
+        self, company_id: Any, user_id: Any, visible_ids: VisibleIds
+    ) -> LayoutRecord:
         result = await self._raw_execute(
             _GET_SQL,
             {
                 'company_id': str(company_id),
                 'user_id': str(user_id),
-                'visible_ids': json.dumps(context.visible),
+                'visible_ids': json.dumps(visible_ids.to_mapping()),
             },
         )
         rows = await self._fetchall(result)
         if not rows:
-            return _layout.default_record(self._config, context.visible)
-        return _layout.row_to_record(rows[0])
+            return _records.default_record(self._config, visible_ids)
+        return _records.from_row(rows[0])
 
     async def _save_record(
-        self, company_id: Any, user_id: Any, layout: Any, expected_version: int, context: Any
+        self,
+        company_id: Any,
+        user_id: Any,
+        layout: Mapping[str, Any] | LayoutRecord,
+        expected_version: int,
+        visible_ids: VisibleIds,
     ) -> LayoutRecord:
-        codes, charts = _layout.as_identifiers(layout)
+        payload = _records.json_fields(layout)
         result = await self._raw_execute(
             _SAVE_SQL,
             {
                 'company_id': str(company_id),
                 'user_id': str(user_id),
                 'expected_version': expected_version,
-                'kpi_codes': json.dumps(codes),
-                'charts': json.dumps(charts),
-                'visible_ids': json.dumps(context.visible),
+                'kpi_codes': json.dumps(payload['kpi_codes']),
+                'charts': json.dumps(payload['charts']),
+                'visible_ids': json.dumps(visible_ids.to_mapping()),
             },
         )
         rows = await self._fetchall(result)
         if not rows:
-            raise LayoutConflictError(await self._fetch_record(company_id, user_id, context))
-        return _layout.row_to_record(rows[0])
+            raise LayoutConflictError(await self._fetch_record(company_id, user_id, visible_ids))
+        return _records.from_row(rows[0])
 
     async def get_layout(
         self,
         company_id: CompanyId,
         user_id: UserId,
         *,
-        visible_ids: VisibleIds | None = None,
+        visible_ids: VisibleIds,
     ) -> LayoutRecord:
-        context = _layout.context(self._config, visible_ids)
-        if self._session is None:
-            return _memory.stored_record(self._memory, self._key(company_id, user_id), context)
+        """Return the visible saved layout or config default; never write."""
         async with self._tenant_scope(company_id):
-            return await self._fetch_record(company_id, user_id, context)
+            return await self._fetch_record(company_id, user_id, visible_ids)
 
     async def save_layout(
         self,
         company_id: CompanyId,
         user_id: UserId,
-        layout: Any,
+        layout: Mapping[str, Any] | LayoutRecord,
         expected_version: int,
         *,
-        visible_ids: VisibleIds | None = None,
+        visible_ids: VisibleIds,
     ) -> LayoutRecord:
-        context = _layout.context(self._config, visible_ids)
-        if self._session is None:
-            return _memory.put_record(
-                self._memory,
-                self._key(company_id, user_id),
-                layout,
-                expected_version,
-                context,
-            )
+        """Conditionally save the layout, incrementing its version on success."""
         async with self._tenant_scope(company_id):
-            return await self._save_record(company_id, user_id, layout, expected_version, context)
+            return await self._save_record(
+                company_id, user_id, layout, expected_version, visible_ids
+            )
 
     async def delete_layout(self, company_id: CompanyId, user_id: UserId) -> None:
-        if self._session is None:
-            self._memory.pop(self._key(company_id, user_id), None)
-            return
+        """Remove the saved layout so a later read returns the config default."""
         async with self._tenant_scope(company_id):
             await self._raw_execute(
                 _DELETE_SQL,

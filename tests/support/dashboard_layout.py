@@ -113,9 +113,9 @@ class InMemoryDashboardLayoutRepository(DashboardLayoutRepositoryPort):
             )
             raise LayoutConflictError(current)
 
-        filtered = records.filter_payload(records.as_payload(layout), visible_ids)
+        filtered = records.visible_json_fields(records.json_fields(layout), visible_ids)
         if not filtered['kpi_codes'] and not filtered['charts']:
-            filtered = records.as_payload(default)
+            filtered = records.json_fields(default)
         saved = LayoutRecord(
             1,
             tuple(filtered['kpi_codes']),

@@ -1,27 +1,29 @@
 """Port for reading and writing a user's saved dashboard layout.
 
 A layout holds only identifiers and positions (ADR-0011). A miss returns the
-config-defined default with version 0 and writes nothing. Saves are optimistic:
+config-defined default at version 0 and writes nothing. Saves are optimistic:
 the caller sends the loaded version, and a mismatch raises LayoutConflictError
 carrying the current layout so the handler can return HTTP 409.
 
-``visible_ids`` is the caller's already role-filtered id set. When omitted, all
-config-known ids are visible; the handler remains responsible for role checks.
+``visible_ids`` is mandatory. It is the caller's already role-filtered id set
+(the intersection of permissions and the config catalogue); the repository
+never widens it.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from finsight.core.errors import ConflictError
+from finsight.domain.value_objects.layout_chart import LayoutChart
+from finsight.domain.value_objects.layout_record import LayoutRecord
+from finsight.domain.value_objects.visible_ids import VisibleIds
 
 if TYPE_CHECKING:
-    from finsight.core.types import CompanyId, UserId
+    from collections.abc import Mapping
 
-LayoutRecord = dict[str, Any]
-VisibleIds = Mapping[str, Sequence[str]]
+    from finsight.core.types import CompanyId, UserId
 
 
 class LayoutConflictError(ConflictError):
@@ -41,9 +43,9 @@ class DashboardLayoutRepository(ABC):
         company_id: CompanyId,
         user_id: UserId,
         *,
-        visible_ids: VisibleIds | None = None,
+        visible_ids: VisibleIds,
     ) -> LayoutRecord:
-        """Return the saved layout or the config default; never write on a miss."""
+        """Return the visible saved layout or the config default; never write."""
         raise NotImplementedError
 
     @abstractmethod
@@ -51,10 +53,10 @@ class DashboardLayoutRepository(ABC):
         self,
         company_id: CompanyId,
         user_id: UserId,
-        layout: Mapping[str, Any],
+        layout: Mapping[str, Any] | LayoutRecord,
         expected_version: int,
         *,
-        visible_ids: VisibleIds | None = None,
+        visible_ids: VisibleIds,
     ) -> LayoutRecord:
         """Conditionally save the layout, incrementing its version on success."""
         raise NotImplementedError
@@ -71,6 +73,7 @@ DashboardLayoutRepositoryPort = DashboardLayoutRepository
 __all__ = [
     'DashboardLayoutRepository',
     'DashboardLayoutRepositoryPort',
+    'LayoutChart',
     'LayoutConflictError',
     'LayoutRecord',
     'VisibleIds',

@@ -10,7 +10,10 @@ from .company_repository import CompanyRepository
 from .dashboard_layout_repository import (
     DashboardLayoutRepository,
     DashboardLayoutRepositoryPort,
+    LayoutChart,
     LayoutConflictError,
+    LayoutRecord,
+    VisibleIds,
 )
 from .document_reader import DocumentReader
 from .document_repository import DocumentRepository
@@ -68,7 +71,9 @@ __all__ = [
     'KpiRepository',
     'KpiRepositoryPort',
     'LLMGateway',
+    'LayoutChart',
     'LayoutConflictError',
+    'LayoutRecord',
     'MeteringPort',
     'MetricRepository',
     'MetricsRepository',
@@ -94,6 +99,7 @@ __all__ = [
     'VectorWrite',
     'VectorWritePort',
     'VirusScanner',
+    'VisibleIds',
     'WaitingLine',
     'WaitingLinePort',
 ]
