@@ -297,13 +297,13 @@ class ObservabilityStack(Stack):
             log_group=self.log_group,
             filter_pattern=logs.FilterPattern.literal(
                 '{ ($.span.name = "http_request") && '
-                '(( $.span.attributes.http.target = "/kpis" ) || '
-                '( $.span.attributes.http.target = "/charts/*" ) || '
-                '( $.span.attributes.http.target = "/dashboard/*" )) }'
+                '(( $.span.attributes.route = "/kpis" ) || '
+                '( $.span.attributes.route = "/charts/*" ) || '
+                '( $.span.attributes.route = "/dashboard/*" )) }'
             ),
             metric_name='dashboard_latency_ms',
             metric_namespace=namespace,
-            metric_value='$.duration',
+            metric_value='$.span.attributes.duration',
         )
         self.alarms['dashboard_latency_ms'] = cloudwatch.Alarm(
             self,
@@ -313,7 +313,7 @@ class ObservabilityStack(Stack):
                 namespace=namespace,
                 metric_name='dashboard_latency_ms',
                 statistic='Maximum',
-                period=Duration.seconds(300),
+                period=period,
             ),
             threshold=float(thresholds['dashboard_latency_ms']),
             evaluation_periods=1,
