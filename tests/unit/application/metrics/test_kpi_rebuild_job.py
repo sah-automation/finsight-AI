@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+
 from finsight.application.metrics.kpi_rebuild import KpiRebuildJob
 
 pytestmark = pytest.mark.unit
