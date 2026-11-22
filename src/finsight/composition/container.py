@@ -801,6 +801,9 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             'object_storage',
             'virus_scanner',
             'job_repository',
+            'metric_repository',
+            'kpi_repository',
+            'kpi_computation_service',
         }
     }
     scan_worker = provided_deps.get('scan_worker') or build_scan_worker(
@@ -817,6 +820,28 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     job_progress = provided_deps.get('job_progress') or build_job_progress(
         config=config, session=session, **_extra
     )
+    metric_repository = provided_deps.get('metric_repository')
+    if metric_repository is None:
+        metric_repository = _existing(
+            kwargs, 'metric_repository', 'metrics', 'metrics_repository', 'metric_repo', 'metric'
+        )
+    if metric_repository is None:
+        metric_repository = build_metric_repository(config=config, session=session, **_extra)
+
+    kpi_repository = provided_deps.get('kpi_repository')
+    if kpi_repository is None:
+        kpi_repository = _existing(kwargs, 'kpi_repository', 'kpi_repo', 'kpi_store')
+    if kpi_repository is None:
+        kpi_repository = build_kpi_repository(config=config, session=session, **_extra)
+
+    kpi_computation_service = provided_deps.get('kpi_computation_service')
+    if kpi_computation_service is None:
+        kpi_computation_service = _existing(
+            kwargs, 'kpi_computation_service', 'kpi_computation', 'kpi_compute_service'
+        )
+    if kpi_computation_service is None:
+        kpi_computation_service = build_kpi_computation_service(config=config, **_extra)
+
     worker_set = build_step_functions_worker_set(
         config=config,
         session=session,
@@ -829,6 +854,9 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         vector_write=vector_write,
         answer_cache=answer_cache,
         change_event_publisher=change_event_publisher,
+        metric_repository=metric_repository,
+        kpi_repository=kpi_repository,
+        kpi_computation_service=kpi_computation_service,
         audit_log=audit_log,
         job_repository=job_repository,
         virus_scanner=virus_scanner,
@@ -854,14 +882,6 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         )
     if hybrid_search is None:
         hybrid_search = build_hybrid_search(config=config, session=session, **_extra)
-
-    metric_repository = provided_deps.get('metric_repository')
-    if metric_repository is None:
-        metric_repository = _existing(
-            kwargs, 'metric_repository', 'metrics', 'metrics_repository', 'metric_repo', 'metric'
-        )
-    if metric_repository is None:
-        metric_repository = build_metric_repository(config=config, session=session, **_extra)
 
     ask_question_use_case = _existing(
         kwargs,
@@ -2154,6 +2174,65 @@ def _build_metric_repository_impl(*args: Any, **kwargs: Any) -> Any:
     return adapter_class(session=session, config=config, **_extra)
 
 
+def build_kpi_repository(*args: Any, **kwargs: Any) -> Any:
+    return _build_kpi_repository_impl(*args, **kwargs)
+
+
+def _build_kpi_repository_impl(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(
+        kwargs,
+        'kpi_repository',
+        'kpi_repo',
+        'kpi_store',
+        'kpi_repository_adapter',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs)
+    session = resolve_session(*args, **kwargs)
+    _extra = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in _SESSION_KEYS
+        and k not in _CONFIG_KEYS
+        and k not in {'kpi_repository', 'kpi_repo', 'kpi_store', 'kpi_repository_adapter'}
+    }
+    adapter_class = _import_adapter(
+        'finsight.adapters.repositories.kpi_repository',
+        'KpiRepository',
+    )
+    if adapter_class is None:
+        raise ImportError('KpiRepository adapter is unavailable')
+    return adapter_class(session=session, config=config, **_extra)
+
+
+def build_kpi_computation_service(*args: Any, **kwargs: Any) -> Any:
+    return _build_kpi_computation_service_impl(*args, **kwargs)
+
+
+def _build_kpi_computation_service_impl(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(
+        kwargs,
+        'kpi_computation_service',
+        'kpi_computation',
+        'kpi_compute_service',
+        'kpi_service',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs) if args or kwargs else None
+    rule_version = _existing(
+        kwargs, 'computation_rule_version', 'kpi_computation_rule_version', 'kpi_rule_version'
+    )
+    if rule_version is None and config is not None:
+        rule_version = getattr(getattr(config, 'kpi', None), 'computation_rule_version', None)
+    if rule_version is None:
+        rule_version = 'v1'
+    from finsight.domain.services.kpi_computation_service import KpiComputationService
+
+    return KpiComputationService(str(rule_version))
+
+
 def _configured_price_path(config: Any) -> Any:
     if config is None:
         return None
@@ -2707,6 +2786,14 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     )
     if metric_repository is None:
         metric_repository = build_metric_repository(config=config, session=session, **_extra0)
+    kpi_repository = _existing(kwargs, 'kpi_repository', 'kpi_repo', 'kpi_store')
+    if kpi_repository is None:
+        kpi_repository = build_kpi_repository(config=config, session=session, **_extra0)
+    kpi_computation_service = _existing(
+        kwargs, 'kpi_computation_service', 'kpi_computation', 'kpi_compute_service'
+    )
+    if kpi_computation_service is None:
+        kpi_computation_service = build_kpi_computation_service(config=config, **_extra0)
     queue = _existing(kwargs, 'queue', 'queue_port', 'sqs')
     job_repository = _existing(kwargs, 'job_repository', 'job_repo', 'jobs')
     if job_repository is None:
@@ -2752,6 +2839,10 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
             container, 'change_event_publisher', None
         )
         metric_repository = metric_repository or getattr(container, 'metric_repository', None)
+        kpi_repository = kpi_repository or getattr(container, 'kpi_repository', None)
+        kpi_computation_service = kpi_computation_service or getattr(
+            container, 'kpi_computation_service', None
+        )
         queue = queue or getattr(container, 'queue', None)
 
     # Determine delta tracking from config/docs.
@@ -2790,6 +2881,11 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
     # Use StepFactory to create step instances
     from finsight.composition.step_factory import StepFactory
 
+    factory_extra = {
+        k: v
+        for k, v in _extra0.items()
+        if k not in {'kpi_repository', 'kpi_computation_service', 'metric_repository'}
+    }
     factory = StepFactory(
         document_repository=document_repository,
         document_table_repository=document_table_repository,
@@ -2798,6 +2894,8 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         vector_write=vector_write,
         state_store=state_store,
         metric_repository=metric_repository,
+        kpi_repository=kpi_repository,
+        kpi_computation_service=kpi_computation_service,
         reader=reader,
         page_router=page_router,
         embedding=embedding,
@@ -2810,7 +2908,7 @@ def _build_step_functions_worker_set_impl(*args: Any, **kwargs: Any) -> Any:
         virus_scanner=virus_scanner,
         object_storage=object_storage,
         delta_tracking=delta_tracking,
-        **_extra0,
+        **factory_extra,
     )
 
     mapping: dict[str, Any] = {}

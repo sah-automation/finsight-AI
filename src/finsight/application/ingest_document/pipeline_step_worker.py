@@ -261,6 +261,28 @@ class PipelineStepWorker:
             'extracted_metrics',
             default=None,
         )
+        self.kpi_repository = _first(
+            kwargs,
+            'kpi_repository',
+            'kpi_repo',
+            'kpi_store',
+            default=None,
+        )
+        self.kpi_computation_service = _first(
+            kwargs,
+            'kpi_computation_service',
+            'kpi_computation',
+            'kpi_compute_service',
+            'kpi_service',
+            default=None,
+        )
+        self.kpi_computation_rule_version = _first(
+            kwargs,
+            'kpi_computation_rule_version',
+            'computation_rule_version',
+            'kpi_rule_version',
+            default=None,
+        )
         self.document_table_repository = _first(
             kwargs,
             'document_table_repository',
@@ -343,6 +365,12 @@ class PipelineStepWorker:
                     self.vector_store = getattr(c, 'vector_store', self.vector_store)
                 if self.metric_repository is None:
                     self.metric_repository = getattr(c, 'metric_repository', self.metric_repository)
+                if self.kpi_repository is None:
+                    self.kpi_repository = getattr(c, 'kpi_repository', self.kpi_repository)
+                if self.kpi_computation_service is None:
+                    self.kpi_computation_service = getattr(
+                        c, 'kpi_computation_service', self.kpi_computation_service
+                    )
                 if self.document_table_repository is None:
                     self.document_table_repository = getattr(
                         c, 'document_table_repository', None
@@ -1631,6 +1659,13 @@ class PipelineStepWorker:
                             continue
             # persist metrics
             await self._persist_metrics(company_id, version_id, metrics)
+            # materialise KPI rows in the same transaction as metrics/stamp
+            kpi_result = await self._materialise_kpis(
+                company_id=company_id,
+                document_id=document_id,
+                version_id=version_id,
+                metrics=metrics,
+            )
             # mark committed
             await self._update_state(
                 version,
@@ -1641,6 +1676,7 @@ class PipelineStepWorker:
                 chunk_count=len(chunk_entities),
                 vector_count=len(vectors),
                 metric_count=len(metrics),
+                kpi_count=int(kpi_result.get('kpi_count', 0) or 0),
             )
             # supersede previous version atomically
             if self.document_repository is not None and document_id is not None:
@@ -1728,6 +1764,13 @@ class PipelineStepWorker:
                 if callable(cmethod):
                     await _awaitv(cmethod())
             await self._save_reader_data(version_id, reader_data, context)
+            await self._publish_kpi_recomputed(
+                company_id=company_id,
+                document_id=document_id,
+                version_id=version_id,
+                kpi_result=kpi_result,
+                job_id=job_id,
+            )
             return {
                 'step': step,
                 'status': 'committed',
@@ -1736,6 +1779,9 @@ class PipelineStepWorker:
                 'chunk_count': len(chunk_entities),
                 'vector_count': len(vectors),
                 'metric_count': len(metrics),
+                'kpi_count': int((kpi_result or {}).get('kpi_count', 0) or 0),
+                'kpi_codes': list((kpi_result or {}).get('kpi_codes', []) or []),
+                'kpi_periods': list((kpi_result or {}).get('periods', []) or []),
                 'table_count': len(persisted_tables),
                 'previous_version_id': previous_version_id,
                 'superseded_version_id': previous_version_id,
@@ -1745,6 +1791,7 @@ class PipelineStepWorker:
                 'stamp_value': getattr(stamp, 'value', stamp),
                 'cache_cleared': True,
                 'change_event_published': publisher is not None,
+                'kpi_recomputed_published': bool((kpi_result or {}).get('published', False)),
             }
         except Exception:
             # rollback
@@ -2103,6 +2150,145 @@ class PipelineStepWorker:
             if persisted:
                 break
         return persisted
+
+    async def _materialise_kpis(
+        self,
+        *,
+        company_id: Any,
+        document_id: Any,
+        version_id: Any,
+        metrics: list[Any],
+    ) -> dict[str, Any]:
+        repo = getattr(self, 'kpi_repository', None)
+        service = getattr(self, 'kpi_computation_service', None)
+        if repo is None or service is None:
+            return {
+                'kpi_rows': [],
+                'kpi_count': 0,
+                'kpi_codes': [],
+                'periods': [],
+                'published': False,
+            }
+
+        from finsight.application.metrics.kpi_materialisation_step import KpiMaterialisationStep
+
+        step = KpiMaterialisationStep(
+            metric_repository=self.metric_repository,
+            kpi_repository=repo,
+            computation_service=service,
+            change_event_publisher=getattr(self, 'change_event_publisher', None),
+            delta_tracking=self.delta_tracking,
+            config=self.config,
+        )
+        # Pass previous_version_id for delta filtering
+        previous_version_id = getattr(self, '_previous_version_id', None)
+        if previous_version_id is None:
+            previous_version_id = await self._previous_committed_version_id(
+                company_id, document_id, version_id
+            )
+        ctx: dict[str, Any] = {
+            'company_id': company_id,
+            'document_id': document_id,
+            'version_id': version_id,
+            'metrics': list(metrics or []),
+            'previous_version_id': previous_version_id,
+        }
+        # Store on step for delta filtering fallback
+        if previous_version_id is not None:
+            step._previous_version_id = previous_version_id
+        await step.run(ctx)
+        result = dict(ctx.get('kpi_materialisation') or {})
+        result.setdefault('kpi_rows', list(ctx.get('kpi_rows') or []))
+        result.setdefault('kpi_count', len(result.get('kpi_rows') or []))
+        result.setdefault('kpi_codes', list(ctx.get('kpi_codes') or []))
+        result.setdefault('periods', list(ctx.get('kpi_periods') or []))
+        result.setdefault('published', False)
+        return result
+
+    async def _publish_kpi_recomputed(
+        self,
+        *,
+        company_id: Any,
+        document_id: Any,
+        version_id: Any,
+        kpi_result: dict[str, Any] | None,
+        job_id: Any = None,
+    ) -> None:
+        result = dict(kpi_result or {})
+        rows = list(result.get('kpi_rows') or [])
+        publisher = self._kpi_event_publisher()
+        if not rows or publisher is None:
+            return
+        payload = self._kpi_recomputed_payload(company_id, version_id, result, rows)
+        event = DocumentChangeEvent(
+            company_id=company_id,
+            document_id=document_id,
+            event_type=ChangeEventType.normalize(ChangeEventType.KPI_RECOMPUTED),
+            version_id=str(version_id) if version_id is not None else None,
+            job_id=str(job_id) if job_id is not None else None,
+        )
+        try:
+            await self._publish_change_event(publisher, company_id, event, payload)
+            result['published'] = True
+        except Exception:
+            result['published'] = False
+
+    def _kpi_event_publisher(self) -> Any:
+        return (
+            getattr(self, 'change_event_publisher', None)
+            or getattr(self, 'event_publisher', None)
+            or getattr(self, 'publisher', None)
+        )
+
+    def _kpi_recomputed_payload(
+        self, company_id: Any, version_id: Any, result: dict[str, Any], rows: list[Any]
+    ) -> dict[str, Any]:
+        lineage, conflicts = [], []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if row.get('superseded_by_document_version_id'):
+                lineage.append(str(row['superseded_by_document_version_id']))
+            if row.get('conflict_marker'):
+                conflicts.append(str(row['conflict_marker']))
+        rule_version = str(
+            result.get('computation_rule_version')
+            or getattr(self, 'kpi_computation_rule_version', '')
+            or ((rows[0] or {}).get('computation_rule_version') if rows else '')
+            or ''
+        )
+        return {
+            'company_id': str(company_id),
+            'affected_kpi_codes': sorted(
+                {
+                    str(r.get('kpi_code', ''))
+                    for r in rows
+                    if isinstance(r, dict) and r.get('kpi_code')
+                }
+            ),
+            'affected_periods': sorted(
+                {str(r.get('period', '')) for r in rows if isinstance(r, dict) and r.get('period')}
+            ),
+            'document_version_id': str(version_id),
+            'computation_rule_version': rule_version,
+            'lineage_markers': sorted(set(lineage)),
+            'conflict_markers': sorted(set(conflicts)),
+            'kpi_rows': rows,
+        }
+
+    async def _publish_change_event(
+        self, publisher: Any, company_id: Any, event: Any, payload: dict[str, Any]
+    ) -> None:
+        publish = getattr(publisher, 'publish', None)
+        if not callable(publish):
+            return
+        try:
+            await _awaitv(publish(company_id, event, metadata=payload))
+        except TypeError:
+            try:
+                await _awaitv(publish(company_id, event, payload=payload))
+            except TypeError:
+                await _awaitv(publish(company_id, event))
 
     async def _clear_cache(self, company_id: Any) -> None:
         cache = self.answer_cache

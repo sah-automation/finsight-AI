@@ -123,6 +123,23 @@ class KpiComputationService:
         """Mark rows replaced by a newer version of the same document."""
         return _mark_supersession(rows, superseded_by)
 
+    def compute_all(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Compute all supported KPIs, then apply cross-cutting rules."""
+        rows: list[KpiRow] = []
+        rows.extend(self.compute_revenue(metrics))
+        rows.extend(self.compute_gross_margin(metrics))
+        rows.extend(self.compute_net_margin(metrics))
+        rows.extend(self.compute_operating_expenses(metrics))
+        rows.extend(self.compute_cash_flow(metrics))
+        rows.extend(self.compute_burn_rate(metrics))
+        rows.extend(self.compute_runway(metrics))
+        rows.extend(self.compute_dso(metrics))
+        rows.extend(self.compute_dpo(metrics))
+        rows.extend(self.compute_budget_vs_actual(metrics))
+        rows = self.spread_quarterly(rows)
+        rows = self.mark_conflicts(rows)
+        return self.apply_display_labels(rows)
+
     def apply_display_labels(
         self,
         rows: Sequence[KpiRow],
