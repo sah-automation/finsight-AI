@@ -1,16 +1,17 @@
 """Contract tests for the saved dashboard layout repository port.
 
-A database-free fake in the test tree exercises the shared port contract. The
-production adapter is SQL-only and is covered separately by
-``tests/unit/adapters/test_dashboard_layout_repository_sql.py``.
+The production SQL adapter is exercised through a recording session that
+answers the migration 0009 SQL shapes, so the shared contract runs without a
+database while still testing the real adapter.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from finsight.adapters.repositories.dashboard_layout_repository import DashboardLayoutRepository
 from finsight.core.types import CompanyId, UserId
 from finsight.domain.ports.dashboard_layout_repository import (
     LayoutChart,
@@ -18,9 +19,12 @@ from finsight.domain.ports.dashboard_layout_repository import (
     VisibleIds,
 )
 from tests.support.dashboard_layout import (
-    InMemoryDashboardLayoutRepository as DashboardLayoutRepository,
+    LayoutSqlSession,
+    config,
+    default_record,
+    layout,
+    visible_all,
 )
-from tests.support.dashboard_layout import config, default_record, layout, visible_all
 
 if TYPE_CHECKING:
     from finsight.domain.ports.dashboard_layout_repository import (
@@ -36,20 +40,34 @@ OTHER_USER = UserId('8e1a0000-0000-4000-8000-000000000002')
 
 
 @pytest.fixture
-def repository() -> DashboardLayoutRepositoryPort:
-    return DashboardLayoutRepository(config=config())
+def injected_config() -> Any:
+    return config()
+
+
+@pytest.fixture
+def session(injected_config: Any) -> LayoutSqlSession:
+    return LayoutSqlSession(injected_config)
+
+
+@pytest.fixture
+def repository(injected_config: Any, session: LayoutSqlSession) -> DashboardLayoutRepositoryPort:
+    return DashboardLayoutRepository(config=injected_config, session=session)
 
 
 class TestDashboardLayoutRepositoryContract:
     async def test_get_layout_returns_config_default_on_miss_without_writing(
-        self, repository: DashboardLayoutRepositoryPort
+        self, repository: DashboardLayoutRepositoryPort, session: LayoutSqlSession
     ) -> None:
         first = await repository.get_layout(COMPANY, USER, visible_ids=visible_all())
         second = await repository.get_layout(COMPANY, USER, visible_ids=visible_all())
 
         assert first == default_record()
         assert second == default_record()
-        assert repository._storage == {}
+        assert not any(
+            keyword in statement
+            for statement, _ in session.statements
+            for keyword in ('INSERT', 'UPDATE', 'DELETE')
+        )
 
     async def test_get_layout_is_company_and_user_scoped(
         self, repository: DashboardLayoutRepositoryPort
@@ -131,12 +149,15 @@ class TestDashboardLayoutRepositoryContract:
 
         assert await repository.get_layout(OTHER_COMPANY, USER, visible_ids=visible_all()) == other
 
-    async def test_invisible_and_unknown_ids_are_dropped_on_read_and_save(
-        self, repository: DashboardLayoutRepositoryPort
+    async def test_invisible_unknown_and_unconfigured_ids_are_dropped(
+        self, repository: DashboardLayoutRepositoryPort, session: LayoutSqlSession
     ) -> None:
-        visible = VisibleIds(('revenue',), ('revenue_trend',))
+        visible = VisibleIds(
+            ('revenue', 'burn_rate', 'not_in_config'),
+            ('revenue_trend', 'ghost_chart'),
+        )
         incoming = layout(
-            ('revenue', 'burn_rate'),
+            ('revenue', 'not_a_kpi'),
             (
                 ('revenue_trend', 'full'),
                 ('not_in_config', 'half'),
@@ -145,10 +166,17 @@ class TestDashboardLayoutRepositoryContract:
 
         saved = await repository.save_layout(COMPANY, USER, incoming, 0, visible_ids=visible)
         loaded = await repository.get_layout(COMPANY, USER, visible_ids=visible)
+        bound_visible = next(
+            params['visible_ids']
+            for statement, params in session.statements
+            if 'dashboard_layout_get' in statement
+        )
 
         assert saved.kpi_codes == ('revenue',)
         assert saved.charts == (LayoutChart('revenue_trend', 'full'),)
         assert loaded == saved
+        assert 'not_in_config' not in bound_visible
+        assert 'ghost_chart' not in bound_visible
 
     async def test_visible_ids_is_mandatory(
         self, repository: DashboardLayoutRepositoryPort

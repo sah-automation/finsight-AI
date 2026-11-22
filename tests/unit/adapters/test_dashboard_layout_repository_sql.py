@@ -1,7 +1,8 @@
 """Unit tests for the SQL-only dashboard layout repository adapter.
 
 These lock the wired path's SQL shape, transaction ownership, tenant context,
-constructor-time config validation and stale-save mapping without a database.
+constructor-time config validation, config catalogue filtering and stale-save
+mapping without a database.
 """
 
 from __future__ import annotations
@@ -19,8 +20,9 @@ from finsight.domain.ports.dashboard_layout_repository import (
     LayoutChart,
     LayoutConflictError,
     LayoutRecord,
+    VisibleIds,
 )
-from tests.support.dashboard_layout import config, layout, visible_all
+from tests.support.dashboard_layout import config, default_record, layout, visible_all
 
 COMPANY = CompanyId('7e1a0000-0000-4000-8000-000000000001')
 USER = UserId('8e1a0000-0000-4000-8000-000000000001')
@@ -52,10 +54,16 @@ class _Result:
 
 
 class _RecordingSession:
-    def __init__(self, *, stale_save: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        stale_save: bool = False,
+        get_rows: list[Any] | None = None,
+    ) -> None:
         self.statements: list[tuple[str, dict[str, Any]]] = []
         self.commits = 0
         self.stale_save = stale_save
+        self.get_rows = get_rows
 
     def execute(self, statement: Any, params: dict[str, Any] | None = None) -> _Result:
         sql = str(statement)
@@ -63,7 +71,7 @@ class _RecordingSession:
         if 'dashboard_layout_save' in sql and self.stale_save:
             return _Result()
         if 'dashboard_layout_get' in sql:
-            return _Result([_row()])
+            return _Result(self.get_rows if self.get_rows is not None else [_row()])
         if 'dashboard_layout_save' in sql:
             return _Result([_row(version=3)])
         return _Result()
@@ -123,6 +131,31 @@ def test_get_uses_visibility_and_clears_rls_without_committing() -> None:
         for keyword in ('INSERT', 'UPDATE', 'DELETE')
     )
     assert session.commits == 0
+
+
+def test_miss_uses_injected_config_default() -> None:
+    session = _RecordingSession(get_rows=[_row(version=0)])
+    repository = DashboardLayoutRepository(config=config(), session=session)
+
+    record = asyncio.run(repository.get_layout(COMPANY, USER, visible_ids=visible_all()))
+
+    assert record == default_record()
+
+
+def test_unknown_visible_ids_are_not_bound_to_sql() -> None:
+    session = _RecordingSession()
+    repository = DashboardLayoutRepository(config=config(), session=session)
+    visible = VisibleIds(
+        ('revenue', 'not_in_config'),
+        ('revenue_trend', 'ghost_chart'),
+    )
+
+    asyncio.run(repository.get_layout(COMPANY, USER, visible_ids=visible))
+
+    assert json.loads(_params(session, 'dashboard_layout_get')['visible_ids']) == {
+        'kpi_codes': ['revenue'],
+        'chart_ids': ['revenue_trend'],
+    }
 
 
 def test_save_uses_conditional_function_and_binds_json_payloads() -> None:
