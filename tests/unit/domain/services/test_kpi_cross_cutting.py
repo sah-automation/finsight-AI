@@ -36,3 +36,65 @@ def test_quarterly_spread_leaves_non_quarterly_rows_untouched() -> None:
     )[0]
 
     assert KpiComputationService(RULE_VERSION).spread_quarterly([row]) == [row]
+
+
+def _computed_row(*, version: str, value: str, period: str = '2026-Q3') -> dict[str, object]:
+    return KpiComputationService(RULE_VERSION).compute_revenue(
+        [
+            make_metric(
+                'revenue',
+                Decimal(value),
+                metric_id=f'rev-{version}',
+                version=version,
+                period=period,
+            )
+        ]
+    )[0]
+
+
+def test_cross_document_conflict_keeps_both_computed_rows_with_markers() -> None:
+    older = _computed_row(version='version-1', value='100.00')
+    newer = _computed_row(version='version-2', value='120.00')
+
+    rows = KpiComputationService(RULE_VERSION).mark_conflicts([older, newer])
+
+    assert len(rows) == 2
+    assert [row['computation_status'] for row in rows] == [ComputationStatus.COMPUTED] * 2
+    assert [row['conflict_marker'] for row in rows] == ['revenue|2026-Q3'] * 2
+    assert [row['value'] for row in rows] == ['100.00', '120.00']
+    assert [row['source_citations'] for row in rows] == [
+        ['cit:v1:version-1:p1'],
+        ['cit:v1:version-2:p1'],
+    ]
+
+
+def test_same_document_rows_are_not_marked_as_conflicts() -> None:
+    first = _computed_row(version='version-1', value='100.00')
+    second = _computed_row(version='version-1', value='120.00')
+
+    rows = KpiComputationService(RULE_VERSION).mark_conflicts([first, second])
+
+    assert [row.get('conflict_marker') for row in rows] == [None, None]
+
+
+def test_superseded_rows_point_to_newer_version_from_same_document_history() -> None:
+    older = _computed_row(version='version-1', value='100.00')
+    current = _computed_row(version='version-2', value='120.00')
+
+    rows = KpiComputationService(RULE_VERSION).mark_supersession(
+        [older, current], {'version-1': 'version-2'}
+    )
+
+    assert rows[0]['superseded_by_document_version_id'] == 'version-2'
+    assert rows[1]['superseded_by_document_version_id'] is None
+
+
+def test_superseded_history_is_not_reported_as_a_conflict() -> None:
+    older = _computed_row(version='version-1', value='100.00')
+    current = _computed_row(version='version-2', value='120.00')
+    service = KpiComputationService(RULE_VERSION)
+    history = service.mark_supersession([older, current], {'version-1': 'version-2'})
+
+    rows = service.mark_conflicts(history)
+
+    assert [row.get('conflict_marker') for row in rows] == [None, None]
