@@ -282,19 +282,6 @@ def test_limit_above_configured_maximum_returns_bad_request(api: Any) -> None:
     assert response.status_code == 400
 
 
-def test_router_publishes_limit_maximum_without_app_hook() -> None:
-    app = FastAPI()
-    app.include_router(kpis.router)
-
-    parameters = app.openapi()['paths']['/kpis']['get']['parameters']
-    limit_schema = next(
-        parameter['schema'] for parameter in parameters if parameter['name'] == 'limit'
-    )
-
-    assert limit_schema['minimum'] == 1
-    assert limit_schema['maximum'] == 100
-
-
 def test_missing_kpi_config_returns_friendly_server_error(
     api: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:

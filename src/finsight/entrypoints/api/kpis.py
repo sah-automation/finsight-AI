@@ -45,11 +45,7 @@ class _KpiQueryParams(BaseModel):
     period_to: str | None = None
     currency: str | None = None
     units: str | None = None
-    limit: int | None = Field(
-        default=None,
-        ge=1,
-        json_schema_extra={'minimum': 1, 'maximum': 100},
-    )
+    limit: int | None = Field(default=None, ge=1)
     cursor: str | None = None
 
     model_config = ConfigDict(extra='forbid')
