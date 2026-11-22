@@ -10,8 +10,8 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from datetime import date
-from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Any
+from decimal import Decimal, InvalidOperation, localcontext
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -100,6 +100,18 @@ def _amount(metric: Metric) -> Decimal:
     return amount
 
 
+def _exact_sum(values: list[Decimal]) -> Decimal:
+    """Add exact decimals without letting the ambient context round them."""
+    if not values:
+        return Decimal('0')
+    highest = max(value.adjusted() for value in values)
+    lowest = min(cast('int', value.as_tuple().exponent) for value in values)
+    required_precision = max(highest - lowest + 1, 1)
+    with localcontext() as context:
+        context.prec = max(context.prec, required_precision)
+        return sum(values, Decimal('0'))
+
+
 class KpiComputationService:
     """Compute computed KPI rows from Metrics without I/O or model calls."""
 
@@ -112,6 +124,14 @@ class KpiComputationService:
     def compute_revenue(self, metrics: Sequence[Metric]) -> list[KpiRow]:
         """Sum revenue Metrics into one computed KPI row per period."""
         return self._aggregate('revenue', metrics)
+
+    def compute_operating_expenses(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Sum operating-expense Metrics into one computed KPI row per period."""
+        return self._aggregate('operating_expenses', metrics)
+
+    def compute_cash_flow(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Sum cash-flow Metrics into one computed KPI row per period."""
+        return self._aggregate('cash_flow', metrics)
 
     def _aggregate(self, kpi_code: str, metrics: Sequence[Metric]) -> list[KpiRow]:
         groups: dict[tuple[str, str, str], dict[str, Any]] = {}
@@ -136,12 +156,12 @@ class KpiComputationService:
                     'start': start,
                     'currency': currency,
                     'units': units,
-                    'total': Decimal('0'),
+                    'amounts': [],
                     'citations': [],
                 },
             )
             self._check_group(group, start, currency, units)
-            group['total'] += _amount(metric)
+            group['amounts'].append(_amount(metric))
             citation = _required(metric, 'metric_id', 'metric_id', 'id')
             if citation not in group['citations']:
                 group['citations'].append(citation)
@@ -179,7 +199,7 @@ class KpiComputationService:
             'chart_period_start': start,
             'currency': group['currency'],
             'units': group['units'],
-            'value': str(group['total']),
+            'value': str(_exact_sum(group['amounts'])),
             'source_citations': list(group['citations']),
             'computation_status': 'computed',
             'estimation_method': None,
