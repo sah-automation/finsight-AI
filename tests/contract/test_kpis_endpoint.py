@@ -7,11 +7,12 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from finsight.entrypoints.api.api_principal import ApiPrincipal
 from starlette.testclient import TestClient
 
 from finsight.core.config import reset_config
+from finsight.core.config.loader import ConfigError
 from finsight.entrypoints.api import action_permission, kpis
+from finsight.entrypoints.api.api_principal import ApiPrincipal
 from finsight.entrypoints.api.app import create_app
 
 pytestmark = pytest.mark.contract
@@ -279,6 +280,53 @@ def test_limit_above_configured_maximum_returns_bad_request(api: Any) -> None:
     response = client.get('/kpis', params={'limit': 101}, headers=HEADERS)
 
     assert response.status_code == 400
+
+
+def test_router_publishes_limit_maximum_without_app_hook() -> None:
+    app = FastAPI()
+    app.include_router(kpis.router)
+
+    parameters = app.openapi()['paths']['/kpis']['get']['parameters']
+    limit_schema = next(
+        parameter['schema'] for parameter in parameters if parameter['name'] == 'limit'
+    )
+
+    assert limit_schema['minimum'] == 1
+    assert limit_schema['maximum'] == 100
+
+
+def test_missing_kpi_config_returns_friendly_server_error(
+    api: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, _, kpi_repository, _ = api
+
+    def raise_config_error(*_args: Any, **_kwargs: Any) -> Any:
+        raise ConfigError('configuration unavailable')
+
+    monkeypatch.setattr(kpis, 'get_config', raise_config_error, raising=False)
+    monkeypatch.setattr(kpis, 'load_config', raise_config_error, raising=False)
+
+    response = client.get('/kpis', headers=HEADERS)
+
+    assert response.status_code == 500
+    assert response.json() == {'detail': 'Service configuration is unavailable.'}
+    assert kpi_repository.calls == 0
+
+
+def test_missing_repository_returns_friendly_server_error(
+    api: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, _, _, document_repository = api
+    monkeypatch.setattr(
+        kpis,
+        'get_container',
+        lambda: SimpleNamespace(document_repository=document_repository),
+    )
+
+    response = client.get('/kpis', headers=HEADERS)
+
+    assert response.status_code == 500
+    assert response.json() == {'detail': 'KPI data is temporarily unavailable.'}
 
 
 def test_openapi_schema_publishes_kpis_contract(monkeypatch: pytest.MonkeyPatch) -> None:
