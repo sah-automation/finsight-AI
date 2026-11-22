@@ -98,3 +98,47 @@ def test_superseded_history_is_not_reported_as_a_conflict() -> None:
     rows = service.mark_conflicts(history)
 
     assert [row.get('conflict_marker') for row in rows] == [None, None]
+
+
+def test_display_label_precedence_is_updating_then_estimated_then_draft() -> None:
+    service = KpiComputationService(RULE_VERSION)
+    computed = _computed_row(version='version-1', value='900.00')
+    estimated = service.spread_quarterly([computed])[0]
+    statuses = {'version-1': 'draft'}
+
+    updating = service.apply_display_labels([estimated], document_statuses=statuses, updating=True)
+    no_updating = service.apply_display_labels([estimated], document_statuses=statuses)
+
+    assert updating[0]['display_label'] == 'Updating'
+    assert no_updating[0]['display_label'] == 'Estimated'
+
+
+def test_draft_display_label_comes_from_source_document_status() -> None:
+    row = _computed_row(version='version-1', value='100.00')
+
+    rows = KpiComputationService(RULE_VERSION).apply_display_labels(
+        [row], document_statuses={'version-1': 'draft'}
+    )
+
+    assert rows[0]['display_label'] == 'Draft'
+
+
+def test_final_and_unmarked_rows_have_no_display_label() -> None:
+    row = _computed_row(version='version-1', value='100.00')
+
+    rows = KpiComputationService(RULE_VERSION).apply_display_labels(
+        [row], document_statuses={'version-1': 'final'}
+    )
+
+    assert rows[0]['display_label'] is None
+
+
+def test_updating_label_can_be_scoped_to_kpi_codes() -> None:
+    revenue = _computed_row(version='version-1', value='100.00')
+    dso = dict(revenue, kpi_code='dso')
+
+    rows = KpiComputationService(RULE_VERSION).apply_display_labels(
+        [revenue, dso], updating={'dso'}
+    )
+
+    assert [row['display_label'] for row in rows] == [None, 'Updating']
