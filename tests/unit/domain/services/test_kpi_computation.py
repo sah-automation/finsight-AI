@@ -496,3 +496,46 @@ def test_kpi_computation_marks_needs_review_when_any_metric_lacks_citation() -> 
     assert rows[0]['computation_status'] == 'needs_review'
     assert rows[0]['source_citations'] == [_citation_id()]  # Only one valid citation
     assert rows[0]['source_metric_ids'] == ['m1', 'm2']
+
+
+# --- Margin KPI tests (issue #373) ---
+
+
+@pytest.mark.parametrize(
+    ('method_name', 'kpi_code', 'input_name'),
+    [
+        ('compute_gross_margin', 'gross_margin', 'cogs'),
+        ('compute_net_margin', 'net_margin', 'net_income'),
+    ],
+)
+def test_margin_computes_percentage_from_revenue_and_input_metric(
+    method_name: str, kpi_code: str, input_name: str
+) -> None:
+    metrics = [
+        _metric('revenue', Decimal('200.00'), metric_id='rev-1'),
+        _metric(input_name, Decimal('150.00'), metric_id='input-1'),
+    ]
+
+    rows = getattr(KpiComputationService(RULE_VERSION), method_name)(metrics)
+
+    assert rows == [
+        {
+            'company_id': str(COMPANY),
+            'kpi_code': kpi_code,
+            'period': '2026-Q3',
+            'period_start': '2026-07-01',
+            'chart_period': '2026-Q3',
+            'chart_period_start': '2026-07-01',
+            'currency': 'USD',
+            'units': 'USD',
+            'value': '25.00',
+            'source_citations': [_citation_id()],
+            'source_metric_ids': ['rev-1', 'input-1'],
+            'computation_status': 'computed',
+            'estimation_method': None,
+            'document_version_id': 'version-1',
+            'computation_rule_version': RULE_VERSION,
+            'superseded_by_document_version_id': None,
+            'reason': None,
+        }
+    ]
