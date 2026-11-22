@@ -539,3 +539,95 @@ def test_margin_computes_percentage_from_revenue_and_input_metric(
             'reason': None,
         }
     ]
+
+
+@pytest.mark.parametrize(
+    ('method_name', 'input_name', 'expected_reason'),
+    [
+        ('compute_gross_margin', 'cogs', 'missing_cogs'),
+        ('compute_net_margin', 'net_income', 'missing_net_income'),
+    ],
+)
+def test_margin_needs_review_when_second_input_is_missing(
+    method_name: str, input_name: str, expected_reason: str
+) -> None:
+    rows = getattr(KpiComputationService(RULE_VERSION), method_name)(
+        [_metric('revenue', Decimal('200'), metric_id='rev-only')]
+    )
+
+    assert len(rows) == 1
+    assert rows[0]['value'] is None
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['reason'] == expected_reason
+    assert rows[0]['source_metric_ids'] == ['rev-only']
+    assert rows[0]['source_citations'] == [_citation_id()]
+
+
+@pytest.mark.parametrize('method_name', ['compute_gross_margin', 'compute_net_margin'])
+@pytest.mark.parametrize('input_name', ['cogs', 'net_income'])
+def test_margin_needs_review_when_revenue_is_missing(method_name: str, input_name: str) -> None:
+    rows = getattr(KpiComputationService(RULE_VERSION), method_name)(
+        [_metric(input_name, Decimal('50'), metric_id='input-only')]
+    )
+
+    assert len(rows) == 1
+    assert rows[0]['value'] is None
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['reason'] == 'missing_revenue'
+    assert rows[0]['source_metric_ids'] == ['input-only']
+
+
+@pytest.mark.parametrize(
+    ('method_name', 'input_name'),
+    [
+        ('compute_gross_margin', 'cogs'),
+        ('compute_net_margin', 'net_income'),
+    ],
+)
+@pytest.mark.parametrize(
+    ('field', 'mismatched_value', 'expected_reason'),
+    [
+        ('currency', 'EUR', 'currency_mismatch'),
+        ('units', 'millions', 'units_mismatch'),
+    ],
+)
+def test_margin_needs_review_when_inputs_disagree(
+    method_name: str,
+    input_name: str,
+    field: str,
+    mismatched_value: str,
+    expected_reason: str,
+) -> None:
+    metrics = [
+        _metric('revenue', Decimal('200'), metric_id='rev-1'),
+        _metric(input_name, Decimal('50'), metric_id='input-1', **{field: mismatched_value}),
+    ]
+
+    rows = getattr(KpiComputationService(RULE_VERSION), method_name)(metrics)
+
+    assert len(rows) == 1
+    assert rows[0]['value'] is None
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['reason'] == expected_reason
+
+
+@pytest.mark.parametrize(
+    ('method_name', 'input_name'),
+    [
+        ('compute_gross_margin', 'cogs'),
+        ('compute_net_margin', 'net_income'),
+    ],
+)
+def test_margin_never_pairs_inputs_from_different_periods(
+    method_name: str, input_name: str
+) -> None:
+    metrics = [
+        _metric('revenue', Decimal('200'), metric_id='rev-1'),
+        _metric(input_name, Decimal('50'), metric_id='input-1', period='2026-Q4'),
+    ]
+
+    rows = getattr(KpiComputationService(RULE_VERSION), method_name)(metrics)
+
+    assert len(rows) == 2
+    assert all(row['value'] is None for row in rows)
+    assert {row['reason'] for row in rows} == {'missing_revenue', f'missing_{input_name}'}
