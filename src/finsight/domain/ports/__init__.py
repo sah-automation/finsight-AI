@@ -12,6 +12,7 @@ from .dashboard_layout_repository import (
     DashboardLayoutRepositoryPort,
     LayoutChart,
     LayoutConflictError,
+    LayoutDraft,
     LayoutRecord,
     VisibleIds,
 )
@@ -73,6 +74,7 @@ __all__ = [
     'LLMGateway',
     'LayoutChart',
     'LayoutConflictError',
+    'LayoutDraft',
     'LayoutRecord',
     'MeteringPort',
     'MetricRepository',

@@ -14,6 +14,7 @@ from .confidence import Confidence
 from .currency import Currency
 from .document_change_event import DocumentChangeEvent
 from .layout_chart import LayoutChart
+from .layout_draft import LayoutDraft
 from .layout_record import LayoutRecord
 from .money import Money
 from .money_units import MoneyUnits
@@ -33,6 +34,7 @@ __all__ = [
     'Currency',
     'DocumentChangeEvent',
     'LayoutChart',
+    'LayoutDraft',
     'LayoutRecord',
     'Money',
     'MoneyUnits',

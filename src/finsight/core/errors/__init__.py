@@ -276,6 +276,14 @@ class ConflictError(UserFacingError):
     """Resource conflict (e.g., concurrent modification)."""
 
 
+class LayoutConflictError(ConflictError):
+    """A saved-layout save lost the optimistic-version race."""
+
+    def __init__(self, current_layout: Any) -> None:
+        super().__init__('layout changed elsewhere', code='layout_changed')
+        self.current_layout = current_layout
+
+
 # ============================================================
 # Error Mapping for Entrypoints
 # ============================================================

@@ -2,9 +2,8 @@
 
 Reads and conditional saves call the ``dashboard_layout_get`` and
 ``dashboard_layout_save`` functions from migration 0009 with the company RLS
-context set for the transaction. The caller supplies the role-filtered visible
-id set; this adapter never substitutes an alternate store when no session is
-wired.
+context set for the transaction. Caller visibility is intersected with the
+config catalogue before binding SQL; no alternate store is used.
 """
 
 from __future__ import annotations
@@ -18,15 +17,18 @@ from finsight.domain.ports.dashboard_layout_repository import (
 )
 from finsight.domain.ports.dashboard_layout_repository import (
     LayoutConflictError,
+    LayoutDraft,
     LayoutRecord,
     VisibleIds,
 )
 
-from . import _dashboard_layout_repository_records as _records
+from . import _dashboard_layout_repository_config as _config
+from . import _dashboard_layout_repository_fields as _fields
+from . import _dashboard_layout_repository_visibility as _visibility
 from .base_repository import BaseRepository
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Mapping
+    from collections.abc import AsyncIterator
 
     from finsight.core.types import CompanyId, UserId
 
@@ -44,7 +46,7 @@ class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
 
     def __init__(self, config: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        _records.validate_config(config)
+        _config.validate_config(config)
         self._config = config
 
     async def _set_tenant(self, tenant: str) -> None:
@@ -66,45 +68,50 @@ class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
             await self._clear_tenant()
 
     async def _fetch_record(
-        self, company_id: Any, user_id: Any, visible_ids: VisibleIds
+        self, company_id: Any, user_id: Any, visible: VisibleIds
     ) -> LayoutRecord:
         result = await self._raw_execute(
             _GET_SQL,
             {
                 'company_id': str(company_id),
                 'user_id': str(user_id),
-                'visible_ids': json.dumps(visible_ids.to_mapping()),
+                'visible_ids': json.dumps(visible.to_mapping()),
             },
         )
         rows = await self._fetchall(result)
         if not rows:
-            return _records.default_record(self._config, visible_ids)
-        return _records.from_row(rows[0])
+            return _config.default_record(self._config, visible)
+        record = _fields.from_row(rows[0])
+        if record.version == 0 and record.updated_at is None:
+            return _config.default_record(self._config, visible)
+        return _visibility.filter_record(record, visible)
 
     async def _save_record(
         self,
         company_id: Any,
         user_id: Any,
-        layout: Mapping[str, Any] | LayoutRecord,
+        layout: LayoutDraft,
         expected_version: int,
-        visible_ids: VisibleIds,
+        visible: VisibleIds,
     ) -> LayoutRecord:
-        payload = _records.json_fields(layout)
+        fields = _visibility.visible_json_fields(_fields.json_fields(layout), visible)
+        if not fields['kpi_codes'] and not fields['charts']:
+            fields = _fields.json_fields(_config.default_record(self._config, visible))
         result = await self._raw_execute(
             _SAVE_SQL,
             {
                 'company_id': str(company_id),
                 'user_id': str(user_id),
                 'expected_version': expected_version,
-                'kpi_codes': json.dumps(payload['kpi_codes']),
-                'charts': json.dumps(payload['charts']),
-                'visible_ids': json.dumps(visible_ids.to_mapping()),
+                'kpi_codes': json.dumps(fields['kpi_codes']),
+                'charts': json.dumps(fields['charts']),
+                'visible_ids': json.dumps(visible.to_mapping()),
             },
         )
         rows = await self._fetchall(result)
         if not rows:
-            raise LayoutConflictError(await self._fetch_record(company_id, user_id, visible_ids))
-        return _records.from_row(rows[0])
+            raise LayoutConflictError(await self._fetch_record(company_id, user_id, visible))
+        return _visibility.filter_record(_fields.from_row(rows[0]), visible)
 
     async def get_layout(
         self,
@@ -113,24 +120,24 @@ class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
         *,
         visible_ids: VisibleIds,
     ) -> LayoutRecord:
-        """Return the visible saved layout or config default; never write."""
+        """Return the visible saved layout or current config default; never write."""
+        visible = _config.effective_visible_ids(self._config, visible_ids)
         async with self._tenant_scope(company_id):
-            return await self._fetch_record(company_id, user_id, visible_ids)
+            return await self._fetch_record(company_id, user_id, visible)
 
     async def save_layout(
         self,
         company_id: CompanyId,
         user_id: UserId,
-        layout: Mapping[str, Any] | LayoutRecord,
+        layout: LayoutDraft,
         expected_version: int,
         *,
         visible_ids: VisibleIds,
     ) -> LayoutRecord:
-        """Conditionally save the layout, incrementing its version on success."""
+        """Conditionally save the draft, incrementing its version on success."""
+        visible = _config.effective_visible_ids(self._config, visible_ids)
         async with self._tenant_scope(company_id):
-            return await self._save_record(
-                company_id, user_id, layout, expected_version, visible_ids
-            )
+            return await self._save_record(company_id, user_id, layout, expected_version, visible)
 
     async def delete_layout(self, company_id: CompanyId, user_id: UserId) -> None:
         """Remove the saved layout so a later read returns the config default."""
