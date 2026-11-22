@@ -244,10 +244,10 @@ def test_net_margin_ignores_unrelated_cogs_metrics() -> None:
 
 
 def test_margin_needs_review_when_units_are_missing() -> None:
-    uncited_units = make_metric('cogs', Decimal('100'), metric_id='cogs-no-units', units=None)
+    cogs_missing_units = make_metric('cogs', Decimal('100'), metric_id='cogs-no-units', units=None)
 
     rows = KpiComputationService(RULE_VERSION).compute_gross_margin(
-        [_metric('revenue', Decimal('200'), metric_id='rev-1'), uncited_units]
+        [_metric('revenue', Decimal('200'), metric_id='rev-1'), cogs_missing_units]
     )
 
     assert len(rows) == 1

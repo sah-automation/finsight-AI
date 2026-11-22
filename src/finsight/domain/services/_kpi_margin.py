@@ -205,7 +205,7 @@ def _row(
     rule_version: str,
 ) -> KpiRow:
     company, label, version, start = key
-    source = revenue if revenue['currency'] else inputs
+    dimension_source = revenue if revenue['currency'] else inputs
     citations = sorted(revenue['citations'] | inputs['citations'])
     status = 'needs_review' if reason else 'computed'
     return {
@@ -215,8 +215,8 @@ def _row(
         'period_start': start.isoformat(),
         'chart_period': label,
         'chart_period_start': start.isoformat(),
-        'currency': source['currency'],
-        'units': source['units'],
+        'currency': dimension_source['currency'],
+        'units': dimension_source['units'],
         'value': value,
         'source_citations': citations,
         'source_metric_ids': revenue['metric_ids']
