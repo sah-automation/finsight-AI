@@ -67,6 +67,7 @@ class KpiRebuildStateRepository(KpiRebuildStatePort, BaseRepository):
         self._memory: dict[str, KpiRebuildStateValue] = {}
 
     async def get(self, version: str) -> KpiRebuildStateValue | None:
+        """Return the stored state for a rule version, if any."""
         key = _version(version)
         if self._session is None:
             return self._memory.get(key)
@@ -77,9 +78,11 @@ class KpiRebuildStateRepository(KpiRebuildStatePort, BaseRepository):
         return None if state is None else cast('KpiRebuildStateValue', str(state))
 
     async def is_complete(self, version: str) -> bool:
+        """Return whether the version finished its rebuild."""
         return await self.get(version) == 'complete'
 
     async def ensure_pending(self, version: str) -> None:
+        """Record a new version as pending without downgrading later states."""
         key = _version(version)
         if self._session is None:
             self._memory.setdefault(key, 'pending')
@@ -87,6 +90,7 @@ class KpiRebuildStateRepository(KpiRebuildStatePort, BaseRepository):
         await self._raw_execute(_ENSURE_PENDING, {'version': key})
 
     async def mark_running(self, version: str) -> None:
+        """Start a pending version without downgrading completion."""
         key = _version(version)
         if self._session is None:
             if self._memory.get(key) in (None, 'pending'):
@@ -95,6 +99,7 @@ class KpiRebuildStateRepository(KpiRebuildStatePort, BaseRepository):
         await self._raw_execute(_MARK_RUNNING, {'version': key})
 
     async def mark_complete(self, version: str) -> None:
+        """Mark a version fully rebuilt and activatable."""
         key = _version(version)
         if self._session is None:
             self._memory[key] = 'complete'
@@ -102,6 +107,7 @@ class KpiRebuildStateRepository(KpiRebuildStatePort, BaseRepository):
         await self._raw_execute(_MARK_COMPLETE, {'version': key})
 
     async def incomplete_versions(self) -> list[str]:
+        """Return versions still pending or running."""
         if self._session is None:
             return sorted(version for version, state in self._memory.items() if state != 'complete')
         rows = await self._fetchall(await self._raw_execute(_SELECT_INCOMPLETE))

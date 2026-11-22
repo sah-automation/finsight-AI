@@ -116,6 +116,7 @@ def _job(
     priority: str = 'rebuilds',
     tracing: _Tracing | None = None,
     company_repository: Any = None,
+    target_version: str | None = VERSION,
 ) -> KpiRebuildJob:
     return KpiRebuildJob(
         config=SimpleNamespace(rebuild_batch_size=batch_size, rebuild_priority=priority),
@@ -126,7 +127,7 @@ def _job(
         waiting_line=line or _Line(),
         company_repository=company_repository,
         tracing=tracing,
-        target_version=VERSION,
+        target_version=target_version,
     )
 
 

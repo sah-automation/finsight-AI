@@ -12,11 +12,25 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import time
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from finsight.application._step_span import emit_step_span
+from finsight.core.logging import get_trace_id
+from finsight.core.types import CompanyId
 from finsight.core.work_priority import assert_rebuild_priority_ordering
 
+if TYPE_CHECKING:
+    from finsight.domain.ports.kpi_rebuild_state import KpiRebuildState
+    from finsight.domain.ports.kpi_repository import KpiRepository
+    from finsight.domain.ports.metric_repository import MetricRepository
+    from finsight.domain.ports.tracing_port import TracingPort
+    from finsight.domain.ports.waiting_line import WaitingLine
+    from finsight.domain.services.kpi_computation_service import KpiComputationService
+
+_LOGGER = logging.getLogger(__name__)
 _ALLOWED_PRIORITIES = ('rebuilds', 'background')
 _FINGERPRINT_FIELDS = (
     'codes',
@@ -33,7 +47,8 @@ def _attr(value: Any, name: str, default: Any = None) -> Any:
 
 
 def _config_section(config: Any) -> Any:
-    return _attr(config, 'kpi', None) or config
+    section = _attr(config, 'kpi', None)
+    return config if section is None else section
 
 
 def _plain(value: Any) -> Any:
@@ -49,13 +64,10 @@ def _plain(value: Any) -> Any:
     return str(value)
 
 
-def _target_version(config: Any, explicit: str | None) -> str:
-    if explicit is not None and str(explicit).strip():
-        return str(explicit).strip()
+def kpi_rule_version(config: Any) -> str:
+    """Return the target rule version shared by rebuild and KPI computation."""
     section = _config_section(config)
-    version = _attr(section, 'computation_rule_version', None) or _attr(
-        config, 'computation_rule_version', None
-    )
+    version = _attr(section, 'computation_rule_version', None)
     if version is not None and str(version).strip():
         return str(version).strip()
     rules = {name: _plain(_attr(section, name)) for name in _FINGERPRINT_FIELDS}
@@ -65,12 +77,12 @@ def _target_version(config: Any, explicit: str | None) -> str:
     return f'kpi-rules-{digest}'
 
 
-def _company_id(value: Any) -> str:
+def _company_id(value: Any) -> CompanyId:
     if isinstance(value, Mapping):
         value = _attr(value, 'company_id', None) or _attr(value, 'id', None)
     else:
         value = _attr(value, 'company_id', None) or _attr(value, 'id', None) or value
-    return str(value).strip()
+    return CompanyId(str(value).strip())
 
 
 class KpiRebuildJob:
@@ -80,37 +92,40 @@ class KpiRebuildJob:
         self,
         *,
         config: Any,
-        metric_repository: Any,
-        kpi_repository: Any,
-        computation_service: Any,
-        rebuild_state: Any,
-        waiting_line: Any = None,
+        metric_repository: MetricRepository,
+        kpi_repository: KpiRepository,
+        computation_service: KpiComputationService,
+        rebuild_state: KpiRebuildState,
+        waiting_line: WaitingLine | None = None,
         company_repository: Any = None,
+        tracing: TracingPort | None = None,
         target_version: str | None = None,
     ) -> None:
         section = _config_section(config)
-        priority = str(_attr(section, 'rebuild_priority', 'rebuilds'))
+        priority = _attr(section, 'rebuild_priority', None)
         if priority not in _ALLOWED_PRIORITIES:
             raise ValueError(
                 f'kpi.rebuild_priority must be one of {_ALLOWED_PRIORITIES}, got {priority!r}'
             )
+        raw_batch_size = _attr(section, 'rebuild_batch_size', None)
         try:
-            batch_size = int(_attr(section, 'rebuild_batch_size', 10))
+            batch_size = int(raw_batch_size)
         except (TypeError, ValueError) as exc:
             raise ValueError('kpi.rebuild_batch_size must be a positive integer') from exc
         if batch_size < 1:
             raise ValueError('kpi.rebuild_batch_size must be a positive integer')
         assert_rebuild_priority_ordering()
 
-        self._priority = priority
+        self._priority = str(priority)
         self._batch_size = batch_size
-        self._version = _target_version(config, target_version)
+        self._version = target_version or kpi_rule_version(config)
         self._metric_repository = metric_repository
         self._kpi_repository = kpi_repository
         self._computation_service = computation_service
         self._rebuild_state = rebuild_state
         self._waiting_line = waiting_line
         self._company_repository = company_repository
+        self._tracing = tracing
 
     @property
     def target_version(self) -> str:
@@ -123,15 +138,14 @@ class KpiRebuildJob:
     async def run(self, company_ids: Sequence[Any] | None = None) -> dict[str, Any]:
         """Run one rolling pass; failed companies stay eligible for a retry."""
         await self._rebuild_state.ensure_pending(self._version)
-        await self._rebuild_state.mark_running(self._version)
-
         tenants = await self._resolve_companies(company_ids)
         batches = [
             tenants[index : index + self._batch_size]
             for index in range(0, len(tenants), self._batch_size)
         ]
-        failed, deferred, rows_written = await self._process_batches(batches)
+        await self._rebuild_state.mark_running(self._version)
 
+        failed, deferred, rows_written = await self._process_batches(batches)
         status = 'complete'
         if failed or deferred:
             status = 'incomplete'
@@ -147,24 +161,54 @@ class KpiRebuildJob:
             'deferred': deferred,
         }
 
-    async def _process_batches(self, batches: list[list[str]]) -> tuple[list[str], list[str], int]:
-        failed: list[str] = []
-        deferred: list[str] = []
+    async def _process_batches(
+        self, batches: list[list[CompanyId]]
+    ) -> tuple[list[CompanyId], list[CompanyId], int]:
+        failed: list[CompanyId] = []
+        deferred: list[CompanyId] = []
         rows_written = 0
-        for batch in batches:
+        for index, batch in enumerate(batches):
+            batch_id = f'{self._version}:{index}'
             for tenant in batch:
+                started = time.perf_counter()
+                outcome = 'success'
                 try:
                     result = await self._run_company(tenant)
-                except Exception:  # noqa: BLE001 - one company must not abort the pass
+                    if getattr(result, 'busy', False):
+                        outcome = 'deferred'
+                        deferred.append(tenant)
+                    else:
+                        rows_written += int(result)
+                except Exception as exc:  # noqa: BLE001 - one company must not abort the pass
+                    outcome = 'failure'
                     failed.append(tenant)
-                    continue
-                if getattr(result, 'busy', False):
-                    deferred.append(tenant)
-                    continue
-                rows_written += int(result)
+                    self._log_failure(tenant, exc)
+                finally:
+                    await self._emit_span(tenant, batch_id, outcome, started)
         return failed, deferred, rows_written
 
-    async def _resolve_companies(self, company_ids: Sequence[Any] | None) -> list[str]:
+    def _log_failure(self, tenant: CompanyId, exc: Exception) -> None:
+        _LOGGER.warning(
+            'kpi rebuild failed (trace_id=%s, version=%s, company=%s): %s',
+            get_trace_id(),
+            self._version,
+            tenant,
+            exc,
+        )
+
+    async def _emit_span(
+        self, tenant: CompanyId, batch_id: str, outcome: str, started: float
+    ) -> None:
+        await emit_step_span(
+            self._tracing,
+            tenant,
+            'kpi.rebuild.company',
+            duration_ms=(time.perf_counter() - started) * 1000.0,
+            outcome=outcome,
+            attributes={'batch_id': batch_id, 'target_rule_version': self._version},
+        )
+
+    async def _resolve_companies(self, company_ids: Sequence[Any] | None) -> list[CompanyId]:
         if company_ids is not None:
             values = [_company_id(value) for value in company_ids]
         elif self._company_repository is not None:
@@ -182,7 +226,7 @@ class KpiRebuildJob:
             raise ValueError('company_ids are required when no company repository is available')
         return sorted({value for value in values if value})
 
-    async def _run_company(self, company_id: str) -> Any:
+    async def _run_company(self, company_id: CompanyId) -> Any:
         async def work() -> Any:
             return await self._recompute(company_id)
 
@@ -190,7 +234,7 @@ class KpiRebuildJob:
             return await work()
         return await self._waiting_line.run(company_id, work, priority=self._priority)
 
-    async def _recompute(self, company_id: str) -> int:
+    async def _recompute(self, company_id: CompanyId) -> int:
         metrics = await self._metric_repository.list_metrics(company_id)
         computed = self._computation_service.compute_all(metrics)
         rows: list[dict[str, Any]] = []
@@ -205,4 +249,4 @@ class KpiRebuildJob:
         return len(rows)
 
 
-__all__ = ['KpiRebuildJob']
+__all__ = ['KpiRebuildJob', 'kpi_rule_version']

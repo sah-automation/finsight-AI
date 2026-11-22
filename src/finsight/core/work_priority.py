@@ -18,7 +18,7 @@ _PRIORITY_RANKS: dict[str, int] = {
     'report': 2,
     'reprocess': 2,
     'rebuilds': 3,
-    'background': 4,
+    'background': 3,
 }
 _LIVE_WORK = ('question', 'search', 'model')
 _UPLOAD_WORK = ('upload', 'ingestion')

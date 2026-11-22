@@ -896,6 +896,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
             rebuild_state=kpi_rebuild_state,
             waiting_line=waiting_line,
             company_repository=company_repository,
+            tracing=tracing,
         )
 
     hybrid_search = provided_deps.get('hybrid_search')
@@ -2274,7 +2275,9 @@ def _build_kpi_computation_service_impl(*args: Any, **kwargs: Any) -> Any:
         kwargs, 'computation_rule_version', 'kpi_computation_rule_version', 'kpi_rule_version'
     )
     if rule_version is None and config is not None:
-        rule_version = getattr(getattr(config, 'kpi', None), 'computation_rule_version', None)
+        from finsight.application.metrics.kpi_rebuild import kpi_rule_version
+
+        rule_version = kpi_rule_version(config)
     if rule_version is None:
         rule_version = 'v1'
     from finsight.domain.services.kpi_computation_service import KpiComputationService
