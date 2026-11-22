@@ -13,38 +13,83 @@ role permissions and the config catalogue - so ids that are unpermitted or
 unknown to config are dropped on both paths.  No second store path and no
 ``layout_store`` switch exist (ADR-0011).
 
-The default layout comes from the active config profile at migration time;
-missing config fails the migration rather than baking a silent fallback.
+The default layout comes from the active profile at migration time, the same
+way ``migrations/env.py`` and revision 0008 resolve their values.  The
+documented env-only migration path (scripts/run_migration.py sets only
+VECTOR_DB_*) cannot resolve the full profile, so the documented schema
+defaults are baked with a warning there; a profile that does load but has no
+dashboard section fails loudly.
 """
 
 from __future__ import annotations
 
+import copy
 import json
+import logging
 from typing import TYPE_CHECKING, Any
 
 from alembic import op
 
-from finsight.core.config import load_config
-
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+_LOGGER = logging.getLogger('alembic.versions.0009_dashboard_layouts')
+
+# The config loader import can fail during migration runs that only carry
+# VECTOR_DB_* env vars; the documented schema defaults are baked instead.
+try:
+    from finsight.core.config import load_config
+except Exception as exc:  # import failure must not break the migration
+    load_config = None  # type: ignore[assignment]
+    _LOGGER.warning('Config loader unavailable (%s); baking schema defaults', exc)
 
 revision: str = '0009_dashboard_layouts'
 down_revision: str | None = '0008_kpi_store'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+# Documented defaults from config/schema.yaml (dashboard.default_layout),
+# used only when the full profile cannot be resolved; see _default_layout().
+_DEFAULT_LAYOUT: dict[str, Any] = {
+    'kpi_codes': [
+        'revenue',
+        'gross_margin',
+        'net_margin',
+        'operating_expenses',
+        'cash_flow',
+        'burn_rate',
+    ],
+    'charts': [
+        {'chart_id': 'revenue_trend', 'span': 'full'},
+        {'chart_id': 'margin_trend', 'span': 'half'},
+    ],
+}
+
 
 def _default_layout() -> dict[str, Any]:
-    """Resolve ``dashboard.default_layout`` from the active config profile."""
-    dashboard = load_config().dashboard
-    if dashboard is None:
-        raise RuntimeError('dashboard config section is required by the layout migration')
-    default = dashboard.default_layout
-    return {
-        'kpi_codes': list(default.kpi_codes),
-        'charts': [{'chart_id': chart.chart_id, 'span': chart.span} for chart in default.charts],
-    }
+    """Resolve ``dashboard.default_layout`` as env.py/0008 resolve their values.
+
+    The production migration path supplies only VECTOR_DB_* variables, so the
+    full profile cannot be resolved there; the documented schema defaults are
+    baked with a warning.  A profile that loads but has no dashboard section
+    is broken and fails loudly instead of falling back silently.
+    """
+    if load_config is not None:
+        try:
+            config = load_config()
+        except Exception as exc:  # env-only migration path
+            _LOGGER.warning('App config unusable (%s); baking schema defaults', exc)
+        else:
+            if config.dashboard is None:
+                raise RuntimeError('dashboard config section is required by the layout migration')
+            default = config.dashboard.default_layout
+            return {
+                'kpi_codes': list(default.kpi_codes),
+                'charts': [
+                    {'chart_id': chart.chart_id, 'span': chart.span} for chart in default.charts
+                ],
+            }
+    return copy.deepcopy(_DEFAULT_LAYOUT)
 
 
 def _json_literal(value: object) -> str:
