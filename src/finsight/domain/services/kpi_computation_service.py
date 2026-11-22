@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ._kpi_margin import compute_margin as _compute_margin
 from ._kpi_metric_fields import amount as _amount
 from ._kpi_metric_fields import exact_sum as _exact_sum
 from ._kpi_metric_fields import matches_code as _matches_code
@@ -45,6 +46,23 @@ class KpiComputationService:
     def compute_cash_flow(self, metrics: Sequence[Metric]) -> list[KpiRow]:
         """Sum cash-flow Metrics into one computed KPI row per period."""
         return self._aggregate('cash_flow', metrics)
+
+    def compute_gross_margin(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Compute gross margin percentages from revenue and COGS Metrics."""
+        return self._margin('gross_margin', 'cogs', metrics)
+
+    def compute_net_margin(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Compute net margin percentages from revenue and net-income Metrics."""
+        return self._margin('net_margin', 'net_income', metrics)
+
+    def _margin(self, kpi_code: str, input_code: str, metrics: Sequence[Metric]) -> list[KpiRow]:
+        return _compute_margin(
+            kpi_code=kpi_code,
+            input_code=input_code,
+            metrics=metrics,
+            rule_version=self._computation_rule_version,
+            citations=self._citation_factory,
+        )
 
     def _aggregate(self, kpi_code: str, metrics: Sequence[Metric]) -> list[KpiRow]:
         groups: dict[tuple[str, str, str], dict[str, Any]] = {}
