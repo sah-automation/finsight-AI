@@ -12,10 +12,10 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from finsight.adapters.repositories.dashboard_layout_repository import DashboardLayoutRepository
-from finsight.domain.ports.dashboard_layout_repository import LayoutConflictError
 
+from finsight.adapters.repositories.dashboard_layout_repository import DashboardLayoutRepository
 from finsight.core.types import CompanyId, UserId
+from finsight.domain.ports.dashboard_layout_repository import LayoutConflictError
 
 if TYPE_CHECKING:
     from finsight.domain.ports.dashboard_layout_repository import (

@@ -7,6 +7,11 @@ from .audit_log import AuditLog
 from .change_event_publisher import ChangeEventPublisher
 from .chunk_repository import ChunkRepository
 from .company_repository import CompanyRepository
+from .dashboard_layout_repository import (
+    DashboardLayoutRepository,
+    DashboardLayoutRepositoryPort,
+    LayoutConflictError,
+)
 from .document_reader import DocumentReader
 from .document_repository import DocumentRepository
 from .document_table_repository import DocumentTableRepository
@@ -46,6 +51,8 @@ __all__ = [
     'ChangeEventPublisher',
     'ChunkRepository',
     'CompanyRepository',
+    'DashboardLayoutRepository',
+    'DashboardLayoutRepositoryPort',
     'DocumentReader',
     'DocumentRepository',
     'DocumentTableRepository',
@@ -61,6 +68,7 @@ __all__ = [
     'KpiRepository',
     'KpiRepositoryPort',
     'LLMGateway',
+    'LayoutConflictError',
     'MeteringPort',
     'MetricRepository',
     'MetricsRepository',
