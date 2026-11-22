@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+
 from finsight.application.kpi_visibility_filter import KpiVisibilityFilter
 
 pytestmark = pytest.mark.unit
@@ -119,3 +120,44 @@ def test_opaque_citations_are_removed_but_visible_row_is_kept() -> None:
 
     assert len(filtered) == 1
     assert filtered[0]['source_citations'] == [f'cit:v1:{INVOICE_VERSION}:p1']
+
+
+def test_hidden_citation_is_stripped_but_visible_primary_row_is_kept() -> None:
+    visibility = KpiVisibilityFilter(
+        category_permissions={'invoice': ['read'], 'board_report': ['read']},
+        access_scope=['invoice'],
+    )
+
+    filtered = visibility.filter(
+        [
+            _row(
+                citations=[
+                    f'cit:v1:{INVOICE_VERSION}:p1',
+                    f'cit:v1:{BOARD_VERSION}:p2',
+                ]
+            )
+        ],
+        [_version(INVOICE_VERSION, 'invoice'), _version(BOARD_VERSION, 'board_report')],
+    )
+
+    assert len(filtered) == 1
+    assert filtered[0]['source_citations'] == [f'cit:v1:{INVOICE_VERSION}:p1']
+
+
+def test_hidden_primary_row_is_dropped_even_when_a_citation_is_visible() -> None:
+    visibility = KpiVisibilityFilter(
+        category_permissions={'invoice': ['read'], 'board_report': ['read']},
+        access_scope=['invoice'],
+    )
+
+    filtered = visibility.filter(
+        [
+            _row(
+                document_version_id=BOARD_VERSION,
+                citations=[f'cit:v1:{BOARD_VERSION}:p1', f'cit:v1:{INVOICE_VERSION}:p2'],
+            )
+        ],
+        [_version(INVOICE_VERSION, 'invoice'), _version(BOARD_VERSION, 'board_report')],
+    )
+
+    assert filtered == []
