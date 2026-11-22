@@ -1120,6 +1120,8 @@ class TestFileClassNaming:
             'dashboard_layout_repository.py': 'DashboardLayoutRepositoryPort',
             # Issue #377 explicitly places KpiRebuildJob in kpi_rebuild.py.
             'kpi_rebuild.py': 'KpiRebuildJob',
+            # Issue #378 explicitly places FingerprintService in fingerprint.py.
+            'fingerprint.py': 'FingerprintService',
         }
 
         for filepath in SRC_ROOT.rglob('*.py'):

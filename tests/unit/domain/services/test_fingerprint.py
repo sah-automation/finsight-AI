@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from finsight.domain.services.fingerprint import FingerprintService
-
 from finsight.core.types import CompanyId
+from finsight.domain.services.fingerprint import FingerprintService
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
