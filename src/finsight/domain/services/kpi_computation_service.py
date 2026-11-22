@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from ._kpi_budget import compute_budget_vs_actual as _compute_budget_vs_actual
 from ._kpi_derived import compute_burn_rate as _compute_burn_rate
 from ._kpi_derived import compute_runway as _compute_runway
+from ._kpi_estimation import spread_quarterly as _spread_quarterly
 from ._kpi_margin import compute_margin as _compute_margin
 from ._kpi_metric_fields import amount as _amount
 from ._kpi_metric_fields import exact_sum as _exact_sum
@@ -104,6 +105,10 @@ class KpiComputationService:
             rule_version=self._computation_rule_version,
             citations=self._citation_factory,
         )
+
+    def spread_quarterly(self, rows: Sequence[KpiRow]) -> list[KpiRow]:
+        """Spread computed quarterly rows into equal estimated monthly chart rows."""
+        return _spread_quarterly(rows)
 
     def _margin(
         self,

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from finsight.domain.value_objects.computation_status import ComputationStatus
-
 from finsight.domain.services.kpi_computation_service import KpiComputationService
+from finsight.domain.value_objects.computation_status import ComputationStatus
 from tests.unit.kpi_test_helpers import RULE_VERSION, make_metric
 
 

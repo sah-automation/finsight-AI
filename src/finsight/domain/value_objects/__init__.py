@@ -10,6 +10,7 @@ from finsight.core.security.citation_locator import (
 
 from .change_event_type import ChangeEventType
 from .citation import Citation
+from .computation_status import ComputationStatus
 from .confidence import Confidence
 from .currency import Currency
 from .document_change_event import DocumentChangeEvent
@@ -30,6 +31,7 @@ __all__ = [
     'ChangeEventType',
     'Citation',
     'CitationLocator',
+    'ComputationStatus',
     'Confidence',
     'Currency',
     'DocumentChangeEvent',
