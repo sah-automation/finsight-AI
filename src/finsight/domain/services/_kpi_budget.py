@@ -77,17 +77,22 @@ def _row(key: _GroupKey, group: _Group, rule_version: str, citations: CitationFa
     company, _subject_name, version = key
     budgets, actuals = group['budget'], group['actual']
     label, start = period_fields(budgets[0] if budgets else actuals[0])
-    reason = _reason(budgets, actuals)
+    source_metrics = [*budgets, *actuals]
+    citation_ids: set[str] = set()
+    missing_citation = False
+    for metric in source_metrics:
+        citation = citations.build_from_metric(metric)
+        if citation:
+            citation_ids.add(citation)
+        else:
+            missing_citation = True
+    reason = _reason(budgets, actuals, missing_citation)
     value = None
     if reason is None:
         budget_total = exact_sum([amount(metric) for metric in budgets])
         actual_total = exact_sum([amount(metric) for metric in actuals])
         value = str(actual_total - budget_total)
     source = budgets[0] if budgets else actuals[0]
-    source_metrics = [*budgets, *actuals]
-    citation_ids = sorted(
-        {citation for metric in source_metrics if (citation := citations.build_from_metric(metric))}
-    )
     return {
         'company_id': company,
         'kpi_code': 'budget_vs_actual',
@@ -98,7 +103,7 @@ def _row(key: _GroupKey, group: _Group, rule_version: str, citations: CitationFa
         'currency': _field(source, 'currency'),
         'units': _field(source, 'units', 'unit'),
         'value': value,
-        'source_citations': citation_ids,
+        'source_citations': sorted(citation_ids),
         'source_metric_ids': [
             str(required(metric, 'metric_id', 'metric_id', 'id')) for metric in source_metrics
         ],
@@ -111,11 +116,15 @@ def _row(key: _GroupKey, group: _Group, rule_version: str, citations: CitationFa
     }
 
 
-def _reason(budgets: Sequence[Metric], actuals: Sequence[Metric]) -> str | None:
+def _reason(
+    budgets: Sequence[Metric], actuals: Sequence[Metric], missing_citation: bool
+) -> str | None:
     if not budgets:
         return 'missing_budget'
     if not actuals:
         return 'missing_actual'
+    if missing_citation:
+        return 'missing_citations'
     metrics = [*budgets, *actuals]
     for field, names, reason in (
         ('period', ('period', 'fiscal_period', 'reporting_period'), 'period_mismatch'),
