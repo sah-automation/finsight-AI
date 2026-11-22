@@ -39,6 +39,7 @@ def compute_margin(
     kpi_code: str,
     input_code: str,
     metrics: Sequence[Metric],
+    subtract_input: bool,
     rule_version: str,
     citations: CitationFactory,
 ) -> list[KpiRow]:
@@ -48,7 +49,15 @@ def compute_margin(
     rows: list[KpiRow] = []
     for key in sorted(set(revenue) | set(inputs)):
         rows.append(
-            _group_row(kpi_code, key, revenue.get(key), inputs.get(key), input_code, rule_version)
+            _group_row(
+                kpi_code,
+                key,
+                revenue.get(key),
+                inputs.get(key),
+                input_code,
+                subtract_input,
+                rule_version,
+            )
         )
     return rows
 
@@ -59,13 +68,14 @@ def _group_row(
     revenue_group: dict[str, Any] | None,
     input_group: dict[str, Any] | None,
     input_code: str,
+    subtract_input: bool,
     rule_version: str,
 ) -> KpiRow:
     reason = _reason(revenue_group, input_group, input_code)
     if reason in _NO_VALUE_REASONS or revenue_group is None or input_group is None:
         value = None
     else:
-        value = _percentage(_total(revenue_group), _total(input_group))
+        value = _percentage(_total(revenue_group), _total(input_group), subtract_input)
     return _row(
         kpi_code,
         key,
@@ -151,10 +161,11 @@ def _total(group: dict[str, Any]) -> Decimal:
     return exact_sum(group['amounts'])
 
 
-def _percentage(revenue: Decimal, input_amount: Decimal) -> str:
+def _percentage(revenue: Decimal, input_amount: Decimal, subtract_input: bool) -> str:
     with localcontext() as context:
         context.prec = 34
-        percentage = (revenue - input_amount) / revenue * Decimal('100')
+        numerator = revenue - input_amount if subtract_input else input_amount
+        percentage = numerator / revenue * Decimal('100')
         return str(percentage.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
 

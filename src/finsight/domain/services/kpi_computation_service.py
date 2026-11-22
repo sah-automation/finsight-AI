@@ -49,17 +49,25 @@ class KpiComputationService:
 
     def compute_gross_margin(self, metrics: Sequence[Metric]) -> list[KpiRow]:
         """Compute gross margin percentages from revenue and COGS Metrics."""
-        return self._margin('gross_margin', 'cogs', metrics)
+        return self._margin('gross_margin', 'cogs', metrics, subtract_input=True)
 
     def compute_net_margin(self, metrics: Sequence[Metric]) -> list[KpiRow]:
         """Compute net margin percentages from revenue and net-income Metrics."""
-        return self._margin('net_margin', 'net_income', metrics)
+        return self._margin('net_margin', 'net_income', metrics, subtract_input=False)
 
-    def _margin(self, kpi_code: str, input_code: str, metrics: Sequence[Metric]) -> list[KpiRow]:
+    def _margin(
+        self,
+        kpi_code: str,
+        input_code: str,
+        metrics: Sequence[Metric],
+        *,
+        subtract_input: bool,
+    ) -> list[KpiRow]:
         return _compute_margin(
             kpi_code=kpi_code,
             input_code=input_code,
             metrics=metrics,
+            subtract_input=subtract_input,
             rule_version=self._computation_rule_version,
             citations=self._citation_factory,
         )
