@@ -637,9 +637,11 @@ def test_kpi_current_honours_deleted_retention(kpi_db: SimpleNamespace) -> None:
     _, deleted_retention_days = _retention_defaults()
     _seed_company(conn, kpi_db.company_id)
 
+    # One KPI code per document so selection groups stay independent and the
+    # retention filter is observable row by row.
     active_doc = _seed_document(conn, kpi_db.company_id, status='final')
     active_version = _seed_version(conn, kpi_db.company_id, active_doc)
-    _seed_kpi(conn, kpi_db.company_id, active_version)
+    _seed_kpi(conn, kpi_db.company_id, active_version, kpi_code='revenue')
 
     # Soft-deleted inside the retention window: still restorable, still shown.
     recycle_doc = _seed_document(
@@ -649,7 +651,7 @@ def test_kpi_current_honours_deleted_retention(kpi_db: SimpleNamespace) -> None:
         deleted_at=datetime.now(UTC) - timedelta(days=1),
     )
     recycle_version = _seed_version(conn, kpi_db.company_id, recycle_doc)
-    _seed_kpi(conn, kpi_db.company_id, recycle_version)
+    _seed_kpi(conn, kpi_db.company_id, recycle_version, kpi_code='gross_margin')
 
     # Soft-deleted past the retention window: the rows go away.
     expired_doc = _seed_document(
@@ -659,7 +661,7 @@ def test_kpi_current_honours_deleted_retention(kpi_db: SimpleNamespace) -> None:
         deleted_at=datetime.now(UTC) - timedelta(days=deleted_retention_days + 1),
     )
     expired_version = _seed_version(conn, kpi_db.company_id, expired_doc)
-    _seed_kpi(conn, kpi_db.company_id, expired_version)
+    _seed_kpi(conn, kpi_db.company_id, expired_version, kpi_code='net_margin')
 
     rows = _view_rows(conn, kpi_db.company_id)
     assert sorted(str(row.document_version_id) for row in rows) == sorted(

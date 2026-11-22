@@ -131,9 +131,109 @@ def upgrade() -> None:
         """
     )
 
+    version_retention_days, deleted_retention_days = _retention_defaults()
+    op.execute(
+        f"""
+        CREATE VIEW kpi_current AS
+        WITH source_rows AS (
+            SELECT
+                kv.*,
+                dv.document_id AS document_id,
+                dv.created_at AS source_version_created_at,
+                d.status AS document_status
+            FROM kpi_values AS kv
+            INNER JOIN document_versions AS dv
+                ON dv.id = kv.document_version_id
+               AND dv.company_id = kv.company_id
+            INNER JOIN documents AS d
+                ON d.id = dv.document_id
+               AND d.company_id = kv.company_id
+            WHERE
+                -- version_retention_days: rows go away with their source version.
+                dv.created_at >= now() - make_interval(days => COALESCE(
+                    NULLIF(current_setting('app.version_retention_days', true), '')::integer,
+                    {version_retention_days}))
+                -- deleted_retention_days: a soft-deleted document's rows go away
+                -- once its deletion retention expires (restore brings them back).
+                AND (
+                    d.deleted_at IS NULL
+                    OR d.deleted_at >= now() - make_interval(days => COALESCE(
+                        NULLIF(current_setting('app.deleted_retention_days', true), '')::integer,
+                        {deleted_retention_days}))
+                )
+                -- Supersession is history only: never a current candidate.
+                AND kv.superseded_by_document_version_id IS NULL
+        ),
+        ranked_rows AS (
+            SELECT
+                sr.*,
+                row_number() OVER (
+                    PARTITION BY sr.company_id, sr.kpi_code, sr.period, sr.chart_period
+                    ORDER BY
+                        CASE WHEN sr.document_status = 'draft' THEN 0 ELSE 1 END DESC,
+                        sr.source_version_created_at DESC,
+                        sr.updated_at DESC,
+                        sr.document_version_id DESC
+                ) AS selection_rank
+            FROM source_rows AS sr
+        ),
+        -- A real conflict is derived on read: different documents still show
+        -- different numbers for the same company, KPI and period (ADR-0009).
+        -- Same-document rows never conflict; they are supersession history.
+        conflicted_groups AS (
+            SELECT
+                a.company_id,
+                a.kpi_code,
+                a.period
+            FROM ranked_rows AS a
+            INNER JOIN ranked_rows AS b
+                ON b.company_id = a.company_id
+               AND b.kpi_code = a.kpi_code
+               AND b.period = a.period
+               AND b.document_id <> a.document_id
+               AND a.value IS NOT NULL
+               AND b.value IS NOT NULL
+               AND a.value <> b.value
+            GROUP BY a.company_id, a.kpi_code, a.period
+        )
+        SELECT
+            rr.company_id,
+            rr.kpi_code,
+            rr.period,
+            rr.document_version_id,
+            rr.chart_period,
+            rr.period_start,
+            rr.chart_period_start,
+            rr.currency,
+            rr.units,
+            rr.value,
+            rr.computation_status,
+            rr.estimation_method,
+            rr.source_citations,
+            rr.computation_rule_version,
+            rr.superseded_by_document_version_id,
+            rr.created_at,
+            rr.updated_at,
+            rr.document_status,
+            CASE
+                WHEN cf.company_id IS NULL THEN NULL
+                ELSE rr.kpi_code || '|' || rr.period
+            END AS conflict_marker,
+            rr.selection_rank = 1 AS is_selected
+        FROM ranked_rows AS rr
+        LEFT JOIN conflicted_groups AS cf
+            ON cf.company_id = rr.company_id
+           AND cf.kpi_code = rr.kpi_code
+           AND cf.period = rr.period
+        WHERE rr.selection_rank = 1
+           OR cf.company_id IS NOT NULL
+        """
+    )
+
 
 def downgrade() -> None:
     """Drop the Phase 2 KPI store."""
+    op.execute('DROP VIEW IF EXISTS kpi_current')
     op.execute('DROP TABLE IF EXISTS kpi_rebuild_state')
     op.execute('DROP POLICY IF EXISTS kpi_values_company_isolation ON kpi_values')
     op.execute('ALTER TABLE kpi_values NO FORCE ROW LEVEL SECURITY')
