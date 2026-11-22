@@ -144,6 +144,27 @@ def test_hidden_citation_is_stripped_but_visible_primary_row_is_kept() -> None:
     assert filtered[0]['source_citations'] == [f'cit:v1:{INVOICE_VERSION}:p1']
 
 
+def test_row_is_dropped_when_any_cited_document_is_hidden() -> None:
+    visibility = KpiVisibilityFilter(
+        category_permissions={'invoice': ['read'], 'board_report': ['read']},
+        access_scope=['invoice'],
+    )
+
+    filtered = visibility.filter(
+        [
+            _row(
+                citations=[
+                    f'cit:v1:{INVOICE_VERSION}:p1',
+                    f'cit:v1:{BOARD_VERSION}:p2',
+                ]
+            )
+        ],
+        [_version(INVOICE_VERSION, 'invoice'), _version(BOARD_VERSION, 'board_report')],
+    )
+
+    assert filtered == []
+
+
 def test_hidden_primary_row_is_dropped_even_when_a_citation_is_visible() -> None:
     visibility = KpiVisibilityFilter(
         category_permissions={'invoice': ['read'], 'board_report': ['read']},
