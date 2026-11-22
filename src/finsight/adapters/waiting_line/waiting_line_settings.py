@@ -18,7 +18,8 @@ _PRIORITY_RANKS = {
     'ingestion': 1,
     'report': 2,
     'reprocess': 2,
-    'background': 3,
+    'rebuilds': 3,
+    'background': 4,
 }
 
 
