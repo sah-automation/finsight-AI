@@ -4,6 +4,9 @@ A layout holds only identifiers and positions (ADR-0011). A miss returns the
 config-defined default with version 0 and writes nothing. Saves are optimistic:
 the caller sends the loaded version, and a mismatch raises LayoutConflictError
 carrying the current layout so the handler can return HTTP 409.
+
+``visible_ids`` is the caller's already role-filtered id set. When omitted, all
+config-known ids are visible; the handler remains responsible for role checks.
 """
 
 from __future__ import annotations
@@ -25,7 +28,7 @@ class LayoutConflictError(ConflictError):
     """A save lost the optimistic-version race; carries the current layout."""
 
     def __init__(self, current_layout: LayoutRecord) -> None:
-        super().__init__('layout changed elsewhere', code='LAYOUT_CHANGED')
+        super().__init__('layout changed elsewhere', code='layout_changed')
         self.current_layout = current_layout
 
 
@@ -39,7 +42,6 @@ class DashboardLayoutRepository(ABC):
         user_id: UserId,
         *,
         visible_ids: VisibleIds | None = None,
-        **kwargs: Any,
     ) -> LayoutRecord:
         """Return the saved layout or the config default; never write on a miss."""
         raise NotImplementedError
@@ -53,13 +55,12 @@ class DashboardLayoutRepository(ABC):
         expected_version: int,
         *,
         visible_ids: VisibleIds | None = None,
-        **kwargs: Any,
     ) -> LayoutRecord:
         """Conditionally save the layout, incrementing its version on success."""
         raise NotImplementedError
 
     @abstractmethod
-    async def delete_layout(self, company_id: CompanyId, user_id: UserId, **kwargs: Any) -> None:
+    async def delete_layout(self, company_id: CompanyId, user_id: UserId) -> None:
         """Remove the saved layout so a later read returns the config default."""
         raise NotImplementedError
 

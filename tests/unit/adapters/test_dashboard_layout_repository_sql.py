@@ -94,6 +94,11 @@ def test_get_uses_visibility_and_clears_rls_without_committing() -> None:
     assert 'dashboard_layout_get' in _sql(session)
     assert 'set_config' in _sql(session) and 'NULL' in _sql(session)
     assert 'revenue' in str(_params(session, 'dashboard_layout_get')['visible_ids'])
+    assert not any(
+        keyword in statement
+        for statement, _ in session.statements
+        for keyword in ('INSERT', 'UPDATE', 'DELETE')
+    )
     assert session.commits == 0
 
 

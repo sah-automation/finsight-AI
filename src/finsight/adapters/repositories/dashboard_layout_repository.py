@@ -9,6 +9,7 @@ in-memory seam for the contract suite.
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from finsight.domain.ports.dashboard_layout_repository import (
@@ -25,6 +26,8 @@ from . import _dashboard_layout_repository_memory as _memory
 from .base_repository import BaseRepository
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from finsight.core.types import CompanyId, UserId
 
 _GET_SQL = 'SELECT * FROM dashboard_layout_get(:company_id, :user_id, CAST(:visible_ids AS jsonb))'
@@ -57,6 +60,14 @@ class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
     async def _clear_tenant(self) -> None:
         await self._raw_execute("SELECT set_config('app.company_id', CAST(NULL AS text), true)")
         self._rls_company_id = None
+
+    @asynccontextmanager
+    async def _tenant_scope(self, company_id: Any) -> AsyncIterator[None]:
+        await self._set_tenant(str(company_id))
+        try:
+            yield
+        finally:
+            await self._clear_tenant()
 
     async def _fetch_record(self, company_id: Any, user_id: Any, context: Any) -> LayoutRecord:
         result = await self._raw_execute(
@@ -98,16 +109,12 @@ class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
         user_id: UserId,
         *,
         visible_ids: VisibleIds | None = None,
-        **kwargs: Any,
     ) -> LayoutRecord:
         context = _layout.context(self._config, visible_ids)
         if self._session is None:
             return _memory.stored_record(self._memory, self._key(company_id, user_id), context)
-        await self._set_tenant(str(company_id))
-        try:
+        async with self._tenant_scope(company_id):
             return await self._fetch_record(company_id, user_id, context)
-        finally:
-            await self._clear_tenant()
 
     async def save_layout(
         self,
@@ -117,7 +124,6 @@ class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
         expected_version: int,
         *,
         visible_ids: VisibleIds | None = None,
-        **kwargs: Any,
     ) -> LayoutRecord:
         context = _layout.context(self._config, visible_ids)
         if self._session is None:
@@ -128,21 +134,15 @@ class DashboardLayoutRepository(DashboardLayoutRepositoryPort, BaseRepository):
                 expected_version,
                 context,
             )
-        await self._set_tenant(str(company_id))
-        try:
+        async with self._tenant_scope(company_id):
             return await self._save_record(company_id, user_id, layout, expected_version, context)
-        finally:
-            await self._clear_tenant()
 
-    async def delete_layout(self, company_id: CompanyId, user_id: UserId, **kwargs: Any) -> None:
+    async def delete_layout(self, company_id: CompanyId, user_id: UserId) -> None:
         if self._session is None:
-            _memory.remove_record(self._memory, self._key(company_id, user_id))
+            self._memory.pop(self._key(company_id, user_id), None)
             return
-        await self._set_tenant(str(company_id))
-        try:
+        async with self._tenant_scope(company_id):
             await self._raw_execute(
                 _DELETE_SQL,
                 {'company_id': str(company_id), 'user_id': str(user_id)},
             )
-        finally:
-            await self._clear_tenant()

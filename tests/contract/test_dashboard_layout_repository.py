@@ -83,6 +83,7 @@ class TestDashboardLayoutRepositoryContract:
 
         assert first == _default_layout()
         assert second == _default_layout()
+        assert repository._memory == {}
 
     async def test_get_layout_is_company_and_user_scoped(
         self, repository: DashboardLayoutRepositoryPort
@@ -115,6 +116,7 @@ class TestDashboardLayoutRepositoryContract:
             await repository.save_layout(COMPANY, USER, _layout(['burn_rate']), 0)
 
         assert conflict.value.message == 'layout changed elsewhere'
+        assert conflict.value.code == 'layout_changed'
         assert conflict.value.current_layout == current
 
     async def test_delete_layout_returns_to_config_default(

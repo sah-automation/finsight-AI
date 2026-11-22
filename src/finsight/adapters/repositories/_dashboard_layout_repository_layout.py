@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -18,21 +18,29 @@ if TYPE_CHECKING:
 CONTRACT_VERSION = 1
 
 
+@dataclass(frozen=True)
 class _LayoutContext:
-    """Injected config and effective visible-id set for one repository call."""
+    """Config and effective visible ids for one repository call."""
 
-    def __init__(self, config: Any, visible: dict[str, list[str]]) -> None:
-        self.config = config
-        self.visible = visible
+    _config: Any
+    _visible: dict[str, list[str]]
+
+    @property
+    def config(self) -> Any:
+        return self._config
+
+    @property
+    def visible(self) -> dict[str, list[str]]:
+        return self._visible
 
 
-def _value(item: Any, field: str) -> Any:
+def _field(item: Any, name: str) -> Any:
     if isinstance(item, Mapping):
-        return item.get(field)
-    return getattr(item, field, None)
+        return item.get(name)
+    return getattr(item, name, None)
 
 
-def _items(value: Any) -> list[Any]:
+def _as_items(value: Any) -> list[Any]:
     if value is None:
         return []
     if isinstance(value, (list, tuple, set, frozenset)):
@@ -40,49 +48,68 @@ def _items(value: Any) -> list[Any]:
     return [value]
 
 
-def _as_text(value: Any) -> list[str]:
-    return [str(item) for item in _items(value)]
+def _as_strings(value: Any) -> list[str]:
+    return [str(item) for item in _as_items(value)]
+
+
+def _section(config: Any, name: str) -> Any:
+    section = _field(config, name)
+    if section is None:
+        raise RuntimeError(f'{name} config is required by the layout repository')
+    return section
 
 
 def _known_ids(config: Any) -> tuple[list[str], list[str]]:
-    specs = _value(_value(config, 'charts'), 'specs') or {}
+    codes = _field(_section(config, 'kpi'), 'codes')
+    specs = _field(_section(config, 'charts'), 'specs')
+    if codes is None or specs is None:
+        raise RuntimeError(
+            'kpi.codes and charts.specs config are required by the layout repository'
+        )
     if isinstance(specs, Mapping):
         chart_ids = [str(key) for key in specs]
     else:
-        chart_ids = [str(_value(spec, 'chart_id')) for spec in _items(specs)]
-    return _as_text(_value(_value(config, 'kpi'), 'codes')), chart_ids
+        chart_ids = [str(_field(spec, 'chart_id')) for spec in _as_items(specs)]
+    return _as_strings(codes), chart_ids
 
 
 def as_identifiers(layout: Any) -> tuple[list[str], list[dict[str, Any]]]:
     """Normalize a layout's identifier lists for filtering or JSON binding."""
-    codes = _as_text(_value(layout, 'kpi_codes'))
+    codes = _as_strings(_field(layout, 'kpi_codes'))
     charts = [
-        {'chart_id': str(_value(chart, 'chart_id') or ''), 'span': _value(chart, 'span')}
-        for chart in _items(_value(layout, 'charts'))
+        {'chart_id': str(_field(chart, 'chart_id') or ''), 'span': _field(chart, 'span')}
+        for chart in _as_items(_field(layout, 'charts'))
     ]
     return codes, charts
 
 
 def config_default(config: Any) -> dict[str, Any]:
     """Return the config-defined layout as plain identifiers, failing if absent."""
-    default = _value(_value(config, 'dashboard'), 'default_layout')
+    default = _field(_section(config, 'dashboard'), 'default_layout')
     if default is None:
         raise RuntimeError('dashboard.default_layout config is required by the layout repository')
     codes, charts = as_identifiers(default)
     return {'kpi_codes': codes, 'charts': charts}
 
 
-def visible_ids(config: Any, requested: VisibleIds | None) -> dict[str, list[str]]:
+def effective_visible_ids(config: Any, requested: VisibleIds | None) -> dict[str, list[str]]:
     """Intersect the caller's visible set with config-known identifiers."""
     known_codes, known_charts = _known_ids(config)
     if requested is None:
         return {'kpi_codes': known_codes, 'chart_ids': known_charts}
-    asked_codes = set(_as_text(_value(requested, 'kpi_codes')))
-    asked_charts = set(_as_text(_value(requested, 'chart_ids')))
+    asked_codes = set(_as_strings(_field(requested, 'kpi_codes')))
+    asked_charts = set(_as_strings(_field(requested, 'chart_ids')))
     return {
         'kpi_codes': [code for code in known_codes if code in asked_codes],
         'chart_ids': [chart for chart in known_charts if chart in asked_charts],
     }
+
+
+def context(config: Any, requested: VisibleIds | None) -> _LayoutContext:
+    """Build the shared config/visibility context for one repository call."""
+    if config is None:
+        raise RuntimeError('config is required by the layout repository')
+    return _LayoutContext(config, effective_visible_ids(config, requested))
 
 
 def filter_layout(layout: Any, visible: Mapping[str, list[str]]) -> dict[str, list[Any]]:
@@ -123,16 +150,6 @@ def default_record(config: Any, visible: Mapping[str, list[str]]) -> LayoutRecor
     return record(filtered['kpi_codes'], filtered['charts'], 0, None)
 
 
-def context(config: Any, requested: VisibleIds | None) -> _LayoutContext:
-    """Build the shared config/visibility context for one repository call."""
-    return _LayoutContext(config, visible_ids(config, requested))
-
-
-def now() -> datetime:
-    """Return the timestamp stored on a successful save."""
-    return datetime.now(UTC)
-
-
 def _json_list(value: Any) -> list[Any]:
     if isinstance(value, str):
         parsed = json.loads(value)
@@ -146,8 +163,8 @@ def row_to_record(row: Any) -> LayoutRecord:
     if not isinstance(mapping, Mapping):
         mapping = dict(mapping)
     return record(
-        _json_list(_value(mapping, 'kpi_codes')),
-        _json_list(_value(mapping, 'charts')),
-        int(_value(mapping, 'version') or 0),
-        _value(mapping, 'updated_at'),
+        _json_list(_field(mapping, 'kpi_codes')),
+        _json_list(_field(mapping, 'charts')),
+        int(_field(mapping, 'version') or 0),
+        _field(mapping, 'updated_at'),
     )

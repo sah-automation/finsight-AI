@@ -6,6 +6,7 @@ migration 0009 so the shared contract suite runs without a database.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from finsight.domain.ports.dashboard_layout_repository import LayoutConflictError, LayoutRecord
@@ -45,12 +46,7 @@ def put_record(
         raise LayoutConflictError(stored_record(memory, key, context))
     filtered = layout.resolve_layout(incoming, context.config, context.visible)
     saved = layout.record(
-        filtered['kpi_codes'], filtered['charts'], current_version + 1, layout.now()
+        filtered['kpi_codes'], filtered['charts'], current_version + 1, datetime.now(UTC)
     )
     memory[key] = saved
     return saved
-
-
-def remove_record(memory: LayoutMemory, key: tuple[str, str]) -> None:
-    """Remove the stored layout, if any."""
-    memory.pop(key, None)
