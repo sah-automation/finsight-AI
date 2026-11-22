@@ -16,14 +16,13 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **switch_both_paths_tested**: All config switches have ON and OFF tests implemented
 ✅ **constructor_injection**: No hidden os.getenv/environ access in business code
 ⏭️ **company_id_on_all_data_calls**: All data access methods require company_id
-  - domain/ports/kpi_rebuild_state.py:20 get
 ✅ **no_model_math**: No float math on monetary values in domain
 ✅ **no_raw_errors_to_user**: No bare Exception raised in entrypoints (specific exceptions OK - caught by middleware)
 ✅ **no_sensitive_data_in_logs**: No sensitive data in logs
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
   - composition/reader_registry.py: 786 lines
-  - composition/container.py: 3541 lines
+  - composition/container.py: 3590 lines
   - composition/step_deps.py: 336 lines
   - composition/composition_container.py: 611 lines
   - core/errors/__init__.py: 376 lines
@@ -45,7 +44,7 @@ Generated from tests/architecture/test_standards_checklist.py
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 136
+  - Unit: 137
   - Contract: 36
   - Switch: 21
 

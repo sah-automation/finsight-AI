@@ -49,7 +49,12 @@ DATA_METHOD_KEYWORDS: tuple[str, ...] = (
 # KPI rebuild state is likewise global: migration 0008 keys it by
 # computation_rule_version, with no company_id column (#377).
 NON_TENANT_CLASS_NAMES: frozenset[str] = frozenset(
-    {'StateStore', 'InMemoryStateStore', 'KpiRebuildStateRepository'}
+    {
+        'StateStore',
+        'InMemoryStateStore',
+        'KpiRebuildState',
+        'KpiRebuildStateRepository',
+    }
 )
 
 # Identifiers that must never be passed directly to a logger.
