@@ -7,6 +7,7 @@ Pure business rules that don't belong on a single entity.
 - Tenant-scoped cache key composition (`cache_key.py`)
 - Deterministic page/chunk delta diffing (`delta_differ.py`, `delta_result.py`)
 - Document stamp fingerprinting for cache invalidation (`document_stamp.py`)
+- Chart freshness fingerprinting from current KPI rows (`fingerprint.py`)
 - Role/category permission checks (`permission_policy.py`)
 - Conflict detection between sources
 - Chunking strategies
