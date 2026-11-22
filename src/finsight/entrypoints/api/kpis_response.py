@@ -2,31 +2,43 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class KpiRowResponse(BaseModel):
-    """Single KPI row in the list response."""
+class KpiRow(BaseModel):
+    """One code-computed KPI row from ``kpi_current``."""
 
     model_config = ConfigDict(extra='forbid')
 
-    kpi_code: str
-    period: str
-    period_start: str
-    chart_period: str
-    chart_period_start: str
-    currency: str
-    units: str
-    value: str | None
-    source_citations: list[str]
-    computation_status: str
-    estimation_method: str | None = None
-    document_version_id: str
-    computation_rule_version: str
-    superseded_by_document_version_id: str | None = None
-    conflict_marker: str | None = None
-    created_at: str
-    updated_at: str
+    kpi_code: str = Field(...)
+    period: str = Field(...)
+    period_start: str = Field(..., json_schema_extra={'format': 'date'})
+    chart_period: str = Field(...)
+    chart_period_start: str = Field(..., json_schema_extra={'format': 'date'})
+    currency: str = Field(...)
+    units: str = Field(...)
+    value: str | None = Field(...)
+    source_citations: list[str] = Field(...)
+    computation_status: Literal['computed', 'estimated', 'needs_review'] = Field(...)
+    estimation_method: str | None = Field(default=None)
+    document_version_id: str = Field(..., json_schema_extra={'format': 'uuid'})
+    computation_rule_version: str = Field(...)
+    superseded_by_document_version_id: str | None = Field(
+        default=None, json_schema_extra={'format': 'uuid'}
+    )
+    conflict_marker: str | None = Field(default=None)
+    created_at: str = Field(..., json_schema_extra={'format': 'date-time'})
+    updated_at: str = Field(..., json_schema_extra={'format': 'date-time'})
+
+
+class KpiActions(BaseModel):
+    """Role-derived actions included in the KPI list envelope."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    upload: bool = Field(...)
 
 
 class KpiListResponse(BaseModel):
@@ -34,11 +46,13 @@ class KpiListResponse(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    contract_version: int = 1
-    items: list[KpiRowResponse]
-    next_cursor: str | None = None
-    documents_processing: bool
-    actions: dict[str, bool]
+    contract_version: Literal[1] = Field(..., json_schema_extra={'enum': [1]})
+    items: list[KpiRow] = Field(...)
+    next_cursor: str | None = Field(...)
+    documents_processing: bool = Field(...)
+    actions: KpiActions = Field(...)
 
 
-__all__ = ['KpiListResponse', 'KpiRowResponse']
+KpiRowResponse = KpiRow
+
+__all__ = ['KpiActions', 'KpiListResponse', 'KpiRow', 'KpiRowResponse']

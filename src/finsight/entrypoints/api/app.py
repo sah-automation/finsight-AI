@@ -72,6 +72,7 @@ def create_app() -> FastAPI:
     _install_app_wiring(app, container)
     _include_routers(app)
     _install_ask_event_schema(app)
+    _install_kpi_openapi_schema(app, config)
     return app
 
 
@@ -144,5 +145,35 @@ def _install_ask_event_schema(app: FastAPI) -> None:
             schemas['AskQuestionEvent'] = ask.AskQuestionEvent.model_json_schema()
             app.openapi_schema = schema
         return app.openapi_schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
+
+
+def _flatten_optional_query_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    variants = schema.get('anyOf')
+    if not isinstance(variants, list):
+        return schema
+    concrete = next((variant for variant in variants if variant.get('type') != 'null'), None)
+    if concrete is None:
+        return schema
+    extras = {key: value for key, value in schema.items() if key != 'anyOf'}
+    return {**concrete, **extras}
+
+
+def _install_kpi_openapi_schema(app: FastAPI, config: Any) -> None:
+    """Publish config-derived KPI page-size bounds in the OpenAPI schema."""
+    base_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        schema = base_openapi()
+        kpi_config = getattr(config, 'kpi', None)
+        if kpi_config is not None:
+            parameters = schema['paths']['/kpis']['get']['parameters']
+            for parameter in parameters:
+                parameter['schema'] = _flatten_optional_query_schema(parameter['schema'])
+                if parameter.get('name') == 'limit':
+                    parameter['schema']['default'] = kpi_config.page_size_default
+                    parameter['schema']['maximum'] = kpi_config.page_size_max
+        return schema
 
     app.openapi = openapi  # type: ignore[method-assign]

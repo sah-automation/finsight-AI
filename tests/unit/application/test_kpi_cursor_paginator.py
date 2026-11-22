@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from finsight.application.kpi_cursor_paginator import KpiCursorPaginator
 
 pytestmark = pytest.mark.unit
@@ -42,6 +43,7 @@ def test_cursor_returns_successive_non_overlapping_pages() -> None:
         _row('gross_margin', '2025-04-01'),
         _row('burn_rate', '2025-07-01'),
         _row('runway', '2025-10-01'),
+        _row('dso', '2024-10-01'),
     ]
     paginator = _paginator()
 
@@ -51,7 +53,7 @@ def test_cursor_returns_successive_non_overlapping_pages() -> None:
 
     assert [row['kpi_code'] for row in first] == ['runway', 'burn_rate']
     assert [row['kpi_code'] for row in second] == ['gross_margin', 'revenue']
-    assert third == []
+    assert [row['kpi_code'] for row in third] == ['dso']
     assert third_cursor is None
 
 
