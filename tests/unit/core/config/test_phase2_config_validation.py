@@ -1106,3 +1106,36 @@ class TestObservabilityAlertDashboardLatency:
         data['observability']['alerts']['dashboard_latency_ms'] = -1
         with pytest.raises(ValidationError):
             Config.model_validate(data)
+
+
+class TestChartSpecCompleteness:
+    """charts.specs must cover all 10 KPI codes across specs."""
+
+    def test_all_kpi_codes_covered(self) -> None:
+        data = _base_config_dict()
+        data['kpi'] = _valid_kpi_dict()
+        data['charts'] = _valid_charts_dict()
+        cfg = Config.model_validate(data)
+        # Verify all KPI codes are covered
+        covered_codes = set()
+        for spec in cfg.charts.specs.values():
+            covered_codes.update(spec.kpi_codes)
+        assert covered_codes == set(KPI_CODES)
+
+    def test_missing_kpi_code_rejected(self) -> None:
+        data = _base_config_dict()
+        data['kpi'] = _valid_kpi_dict()
+        charts_dict = _valid_charts_dict()
+        # Remove dso from collection_periods spec
+        charts_dict['specs']['collection_periods']['kpi_codes'] = ['dpo']
+        data['charts'] = charts_dict
+        with pytest.raises(ValidationError, match='must cover all KPI codes'):
+            Config.model_validate(data)
+
+    def test_all_three_chart_types_present(self) -> None:
+        data = _base_config_dict()
+        data['kpi'] = _valid_kpi_dict()
+        data['charts'] = _valid_charts_dict()
+        cfg = Config.model_validate(data)
+        chart_types = {spec.chart_type for spec in cfg.charts.specs.values()}
+        assert chart_types == {'trend_line', 'comparison_bar', 'breakdown_bar'}

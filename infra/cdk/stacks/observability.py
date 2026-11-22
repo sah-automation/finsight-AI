@@ -88,6 +88,7 @@ def _load_alert_thresholds(env_name: str) -> dict[str, Any]:
         'job_in_retry_list': 1,
         'role_cache_stale_seconds': 7200,
         'dashboard_latency_ms': 2000,
+        'dashboard_latency_period_seconds': 300,
     }
 
     # Application config is optional for synthesis; fall back to the defaults
@@ -115,6 +116,10 @@ def _load_alert_thresholds(env_name: str) -> dict[str, Any]:
             thresholds['role_cache_stale_seconds'] = alerts['role_cache_stale_seconds']
         if isinstance(alerts.get('dashboard_latency_ms'), int):
             thresholds['dashboard_latency_ms'] = alerts['dashboard_latency_ms']
+        if isinstance(alerts.get('dashboard_latency_period_seconds'), int):
+            thresholds['dashboard_latency_period_seconds'] = alerts[
+                'dashboard_latency_period_seconds'
+            ]
     return thresholds
 
 
@@ -290,7 +295,7 @@ class ObservabilityStack(Stack):
 
         # 6. Dashboard latency alarm (issue #367): http_request spans for the
         # dashboard/chart/KPI routes. Fires when the observed duration exceeds
-        # the configured threshold (300 s period, one evaluation period).
+        # the configured threshold and evaluation period from config.
         self.metric_filters['dashboard_latency_ms'] = logs.MetricFilter(
             self,
             'DashboardLatencyMetricFilter',
@@ -313,7 +318,7 @@ class ObservabilityStack(Stack):
                 namespace=namespace,
                 metric_name='dashboard_latency_ms',
                 statistic='Maximum',
-                period=period,
+                period=Duration.seconds(thresholds['dashboard_latency_period_seconds']),
             ),
             threshold=float(thresholds['dashboard_latency_ms']),
             evaluation_periods=1,

@@ -264,6 +264,7 @@ observability:
     job_in_retry_list: true
     role_cache_stale_seconds: 7200
     dashboard_latency_ms: 2000
+    dashboard_latency_period_seconds: 300
 
 # ============================================================
 # Security & Company Separation

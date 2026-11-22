@@ -409,6 +409,7 @@ class Config(StrictBaseModel):
             return
 
         self._validate_chart_specs(charts)
+        self._validate_chart_spec_kpi_coverage(charts, kpi)
 
     def _validate_chart_specs(self, charts: 'ChartsConfig') -> None:
         expected_kpi_codes = frozenset(KPI_CODES)
@@ -440,6 +441,18 @@ class Config(StrictBaseModel):
         if 'budget_vs_actual' not in spec.kpi_codes:
             raise ValueError(
                 f'charts.specs.{spec_id}: diverging=true only allowed for budget_vs_actual'
+            )
+
+    def _validate_chart_spec_kpi_coverage(self, charts: 'ChartsConfig', kpi: 'KpiConfig') -> None:
+        expected_kpi_codes = frozenset(KPI_CODES)
+        covered_kpi_codes = set()
+        for spec in charts.specs.values():
+            covered_kpi_codes.update(spec.kpi_codes)
+
+        missing_kpi_codes = expected_kpi_codes - covered_kpi_codes
+        if missing_kpi_codes:
+            raise ValueError(
+                f'charts.specs must cover all KPI codes; missing: {sorted(missing_kpi_codes)}'
             )
 
     def _validate_dashboard_rules(self) -> None:

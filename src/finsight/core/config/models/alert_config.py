@@ -12,3 +12,4 @@ class AlertConfig(StrictBaseModel):
     job_in_retry_list: bool
     role_cache_stale_seconds: int = Field(ge=1)
     dashboard_latency_ms: int = Field(ge=1)
+    dashboard_latency_period_seconds: int = Field(ge=60, default=300)

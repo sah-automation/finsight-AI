@@ -64,6 +64,16 @@ def test_thresholds_match_config() -> None:
     assert {1.0, 3.0, 7200.0, 2000.0}.issubset(thresholds)
 
 
+def test_dashboard_latency_period_from_config() -> None:
+    template = _template('dev')
+    alarms = list(template.find_resources('AWS::CloudWatch::Alarm').values())
+    dashboard_alarm = next(
+        a for a in alarms if 'DashboardLatency' in a['Properties'].get('AlarmName', '')
+    )
+    expected_period = 300  # 5 minutes in seconds
+    assert dashboard_alarm['Properties']['Period'] == expected_period
+
+
 def test_no_sensitive_request_content_in_filters() -> None:
     template = _template('dev')
     joined = ' '.join(
