@@ -11,7 +11,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 from typing import TYPE_CHECKING, Any
 
-from ._kpi_metric_fields import amount, exact_sum, matches_code, period_fields, required
+from ._kpi_metric_fields import amount, attr, exact_sum, matches_code, period_fields, required
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -27,9 +27,12 @@ _NO_VALUE_REASONS = frozenset(
         'missing_revenue',
         'missing_cogs',
         'missing_net_income',
+        'missing_currency',
+        'missing_units',
         'currency_mismatch',
         'units_mismatch',
         'zero_revenue',
+        'missing_citations',
     }
 )
 
@@ -94,6 +97,11 @@ def _reason(
         return 'missing_revenue'
     if inputs is None:
         return _MISSING_INPUT_REASON.get(input_code, f'missing_{input_code}')
+    missing_fields = revenue['missing_fields'] | inputs['missing_fields']
+    if 'currency' in missing_fields:
+        return 'missing_currency'
+    if 'units' in missing_fields:
+        return 'missing_units'
     if len(revenue['currencies'] | inputs['currencies']) > 1:
         return 'currency_mismatch'
     if len(revenue['unit_values'] | inputs['unit_values']) > 1:
@@ -115,6 +123,7 @@ def _blank_group() -> dict[str, Any]:
         'metric_ids': [],
         'citations': set(),
         'missing_citation': False,
+        'missing_fields': set(),
     }
 
 
@@ -132,29 +141,46 @@ def _input_groups(
         )
         key = (company, label, version, start)
         group = groups.setdefault(key, _new_group(metric))
-        group['currencies'].add(required(metric, 'currency', 'currency'))
-        group['unit_values'].add(required(metric, 'units', 'unit', 'units'))
-        group['amounts'].append(amount(metric))
-        metric_id = required(metric, 'metric_id', 'metric_id', 'id')
-        if metric_id not in group['metric_ids']:
-            group['metric_ids'].append(metric_id)
-        citation = citations.build_from_metric(metric)
-        if citation:
-            group['citations'].add(citation)
-        else:
-            group['missing_citation'] = True
+        _add_metric(group, metric, citations)
     return groups
 
 
 def _new_group(metric: Metric) -> dict[str, Any]:
     group = _blank_group()
-    currency = required(metric, 'currency', 'currency')
-    units = required(metric, 'units', 'unit', 'units')
-    group['currency'] = currency
-    group['units'] = units
-    group['currencies'].add(currency)
-    group['unit_values'].add(units)
+    group['currency'] = _field(metric, 'currency')
+    group['units'] = _field(metric, 'units', 'unit')
     return group
+
+
+def _add_metric(group: dict[str, Any], metric: Metric, citations: CitationFactory) -> None:
+    currency = _field(metric, 'currency')
+    units = _field(metric, 'units', 'unit')
+    _track_dimensions(group, currency, units)
+    group['amounts'].append(amount(metric))
+    metric_id = required(metric, 'metric_id', 'metric_id', 'id')
+    if metric_id not in group['metric_ids']:
+        group['metric_ids'].append(metric_id)
+    citation = citations.build_from_metric(metric)
+    if citation:
+        group['citations'].add(citation)
+    else:
+        group['missing_citation'] = True
+
+
+def _track_dimensions(group: dict[str, Any], currency: str, units: str) -> None:
+    if currency:
+        group['currencies'].add(currency)
+    else:
+        group['missing_fields'].add('currency')
+    if units:
+        group['unit_values'].add(units)
+    else:
+        group['missing_fields'].add('units')
+
+
+def _field(metric: Metric, *names: str) -> str:
+    value = attr(metric, *names)
+    return '' if value is None else str(value).strip()
 
 
 def _total(group: dict[str, Any]) -> Decimal:
