@@ -58,7 +58,7 @@ class KpiComputationService:
         )
 
     def compute_runway(self, metrics: Sequence[Metric]) -> list[KpiRow]:
-        """Compute runway in months from cash and derived burn-rate Metrics."""
+        """Compute runway in months from cash, operating-expense and cash-flow Metrics."""
         return _compute_runway(
             metrics=metrics,
             rule_version=self._computation_rule_version,
