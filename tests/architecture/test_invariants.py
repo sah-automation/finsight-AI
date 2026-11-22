@@ -1118,9 +1118,6 @@ class TestFileClassNaming:
             # Issue #371 fixes this port's module path while naming the class
             # DashboardLayoutRepositoryPort.
             'dashboard_layout_repository.py': 'DashboardLayoutRepositoryPort',
-            # Issue #372 fixes this service's module path while naming the class
-            # KpiComputationService.
-            'kpi_computation.py': 'KpiComputationService',
         }
 
         for filepath in SRC_ROOT.rglob('*.py'):

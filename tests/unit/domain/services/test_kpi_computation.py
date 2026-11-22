@@ -8,7 +8,7 @@ import pytest
 
 from finsight.core.types import CompanyId
 from finsight.domain.entities.metric import Metric
-from finsight.domain.services.kpi_computation import KpiComputationService
+from finsight.domain.services.kpi_computation_service import KpiComputationService
 
 COMPANY = CompanyId('7e1a0000-0000-4000-8000-000000000001')
 RULE_VERSION = 'rule-v1'
