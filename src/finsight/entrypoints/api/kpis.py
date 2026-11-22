@@ -11,9 +11,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from finsight.application.kpi_cursor_paginator import KpiCursorPaginator
 from finsight.application.kpi_visibility_filter import KpiVisibilityFilter
 from finsight.composition.container import get_container
+from finsight.core.config import get_config, load_config
+from finsight.core.config.loader import ConfigError
 from finsight.core.config.models.kpi_config import KpiCode  # noqa: TC001
+from finsight.domain.entities.document_version_state import DocumentVersionState
 
-from ._permissions import _load_permissions_config
 from ._shared import _await
 from .action_permission import ActionPermission
 from .api_principal import ApiPrincipal  # noqa: TC001
@@ -25,7 +27,13 @@ if TYPE_CHECKING:
 router = APIRouter(prefix='/kpis', tags=['kpis'])
 kpi_view_dependency = ActionPermission('kpi_view')
 
-_PROCESSING_STATES = frozenset({'received', 'stored', 'processing'})
+_PROCESSING_STATES = frozenset(
+    {
+        DocumentVersionState.RECEIVED,
+        DocumentVersionState.STORED,
+        DocumentVersionState.PROCESSING,
+    }
+)
 _STATE_FIELDS = ('state', 'status', 'document_status', 'lifecycle_state')
 
 
@@ -37,7 +45,11 @@ class _KpiQueryParams(BaseModel):
     period_to: str | None = None
     currency: str | None = None
     units: str | None = None
-    limit: int | None = Field(default=None, ge=1)
+    limit: int | None = Field(
+        default=None,
+        ge=1,
+        json_schema_extra={'minimum': 1, 'maximum': 100},
+    )
     cursor: str | None = None
 
     model_config = ConfigDict(extra='forbid')
@@ -110,10 +122,20 @@ def _build_filters(params: _KpiQueryParams) -> dict[str, Any]:
     return filters
 
 
-def _build_paginator(config: Any) -> KpiCursorPaginator:
+def _load_kpi_paginator() -> KpiCursorPaginator:
+    """Build the paginator from validated config without a test-config fallback."""
+    try:
+        config = get_config()
+    except ConfigError:
+        try:
+            config = load_config()
+        except ConfigError as exc:
+            raise HTTPException(
+                status_code=500, detail='Service configuration is unavailable.'
+            ) from exc
     kpi_config = getattr(config, 'kpi', None)
     if kpi_config is None:
-        raise HTTPException(status_code=500, detail='KPI configuration is not available.')
+        raise HTTPException(status_code=500, detail='Service configuration is unavailable.')
     return KpiCursorPaginator(
         default_page_size=kpi_config.page_size_default,
         max_page_size=kpi_config.page_size_max,
@@ -123,7 +145,7 @@ def _build_paginator(config: Any) -> KpiCursorPaginator:
 def _get_container_repository(container: Any, name: str) -> Any:
     repository = getattr(container, name, None)
     if repository is None:
-        raise HTTPException(status_code=500, detail=f'{name} is not configured.')
+        raise HTTPException(status_code=500, detail='KPI data is temporarily unavailable.')
     return repository
 
 
@@ -146,8 +168,7 @@ async def list_kpis(
     if 'kpi_view' not in principal.role_actions:
         raise HTTPException(status_code=403, detail='You do not have permission to view KPIs.')
 
-    config = _load_permissions_config()
-    paginator = _build_paginator(config)
+    paginator = _load_kpi_paginator()
     container = get_container()
     versions = await _load_document_versions(container, principal.company_id)
 

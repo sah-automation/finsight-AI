@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException, Request
 
-from finsight.entrypoints.api.correlation_identity import extract_identity
+from finsight.entrypoints.api.correlation_identity import extract_access_scope, extract_identity
 
 from ._permissions import (
     _extract_role_actions_and_categories,
@@ -111,6 +111,8 @@ class ActionPermission:
             category for category, actions in category_permissions.items() if 'read' in actions
         )
         declared = _scope_from_request(request)
+        if declared is None:
+            declared = extract_access_scope(request)
         if declared is None:
             return readable
         return tuple(category for category in readable if category in set(declared))
