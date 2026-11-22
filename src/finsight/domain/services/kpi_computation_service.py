@@ -17,6 +17,7 @@ from ._kpi_metric_fields import exact_sum as _exact_sum
 from ._kpi_metric_fields import matches_code as _matches_code
 from ._kpi_metric_fields import period_fields as _period_fields
 from ._kpi_metric_fields import required as _required
+from ._kpi_period import compute_collection_period as _compute_collection_period
 from .citation_factory import CitationFactory
 
 if TYPE_CHECKING:
@@ -72,6 +73,28 @@ class KpiComputationService:
     def compute_net_margin(self, metrics: Sequence[Metric]) -> list[KpiRow]:
         """Compute net margin percentages from revenue and net-income Metrics."""
         return self._margin('net_margin', 'net_income', metrics, subtract_input=False)
+
+    def compute_dso(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Compute days sales outstanding from receivables and revenue Metrics."""
+        return _compute_collection_period(
+            kpi_code='dso',
+            numerator_code='accounts_receivable',
+            denominator_code='revenue',
+            metrics=metrics,
+            rule_version=self._computation_rule_version,
+            citations=self._citation_factory,
+        )
+
+    def compute_dpo(self, metrics: Sequence[Metric]) -> list[KpiRow]:
+        """Compute days payable outstanding from payables and COGS Metrics."""
+        return _compute_collection_period(
+            kpi_code='dpo',
+            numerator_code='accounts_payable',
+            denominator_code='cogs',
+            metrics=metrics,
+            rule_version=self._computation_rule_version,
+            citations=self._citation_factory,
+        )
 
     def _margin(
         self,
