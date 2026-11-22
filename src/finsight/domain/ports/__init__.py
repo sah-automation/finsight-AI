@@ -23,6 +23,7 @@ from .embedding_provider import EmbeddingGateway, EmbeddingProvider, Embeddings
 from .hybrid_search import HybridSearch, HybridSearchPort, VectorSearch
 from .job_progress_port import JobProgressPort
 from .job_repository import JobRepository
+from .kpi_rebuild_state import KpiRebuildState, KpiRebuildStatePort
 from .kpi_repository import KpiRepository, KpiRepositoryPort
 from .llm_gateway import LLM, LLMGateway
 from .metering_port import MeteringPort
@@ -69,6 +70,8 @@ __all__ = [
     'HybridSearchPort',
     'JobProgressPort',
     'JobRepository',
+    'KpiRebuildState',
+    'KpiRebuildStatePort',
     'KpiRepository',
     'KpiRepositoryPort',
     'LLMGateway',

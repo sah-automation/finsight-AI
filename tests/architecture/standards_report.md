@@ -16,17 +16,18 @@ Generated from tests/architecture/test_standards_checklist.py
 ✅ **switch_both_paths_tested**: All config switches have ON and OFF tests implemented
 ✅ **constructor_injection**: No hidden os.getenv/environ access in business code
 ⏭️ **company_id_on_all_data_calls**: All data access methods require company_id
+  - domain/ports/kpi_rebuild_state.py:20 get
 ✅ **no_model_math**: No float math on monetary values in domain
 ✅ **no_raw_errors_to_user**: No bare Exception raised in entrypoints (specific exceptions OK - caught by middleware)
 ✅ **no_sensitive_data_in_logs**: No sensitive data in logs
 ✅ **cross_cutting_decorators**: Cross-cutting concerns use wrapper classes (decorator pattern)
 ⏭️ **file_function_size**: Files <= 300 lines, functions <= 30 lines
   - composition/reader_registry.py: 786 lines
-  - composition/container.py: 3443 lines
-  - composition/step_deps.py: 328 lines
+  - composition/container.py: 3541 lines
+  - composition/step_deps.py: 336 lines
   - composition/composition_container.py: 611 lines
-  - core/errors/__init__.py: 368 lines
-  - core/config/models/config.py: 308 lines
+  - core/errors/__init__.py: 376 lines
+  - core/config/models/config.py: 548 lines
   - adapters/tracing/tracing_adapter.py: 424 lines
   - adapters/llm/traced_llm.py: 609 lines
   - adapters/embedding/traced_embedding.py: 416 lines
@@ -38,14 +39,14 @@ Generated from tests/architecture/test_standards_checklist.py
   - entrypoints/api/ask.py: 520 lines
   - entrypoints/api/feedback.py: 1166 lines
   - entrypoints/api/onboarding.py: 427 lines
-  - entrypoints/api/documents.py: 832 lines
+  - entrypoints/api/documents.py: 835 lines
   - entrypoints/api/_shared.py: 724 lines
   - entrypoints/api/threads.py: 1178 lines
 ⏭️ **import_checker_passes**: Import linter configuration exists in pyproject.toml (CI enforces contracts)
 ✅ **thresholds_config_driven**: Key thresholds are defined in config models
 ✅ **test_coverage_exists**: Test suites exist for unit, contract, and switch paths
-  - Unit: 117
-  - Contract: 32
+  - Unit: 135
+  - Contract: 36
   - Switch: 21
 
 ---
