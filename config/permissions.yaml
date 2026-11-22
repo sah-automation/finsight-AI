@@ -56,7 +56,7 @@ permissions:
       budget: ["read", "view_original"]
       contract: ["read", "view_original"]
       board_report: ["read", "view_original"]
-    role_actions: ["approve"]
+    role_actions: ["approve", "dashboard_view", "dashboard_edit_layout", "chart_export", "kpi_view", "kpi_export"]
   corporate_finance_planners:
     categories:
       invoice: ["read", "upload", "update", "delete", "view_original"]
@@ -65,7 +65,7 @@ permissions:
       budget: ["read", "upload", "update", "delete", "view_original"]
       contract: ["read", "upload", "update", "delete", "view_original"]
       board_report: ["read", "upload", "update", "delete", "view_original"]
-    role_actions: []
+    role_actions: ["dashboard_view", "dashboard_edit_layout", "chart_export", "kpi_view", "kpi_export", "document_purge"]
   audit_compliance:
     categories:
       invoice: ["read", "view_original"]
@@ -74,7 +74,7 @@ permissions:
       budget: ["read", "view_original"]
       contract: ["read", "view_original"]
       board_report: ["read", "view_original"]
-    role_actions: ["view_audit_log"]
+    role_actions: ["view_audit_log", "dashboard_view", "chart_export", "kpi_view", "kpi_export"]
   system_admin:
     categories: {}
     role_actions: ["manage_users", "manage_settings", "view_audit_log"]

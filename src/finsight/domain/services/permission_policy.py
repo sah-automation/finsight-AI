@@ -25,8 +25,6 @@ def _is_permission_allowed_impl(
     role_id = str(getattr(role, 'value', role))
     role_permissions = permissions.get(role_id)
     if role_permissions is None:
-        role_permissions = permissions.get('default')
-    if role_permissions is None:
         return False
 
     action_id = str(getattr(action, 'value', action))
@@ -45,4 +43,4 @@ def _is_permission_allowed_impl(
     allowed = category_allowed if isinstance(category_allowed, (list, tuple, set)) else ()
     if isinstance(allowed, str):
         allowed = [allowed]
-    return bool('*' in allowed or action_id in allowed)
+    return bool(action_id in allowed)
