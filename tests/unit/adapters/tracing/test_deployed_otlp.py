@@ -43,6 +43,7 @@ def _deployed_config() -> dict[str, Any]:
                 'embedding_retries_exceeded': 3,
                 'job_in_retry_list': True,
                 'role_cache_stale_seconds': 7200,
+                'dashboard_latency_ms': 2000,
             },
         },
         'switches': {'detailed_tracing_enabled': True},

@@ -11,3 +11,4 @@ class AlertConfig(StrictBaseModel):
     embedding_retries_exceeded: int = Field(ge=1)
     job_in_retry_list: bool
     role_cache_stale_seconds: int = Field(ge=1)
+    dashboard_latency_ms: int = Field(ge=1)

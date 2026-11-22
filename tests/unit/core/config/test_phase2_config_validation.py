@@ -1084,3 +1084,25 @@ class TestGoldenSetConfigModelDirectly:
             GoldenSetConfig(
                 kpi_questions_path='tests/golden/questions/phase2_kpi.yaml', misspelled='value'
             )  # type: ignore[call-arg]
+
+
+class TestObservabilityAlertDashboardLatency:
+    """observability.alerts.dashboard_latency_ms positive int (default 2000)."""
+
+    def test_valid_value_accepted(self) -> None:
+        data = _base_config_dict()
+        data['observability']['alerts']['dashboard_latency_ms'] = 2000
+        cfg = Config.model_validate(data)
+        assert cfg.observability.alerts.dashboard_latency_ms == 2000
+
+    def test_zero_rejected(self) -> None:
+        data = _base_config_dict()
+        data['observability']['alerts']['dashboard_latency_ms'] = 0
+        with pytest.raises(ValidationError):
+            Config.model_validate(data)
+
+    def test_negative_rejected(self) -> None:
+        data = _base_config_dict()
+        data['observability']['alerts']['dashboard_latency_ms'] = -1
+        with pytest.raises(ValidationError):
+            Config.model_validate(data)

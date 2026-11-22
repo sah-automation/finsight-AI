@@ -18,6 +18,7 @@ def _base_alerts() -> dict:
         'embedding_retries_exceeded': 3,
         'job_in_retry_list': True,
         'role_cache_stale_seconds': 7200,
+        'dashboard_latency_ms': 2000,
     }
 
 
