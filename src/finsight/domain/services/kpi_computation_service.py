@@ -13,6 +13,8 @@ from ._kpi_budget import compute_budget_vs_actual as _compute_budget_vs_actual
 from ._kpi_derived import compute_burn_rate as _compute_burn_rate
 from ._kpi_derived import compute_runway as _compute_runway
 from ._kpi_estimation import spread_quarterly as _spread_quarterly
+from ._kpi_history import mark_conflicts as _mark_conflicts
+from ._kpi_history import mark_supersession as _mark_supersession
 from ._kpi_margin import compute_margin as _compute_margin
 from ._kpi_metric_fields import amount as _amount
 from ._kpi_metric_fields import exact_sum as _exact_sum
@@ -23,7 +25,7 @@ from ._kpi_period import compute_collection_period as _compute_collection_period
 from .citation_factory import CitationFactory
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
     from datetime import date
 
     from finsight.domain.entities.metric import Metric
@@ -109,6 +111,16 @@ class KpiComputationService:
     def spread_quarterly(self, rows: Sequence[KpiRow]) -> list[KpiRow]:
         """Spread computed quarterly rows into equal estimated monthly chart rows."""
         return _spread_quarterly(rows)
+
+    def mark_conflicts(self, rows: Sequence[KpiRow]) -> list[KpiRow]:
+        """Mark cross-document disagreement without dropping either cited row."""
+        return _mark_conflicts(rows)
+
+    def mark_supersession(
+        self, rows: Sequence[KpiRow], superseded_by: Mapping[str, str]
+    ) -> list[KpiRow]:
+        """Mark rows replaced by a newer version of the same document."""
+        return _mark_supersession(rows, superseded_by)
 
     def _margin(
         self,
