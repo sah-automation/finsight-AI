@@ -875,6 +875,29 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
     if waiting_line is None:
         waiting_line = build_waiting_line(config=config, session=session, **_extra)
 
+    kpi_rebuild_state = provided_deps.get('kpi_rebuild_state') or _existing(
+        kwargs, 'kpi_rebuild_state', 'rebuild_state', 'kpi_rebuild_state_repository'
+    )
+    if kpi_rebuild_state is None:
+        kpi_rebuild_state = build_kpi_rebuild_state_repository(
+            config=config, session=session, **_extra
+        )
+    kpi_rebuild_job = provided_deps.get('kpi_rebuild_job') or _existing(
+        kwargs, 'kpi_rebuild_job', 'kpi_rebuild'
+    )
+    if kpi_rebuild_job is None:
+        from finsight.application.metrics.kpi_rebuild import KpiRebuildJob
+
+        kpi_rebuild_job = KpiRebuildJob(
+            config=config,
+            metric_repository=metric_repository,
+            kpi_repository=kpi_repository,
+            computation_service=kpi_computation_service,
+            rebuild_state=kpi_rebuild_state,
+            waiting_line=waiting_line,
+            company_repository=company_repository,
+        )
+
     hybrid_search = provided_deps.get('hybrid_search')
     if hybrid_search is None:
         hybrid_search = _existing(
@@ -1078,6 +1101,11 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
 
         state_store = _build_state_store(config=config, session=session, **_extra)
 
+    provided_use_cases = _existing(kwargs, 'use_cases')
+    rebuild_use_cases = dict(provided_use_cases) if isinstance(provided_use_cases, dict) else {}
+    rebuild_use_cases.setdefault('kpi_rebuild', kpi_rebuild_job)
+    rebuild_use_cases.setdefault('kpi_rebuild_job', kpi_rebuild_job)
+
     container = CompositionContainer(
         config=config,
         session=session,
@@ -1137,6 +1165,7 @@ def _build_container_impl(*args: Any, **kwargs: Any) -> CompositionContainer:
         pipeline_state_store=state_store,
         context_store=state_store,
         run_state_store=state_store,
+        use_cases=rebuild_use_cases,
     )
     try:
         for _attr in (
@@ -2204,6 +2233,26 @@ def _build_kpi_repository_impl(*args: Any, **kwargs: Any) -> Any:
     if adapter_class is None:
         raise ImportError('KpiRepository adapter is unavailable')
     return adapter_class(session=session, config=config, **_extra)
+
+
+def build_kpi_rebuild_state_repository(*args: Any, **kwargs: Any) -> Any:
+    provided = _existing(
+        kwargs,
+        'kpi_rebuild_state',
+        'rebuild_state',
+        'kpi_rebuild_state_repository',
+    )
+    if provided is not None:
+        return provided
+    config = resolve_config(*args, **kwargs) if args or kwargs else None
+    session = resolve_session(*args, **kwargs)
+    adapter_class = _import_adapter(
+        'finsight.adapters.repositories.kpi_rebuild_state_repository',
+        'KpiRebuildStateRepository',
+    )
+    if adapter_class is None:
+        raise ImportError('KpiRebuildStateRepository adapter is unavailable')
+    return adapter_class(session=session, config=config)
 
 
 def build_kpi_computation_service(*args: Any, **kwargs: Any) -> Any:
