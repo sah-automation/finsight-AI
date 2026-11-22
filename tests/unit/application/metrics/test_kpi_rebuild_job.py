@@ -164,7 +164,7 @@ async def test_failed_company_is_retried_and_completes_only_after_success() -> N
     tenants = ['c0', 'c1', 'c2']
 
     first = await job.run(tenants)
-    assert first['status'] == 'incomplete'
+    assert first['status'] == 'running'
     assert first['failed'] == ['c1']
     assert await state.is_complete(VERSION) is False
 

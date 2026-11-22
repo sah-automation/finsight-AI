@@ -25,9 +25,9 @@ if TYPE_CHECKING:
 
     from finsight.core.types import CompanyId
 
-# The canonical fingerprint fields plus source_metric_ids, which callers of
-# get_fingerprint_data use for provenance but the hash deliberately ignores.
-_FINGERPRINT_FIELDS = (*FINGERPRINT_FIELDS, 'source_metric_ids')
+# The canonical fingerprint fields from the port (issue #378, Phase 2 spec §2).
+# Timestamps and the injected Display Label are deliberately absent.
+_FINGERPRINT_FIELDS = FINGERPRINT_FIELDS
 
 _INSERT_COLUMNS = (
     'company_id',
@@ -43,7 +43,6 @@ _INSERT_COLUMNS = (
     'computation_status',
     'estimation_method',
     'source_citations',
-    'source_metric_ids',
     'computation_rule_version',
     'superseded_by_document_version_id',
 )
@@ -52,13 +51,12 @@ _INSERT_SQL = """
 INSERT INTO kpi_values (
     company_id, kpi_code, period, document_version_id, chart_period,
     period_start, chart_period_start, currency, units, value,
-    computation_status, estimation_method, source_citations, source_metric_ids,
+    computation_status, estimation_method, source_citations,
     computation_rule_version, superseded_by_document_version_id
 ) VALUES (
     :company_id, :kpi_code, :period, :document_version_id, :chart_period,
     :period_start, :chart_period_start, :currency, :units, :value,
     :computation_status, :estimation_method, CAST(:source_citations AS jsonb),
-    CAST(:source_metric_ids AS jsonb),
     :computation_rule_version, :superseded_by_document_version_id
 )
 ON CONFLICT (company_id, kpi_code, period, document_version_id, chart_period)
@@ -71,7 +69,6 @@ DO UPDATE SET
     computation_status = EXCLUDED.computation_status,
     estimation_method = EXCLUDED.estimation_method,
     source_citations = EXCLUDED.source_citations,
-    source_metric_ids = EXCLUDED.source_metric_ids,
     computation_rule_version = EXCLUDED.computation_rule_version,
     superseded_by_document_version_id = EXCLUDED.superseded_by_document_version_id,
     updated_at = now()

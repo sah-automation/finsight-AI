@@ -56,7 +56,7 @@ permissions:
       budget: ["read", "view_original"]
       contract: ["read", "view_original"]
       board_report: ["read", "view_original"]
-    role_actions: ["approve", "dashboard_view", "dashboard_edit_layout", "chart_export", "kpi_view", "kpi_export", "document_purge"]
+    role_actions: ["approve", "dashboard_view", "dashboard_edit_layout", "chart_export", "kpi_view", "kpi_export"]
   corporate_finance_planners:
     categories:
       invoice: ["read", "upload", "update", "delete", "view_original"]

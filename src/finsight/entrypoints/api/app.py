@@ -15,9 +15,12 @@ from finsight.core.errors import ConfigError as CoreConfigError
 from finsight.core.logging import configure_logging, set_switch_values
 from finsight.entrypoints.api import (
     ask,
+    charts,
     current_user,
+    dashboard,
     documents,
     feedback,
+    kpis,
     onboarding,
     source_viewer,
     threads,
@@ -102,8 +105,11 @@ def _include_routers(app: FastAPI) -> None:
     """Mount the primary routers and their legacy aliases."""
     primary_routers = (
         ask.router,
+        charts.router,
+        dashboard.router,
         documents.router,
         feedback.router,
+        kpis.router,
         onboarding.router,
         upload.router,
         source_viewer.router,

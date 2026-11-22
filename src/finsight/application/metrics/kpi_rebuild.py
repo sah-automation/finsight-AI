@@ -146,11 +146,12 @@ class KpiRebuildJob:
         await self._rebuild_state.mark_running(self._version)
 
         failed, deferred, rows_written = await self._process_batches(batches)
-        status = 'complete'
         if failed or deferred:
-            status = 'incomplete'
+            # Keep state as 'running' so the job can be retried; do not mark complete.
+            status = 'running'
         else:
             await self._rebuild_state.mark_complete(self._version)
+            status = 'complete'
         return {
             'status': status,
             'version': self._version,
