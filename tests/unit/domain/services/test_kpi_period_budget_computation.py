@@ -116,3 +116,92 @@ def test_collection_period_kpis_need_review_on_zero_denominator(
     assert rows[0]['value'] is None
     assert rows[0]['computation_status'] == 'needs_review'
     assert rows[0]['reason'] == expected_reason
+
+
+def test_budget_vs_actual_subtracts_budget_from_actual_for_exact_matches() -> None:
+    metrics = [
+        make_metric('budget', Decimal('410000'), metric_id='budget-1'),
+        make_metric('actual', Decimal('416161'), metric_id='actual-1'),
+    ]
+
+    rows = KpiComputationService(RULE_VERSION).compute_budget_vs_actual(metrics)
+
+    assert rows == [
+        {
+            'company_id': str(COMPANY),
+            'kpi_code': 'budget_vs_actual',
+            'period': '2026-Q3',
+            'period_start': '2026-07-01',
+            'chart_period': '2026-Q3',
+            'chart_period_start': '2026-07-01',
+            'currency': 'USD',
+            'units': 'USD',
+            'value': '6161',
+            'source_citations': [citation_id()],
+            'source_metric_ids': ['budget-1', 'actual-1'],
+            'computation_status': 'computed',
+            'estimation_method': None,
+            'document_version_id': 'version-1',
+            'computation_rule_version': RULE_VERSION,
+            'superseded_by_document_version_id': None,
+            'reason': None,
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ('actual_kwargs', 'expected_reason'),
+    [
+        ({'period': '2026-Q4'}, 'period_mismatch'),
+        ({'currency': 'EUR'}, 'currency_mismatch'),
+        ({'units': 'EUR'}, 'units_mismatch'),
+    ],
+)
+def test_budget_vs_actual_needs_review_without_conversion_on_strict_mismatch(
+    actual_kwargs: dict[str, str], expected_reason: str
+) -> None:
+    metrics = [
+        make_metric('budget', Decimal('410000'), metric_id='budget-1'),
+        make_metric('actual', Decimal('416161'), metric_id='actual-1', **actual_kwargs),
+    ]
+
+    rows = KpiComputationService(RULE_VERSION).compute_budget_vs_actual(metrics)
+
+    assert len(rows) == 1
+    assert rows[0]['value'] is None
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['reason'] == expected_reason
+
+
+@pytest.mark.parametrize(
+    ('metrics', 'expected_reason'),
+    [
+        ([make_metric('budget', Decimal('410000'), metric_id='budget-1')], 'missing_actual'),
+        ([make_metric('actual', Decimal('416161'), metric_id='actual-1')], 'missing_budget'),
+    ],
+)
+def test_budget_vs_actual_needs_review_for_missing_input(
+    metrics: list[Metric], expected_reason: str
+) -> None:
+    rows = KpiComputationService(RULE_VERSION).compute_budget_vs_actual(metrics)
+
+    assert len(rows) == 1
+    assert rows[0]['value'] is None
+    assert rows[0]['computation_status'] == 'needs_review'
+    assert rows[0]['reason'] == expected_reason
+
+
+def test_budget_vs_actual_pairs_each_line_item_without_cross_comparing() -> None:
+    metrics = [
+        make_metric('budget_revenue', Decimal('410000'), metric_id='budget-rev'),
+        make_metric('actual_revenue', Decimal('416161'), metric_id='actual-rev'),
+        make_metric('budget_cogs', Decimal('240000'), metric_id='budget-cogs'),
+        make_metric('actual_cogs', Decimal('250000'), metric_id='actual-cogs'),
+    ]
+
+    rows = KpiComputationService(RULE_VERSION).compute_budget_vs_actual(metrics)
+
+    assert [(row['source_metric_ids'], row['value']) for row in rows] == [
+        (['budget-cogs', 'actual-cogs'], '10000'),
+        (['budget-rev', 'actual-rev'], '6161'),
+    ]
