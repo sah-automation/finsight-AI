@@ -13,8 +13,8 @@ import json
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+from finsight.domain.ports.kpi_repository import FINGERPRINT_FIELDS, KpiRow, KpiRows
 from finsight.domain.ports.kpi_repository import KpiRepository as KpiRepositoryPort
-from finsight.domain.ports.kpi_repository import KpiRow, KpiRows
 
 from . import _kpi_repository_memory as _memory
 from . import _kpi_repository_query as _query
@@ -25,19 +25,9 @@ if TYPE_CHECKING:
 
     from finsight.core.types import CompanyId
 
-_FINGERPRINT_FIELDS = (
-    'kpi_code',
-    'period',
-    'chart_period',
-    'document_version_id',
-    'computation_rule_version',
-    'value',
-    'computation_status',
-    'source_citations',
-    'source_metric_ids',
-    'conflict_marker',
-    'superseded_by_document_version_id',
-)
+# The canonical fingerprint fields plus source_metric_ids, which callers of
+# get_fingerprint_data use for provenance but the hash deliberately ignores.
+_FINGERPRINT_FIELDS = (*FINGERPRINT_FIELDS, 'source_metric_ids')
 
 _INSERT_COLUMNS = (
     'company_id',

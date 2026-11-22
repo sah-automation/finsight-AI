@@ -1120,7 +1120,10 @@ class TestFileClassNaming:
             'dashboard_layout_repository.py': 'DashboardLayoutRepositoryPort',
             # Issue #377 explicitly places KpiRebuildJob in kpi_rebuild.py.
             'kpi_rebuild.py': 'KpiRebuildJob',
-            # Issue #378 explicitly places FingerprintService in fingerprint.py.
+            # Issue #378 explicitly places FingerprintService in fingerprint.py,
+            # which conflicts with CODING_STANDARDS.md §3 file/class naming. The
+            # ticket path wins (as for #377); the choice is recorded in the
+            # service module docstring. Do not add further exemptions casually.
             'fingerprint.py': 'FingerprintService',
         }
 

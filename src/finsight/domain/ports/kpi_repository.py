@@ -18,6 +18,22 @@ if TYPE_CHECKING:
 KpiRow = dict[str, Any]
 KpiRows = list[KpiRow]
 
+# Stable fields covered by a chart Freshness Fingerprint (issue #378, Phase 2
+# spec §2). Timestamps and the injected Display Label are deliberately absent.
+# The repository projection and the hashing service both derive from this tuple.
+FINGERPRINT_FIELDS = (
+    'kpi_code',
+    'period',
+    'chart_period',
+    'document_version_id',
+    'computation_rule_version',
+    'value',
+    'computation_status',
+    'source_citations',
+    'conflict_marker',
+    'superseded_by_document_version_id',
+)
+
 
 class KpiRepository(ABC):
     """Tenant-scoped KPI store read/write interface."""
@@ -73,4 +89,10 @@ class KpiRepository(ABC):
 # Ticket-facing alias; the concrete class name follows the repo's file/class rule.
 KpiRepositoryPort = KpiRepository
 
-__all__ = ['KpiRepository', 'KpiRepositoryPort', 'KpiRow', 'KpiRows']
+__all__ = [
+    'FINGERPRINT_FIELDS',
+    'KpiRepository',
+    'KpiRepositoryPort',
+    'KpiRow',
+    'KpiRows',
+]

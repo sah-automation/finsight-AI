@@ -1,8 +1,13 @@
 """Canonical freshness fingerprints for chart KPI rows (issue #378).
 
 A fingerprint is derived on read, never stored. Only the stable fields named in
-the Phase 2 spec are hashed: timestamps and injected display labels are excluded
-so an ``Updating`` badge cannot keep a chart stale against its own fingerprint.
+the Phase 2 spec are hashed: timestamps and the injected ``Updating`` Display
+Label are excluded, so applying a label cannot keep a chart stale against its
+own fingerprint.
+
+Issue #378 mandates this path for ``FingerprintService``; the generic
+file/class naming rule is therefore recorded as an explicit, ticket-backed
+exception in ``tests/architecture/test_invariants.py``, as done for #377.
 """
 
 from __future__ import annotations
@@ -12,35 +17,24 @@ import json
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+from finsight.domain.ports.kpi_repository import FINGERPRINT_FIELDS
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from finsight.core.types import CompanyId
     from finsight.domain.ports.kpi_repository import KpiRepository
 
-_FINGERPRINT_FIELDS = (
-    'kpi_code',
-    'period',
-    'chart_period',
-    'document_version_id',
-    'computation_rule_version',
-    'value',
-    'computation_status',
-    'source_citations',
-    'conflict_marker',
-    'superseded_by_document_version_id',
-)
 
-
-def _spec_field(spec: Any, field: str) -> Any:
+def _spec_value(spec: Any, field: str) -> Any:
     if isinstance(spec, Mapping):
         return spec.get(field)
     return getattr(spec, field, None)
 
 
-def _exact(value: Any) -> Any:
-    """Normalise a field to an exact JSON scalar without reading a clock."""
-    return None if value is None else str(value)
+def _json_scalar(value: Any) -> Any:
+    """Keep the exact scalar; only ``None`` becomes an explicit JSON null."""
+    return None if value is None else value
 
 
 def _canonical_row(row: Mapping[str, Any]) -> dict[str, Any]:
@@ -48,22 +42,28 @@ def _canonical_row(row: Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(citations, (str, bytes)):
         citations = [citations]
     canonical: dict[str, Any] = {
-        field: _exact(row.get(field))
-        for field in _FINGERPRINT_FIELDS
+        field: _json_scalar(row.get(field))
+        for field in FINGERPRINT_FIELDS
         if field != 'source_citations'
     }
     canonical['source_citations'] = sorted(
-        _exact(citation) for citation in citations if citation is not None
+        str(citation) for citation in citations if citation is not None
     )
     return canonical
 
 
 def _canonical_json(rows: Sequence[Mapping[str, Any]]) -> str:
     encoded_rows = sorted(
-        json.dumps(_canonical_row(row), sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+        json.dumps(
+            _canonical_row(row),
+            sort_keys=True,
+            separators=(',', ':'),
+            ensure_ascii=False,
+            default=str,
+        )
         for row in rows
     )
-    return json.dumps(encoded_rows, separators=(',', ':'), ensure_ascii=False)
+    return json.dumps(encoded_rows, separators=(',', ':'), ensure_ascii=False, default=str)
 
 
 class FingerprintService:
@@ -74,9 +74,10 @@ class FingerprintService:
 
     async def compute_fingerprint(self, company_id: CompanyId, chart_spec: Any) -> str:
         """Return the SHA-256 hex fingerprint of the chart's current KPI rows."""
-        data = await self._repository.get_fingerprint_data(company_id, [chart_spec])
-        chart_id = str(_spec_field(chart_spec, 'chart_id'))
-        return hashlib.sha256(_canonical_json(data.get(chart_id, ())).encode('utf-8')).hexdigest()
+        rows_by_chart_id = await self._repository.get_fingerprint_data(company_id, [chart_spec])
+        chart_id = str(_spec_value(chart_spec, 'chart_id'))
+        rows = rows_by_chart_id.get(chart_id, ())
+        return hashlib.sha256(_canonical_json(rows).encode('utf-8')).hexdigest()
 
 
 __all__ = ['FingerprintService']

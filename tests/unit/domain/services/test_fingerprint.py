@@ -146,26 +146,19 @@ async def test_compute_fingerprint_reads_only_the_requested_chart_for_the_compan
     assert repository.calls == [(COMPANY, [SPEC])]
 
 
-async def test_updating_badge_precedence_does_not_change_the_fingerprint() -> None:
-    computation = KpiComputationService('rule-v1')
-    estimated = _row(computation_status='estimated')
-    statuses = {'version-1': 'draft'}
-    labels = [
-        computation.apply_display_labels([estimated], document_statuses=statuses, updating=True)[0][
-            'display_label'
-        ],
-        computation.apply_display_labels([estimated], document_statuses=statuses)[0][
-            'display_label'
-        ],
-        computation.apply_display_labels([_row()], document_statuses=statuses)[0]['display_label'],
-        computation.apply_display_labels([_row()])[0]['display_label'],
-    ]
+async def test_injected_display_label_does_not_change_the_fingerprint() -> None:
+    # Display Label precedence (Updating > Estimated > Draft > null) is owned by
+    # issue #375; this guards that injecting a label cannot feed back into the
+    # fingerprint and keep a chart stale against its own label.
+    labelled = KpiComputationService('rule-v1').apply_display_labels(
+        [_row(computation_status='estimated')], updating=True
+    )[0]
 
-    assert labels == ['Updating', 'Estimated', 'Draft', None]
+    assert labelled['display_label'] == 'Updating'
 
     plain = await FingerprintService(_StubRepository([_row()])).compute_fingerprint(COMPANY, SPEC)
-    labelled = await FingerprintService(
-        _StubRepository([_row(display_label='Updating')])
+    with_label = await FingerprintService(
+        _StubRepository([_row(display_label=labelled['display_label'])])
     ).compute_fingerprint(COMPANY, SPEC)
 
-    assert labelled == plain
+    assert with_label == plain
