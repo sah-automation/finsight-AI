@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from finsight.domain.value_objects.computation_status import ComputationStatus
+
 from ._kpi_metric_fields import amount, attr, code_name, exact_sum, period_fields, required
 
 if TYPE_CHECKING:
@@ -51,7 +53,7 @@ def compute_budget_vs_actual(
 
 
 def _new_group() -> _Group:
-    return {'subject': '', 'budget': [], 'actual': []}
+    return {'budget': [], 'actual': []}
 
 
 def _subject(metric: Metric) -> _Subject | None:
@@ -107,7 +109,9 @@ def _row(key: _GroupKey, group: _Group, rule_version: str, citations: CitationFa
         'source_metric_ids': [
             str(required(metric, 'metric_id', 'metric_id', 'id')) for metric in source_metrics
         ],
-        'computation_status': 'needs_review' if reason else 'computed',
+        'computation_status': (
+            ComputationStatus.NEEDS_REVIEW.value if reason else ComputationStatus.COMPUTED.value
+        ),
         'estimation_method': None,
         'document_version_id': version,
         'computation_rule_version': rule_version,
