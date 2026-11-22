@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from finsight.adapters.waiting_line import waiting_line_settings
 from finsight.composition import CompositionContainer, providers
 from finsight.composition.providers import (
     ProviderError,
@@ -112,6 +113,24 @@ def test_get_feedback_use_case() -> None:
 def test_provider_raises_before_initialisation() -> None:
     with pytest.raises(ProviderError, match='not initialised'):
         get_ask_use_case()
+
+
+def test_init_rejects_rebuild_priority_above_live_or_upload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_rank = waiting_line_settings.priority_rank
+
+    def broken_rank(value: object) -> int:
+        if str(value).lower() == 'rebuilds':
+            return 0
+        return original_rank(value)
+
+    monkeypatch.setattr(waiting_line_settings, 'priority_rank', broken_rank)
+    container = CompositionContainer()
+    for name in ('ask', 'upload', 'documents', 'onboarding', 'source_viewer'):
+        container.use_cases[name] = object()
+    with pytest.raises(ProviderError, match='rebuild priority ordering'):
+        init(container)
 
 
 def test_init_raises_when_a_required_use_case_is_missing() -> None:
