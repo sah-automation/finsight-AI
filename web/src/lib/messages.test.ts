@@ -44,7 +44,7 @@ describe('approved messages', () => {
   });
 
   it('holds the access-denied copy verbatim', () => {
-    expect(messages.permission.denied).toBe("You don't have access to this.");
+    expect(messages.permission.denied).toBe("You don’t have access to this.");
   });
 
   it('uses human role names for display only', () => {

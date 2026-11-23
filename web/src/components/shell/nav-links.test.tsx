@@ -29,6 +29,6 @@ describe('NavLinks', () => {
 
   it('shows a permission message when nothing is accessible', () => {
     render(<NavLinks permissions={[]} />);
-    expect(screen.getByText("You don't have access to this.")).toBeInTheDocument();
+    expect(screen.getByText("You don’t have access to this.")).toBeInTheDocument();
   });
 });

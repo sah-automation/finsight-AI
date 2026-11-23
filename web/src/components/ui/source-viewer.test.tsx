@@ -400,7 +400,7 @@ describe('SourceViewer', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Needs review. Some numbers couldn't be read with confidence.")).toBeInTheDocument();
+      expect(screen.getByText("Needs review. Some numbers couldn’t be read with confidence.")).toBeInTheDocument();
     });
   });
 });
