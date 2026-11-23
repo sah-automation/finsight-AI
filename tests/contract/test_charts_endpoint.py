@@ -41,7 +41,11 @@ class _KpiRepository:
         self.company_id = company_id
         self.filters = filters or {}
         self.calls += 1
-        return [dict(row) for row in self.rows]
+        codes = self.filters.get('kpi_codes')
+        rows = (
+            self.rows if not codes else [row for row in self.rows if row.get('kpi_code') in codes]
+        )
+        return [dict(row) for row in rows]
 
 
 class _DocumentRepository:
@@ -218,7 +222,7 @@ def test_budget_variance_returns_server_computed_variance_rows(api: Any) -> None
             'actual': '120.00',
             'budget': '100.00',
             'variance': '20.00',
-            'favourable': True,
+            'favourable': False,
         }
     ]
 

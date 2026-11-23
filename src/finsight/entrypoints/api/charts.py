@@ -2,41 +2,51 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from typing import Any
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, cast
+from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 
+from finsight.application.chart_series_builder import ChartSeriesBuilder
+from finsight.application.kpi_visibility_filter import KpiVisibilityFilter
 from finsight.composition.container import get_container
+from finsight.core.config import get_config, load_config
+from finsight.core.config.loader import ConfigError
+from finsight.core.config.models.chart_spec import ChartType  # noqa: TC001
+from finsight.domain.services.kpi_computation_service import KpiComputationService
 
-from ._permissions import (
-    _check_action,
-    _extract_role_actions_and_categories,
-    _get_role_entry,
-    _load_permissions_config,
-    _require_company_id,
-    _require_role_id,
-)
-from ._shared import (
-    _await,
-    _get,
-)
+from ._shared import _await, _get
+from .action_permission import ActionPermission
+from .api_principal import ApiPrincipal  # noqa: TC001
 from .charts_response import (
     ChartDatasetResponse,
-    ChartPointResponse,
     ChartResponse,
     ExportMetadataResponse,
     VarianceRowResponse,
 )
 
+if TYPE_CHECKING:
+    from finsight.core.config.models.chart_spec import ChartSpec
+
 router = APIRouter(prefix='/charts', tags=['charts'])
+kpi_view_dependency = ActionPermission('kpi_view')
+
+_VERSION_ID_FIELDS = ('document_version_id', 'version_id', 'id')
+_CATEGORY_FIELDS = ('category', 'document_category')
+_STATE_FIELDS = ('state', 'status', 'document_status')
+_TITLE_FIELDS = ('title', 'document_title')
+_DOCUMENT_VERSION_FIELDS = ('version', 'document_version')
+_MAX_PERIOD_SELECTIONS = 4
+_CITATION_MIN_PARTS = 3
 
 
 class _ChartQueryParams(BaseModel):
-    """Query parameters for chart endpoint."""
+    """Query parameters for the chart endpoint, bounded by the resolved spec."""
 
-    chart_type: str | None = None
+    chart_type: ChartType | None = None
     kpi_code: list[str] | None = None
     periods: list[int] | None = None
     breakdown_key: str | None = None
@@ -47,259 +57,257 @@ class _ChartQueryParams(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
-async def _get_company_name(container: Any, company_id: str) -> str:
-    """Get company display name."""
-    doc_repo = getattr(container, 'document_repository', None)
-    if doc_repo is not None:
-        for method_name in ('get_company', 'fetch_company', 'load_company', 'find_company'):
-            method = getattr(doc_repo, method_name, None)
-            if not callable(method):
-                continue
-            try:
-                result = await _await(method(company_id))
-            except TypeError:
-                try:
-                    result = await _await(method(company_id=company_id))
-                except (AttributeError, TypeError, ValueError):
-                    continue
-            if result is None:
-                continue
-            name = _get(result, 'name', 'company_name', 'display_name', 'company_display_name')
-            if name is not None and str(name).strip():
-                return str(name).strip()
-    return company_id
+def _text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
-async def _validate_chart_spec(chart_spec: Any, params: _ChartQueryParams) -> None:
-    """Validate query parameters against chart spec."""
-    if params.chart_type and params.chart_type != getattr(chart_spec, 'chart_type', None):
-        raise HTTPException(
-            status_code=400, detail=f'chart_type override not allowed: {params.chart_type}'
-        )
+def _field(source: Any, *names: str) -> Any:
+    if isinstance(source, Mapping):
+        for name in names:
+            if source.get(name) is not None:
+                return source.get(name)
+        return None
+    for name in names:
+        value = getattr(source, name, None)
+        if value is not None:
+            return value
+    return None
 
-    if params.kpi_code:
-        allowed_codes = getattr(chart_spec, 'kpi_codes', [])
-        for code in params.kpi_code:
-            if code not in allowed_codes:
-                raise HTTPException(status_code=400, detail=f'kpi_code not allowed by spec: {code}')
 
-    if params.periods:
-        supported = getattr(chart_spec, 'supported_periods', [])
-        selectable = getattr(chart_spec, 'periods_selectable', [])
-        for p in params.periods:
-            if p not in supported and p not in selectable:
-                raise HTTPException(status_code=400, detail=f'period not allowed by spec: {p}')
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
 
-    if params.breakdown_key:
-        allowed_keys = getattr(chart_spec, 'breakdown_keys', [])
-        if params.breakdown_key not in allowed_keys:
+
+def _opaque_slug() -> str:
+    """Return an opaque export slug that is not derived from company data."""
+
+    return uuid4().hex[:12]
+
+
+def _load_chart_spec(chart_id: str) -> ChartSpec:
+    try:
+        config = get_config()
+    except ConfigError:
+        try:
+            config = load_config()
+        except ConfigError as exc:
             raise HTTPException(
-                status_code=400, detail=f'breakdown_key not allowed by spec: {params.breakdown_key}'
-            )
+                status_code=500, detail='Service configuration is unavailable.'
+            ) from exc
+    charts_config = getattr(config, 'charts', None)
+    specs = getattr(charts_config, 'specs', None)
+    if specs is None:
+        raise HTTPException(status_code=500, detail='Service configuration is unavailable.')
+    spec = specs.get(chart_id)
+    if spec is None:
+        raise HTTPException(status_code=404, detail=f'Chart spec not found: {chart_id}')
+    return cast('ChartSpec', spec)
 
 
-def _build_filters(chart_spec: Any, params: _ChartQueryParams) -> tuple[dict[str, Any], list[str]]:
-    """Build filters for KPI query."""
-    filters: dict[str, Any] = {}
-    kpi_codes = params.kpi_code or getattr(chart_spec, 'kpi_codes', [])
-    if kpi_codes:
-        filters['kpi_codes'] = list(kpi_codes)
+def _validate_overrides(spec: ChartSpec, params: _ChartQueryParams) -> None:
+    if params.chart_type is not None and params.chart_type != spec.chart_type:
+        raise HTTPException(status_code=400, detail='chart_type override not allowed by spec.')
+    for code in params.kpi_code or ():
+        if code not in spec.kpi_codes:
+            raise HTTPException(status_code=400, detail=f'kpi_code not allowed by spec: {code}')
+    allowed = set(spec.supported_periods) | set(spec.periods_selectable)
+    if len(params.periods or ()) > _MAX_PERIOD_SELECTIONS or any(
+        period not in allowed for period in params.periods or ()
+    ):
+        raise HTTPException(status_code=400, detail='periods not allowed by spec.')
+    if params.breakdown_key is not None and params.breakdown_key not in spec.breakdown_keys:
+        raise HTTPException(status_code=400, detail='breakdown_key not allowed by spec.')
+
+
+def _build_filters(kpi_codes: Sequence[str], params: _ChartQueryParams) -> dict[str, Any]:
+    filters: dict[str, Any] = {'kpi_codes': list(kpi_codes)}
     if params.period_from:
         filters['period_from'] = params.period_from
     if params.period_to:
         filters['period_to'] = params.period_to
-    return filters, kpi_codes
+    return filters
 
 
-def _group_rows_by_kpi_and_period(
-    rows: list[dict[str, Any]],
-) -> tuple[dict[tuple[str, str], list[dict[str, Any]]], list[str]]:
-    """Group rows by (kpi_code, chart_period) and return sorted periods."""
-    grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
-    for row in rows:
-        key = (row.get('kpi_code', ''), row.get('chart_period', ''))
-        grouped[key].append(row)
-    all_periods = sorted({row.get('chart_period', '') for row in rows})
-    return grouped, all_periods
+def _row_period(row: Mapping[str, Any]) -> str:
+    return _text(row.get('chart_period')) or _text(row.get('period')) or ''
 
 
-def _build_dataset(
-    kpi_code_val: str,
-    all_periods: list[str],
-    grouped: dict[tuple[str, str], list[dict[str, Any]]],
-    rows: list[dict[str, Any]],
-) -> ChartDatasetResponse:
-    """Build a single chart dataset for a KPI code."""
-    points = []
-    data_values = []
-    for period in all_periods:
-        period_rows = grouped.get((kpi_code_val, period), [])
-        if period_rows:
-            row = period_rows[0]
-            value = str(row.get('value')) if row.get('value') is not None else None
-            data_values.append(value)
-            points.append(
-                ChartPointResponse(
-                    value=value,
-                    period=row.get('period', ''),
-                    chart_period=row.get('chart_period', ''),
-                    source_citations=row.get('source_citations', []) or [],
-                    computation_status=row.get('computation_status', ''),
-                    display_label=None,
-                    change=None,
-                    change_direction=None,
-                    share=None,
-                    reason=None if value is not None else 'insufficient_data',
-                )
-            )
-        else:
-            data_values.append(None)
-            points.append(
-                ChartPointResponse(
-                    value=None,
-                    period='',
-                    chart_period=period,
-                    source_citations=[],
-                    computation_status='needs_review',
-                    display_label=None,
-                    change=None,
-                    change_direction=None,
-                    share=None,
-                    reason='insufficient_data',
-                )
-            )
+def _select_periods(rows: list[dict[str, Any]], params: _ChartQueryParams) -> list[dict[str, Any]]:
+    selected = rows
+    if params.periods:
+        available = sorted({_row_period(row) for row in selected} - {''})
+        keep = set(available[-max(params.periods) :])
+        selected = [row for row in selected if _row_period(row) in keep]
+    if params.breakdown_period:
+        wanted = params.breakdown_period
+        selected = [
+            row for row in selected if wanted in (_row_period(row), _text(row.get('period')) or '')
+        ]
+    return selected
 
-    return ChartDatasetResponse(
-        series_type='kpi',
-        label=kpi_code_val.replace('_', ' ').title(),
-        currency=rows[0].get('currency', '') if rows else '',
-        units=rows[0].get('units', '') if rows else '',
-        period=all_periods[0] if all_periods else '',
-        data=data_values,
-        points=points,
+
+async def _get_company_name(container: Any, company_id: str) -> str:
+    doc_repo = getattr(container, 'document_repository', None)
+    if doc_repo is not None and callable(getattr(doc_repo, 'get_company', None)):
+        company = await _await(doc_repo.get_company(company_id))
+        name = _text(_get(company, 'name', 'company_name', 'display_name'))
+        if name is not None:
+            return name
+    return company_id
+
+
+async def _visible_rows(
+    container: Any,
+    company_id: str,
+    principal: ApiPrincipal,
+    filters: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[Any]]:
+    doc_repo = getattr(container, 'document_repository', None)
+    versions: list[Any] = []
+    if doc_repo is not None and callable(getattr(doc_repo, 'list_document_versions', None)):
+        versions = list(await _await(doc_repo.list_document_versions(company_id)) or ())
+    kpi_repo = getattr(container, 'kpi_repository', None)
+    if kpi_repo is None:
+        raise HTTPException(status_code=500, detail='KPI data is temporarily unavailable.')
+    rows = list(await _await(kpi_repo.get_current(company_id, filters)) or ())
+    visibility = KpiVisibilityFilter(
+        category_permissions=principal.category_permissions,
+        access_scope=principal.access_scope,
     )
+    return visibility.filter(rows, versions), versions
+
+
+def _version_index(versions: Sequence[Any]) -> dict[str, dict[str, str]]:
+    index: dict[str, dict[str, str]] = {}
+    for version in versions:
+        version_id = _text(_field(version, *_VERSION_ID_FIELDS))
+        if version_id is None:
+            continue
+        index[version_id] = {
+            'category': _text(_field(version, *_CATEGORY_FIELDS)) or '',
+            'state': _text(_field(version, *_STATE_FIELDS)) or '',
+            'title': _text(_field(version, *_TITLE_FIELDS)) or '',
+            'version': _text(_field(version, *_DOCUMENT_VERSION_FIELDS)) or '',
+        }
+    return index
+
+
+def _prepare_rows(
+    rows: Sequence[dict[str, Any]],
+    versions: Sequence[Any],
+    breakdown_key: str | None,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, str]]]:
+    index = _version_index(versions)
+    statuses = {version_id: meta['state'] for version_id, meta in index.items() if meta['state']}
+    prepared: list[dict[str, Any]] = []
+    for row in rows:
+        enriched = dict(row)
+        category = index.get(_text(row.get('document_version_id')) or '', {}).get('category')
+        if breakdown_key and category:
+            enriched[breakdown_key] = category
+        prepared.append(enriched)
+    labelled = KpiComputationService('chart').apply_display_labels(
+        prepared, document_statuses=statuses
+    )
+    return labelled, index
+
+
+def _source_documents(
+    rows: Sequence[dict[str, Any]],
+    versions: Sequence[Any],
+    index: Mapping[str, dict[str, str]],
+) -> list[dict[str, str]]:
+    referenced: set[str] = set()
+    for row in rows:
+        version_id = _text(row.get('document_version_id'))
+        if version_id:
+            referenced.add(version_id)
+        for citation in row.get('source_citations') or ():
+            parts = str(citation).split(':')
+            if str(citation).startswith('cit:v1:') and len(parts) >= _CITATION_MIN_PARTS:
+                referenced.add(parts[2])
+    documents: list[dict[str, str]] = []
+    for version in versions:
+        version_id = _text(_field(version, *_VERSION_ID_FIELDS))
+        if version_id not in referenced:
+            continue
+        meta = index.get(version_id, {})
+        if meta.get('title') or meta.get('version'):
+            documents.append({'title': meta.get('title', ''), 'version': meta.get('version', '')})
+    return documents
 
 
 def _build_export_metadata(
     company_name: str,
-    company_slug: str,
-    all_periods: list[str],
-    datasets: list[ChartDatasetResponse],
+    labels: Sequence[str],
+    datasets: Sequence[ChartDatasetResponse],
+    source_documents: Sequence[dict[str, str]],
 ) -> ExportMetadataResponse:
-    """Build export metadata for chart response."""
     return ExportMetadataResponse(
-        generated_at='2026-01-01T00:00:00Z',  # TODO(finsight): use actual timestamp (issue #378)
+        generated_at=_utc_now().strftime('%Y-%m-%dT%H:%M:%SZ'),
         company_name=company_name,
-        company_slug=company_slug,
-        period_range=f'{all_periods[0]} to {all_periods[-1]}' if all_periods else 'unknown',
+        company_slug=_opaque_slug(),
+        period_range=f'{labels[0]} to {labels[-1]}' if labels else 'unknown',
         currency=datasets[0].currency if datasets else '',
         units=datasets[0].units if datasets else '',
-        source_document_list=[],
+        source_document_list=list(source_documents),
     )
 
 
-async def _fetch_chart_data(
-    kpi_repository: Any,
-    company_id: str,
-    filters: dict[str, Any],
-) -> list[dict[str, Any]]:
-    """Fetch KPI rows for chart."""
-    result = await _await(kpi_repository.get_current(company_id, filters))
-    return [dict(row) for row in result] if result else []
-
-
-def _build_datasets(
-    kpi_codes: list[str],
-    all_periods: list[str],
-    grouped: dict[tuple[str, str], list[dict[str, Any]]],
-    rows: list[dict[str, Any]],
-) -> list[ChartDatasetResponse]:
-    """Build all chart datasets."""
-    return [_build_dataset(kpi_code_val, all_periods, grouped, rows) for kpi_code_val in kpi_codes]
-
-
-def _build_chart_response(
-    chart_id: str,
-    all_periods: list[str],
-    response_data: dict[str, Any],
+def _serialize_response(
+    chart_id: str, series: dict[str, Any], export: ExportMetadataResponse
 ) -> ChartResponse:
-    """Build the chart response from a data dict."""
     return ChartResponse(
         contract_version=1,
         chart_id=chart_id,
-        labels=all_periods,
-        datasets=response_data['datasets'],
-        variance_rows=response_data['variance_rows'],
-        reason=None if response_data['has_rows'] else 'insufficient_data',
-        export=response_data['export'],
+        labels=list(series['labels']),
+        datasets=[ChartDatasetResponse(**item) for item in series['datasets']],
+        variance_rows=[VarianceRowResponse(**item) for item in series['variance_rows']],
+        reason=series['reason'],
+        export=export,
     )
 
 
-@router.get('/{chart_id}', operation_id='get_chart')
+@router.get('/{chart_id}', operation_id='get_chart', response_model=ChartResponse)
 async def get_chart(
     chart_id: str,
-    context: Any = None,
+    principal: ApiPrincipal = Depends(kpi_view_dependency),
     params: _ChartQueryParams = Query(),
 ) -> ChartResponse:
     """Get chart series for the authenticated company."""
-    company_id = await _require_company_id(context)
-    role_id = await _require_role_id(context)
-
-    config = _load_permissions_config()
-    entry_dump = _get_role_entry(role_id, config)
-    role_actions, _category_permissions = _extract_role_actions_and_categories(entry_dump)
-
-    # Check kpi_view permission (charts require kpi_view)
-    if not _check_action(role_actions, 'kpi_view'):
+    if 'kpi_view' not in principal.role_actions:
         raise HTTPException(status_code=403, detail='You do not have permission to view charts.')
-
+    spec = _load_chart_spec(chart_id)
+    _validate_overrides(spec, params)
+    kpi_codes = list(params.kpi_code or spec.kpi_codes)
+    breakdown_key = params.breakdown_key or (
+        spec.breakdown_keys[0]
+        if spec.chart_type == 'breakdown_bar' and spec.breakdown_keys
+        else None
+    )
     container = get_container()
-    kpi_repository = getattr(container, 'kpi_repository', None)
-    if kpi_repository is None:
-        raise HTTPException(status_code=500, detail='KPI repository not configured.')
-
-    # Get chart spec from config
-    charts_config = getattr(config, 'charts', None)
-    if charts_config is None or not hasattr(charts_config, 'specs'):
-        raise HTTPException(status_code=500, detail='Charts configuration not found.')
-
-    specs = charts_config.specs if hasattr(charts_config, 'specs') else {}
-    if chart_id not in specs:
-        raise HTTPException(status_code=404, detail=f'Chart spec not found: {chart_id}')
-
-    chart_spec = specs[chart_id]
-
-    # Validate query parameters
-    await _validate_chart_spec(chart_spec, params)
-
-    # Build filters and fetch KPI rows
-    filters, kpi_codes = _build_filters(chart_spec, params)
-    rows = await _fetch_chart_data(kpi_repository, company_id, filters)
-
-    # Group rows and build datasets
-    grouped, all_periods = _group_rows_by_kpi_and_period(rows)
-    datasets = _build_datasets(kpi_codes, all_periods, grouped, rows)
-
-    # Build variance rows if diverging (budget_vs_actual)
-    variance_rows: list[VarianceRowResponse] = []
-    diverging = getattr(chart_spec, 'diverging', False)
-    if diverging and 'budget_vs_actual' in kpi_codes:
-        # TODO(finsight): implement variance row computation (issue #378)
-        pass
-
-    # Get company name for export metadata
-    company_name = await _get_company_name(container, company_id)
-    company_slug = company_id[:8]  # Opaque identifier
-
-    export = _build_export_metadata(company_name, company_slug, all_periods, datasets)
-
-    response_data = {
-        'datasets': datasets,
-        'variance_rows': variance_rows,
-        'export': export,
-        'has_rows': bool(rows),
-    }
-    return _build_chart_response(chart_id, all_periods, response_data)
+    rows, versions = await _visible_rows(
+        container, principal.company_id, principal, _build_filters(kpi_codes, params)
+    )
+    rows, index = _prepare_rows(_select_periods(rows, params), versions, breakdown_key)
+    series = ChartSeriesBuilder().build(
+        rows,
+        kpi_codes=kpi_codes,
+        polarity=spec.polarity,
+        diverging=spec.diverging,
+        breakdown_key=breakdown_key,
+    )
+    datasets = [ChartDatasetResponse(**item) for item in series['datasets']]
+    export = _build_export_metadata(
+        await _get_company_name(container, principal.company_id),
+        series['labels'],
+        datasets,
+        _source_documents(rows, versions, index),
+    )
+    return _serialize_response(chart_id, series, export)
 
 
-__all__ = ['router']
+__all__ = ['kpi_view_dependency', 'router']
