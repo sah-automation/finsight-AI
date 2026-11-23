@@ -11,21 +11,21 @@ from finsight.application.kpi_visibility_filter import KpiVisibilityFilter
 from finsight.composition.container import get_container
 from finsight.core.config import get_config, load_config
 from finsight.core.config.loader import ConfigError
-from finsight.core.types import CompanyId
+from finsight.core.types import CompanyId, UserId
+from finsight.domain.ports.dashboard_layout_repository import (
+    LayoutConflictError,
+)
 from finsight.domain.ports.kpi_repository import FINGERPRINT_FIELDS
 from finsight.domain.services.fingerprint import FingerprintService
+from finsight.domain.value_objects.layout_chart import LayoutChart
+from finsight.domain.value_objects.layout_draft import LayoutDraft
+from finsight.domain.value_objects.visible_ids import VisibleIds
 
 from ._permissions import (
     _check_action,
-    _extract_role_actions_and_categories,
     _get_allowed_chart_ids,
     _get_allowed_kpi_codes,
     _get_default_layout,
-    _get_role_entry,
-    _load_permissions_config,
-    _require_company_id,
-    _require_role_id,
-    _require_user_id,
 )
 from ._shared import (
     _await,
@@ -42,6 +42,10 @@ from .dashboard_response import (
 
 router = APIRouter(prefix='/dashboard', tags=['dashboard'])
 dashboard_view_dependency = ActionPermission('dashboard_view')
+dashboard_edit_layout_dependency = ActionPermission('dashboard_edit_layout')
+# Backwards-compatible aliases for callers/tests that use shorter names.
+dashboard_edit_dependency = dashboard_edit_layout_dependency
+layout_edit_dependency = dashboard_edit_layout_dependency
 kpi_view_dependency = dashboard_view_dependency
 
 
@@ -291,83 +295,219 @@ async def get_dashboard_fingerprints(
 
 @router.get('/layout', operation_id='get_dashboard_layout')
 async def get_dashboard_layout(
-    context: Any = None,
+    principal: ApiPrincipal = Depends(dashboard_view_dependency),
 ) -> LayoutResponse:
     """Get saved dashboard layout or config default."""
-    company_id = await _require_company_id(context)
-    role_id = await _require_role_id(context)
-    user_id = await _require_user_id(context)
-
-    config = _load_permissions_config()
-    entry_dump = _get_role_entry(role_id, config)
-    role_actions, _category_permissions = _extract_role_actions_and_categories(entry_dump)
-
-    # Check dashboard_view permission
-    if not await _check_dashboard_view_permission(role_actions):
+    if 'dashboard_view' not in principal.role_actions:
         raise HTTPException(
             status_code=403, detail='You do not have permission to view dashboard layout.'
         )
 
-    # Get layout repository from container
+    try:
+        config = get_config()
+    except ConfigError:
+        try:
+            config = load_config()
+        except ConfigError as exc:
+            raise HTTPException(
+                status_code=500, detail='Service configuration is unavailable.'
+            ) from exc
+
     container = get_container()
     layout_repository = getattr(container, 'dashboard_layout_repository', None)
     if layout_repository is None:
+        layout_repository = getattr(container, 'layout_repository', None)
+    if layout_repository is None:
         raise HTTPException(status_code=500, detail='Dashboard layout repository not configured.')
 
-    # Try to load saved layout
-    layout = await _load_saved_layout(layout_repository, company_id, user_id)
+    visible_ids = VisibleIds(
+        tuple(sorted(_get_allowed_kpi_codes(config))),
+        tuple(sorted(_get_allowed_chart_ids(config))),
+    )
 
-    if layout is None:
-        # Return config default (no row written on miss per spec)
-        return _build_default_layout_response(config, role_id)
+    company_id = principal.company_id
+    user_id = principal.user_id or ''
+    role_id = principal.role_id
 
-    # Filter loaded layout by role permissions
-    return _build_saved_layout_response(layout, config, role_id)
+    try:
+        record = await _await(
+            layout_repository.get_layout(
+                CompanyId(company_id), UserId(user_id), visible_ids=visible_ids
+            )
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f'Failed to load layout: {exc}') from exc
+
+    kpi_codes = [str(code) for code in getattr(record, 'kpi_codes', ()) or ()]
+    charts_raw = getattr(record, 'charts', ()) or ()
+    charts = [
+        {
+            'chart_id': str(
+                getattr(chart, 'chart_id', chart.get('chart_id') if isinstance(chart, dict) else '')
+            ),
+            'span': str(
+                getattr(chart, 'span', chart.get('span') if isinstance(chart, dict) else '')
+            ),
+        }
+        for chart in charts_raw
+    ]
+    filtered_kpi_codes, filtered_charts = _filter_layout_by_permissions(
+        kpi_codes, charts, role_id, config
+    )
+
+    updated_at = getattr(record, 'updated_at', None)
+    updated_at_str = '' if updated_at is None else str(updated_at)
+
+    return _build_layout_response(
+        filtered_kpi_codes,
+        filtered_charts,
+        int(getattr(record, 'version', 0) or 0),
+        updated_at_str,
+    )
 
 
 @router.put('/layout', operation_id='save_dashboard_layout')
 async def save_dashboard_layout(
-    context: Any = None,
+    principal: ApiPrincipal = Depends(dashboard_edit_layout_dependency),
     request: LayoutRequest = Body(...),
 ) -> LayoutResponse:
     """Save dashboard layout with optimistic locking."""
-    company_id = await _require_company_id(context)
-    role_id = await _require_role_id(context)
-    user_id = await _require_user_id(context)
-
-    config = _load_permissions_config()
-    entry_dump = _get_role_entry(role_id, config)
-    role_actions, _category_permissions = _extract_role_actions_and_categories(entry_dump)
-
-    # Check dashboard_edit_layout permission
-    if not await _check_dashboard_edit_permission(role_actions):
+    if 'dashboard_edit_layout' not in principal.role_actions:
         raise HTTPException(
             status_code=403, detail='You do not have permission to edit dashboard layout.'
         )
 
-    # Get layout repository from container
+    try:
+        config = get_config()
+    except ConfigError:
+        try:
+            config = load_config()
+        except ConfigError as exc:
+            raise HTTPException(
+                status_code=500, detail='Service configuration is unavailable.'
+            ) from exc
+
     container = get_container()
     layout_repository = getattr(container, 'dashboard_layout_repository', None)
     if layout_repository is None:
+        layout_repository = getattr(container, 'layout_repository', None)
+    if layout_repository is None:
         raise HTTPException(status_code=500, detail='Dashboard layout repository not configured.')
 
-    # Filter request by role permissions
+    visible_ids = VisibleIds(
+        tuple(sorted(_get_allowed_kpi_codes(config))),
+        tuple(sorted(_get_allowed_chart_ids(config))),
+    )
+
+    company_id = principal.company_id
+    user_id = principal.user_id or ''
+    role_id = principal.role_id
+
     kpi_codes = request.kpi_codes
     charts = [c.model_dump() for c in request.charts]
     filtered_kpi_codes, filtered_charts = _filter_layout_by_permissions(
         kpi_codes, charts, role_id, config
     )
 
-    # Prepare layout data
-    layout_data = {
-        'kpi_codes': filtered_kpi_codes,
-        'charts': filtered_charts,
-        'version': request.version,
-    }
+    draft = LayoutDraft(
+        contract_version=request.contract_version,
+        kpi_codes=tuple(filtered_kpi_codes),
+        charts=tuple(
+            LayoutChart(chart_id=str(chart['chart_id']), span=str(chart['span']))
+            for chart in filtered_charts
+        ),
+    )
 
-    return await _save_layout_with_lock(
-        layout_repository, company_id, user_id, layout_data, {'config': config, 'role_id': role_id}
+    try:
+        saved = await _await(
+            layout_repository.save_layout(
+                CompanyId(company_id),
+                UserId(user_id),
+                draft,
+                request.version,
+                visible_ids=visible_ids,
+            )
+        )
+    except LayoutConflictError as exc:
+        current = getattr(exc, 'current_layout', None)
+        if current is None:
+            current = await _load_saved_layout(layout_repository, company_id, user_id)
+        if current is not None:
+            if hasattr(current, 'kpi_codes'):
+                current_kpi = [str(code) for code in getattr(current, 'kpi_codes', ()) or ()]
+                current_charts_raw = getattr(current, 'charts', ()) or ()
+                current_charts = [
+                    {
+                        'chart_id': str(
+                            getattr(c, 'chart_id', c.get('chart_id') if isinstance(c, dict) else '')
+                        ),
+                        'span': str(
+                            getattr(c, 'span', c.get('span') if isinstance(c, dict) else '')
+                        ),
+                    }
+                    for c in current_charts_raw
+                ]
+                current_version = int(getattr(current, 'version', 0) or 0)
+                current_updated = getattr(current, 'updated_at', None)
+                current_updated_str = '' if current_updated is None else str(current_updated)
+            else:
+                current_kpi = current.get('kpi_codes', [])
+                current_charts = current.get('charts', [])
+                current_version = current.get('version', 0)
+                current_updated_str = str(current.get('updated_at', ''))
+            filtered_current_kpi, filtered_current_charts = _filter_layout_by_permissions(
+                current_kpi, current_charts, role_id, config
+            )
+            conflict_response = LayoutConflictResponse(
+                error='layout_changed',
+                current_layout=_build_layout_response(
+                    filtered_current_kpi,
+                    filtered_current_charts,
+                    current_version,
+                    current_updated_str,
+                ),
+            )
+            raise HTTPException(status_code=409, detail=conflict_response.model_dump()) from exc
+        raise HTTPException(status_code=409, detail={'error': 'layout_changed'}) from exc
+    except Exception as exc:
+        message = str(exc).lower()
+        if '409' in str(exc) or 'stale' in message or 'version' in message or 'conflict' in message:
+            current = await _load_saved_layout(layout_repository, company_id, user_id)
+            if current is not None:
+                conflict_response = _build_conflict_response(current, config, role_id)
+                raise HTTPException(status_code=409, detail=conflict_response.model_dump()) from exc
+        raise HTTPException(status_code=500, detail=f'Failed to save layout: {exc}') from exc
+
+    saved_kpi = [str(code) for code in getattr(saved, 'kpi_codes', ()) or ()]
+    saved_charts_raw = getattr(saved, 'charts', ()) or ()
+    saved_charts = [
+        {
+            'chart_id': str(
+                getattr(c, 'chart_id', c.get('chart_id') if isinstance(c, dict) else '')
+            ),
+            'span': str(getattr(c, 'span', c.get('span') if isinstance(c, dict) else '')),
+        }
+        for c in saved_charts_raw
+    ]
+    filtered_saved_kpi, filtered_saved_charts = _filter_layout_by_permissions(
+        saved_kpi, saved_charts, role_id, config
+    )
+    saved_updated = getattr(saved, 'updated_at', None)
+    saved_updated_str = '' if saved_updated is None else str(saved_updated)
+
+    return _build_layout_response(
+        filtered_saved_kpi,
+        filtered_saved_charts,
+        int(getattr(saved, 'version', 0) or 0),
+        saved_updated_str,
     )
 
 
-__all__ = ['dashboard_view_dependency', 'kpi_view_dependency', 'router']
+__all__ = [
+    'dashboard_edit_dependency',
+    'dashboard_edit_layout_dependency',
+    'dashboard_view_dependency',
+    'kpi_view_dependency',
+    'layout_edit_dependency',
+    'router',
+]

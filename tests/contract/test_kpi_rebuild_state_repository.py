@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+
 from finsight.adapters.repositories.kpi_rebuild_state_repository import (
     KpiRebuildStateRepository,
 )

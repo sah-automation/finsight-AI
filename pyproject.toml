@@ -206,6 +206,7 @@ ignore = [
     "S112", "SIM102", "SIM105", "SIM110", "SIM112", "SIM114", "B007",
     "TC001", "RUF100", "N818",
 ]
+"src/finsight/entrypoints/api/dashboard.py" = ["PLR0912", "PLR0915"]
 # Upload endpoint exposes flexible surfaces for varied caller shapes.
 "src/finsight/entrypoints/api/upload.py" = [
     "ANN401", "ANN002", "ANN003", "PLR0911", "PLR0912", "PLR0913",

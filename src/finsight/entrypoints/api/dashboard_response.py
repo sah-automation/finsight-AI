@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -20,7 +22,7 @@ class LayoutChartRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     chart_id: str
-    span: str  # 'full' or 'half'
+    span: Literal['full', 'half']
 
 
 class LayoutRequest(BaseModel):
@@ -28,7 +30,7 @@ class LayoutRequest(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    contract_version: int = 1
+    contract_version: Literal[1] = 1
     kpi_codes: list[str]
     charts: list[LayoutChartRequest]
     version: int
@@ -39,7 +41,7 @@ class LayoutResponse(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    contract_version: int = 1
+    contract_version: Literal[1] = 1
     kpi_codes: list[str]
     charts: list[LayoutChartRequest]
     version: int

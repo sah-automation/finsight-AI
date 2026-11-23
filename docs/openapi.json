@@ -338,16 +338,6 @@
         "summary": "Get Dashboard Layout",
         "description": "Get saved dashboard layout or config default.",
         "operationId": "get_dashboard_layout",
-        "parameters": [
-          {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -355,16 +345,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LayoutResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -378,25 +358,15 @@
         "summary": "Save Dashboard Layout",
         "description": "Save dashboard layout with optimistic locking.",
         "operationId": "save_dashboard_layout",
-        "parameters": [
-          {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/LayoutRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -5787,6 +5757,10 @@
           },
           "span": {
             "type": "string",
+            "enum": [
+              "full",
+              "half"
+            ],
             "title": "Span"
           }
         },
@@ -5803,6 +5777,7 @@
         "properties": {
           "contract_version": {
             "type": "integer",
+            "const": 1,
             "title": "Contract Version",
             "default": 1
           },
@@ -5839,6 +5814,7 @@
         "properties": {
           "contract_version": {
             "type": "integer",
+            "const": 1,
             "title": "Contract Version",
             "default": 1
           },
