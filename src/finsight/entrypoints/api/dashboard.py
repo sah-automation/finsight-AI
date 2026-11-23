@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from typing import Any, cast
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -22,7 +21,6 @@ from finsight.domain.value_objects.layout_draft import LayoutDraft
 from finsight.domain.value_objects.visible_ids import VisibleIds
 
 from ._permissions import (
-    _check_action,
     _get_allowed_chart_ids,
     _get_allowed_kpi_codes,
     _get_default_layout,
@@ -47,16 +45,6 @@ dashboard_edit_layout_dependency = ActionPermission('dashboard_edit_layout')
 dashboard_edit_dependency = dashboard_edit_layout_dependency
 layout_edit_dependency = dashboard_edit_layout_dependency
 kpi_view_dependency = dashboard_view_dependency
-
-
-async def _check_dashboard_view_permission(role_actions: list[str]) -> bool:
-    """Check if role has dashboard_view action."""
-    return _check_action(role_actions, 'dashboard_view')
-
-
-async def _check_dashboard_edit_permission(role_actions: list[str]) -> bool:
-    """Check if role has dashboard_edit_layout action."""
-    return _check_action(role_actions, 'dashboard_edit_layout')
 
 
 def _filter_layout_by_permissions(
@@ -97,19 +85,6 @@ def _build_layout_response(
         version=version,
         updated_at=updated_at,
     )
-
-
-async def _load_saved_layout(
-    layout_repository: Any,
-    company_id: str,
-    user_id: str,
-) -> dict[str, Any] | None:
-    """Load saved layout from repository."""
-    with contextlib.suppress(Exception):
-        result = await _await(layout_repository.get_layout(company_id, user_id))
-        if result is not None:
-            return dict(result)
-    return None
 
 
 def _build_default_layout_response(
@@ -163,33 +138,6 @@ def _build_conflict_response(
     )
 
 
-async def _save_layout_with_lock(
-    layout_repository: Any,
-    company_id: str,
-    user_id: str,
-    layout_data: dict[str, Any],
-    context: dict[str, Any],
-) -> LayoutResponse:
-    """Save layout with optimistic locking."""
-    try:
-        saved_layout = await _await(layout_repository.save_layout(company_id, user_id, layout_data))
-        return _build_layout_response(
-            saved_layout.get('kpi_codes', []),
-            saved_layout.get('charts', []),
-            saved_layout.get('version', 0),
-            str(saved_layout.get('updated_at', '')),
-        )
-    except Exception as exc:
-        if '409' in str(exc) or 'stale' in str(exc).lower() or 'version' in str(exc).lower():
-            current = await _load_saved_layout(layout_repository, company_id, user_id)
-            if current:
-                conflict_response = _build_conflict_response(
-                    current, context['config'], context['role_id']
-                )
-                raise HTTPException(status_code=409, detail=conflict_response.model_dump()) from exc
-        raise HTTPException(status_code=500, detail=f'Failed to save layout: {exc}') from exc
-
-
 @router.get('/fingerprints', operation_id='get_dashboard_fingerprints')
 async def get_dashboard_fingerprints(
     principal: ApiPrincipal = Depends(dashboard_view_dependency),
@@ -200,15 +148,7 @@ async def get_dashboard_fingerprints(
             status_code=403, detail='You do not have permission to view dashboard fingerprints.'
         )
 
-    try:
-        config = get_config()
-    except ConfigError:
-        try:
-            config = load_config()
-        except ConfigError as exc:
-            raise HTTPException(
-                status_code=500, detail='Service configuration is unavailable.'
-            ) from exc
+    config = _resolve_config()
 
     charts_config = getattr(config, 'charts', None)
     specs = getattr(charts_config, 'specs', None) if charts_config is not None else None
@@ -293,6 +233,19 @@ async def get_dashboard_fingerprints(
     )
 
 
+def _resolve_config() -> Any:
+    """Load config, raising a 500 HTTPException when unavailable."""
+    try:
+        return get_config()
+    except ConfigError:
+        try:
+            return load_config()
+        except ConfigError as exc:
+            raise HTTPException(
+                status_code=500, detail='Service configuration is unavailable.'
+            ) from exc
+
+
 @router.get('/layout', operation_id='get_dashboard_layout')
 async def get_dashboard_layout(
     principal: ApiPrincipal = Depends(dashboard_view_dependency),
@@ -303,15 +256,7 @@ async def get_dashboard_layout(
             status_code=403, detail='You do not have permission to view dashboard layout.'
         )
 
-    try:
-        config = get_config()
-    except ConfigError:
-        try:
-            config = load_config()
-        except ConfigError as exc:
-            raise HTTPException(
-                status_code=500, detail='Service configuration is unavailable.'
-            ) from exc
+    config = _resolve_config()
 
     container = get_container()
     layout_repository = getattr(container, 'dashboard_layout_repository', None)
@@ -377,15 +322,7 @@ async def save_dashboard_layout(
             status_code=403, detail='You do not have permission to edit dashboard layout.'
         )
 
-    try:
-        config = get_config()
-    except ConfigError:
-        try:
-            config = load_config()
-        except ConfigError as exc:
-            raise HTTPException(
-                status_code=500, detail='Service configuration is unavailable.'
-            ) from exc
+    config = _resolve_config()
 
     container = get_container()
     layout_repository = getattr(container, 'dashboard_layout_repository', None)
@@ -430,8 +367,6 @@ async def save_dashboard_layout(
         )
     except LayoutConflictError as exc:
         current = getattr(exc, 'current_layout', None)
-        if current is None:
-            current = await _load_saved_layout(layout_repository, company_id, user_id)
         if current is not None:
             if hasattr(current, 'kpi_codes'):
                 current_kpi = [str(code) for code in getattr(current, 'kpi_codes', ()) or ()]
@@ -472,9 +407,39 @@ async def save_dashboard_layout(
     except Exception as exc:
         message = str(exc).lower()
         if '409' in str(exc) or 'stale' in message or 'version' in message or 'conflict' in message:
-            current = await _load_saved_layout(layout_repository, company_id, user_id)
+            try:
+                current = await _await(
+                    layout_repository.get_layout(
+                        CompanyId(company_id), UserId(user_id), visible_ids=visible_ids
+                    )
+                )
+            except Exception:  # noqa: BLE001
+                current = None
             if current is not None:
-                conflict_response = _build_conflict_response(current, config, role_id)
+                current_kpi = [str(code) for code in getattr(current, 'kpi_codes', ()) or ()]
+                current_charts_raw = getattr(current, 'charts', ()) or ()
+                current_charts = [
+                    {
+                        'chart_id': str(getattr(c, 'chart_id', '')),
+                        'span': str(getattr(c, 'span', '')),
+                    }
+                    for c in current_charts_raw
+                ]
+                current_version = int(getattr(current, 'version', 0) or 0)
+                current_updated = getattr(current, 'updated_at', None)
+                current_updated_str = '' if current_updated is None else str(current_updated)
+                filtered_current_kpi, filtered_current_charts = _filter_layout_by_permissions(
+                    current_kpi, current_charts, role_id, config
+                )
+                conflict_response = LayoutConflictResponse(
+                    error='layout_changed',
+                    current_layout=_build_layout_response(
+                        filtered_current_kpi,
+                        filtered_current_charts,
+                        current_version,
+                        current_updated_str,
+                    ),
+                )
                 raise HTTPException(status_code=409, detail=conflict_response.model_dump()) from exc
         raise HTTPException(status_code=500, detail=f'Failed to save layout: {exc}') from exc
 
