@@ -316,16 +316,6 @@
         "summary": "Get Dashboard Fingerprints",
         "description": "Get freshness fingerprints for all charts in the dashboard.",
         "operationId": "get_dashboard_fingerprints",
-        "parameters": [
-          {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -333,16 +323,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FingerprintsResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }

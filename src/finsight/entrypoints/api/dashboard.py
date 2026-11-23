@@ -5,10 +5,14 @@ from __future__ import annotations
 import contextlib
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 
+from finsight.application.kpi_visibility_filter import KpiVisibilityFilter
 from finsight.composition.container import get_container
+from finsight.core.config import get_config, load_config
+from finsight.core.config.loader import ConfigError
 from finsight.core.types import CompanyId
+from finsight.domain.ports.kpi_repository import FINGERPRINT_FIELDS as _FP_FIELDS
 from finsight.domain.services.fingerprint import FingerprintService
 
 from ._permissions import (
@@ -26,6 +30,8 @@ from ._permissions import (
 from ._shared import (
     _await,
 )
+from .action_permission import ActionPermission
+from .api_principal import ApiPrincipal  # noqa: TC001
 from .dashboard_response import (
     FingerprintsResponse,
     LayoutChartRequest,
@@ -35,6 +41,8 @@ from .dashboard_response import (
 )
 
 router = APIRouter(prefix='/dashboard', tags=['dashboard'])
+dashboard_view_dependency = ActionPermission('dashboard_view')
+kpi_view_dependency = dashboard_view_dependency
 
 
 async def _check_dashboard_view_permission(role_actions: list[str]) -> bool:
@@ -179,44 +187,124 @@ async def _save_layout_with_lock(
 
 
 @router.get('/fingerprints', operation_id='get_dashboard_fingerprints')
-async def get_dashboard_fingerprints(
-    context: Any = None,
+async def get_dashboard_fingerprints(  # noqa: PLR0912, PLR0915
+    principal: ApiPrincipal = Depends(dashboard_view_dependency),
 ) -> FingerprintsResponse:
     """Get freshness fingerprints for all charts in the dashboard."""
-    company_id = await _require_company_id(context)
-    role_id = await _require_role_id(context)
-
-    config = _load_permissions_config()
-    entry_dump = _get_role_entry(role_id, config)
-    role_actions, _category_permissions = _extract_role_actions_and_categories(entry_dump)
-
-    # Check dashboard_view permission
-    if not await _check_dashboard_view_permission(role_actions):
+    if 'dashboard_view' not in principal.role_actions:
         raise HTTPException(
             status_code=403, detail='You do not have permission to view dashboard fingerprints.'
         )
 
-    # Get KPI repository from container
+    try:
+        config = get_config()
+    except ConfigError:
+        try:
+            config = load_config()
+        except ConfigError as exc:
+            raise HTTPException(
+                status_code=500, detail='Service configuration is unavailable.'
+            ) from exc
+
+    charts_config = getattr(config, 'charts', None)
+    specs = getattr(charts_config, 'specs', None) if charts_config is not None else None
+    if specs is None:
+        raise HTTPException(status_code=500, detail='Service configuration is unavailable.')
+
     container = get_container()
     kpi_repository = getattr(container, 'kpi_repository', None)
     if kpi_repository is None:
-        raise HTTPException(status_code=500, detail='KPI repository not configured.')
+        raise HTTPException(status_code=500, detail='KPI data is temporarily unavailable.')
 
-    # Get fingerprint service
-    fingerprint_service = FingerprintService(kpi_repository)
+    document_repository = getattr(container, 'document_repository', None)
+    versions: list[Any] = []
+    if document_repository is not None and callable(
+        getattr(document_repository, 'list_document_versions', None)
+    ):
+        versions = list(
+            await _await(document_repository.list_document_versions(principal.company_id)) or ()
+        )
 
-    # Get chart specs from config
-    charts_config = getattr(config, 'charts', None)
-    if charts_config is None or not hasattr(charts_config, 'specs'):
-        raise HTTPException(status_code=500, detail='Charts configuration not found.')
+    visibility = KpiVisibilityFilter(
+        category_permissions=principal.category_permissions,
+        access_scope=principal.access_scope,
+    )
 
-    specs = charts_config.specs if hasattr(charts_config, 'specs') else {}
+    fingerprints: dict[str, str] = {}
+    for chart_id, chart_spec in (specs or {}).items():
+        rows: list[dict[str, Any]] = []
+        getter = getattr(kpi_repository, 'get_current', None)
+        if callable(getter):
+            try:
+                fetched = await _await(
+                    getter(
+                        principal.company_id,
+                        {
+                            'kpi_codes': list(
+                                getattr(chart_spec, 'kpi_codes', None)
+                                or (
+                                    chart_spec.get('kpi_codes', [])
+                                    if isinstance(chart_spec, dict)
+                                    else []
+                                )
+                            )
+                        },
+                    )
+                )
+                rows = [dict(row) for row in (fetched or ())]
+            except Exception:  # noqa: BLE001
+                rows = []
+        else:
+            gfd = getattr(kpi_repository, 'get_fingerprint_data', None)
+            if callable(gfd):
+                try:
+                    projected = await _await(gfd(principal.company_id, [chart_spec]))
+                    rows = [dict(row) for row in (projected.get(str(chart_id), []) or ())]
+                except Exception:  # noqa: BLE001
+                    rows = []
 
-    # For each chart spec, compute fingerprint
-    fingerprints = {}
-    for chart_id, chart_spec in specs.items():
-        fingerprint = await fingerprint_service.compute_fingerprint(
-            CompanyId(company_id), chart_spec
+        visible_rows = visibility.filter(rows, versions)
+        if not visible_rows:
+            continue
+
+        if 'kpi_view' not in (principal.role_actions or ()):
+            continue
+
+        repository_for_service = kpi_repository
+        if not hasattr(kpi_repository, 'get_fingerprint_data'):
+
+            class _Adapter:
+                def __init__(self, repo: Any) -> None:
+                    self._repo = repo
+
+                async def get_fingerprint_data(
+                    self, company_id: Any, chart_specs: Any, **kwargs: Any
+                ) -> dict[str, Any]:
+                    result: dict[str, Any] = {}
+                    for spec in chart_specs:
+                        cid = str(
+                            getattr(spec, 'chart_id', None)
+                            or (spec.get('chart_id') if isinstance(spec, dict) else '')
+                        )
+                        codes = getattr(spec, 'kpi_codes', None)
+                        if codes is None and isinstance(spec, dict):
+                            codes = spec.get('kpi_codes', [])
+                        codes = list(codes or [])
+                        gcur = getattr(self._repo, 'get_current', None)
+                        if callable(gcur):
+                            fetched = await _await(gcur(company_id, {'kpi_codes': codes, **kwargs}))
+                            result[cid] = [
+                                {field: row.get(field) for field in _FP_FIELDS}
+                                for row in (fetched or ())
+                            ]
+                        else:
+                            result[cid] = []
+                    return result
+
+            repository_for_service = _Adapter(kpi_repository)
+
+        fingerprint = await FingerprintService(repository_for_service).compute_fingerprint(
+            CompanyId(principal.company_id), chart_spec
         )
         fingerprints[chart_id] = fingerprint
 
@@ -307,4 +395,4 @@ async def save_dashboard_layout(
     )
 
 
-__all__ = ['router']
+__all__ = ['dashboard_view_dependency', 'kpi_view_dependency', 'router']

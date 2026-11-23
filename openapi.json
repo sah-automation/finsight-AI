@@ -6,6 +6,44 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "summary": " Root Health",
+        "operationId": "_root_health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response  Root Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": " Root Ready",
+        "operationId": "_root_ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/ask/health": {
       "get": {
         "tags": [
@@ -153,6 +191,237 @@
         }
       }
     },
+    "/charts/{chart_id}": {
+      "get": {
+        "tags": [
+          "charts"
+        ],
+        "summary": "Get Chart",
+        "description": "Get chart series for the authenticated company.",
+        "operationId": "get_chart",
+        "parameters": [
+          {
+            "name": "chart_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Chart Id"
+            }
+          },
+          {
+            "name": "chart_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "trend_line",
+                "comparison_bar",
+                "breakdown_bar"
+              ],
+              "type": "string",
+              "title": "Chart Type"
+            }
+          },
+          {
+            "name": "kpi_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "title": "Kpi Code"
+            }
+          },
+          {
+            "name": "periods",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "title": "Periods"
+            }
+          },
+          {
+            "name": "breakdown_key",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Breakdown Key"
+            }
+          },
+          {
+            "name": "breakdown_period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Breakdown Period"
+            }
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Period From"
+            }
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Period To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/fingerprints": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Dashboard Fingerprints",
+        "description": "Get freshness fingerprints for all charts in the dashboard.",
+        "operationId": "get_dashboard_fingerprints",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FingerprintsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/layout": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Dashboard Layout",
+        "description": "Get saved dashboard layout or config default.",
+        "operationId": "get_dashboard_layout",
+        "parameters": [
+          {
+            "name": "context",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "title": "Context"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Save Dashboard Layout",
+        "description": "Save dashboard layout with optimistic locking.",
+        "operationId": "save_dashboard_layout",
+        "parameters": [
+          {
+            "name": "context",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "title": "Context"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/documents/health": {
       "get": {
         "tags": [
@@ -179,45 +448,6 @@
       }
     },
     "/documents": {
-      "get": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Http List",
-        "operationId": "http_list_documents_get",
-        "parameters": [
-          {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Http List Documents Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "documents"
@@ -248,9 +478,55 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
                 "schema": {
-                  "title": "Response Http Create Documents Post"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Http Create",
+        "operationId": "http_create_documents__post",
+        "parameters": [
+          {
+            "name": "context",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "title": "Context"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -291,53 +567,13 @@
             "schema": {
               "title": "Context"
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Http Get Documents  Document Id  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Http Delete",
-        "operationId": "http_delete_documents__document_id__delete",
-        "parameters": [
-          {
-            "name": "document_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Document Id"
-            }
           },
           {
-            "name": "context",
+            "name": "company_id",
             "in": "query",
             "required": false,
             "schema": {
-              "title": "Context"
+              "title": "Company Id"
             }
           }
         ],
@@ -346,9 +582,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "title": "Response Http Delete Documents  Document Id  Delete"
-                }
+                "schema": {}
               }
             }
           },
@@ -497,66 +731,104 @@
         }
       }
     },
-    "/onboarding/health": {
+    "/kpis": {
       "get": {
         "tags": [
-          "onboarding"
+          "kpis"
         ],
-        "summary": "Health",
-        "operationId": "health_onboarding_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Health Onboarding Health Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/onboarding": {
-      "post": {
-        "tags": [
-          "onboarding"
-        ],
-        "summary": "Http Onboard",
-        "operationId": "http_onboard_onboarding_post",
+        "summary": "List Kpis",
+        "description": "List KPI rows for the authenticated company.",
+        "operationId": "list_kpis",
         "parameters": [
           {
-            "name": "context",
+            "name": "kpi_code",
             "in": "query",
             "required": false,
             "schema": {
-              "title": "Context"
+              "type": "array",
+              "items": {
+                "enum": [
+                  "revenue",
+                  "gross_margin",
+                  "net_margin",
+                  "operating_expenses",
+                  "cash_flow",
+                  "burn_rate",
+                  "runway",
+                  "dso",
+                  "dpo",
+                  "budget_vs_actual"
+                ],
+                "type": "string"
+              },
+              "title": "Kpi Code"
+            }
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Period From"
+            }
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Period To"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Currency"
+            }
+          },
+          {
+            "name": "units",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Units"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Limit",
+              "default": 50,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Cursor"
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "title": "Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Http Onboard Onboarding Post"
+                  "$ref": "#/components/schemas/KpiListResponse"
                 }
               }
             }
@@ -630,9 +902,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "title": "Response Http Upload Upload Post"
-                }
+                "schema": {}
               }
             }
           },
@@ -649,32 +919,14 @@
         }
       }
     },
-    "/documents/{document_id}/citations/{citation_id}/source": {
-      "get": {
+    "/upload/": {
+      "post": {
         "tags": [
-          "source_viewer"
+          "upload"
         ],
-        "summary": "Http Source",
-        "operationId": "http_source_documents__document_id__citations__citation_id__source_get",
+        "summary": "Http Upload",
+        "operationId": "http_upload_upload__post",
         "parameters": [
-          {
-            "name": "document_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Document Id"
-            }
-          },
-          {
-            "name": "citation_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Citation Id"
-            }
-          },
           {
             "name": "context",
             "in": "query",
@@ -682,91 +934,23 @@
             "schema": {
               "title": "Context"
             }
-          },
-          {
-            "name": "kwargs",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "title": "Kwargs"
-            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "title": "Response Http Source Documents  Document Id  Citations  Citation Id  Source Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/documents/{document_id}/citations/{citation_id}/source/original": {
-      "get": {
-        "tags": [
-          "source_viewer"
-        ],
-        "summary": "Http Original",
-        "operationId": "http_original_documents__document_id__citations__citation_id__source_original_get",
-        "parameters": [
-          {
-            "name": "document_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Document Id"
-            }
-          },
-          {
-            "name": "citation_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Citation Id"
-            }
-          },
-          {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          },
-          {
-            "name": "kwargs",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "title": "Kwargs"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Http Original Documents  Document Id  Citations  Citation Id  Source Original Get"
-                }
+                "schema": {}
               }
             }
           },
@@ -905,6 +1089,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -945,6 +1145,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -995,6 +1211,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2118,6 +2350,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -2158,6 +2406,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2208,6 +2472,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2275,6 +2555,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -2315,6 +2611,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2365,6 +2677,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2432,6 +2760,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -2472,6 +2816,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2522,6 +2882,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2589,6 +2965,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -2629,6 +3021,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2679,6 +3087,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2746,6 +3170,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -2786,6 +3226,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2836,6 +3292,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2903,6 +3375,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -2943,6 +3431,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -2993,6 +3497,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -3060,6 +3580,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -3100,6 +3636,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -3150,6 +3702,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -3217,6 +3785,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -3257,6 +3841,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -3307,6 +3907,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -3374,6 +3990,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -3414,6 +4046,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -3464,6 +4112,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -3531,6 +4195,22 @@
             "schema": {
               "title": "Context"
             }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
           }
         ],
         "responses": {
@@ -3571,6 +4251,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -3621,6 +4317,22 @@
             "required": false,
             "schema": {
               "title": "Context"
+            }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
             }
           }
         ],
@@ -4443,6 +5155,240 @@
   },
   "components": {
     "schemas": {
+      "ChartDataset": {
+        "properties": {
+          "series_type": {
+            "type": "string",
+            "enum": [
+              "kpi",
+              "forecast",
+              "anomaly"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "units": {
+            "type": "string",
+            "title": "Units"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period"
+          },
+          "data": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ChartPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "series_type",
+          "label",
+          "currency",
+          "units",
+          "period",
+          "data",
+          "points"
+        ],
+        "title": "ChartDataset",
+        "description": "Chart dataset response."
+      },
+      "ChartPoint": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period"
+          },
+          "chart_period": {
+            "type": "string",
+            "title": "Chart Period"
+          },
+          "source_citations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Citations"
+          },
+          "computation_status": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "estimated",
+              "needs_review"
+            ],
+            "title": "Computation Status"
+          },
+          "display_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Draft",
+                  "Estimated",
+                  "Updating"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Label"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change"
+          },
+          "change_direction": {
+            "type": "string",
+            "enum": [
+              "good",
+              "bad"
+            ],
+            "nullable": true
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "period",
+          "chart_period",
+          "source_citations",
+          "computation_status",
+          "display_label",
+          "change",
+          "change_direction",
+          "share",
+          "reason"
+        ],
+        "title": "ChartPoint",
+        "description": "Single point in a chart dataset."
+      },
+      "ChartResponse": {
+        "properties": {
+          "contract_version": {
+            "type": "integer",
+            "title": "Contract Version"
+          },
+          "chart_id": {
+            "type": "string",
+            "title": "Chart Id"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Labels"
+          },
+          "datasets": {
+            "items": {
+              "$ref": "#/components/schemas/ChartDataset"
+            },
+            "type": "array",
+            "title": "Datasets"
+          },
+          "variance_rows": {
+            "items": {
+              "$ref": "#/components/schemas/VarianceRow"
+            },
+            "type": "array",
+            "title": "Variance Rows"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "export": {
+            "$ref": "#/components/schemas/ExportMetadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contract_version",
+          "chart_id",
+          "labels",
+          "datasets",
+          "variance_rows",
+          "reason",
+          "export"
+        ],
+        "title": "ChartResponse",
+        "description": "Response for GET /charts/{chart_id}."
+      },
       "CurrentUser": {
         "properties": {
           "company_id": {
@@ -4549,6 +5495,80 @@
         "title": "CurrentUser",
         "description": "Authenticated user context used for navigation and access decisions."
       },
+      "ExportMetadata": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "company_slug": {
+            "type": "string",
+            "title": "Company Slug"
+          },
+          "period_range": {
+            "type": "string",
+            "title": "Period Range"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "units": {
+            "type": "string",
+            "title": "Units"
+          },
+          "source_document_list": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Source Document List"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "generated_at",
+          "company_name",
+          "company_slug",
+          "period_range",
+          "currency",
+          "units",
+          "source_document_list"
+        ],
+        "title": "ExportMetadata",
+        "description": "Export metadata for chart export."
+      },
+      "FingerprintsResponse": {
+        "properties": {
+          "contract_version": {
+            "type": "integer",
+            "title": "Contract Version",
+            "default": 1
+          },
+          "charts": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Charts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "charts"
+        ],
+        "title": "FingerprintsResponse",
+        "description": "Response for GET /dashboard/fingerprints."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4561,6 +5581,300 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "KpiActions": {
+        "properties": {
+          "upload": {
+            "type": "boolean",
+            "title": "Upload"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "upload"
+        ],
+        "title": "KpiActions",
+        "description": "Role-derived actions included in the KPI list envelope."
+      },
+      "KpiListResponse": {
+        "properties": {
+          "contract_version": {
+            "type": "integer",
+            "enum": [
+              1
+            ],
+            "const": 1,
+            "title": "Contract Version"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/KpiRow"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "documents_processing": {
+            "type": "boolean",
+            "title": "Documents Processing"
+          },
+          "actions": {
+            "$ref": "#/components/schemas/KpiActions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contract_version",
+          "items",
+          "next_cursor",
+          "documents_processing",
+          "actions"
+        ],
+        "title": "KpiListResponse",
+        "description": "Response for GET /kpis."
+      },
+      "KpiRow": {
+        "properties": {
+          "kpi_code": {
+            "type": "string",
+            "title": "Kpi Code"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Period Start"
+          },
+          "chart_period": {
+            "type": "string",
+            "title": "Chart Period"
+          },
+          "chart_period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Chart Period Start"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "units": {
+            "type": "string",
+            "title": "Units"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "source_citations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Citations"
+          },
+          "computation_status": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "estimated",
+              "needs_review"
+            ],
+            "title": "Computation Status"
+          },
+          "estimation_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimation Method"
+          },
+          "document_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Version Id"
+          },
+          "computation_rule_version": {
+            "type": "string",
+            "title": "Computation Rule Version"
+          },
+          "superseded_by_document_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "uuid",
+            "title": "Superseded By Document Version Id"
+          },
+          "conflict_marker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Marker"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kpi_code",
+          "period",
+          "period_start",
+          "chart_period",
+          "chart_period_start",
+          "currency",
+          "units",
+          "value",
+          "source_citations",
+          "computation_status",
+          "document_version_id",
+          "computation_rule_version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "KpiRow",
+        "description": "One code-computed KPI row from ``kpi_current``."
+      },
+      "LayoutChartRequest": {
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "title": "Chart Id"
+          },
+          "span": {
+            "type": "string",
+            "title": "Span"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "chart_id",
+          "span"
+        ],
+        "title": "LayoutChartRequest",
+        "description": "Chart in a layout request."
+      },
+      "LayoutRequest": {
+        "properties": {
+          "contract_version": {
+            "type": "integer",
+            "title": "Contract Version",
+            "default": 1
+          },
+          "kpi_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Kpi Codes"
+          },
+          "charts": {
+            "items": {
+              "$ref": "#/components/schemas/LayoutChartRequest"
+            },
+            "type": "array",
+            "title": "Charts"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kpi_codes",
+          "charts",
+          "version"
+        ],
+        "title": "LayoutRequest",
+        "description": "Request body for PUT /dashboard/layout."
+      },
+      "LayoutResponse": {
+        "properties": {
+          "contract_version": {
+            "type": "integer",
+            "title": "Contract Version",
+            "default": 1
+          },
+          "kpi_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Kpi Codes"
+          },
+          "charts": {
+            "items": {
+              "$ref": "#/components/schemas/LayoutChartRequest"
+            },
+            "type": "array",
+            "title": "Charts"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kpi_codes",
+          "charts",
+          "version",
+          "updated_at"
+        ],
+        "title": "LayoutResponse",
+        "description": "Response for GET/PUT /dashboard/layout."
       },
       "ValidationError": {
         "properties": {
@@ -4601,6 +5915,62 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VarianceRow": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "variance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variance"
+          },
+          "favourable": {
+            "type": "boolean",
+            "title": "Favourable"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "actual",
+          "budget",
+          "variance",
+          "favourable"
+        ],
+        "title": "VarianceRow",
+        "description": "Variance row for budget vs actual charts."
       },
       "_AskQuestionRequest": {
         "properties": {
@@ -4681,8 +6051,39 @@
             ],
             "title": "Threadid"
           },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "user_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Role"
+          },
           "access_scope": {
             "title": "Access Scope"
+          },
+          "accessScope": {
+            "title": "Accessscope"
+          },
+          "allowed_categories": {
+            "title": "Allowed Categories"
+          },
+          "allowedCategories": {
+            "title": "Allowedcategories"
           },
           "context": {
             "title": "Context"
@@ -4692,8 +6093,7 @@
           }
         },
         "type": "object",
-        "title": "AskQuestionRequest",
-        "description": "Typed request model for ask endpoints."
+        "title": "AskQuestionRequest"
       },
       "_FeedbackModel": {
         "properties": {
@@ -4910,7 +6310,6 @@
         "title": "FeedbackRequest"
       },
       "AskQuestionEvent": {
-        "description": "Representative typed SSE question event.",
         "properties": {
           "event": {
             "description": "SSE event name.",
