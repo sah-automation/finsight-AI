@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, get_args
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from finsight.composition import build_container, providers
 from finsight.core.config.loader import ConfigError as LoaderConfigError
 from finsight.core.config.loader import load_config
+from finsight.core.config.models.chart_spec import ChartType
 from finsight.core.errors import ConfigError as CoreConfigError
 from finsight.core.logging import configure_logging, set_switch_values
 from finsight.entrypoints.api import (
@@ -183,6 +184,8 @@ def _install_kpi_openapi_schema(app: FastAPI, config: Any) -> None:
 def _install_chart_openapi_schema(app: FastAPI, _config: Any) -> None:
     """Publish the closed chart enums and required response fields."""
 
+    chart_type_enum = list(get_args(ChartType))
+
     base_openapi = app.openapi
 
     def openapi() -> dict[str, Any]:
@@ -191,7 +194,7 @@ def _install_chart_openapi_schema(app: FastAPI, _config: Any) -> None:
         for parameter in operation['parameters']:
             parameter['schema'] = _flatten_optional_query_schema(parameter['schema'])
             if parameter['name'] == 'chart_type':
-                parameter['schema']['enum'] = ['trend_line', 'comparison_bar', 'breakdown_bar']
+                parameter['schema']['enum'] = chart_type_enum
         components = schema.setdefault('components', {}).setdefault('schemas', {})
         for name in ('ChartResponse', 'VarianceRow', 'ExportMetadata'):
             component = components.get(name)

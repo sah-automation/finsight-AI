@@ -7,11 +7,12 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from starlette.testclient import TestClient
 
 from finsight.core.config import reset_config
 from finsight.core.config.loader import ConfigError
+from finsight.core.config.models.chart_spec import ChartSpec
 from finsight.entrypoints.api import action_permission, charts
 from finsight.entrypoints.api import app as app_module
 from finsight.entrypoints.api.api_principal import ApiPrincipal
@@ -46,6 +47,29 @@ class _KpiRepository:
             self.rows if not codes else [row for row in self.rows if row.get('kpi_code') in codes]
         )
         return [dict(row) for row in rows]
+
+
+class _MetricRepository:
+    def __init__(self) -> None:
+        self.metrics = [
+            SimpleNamespace(
+                metric_id='budget-1',
+                name='budget_revenue',
+                value='100.00',
+                version_id=BUDGET_VERSION,
+                company_id=COMPANY,
+            ),
+            SimpleNamespace(
+                metric_id='actual-1',
+                name='actual_revenue',
+                value='120.00',
+                version_id=BUDGET_VERSION,
+                company_id=COMPANY,
+            ),
+        ]
+
+    async def list_metrics(self, company_id: str, **filters: Any) -> list[Any]:
+        return list(self.metrics)
 
 
 class _DocumentRepository:
@@ -120,9 +144,7 @@ def api(monkeypatch: pytest.MonkeyPatch) -> Any:
                 kpi_code='budget_vs_actual',
                 value='20.00',
                 version=BUDGET_VERSION,
-                name='Revenue',
-                actual='120.00',
-                budget='100.00',
+                source_metric_ids=['budget-1', 'actual-1'],
             ),
         ]
     )
@@ -136,6 +158,7 @@ def api(monkeypatch: pytest.MonkeyPatch) -> Any:
     container = SimpleNamespace(
         kpi_repository=kpi_repository,
         document_repository=document_repository,
+        metric_repository=_MetricRepository(),
     )
     monkeypatch.setattr(charts, 'get_container', lambda: container)
     monkeypatch.setattr(charts, '_utc_now', lambda: FIXED_NOW)
@@ -218,7 +241,7 @@ def test_budget_variance_returns_server_computed_variance_rows(api: Any) -> None
 
     assert body['variance_rows'] == [
         {
-            'name': 'Revenue',
+            'name': 'revenue',
             'actual': '120.00',
             'budget': '100.00',
             'variance': '20.00',
@@ -392,6 +415,99 @@ def test_asgi_identity_overrides_dev_headers(api: Any, monkeypatch: pytest.Monke
     )
 
     assert repository.company_id == 'scope-company'
+
+
+def test_period_limit_comes_from_the_spec() -> None:
+    spec = ChartSpec(
+        chart_id='revenue_trend',
+        chart_type='trend_line',
+        kpi_codes=['revenue'],
+        supported_periods=[4, 6, 8],
+        periods_selectable=[2],
+        breakdown_keys=[],
+        diverging=False,
+        polarity='higher_is_better',
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        charts._validate_overrides(spec, charts._ChartQueryParams(periods=[2, 3]))
+
+    assert exc.value.status_code == 400
+
+
+def test_unknown_breakdown_period_is_rejected(api: Any) -> None:
+    client, _, repository = api
+
+    response = client.get(
+        '/charts/revenue_breakdown',
+        params={'breakdown_period': '2099-Q1'},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 400
+    assert repository.calls == 1
+
+
+def test_breakdown_bar_groups_rows_and_computes_shares(api: Any) -> None:
+    client, _, repository = api
+    repository.rows = [
+        _row(value='60.00', period='2025-Q1', version=INVOICE_VERSION),
+        _row(value='40.00', period='2025-Q2', version=INVOICE_VERSION),
+        _row(value='10.00', period='2025-Q2', version=BOARD_VERSION),
+    ]
+
+    body = client.get(
+        '/charts/revenue_breakdown',
+        params={'breakdown_period': '2025-Q2'},
+        headers=HEADERS,
+    ).json()
+
+    assert body['labels'] == ['2025-Q2']
+    assert [dataset['label'] for dataset in body['datasets']] == [
+        'Revenue — Board Report',
+        'Revenue — Invoice',
+    ]
+    assert [dataset['data'] for dataset in body['datasets']] == [['10.00'], ['40.00']]
+    assert [dataset['points'][0]['share'] for dataset in body['datasets']] == [
+        '100.00',
+        '100.00',
+    ]
+
+
+def test_needs_review_point_has_null_figures_and_reason(api: Any) -> None:
+    client, _, repository = api
+    repository.rows = [_row(value=None, computation_status='needs_review')]
+
+    point = client.get('/charts/revenue_trend', headers=HEADERS).json()['datasets'][0]['points'][0]
+
+    assert point['value'] is None
+    assert point['computation_status'] == 'needs_review'
+    assert point['change'] is None
+    assert point['change_direction'] is None
+    assert point['share'] is None
+    assert point['reason'] == 'insufficient_data'
+
+
+@pytest.mark.parametrize('role', ['executive_leadership', 'audit_compliance'])
+def test_roles_with_kpi_view_can_read_charts(api: Any, role: str) -> None:
+    client, _, _ = api
+
+    response = client.get(
+        '/charts/revenue_trend',
+        headers={'x-company-id': COMPANY, 'x-role': role},
+    )
+
+    assert response.status_code == 200
+    assert response.json()['datasets']
+
+
+def test_export_metadata_never_carries_the_company_id(api: Any) -> None:
+    client, _, _ = api
+
+    export = client.get('/charts/revenue_trend', headers=HEADERS).json()['export']
+
+    assert COMPANY not in str(export)
+    assert export['company_slug'] == 'opaque-1234'
 
 
 def test_openapi_schema_publishes_the_chart_contract() -> None:

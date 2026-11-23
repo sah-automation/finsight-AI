@@ -15,6 +15,7 @@ from ._kpi_metric_fields import amount, attr, code_name, exact_sum, period_field
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from decimal import Decimal
 
     from finsight.domain.entities.metric import Metric
     from finsight.domain.ports.kpi_repository import KpiRow
@@ -148,4 +149,44 @@ def _field(metric: Metric, *names: str) -> str:
     return '' if value is None else str(value).strip()
 
 
-__all__ = ['compute_budget_vs_actual']
+def _group_variance_metrics(
+    metrics: Sequence[Metric],
+) -> dict[_GroupKey, _Group]:
+    groups: dict[_GroupKey, _Group] = {}
+    for metric in metrics or ():
+        subject = _subject(metric)
+        if subject is None:
+            continue
+        role, name = subject
+        company = required(metric, 'company_id', 'company_id', 'company', 'tenant_id')
+        version = required(
+            metric, 'document_version_id', 'document_version_id', 'document_version', 'version_id'
+        )
+        group = groups.setdefault((company, name, version), _new_group())
+        group[role].append(metric)
+    return groups
+
+
+def compute_budget_vs_actual_totals(
+    metrics: Sequence[Metric],
+) -> tuple[Decimal | None, Decimal | None, str | None]:
+    groups = _group_variance_metrics(metrics)
+
+    if not groups:
+        return None, None, 'Budget vs actual'
+
+    key = sorted(groups)[0]
+    group = groups[key]
+    _, subject_name, _ = key
+
+    actual_total = (
+        exact_sum([amount(metric) for metric in group['actual']]) if group['actual'] else None
+    )
+    budget_total = (
+        exact_sum([amount(metric) for metric in group['budget']]) if group['budget'] else None
+    )
+
+    return actual_total, budget_total, subject_name
+
+
+__all__ = ['compute_budget_vs_actual', 'compute_budget_vs_actual_totals']

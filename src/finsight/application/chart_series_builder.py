@@ -53,6 +53,11 @@ def _text(value: Any) -> str | None:
     return text or None
 
 
+def _breakdown_label(value: str) -> str:
+    """Convert a category slug to a display label."""
+    return value.replace('_', ' ').title()
+
+
 def _row_period(row: Mapping[str, Any]) -> str:
     return _text(row.get('chart_period')) or _text(row.get('period')) or ''
 
@@ -74,8 +79,8 @@ class ChartSeriesBuilder:
         *,
         kpi_codes: Sequence[str],
         polarity: str,
-        diverging: bool,
         breakdown_key: str | None = None,
+        variance_kpi_codes: Sequence[str] = (),
     ) -> dict[str, Any]:
         """Return the data part of the chart response for the selected rows."""
         if not rows:
@@ -91,7 +96,9 @@ class ChartSeriesBuilder:
         return {
             'labels': periods,
             'datasets': self._datasets(kpi_codes, rows, periods, context),
-            'variance_rows': self._variance_rows(rows, polarity) if diverging else [],
+            'variance_rows': self._variance_rows(rows, polarity, variance_kpi_codes)
+            if variance_kpi_codes
+            else [],
             'reason': None,
         }
 
@@ -156,7 +163,7 @@ class ChartSeriesBuilder:
 
         label = kpi_code.replace('_', ' ').title()
         if group is not None:
-            label = f'{label} — {group}'
+            label = f'{label} — {_breakdown_label(group)}'
         first = by_period[next(iter(by_period))]
         return {
             'series_type': 'kpi',
@@ -211,10 +218,16 @@ class ChartSeriesBuilder:
         }
         return point, number if number is not None else previous
 
-    def _variance_rows(self, rows: Sequence[KpiRow], polarity: str) -> list[dict[str, Any]]:
+    def _variance_rows(
+        self,
+        rows: Sequence[KpiRow],
+        polarity: str,
+        variance_kpi_codes: Sequence[str] = (),
+    ) -> list[dict[str, Any]]:
+        allowed = set(variance_kpi_codes) if variance_kpi_codes else {'budget_vs_actual'}
         result: list[dict[str, Any]] = []
         for row in rows:
-            if _text(row.get('kpi_code')) != 'budget_vs_actual':
+            if _text(row.get('kpi_code')) not in allowed:
                 continue
             actual = _number(row.get('actual'))
             budget = _number(row.get('budget'))

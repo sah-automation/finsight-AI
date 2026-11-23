@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
@@ -11,13 +10,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 
 from finsight.application.chart_series_builder import ChartSeriesBuilder
+from finsight.application.chart_variance_resolver import ChartVarianceResolver
 from finsight.application.kpi_visibility_filter import KpiVisibilityFilter
 from finsight.composition.container import get_container
 from finsight.core.config import get_config, load_config
 from finsight.core.config.loader import ConfigError
 from finsight.core.config.models.chart_spec import ChartType  # noqa: TC001
-from finsight.domain.services.kpi_computation_service import KpiComputationService
 
+from ._chart_helpers import (
+    _prepare_rows as _prepare_rows_helper,
+)
+from ._chart_helpers import (
+    _source_documents as _source_documents_helper,
+)
+from ._chart_helpers import (
+    _version_index as _version_index_helper,
+)
 from ._shared import _await, _get
 from .action_permission import ActionPermission
 from .api_principal import ApiPrincipal  # noqa: TC001
@@ -29,18 +37,12 @@ from .charts_response import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
     from finsight.core.config.models.chart_spec import ChartSpec
 
 router = APIRouter(prefix='/charts', tags=['charts'])
 kpi_view_dependency = ActionPermission('kpi_view')
-
-_VERSION_ID_FIELDS = ('document_version_id', 'version_id', 'id')
-_CATEGORY_FIELDS = ('category', 'document_category')
-_STATE_FIELDS = ('state', 'status', 'document_status')
-_TITLE_FIELDS = ('title', 'document_title')
-_DOCUMENT_VERSION_FIELDS = ('version', 'document_version')
-_MAX_PERIOD_SELECTIONS = 4
-_CITATION_MIN_PARTS = 3
 
 
 class _ChartQueryParams(BaseModel):
@@ -62,19 +64,6 @@ def _text(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
-
-
-def _field(source: Any, *names: str) -> Any:
-    if isinstance(source, Mapping):
-        for name in names:
-            if source.get(name) is not None:
-                return source.get(name)
-        return None
-    for name in names:
-        value = getattr(source, name, None)
-        if value is not None:
-            return value
-    return None
 
 
 def _utc_now() -> datetime:
@@ -114,7 +103,8 @@ def _validate_overrides(spec: ChartSpec, params: _ChartQueryParams) -> None:
         if code not in spec.kpi_codes:
             raise HTTPException(status_code=400, detail=f'kpi_code not allowed by spec: {code}')
     allowed = set(spec.supported_periods) | set(spec.periods_selectable)
-    if len(params.periods or ()) > _MAX_PERIOD_SELECTIONS or any(
+    max_periods = max(spec.periods_selectable) if spec.periods_selectable else 0
+    if len(params.periods or ()) > max_periods or any(
         period not in allowed for period in params.periods or ()
     ):
         raise HTTPException(status_code=400, detail='periods not allowed by spec.')
@@ -181,18 +171,7 @@ async def _visible_rows(
 
 
 def _version_index(versions: Sequence[Any]) -> dict[str, dict[str, str]]:
-    index: dict[str, dict[str, str]] = {}
-    for version in versions:
-        version_id = _text(_field(version, *_VERSION_ID_FIELDS))
-        if version_id is None:
-            continue
-        index[version_id] = {
-            'category': _text(_field(version, *_CATEGORY_FIELDS)) or '',
-            'state': _text(_field(version, *_STATE_FIELDS)) or '',
-            'title': _text(_field(version, *_TITLE_FIELDS)) or '',
-            'version': _text(_field(version, *_DOCUMENT_VERSION_FIELDS)) or '',
-        }
-    return index
+    return _version_index_helper(versions)
 
 
 def _prepare_rows(
@@ -201,18 +180,8 @@ def _prepare_rows(
     breakdown_key: str | None,
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, str]]]:
     index = _version_index(versions)
-    statuses = {version_id: meta['state'] for version_id, meta in index.items() if meta['state']}
-    prepared: list[dict[str, Any]] = []
-    for row in rows:
-        enriched = dict(row)
-        category = index.get(_text(row.get('document_version_id')) or '', {}).get('category')
-        if breakdown_key and category:
-            enriched[breakdown_key] = category
-        prepared.append(enriched)
-    labelled = KpiComputationService('chart').apply_display_labels(
-        prepared, document_statuses=statuses
-    )
-    return labelled, index
+    prepared = _prepare_rows_helper(list(rows), versions, breakdown_key, index)
+    return prepared, index
 
 
 def _source_documents(
@@ -220,24 +189,7 @@ def _source_documents(
     versions: Sequence[Any],
     index: Mapping[str, dict[str, str]],
 ) -> list[dict[str, str]]:
-    referenced: set[str] = set()
-    for row in rows:
-        version_id = _text(row.get('document_version_id'))
-        if version_id:
-            referenced.add(version_id)
-        for citation in row.get('source_citations') or ():
-            parts = str(citation).split(':')
-            if str(citation).startswith('cit:v1:') and len(parts) >= _CITATION_MIN_PARTS:
-                referenced.add(parts[2])
-    documents: list[dict[str, str]] = []
-    for version in versions:
-        version_id = _text(_field(version, *_VERSION_ID_FIELDS))
-        if version_id not in referenced:
-            continue
-        meta = index.get(version_id, {})
-        if meta.get('title') or meta.get('version'):
-            documents.append({'title': meta.get('title', ''), 'version': meta.get('version', '')})
-    return documents
+    return _source_documents_helper(rows, versions, index)
 
 
 def _build_export_metadata(
@@ -292,13 +244,27 @@ async def get_chart(
     rows, versions = await _visible_rows(
         container, principal.company_id, principal, _build_filters(kpi_codes, params)
     )
+    if params.breakdown_period:
+        available = {_row_period(row) for row in rows} - {''}
+        if params.breakdown_period not in available:
+            raise HTTPException(status_code=400, detail='breakdown_period not found in data.')
     rows, index = _prepare_rows(_select_periods(rows, params), versions, breakdown_key)
+
+    variance_kpi_codes = (
+        [code for code in kpi_codes if code == 'budget_vs_actual'] if spec.diverging else []
+    )
+    if variance_kpi_codes:
+        metric_repo = getattr(container, 'metric_repository', None)
+        if metric_repo is not None:
+            resolver = ChartVarianceResolver(metric_repo)
+            rows = await resolver.enrich(principal.company_id, rows, variance_kpi_codes)
+
     series = ChartSeriesBuilder().build(
         rows,
         kpi_codes=kpi_codes,
         polarity=spec.polarity,
-        diverging=spec.diverging,
         breakdown_key=breakdown_key,
+        variance_kpi_codes=variance_kpi_codes,
     )
     datasets = [ChartDataset(**item) for item in series['datasets']]
     export = _build_export_metadata(

@@ -43,13 +43,14 @@ def _build(
     rows: list[dict[str, Any]],
     *,
     polarity: str = 'higher_is_better',
-    diverging: bool = False,
+    variance_kpi_codes: list[str] | None = None,
+    kpi_codes: list[str] | None = None,
 ) -> dict[str, Any]:
     return ChartSeriesBuilder().build(
         rows,
-        kpi_codes=['revenue'],
+        kpi_codes=kpi_codes or ['revenue'],
         polarity=polarity,
-        diverging=diverging,
+        variance_kpi_codes=variance_kpi_codes or [],
     )
 
 
@@ -101,8 +102,14 @@ def test_variance_rows_use_explicit_actual_and_budget() -> None:
         )
     ]
 
-    favourable = _build(rows, diverging=True)
-    unfavourable = _build(rows, polarity='lower_is_better', diverging=True)
+    variance_codes = ['budget_vs_actual']
+    favourable = _build(rows, variance_kpi_codes=variance_codes, kpi_codes=variance_codes)
+    unfavourable = _build(
+        rows,
+        polarity='lower_is_better',
+        variance_kpi_codes=variance_codes,
+        kpi_codes=variance_codes,
+    )
 
     assert favourable['variance_rows'] == [
         {
@@ -119,12 +126,30 @@ def test_variance_rows_use_explicit_actual_and_budget() -> None:
 def test_variance_falls_back_to_the_kpi_value_and_neutral_polarity() -> None:
     rows = [_row('-5.00', kpi_code='budget_vs_actual', period='2025-Q1')]
 
-    result = _build(rows, polarity='neutral', diverging=True)
+    variance_codes = ['budget_vs_actual']
+    result = _build(
+        rows,
+        polarity='neutral',
+        variance_kpi_codes=variance_codes,
+        kpi_codes=variance_codes,
+    )
 
     assert result['variance_rows'][0]['actual'] is None
     assert result['variance_rows'][0]['budget'] is None
     assert result['variance_rows'][0]['variance'] == '-5.00'
     assert result['variance_rows'][0]['favourable'] is False
+
+
+def test_variance_rows_follow_the_configured_kpi_codes() -> None:
+    rows = [_row('5.00', kpi_code='configured_variance', actual='10.00', budget='5.00')]
+
+    result = _build(
+        rows,
+        variance_kpi_codes=['configured_variance'],
+        kpi_codes=['configured_variance'],
+    )
+
+    assert result['variance_rows'][0]['variance'] == '5.00'
 
 
 def test_empty_rows_return_the_insufficient_data_envelope() -> None:
