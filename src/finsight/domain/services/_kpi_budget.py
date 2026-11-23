@@ -64,7 +64,7 @@ def _subject(metric: Metric) -> _Subject | None:
         if value is None:
             continue
         code = code_name(value)
-        if code == 'budget_vs_actual':
+        if '_vs_' in code:
             continue
         for role in ('budget', 'actual'):
             if code == role:

@@ -250,9 +250,7 @@ async def get_chart(
             raise HTTPException(status_code=400, detail='breakdown_period not found in data.')
     rows, index = _prepare_rows(_select_periods(rows, params), versions, breakdown_key)
 
-    variance_kpi_codes = (
-        [code for code in kpi_codes if code == 'budget_vs_actual'] if spec.diverging else []
-    )
+    variance_kpi_codes = list(kpi_codes) if spec.diverging else []
     if variance_kpi_codes:
         metric_repo = getattr(container, 'metric_repository', None)
         if metric_repo is not None:

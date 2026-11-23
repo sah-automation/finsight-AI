@@ -224,7 +224,7 @@ class ChartSeriesBuilder:
         polarity: str,
         variance_kpi_codes: Sequence[str] = (),
     ) -> list[dict[str, Any]]:
-        allowed = set(variance_kpi_codes) if variance_kpi_codes else {'budget_vs_actual'}
+        allowed = set(variance_kpi_codes)
         result: list[dict[str, Any]] = []
         for row in rows:
             if _text(row.get('kpi_code')) not in allowed:
