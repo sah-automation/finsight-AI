@@ -233,6 +233,13 @@ async def get_dashboard_fingerprints(
     )
 
 
+def _record_value(record: Any, name: str, default: Any = None) -> Any:
+    """Read a field from a record that may be an object or a mapping."""
+    if isinstance(record, dict):
+        return record.get(name, default)
+    return getattr(record, name, default)
+
+
 def _resolve_config() -> Any:
     """Load config, raising a 500 HTTPException when unavailable."""
     try:
@@ -283,8 +290,8 @@ async def get_dashboard_layout(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f'Failed to load layout: {exc}') from exc
 
-    kpi_codes = [str(code) for code in getattr(record, 'kpi_codes', ()) or ()]
-    charts_raw = getattr(record, 'charts', ()) or ()
+    kpi_codes = [str(code) for code in (_record_value(record, 'kpi_codes', ()) or ())]
+    charts_raw = _record_value(record, 'charts', ()) or ()
     charts = [
         {
             'chart_id': str(
@@ -300,13 +307,13 @@ async def get_dashboard_layout(
         kpi_codes, charts, role_id, config
     )
 
-    updated_at = getattr(record, 'updated_at', None)
+    updated_at = _record_value(record, 'updated_at', None)
     updated_at_str = '' if updated_at is None else str(updated_at)
 
     return _build_layout_response(
         filtered_kpi_codes,
         filtered_charts,
-        int(getattr(record, 'version', 0) or 0),
+        int(_record_value(record, 'version', 0) or 0),
         updated_at_str,
     )
 
@@ -367,10 +374,21 @@ async def save_dashboard_layout(
         )
     except LayoutConflictError as exc:
         current = getattr(exc, 'current_layout', None)
+        if current is None:
+            try:
+                current = await _await(
+                    layout_repository.get_layout(
+                        CompanyId(company_id), UserId(user_id), visible_ids=visible_ids
+                    )
+                )
+            except Exception:  # noqa: BLE001
+                current = None
         if current is not None:
             if hasattr(current, 'kpi_codes'):
-                current_kpi = [str(code) for code in getattr(current, 'kpi_codes', ()) or ()]
-                current_charts_raw = getattr(current, 'charts', ()) or ()
+                current_kpi = [
+                    str(code) for code in (_record_value(current, 'kpi_codes', ()) or ())
+                ]
+                current_charts_raw = _record_value(current, 'charts', ()) or ()
                 current_charts = [
                     {
                         'chart_id': str(
@@ -382,8 +400,8 @@ async def save_dashboard_layout(
                     }
                     for c in current_charts_raw
                 ]
-                current_version = int(getattr(current, 'version', 0) or 0)
-                current_updated = getattr(current, 'updated_at', None)
+                current_version = int(_record_value(current, 'version', 0) or 0)
+                current_updated = _record_value(current, 'updated_at', None)
                 current_updated_str = '' if current_updated is None else str(current_updated)
             else:
                 current_kpi = current.get('kpi_codes', [])
@@ -416,8 +434,10 @@ async def save_dashboard_layout(
             except Exception:  # noqa: BLE001
                 current = None
             if current is not None:
-                current_kpi = [str(code) for code in getattr(current, 'kpi_codes', ()) or ()]
-                current_charts_raw = getattr(current, 'charts', ()) or ()
+                current_kpi = [
+                    str(code) for code in (_record_value(current, 'kpi_codes', ()) or ())
+                ]
+                current_charts_raw = _record_value(current, 'charts', ()) or ()
                 current_charts = [
                     {
                         'chart_id': str(getattr(c, 'chart_id', '')),
@@ -425,8 +445,8 @@ async def save_dashboard_layout(
                     }
                     for c in current_charts_raw
                 ]
-                current_version = int(getattr(current, 'version', 0) or 0)
-                current_updated = getattr(current, 'updated_at', None)
+                current_version = int(_record_value(current, 'version', 0) or 0)
+                current_updated = _record_value(current, 'updated_at', None)
                 current_updated_str = '' if current_updated is None else str(current_updated)
                 filtered_current_kpi, filtered_current_charts = _filter_layout_by_permissions(
                     current_kpi, current_charts, role_id, config
@@ -443,8 +463,8 @@ async def save_dashboard_layout(
                 raise HTTPException(status_code=409, detail=conflict_response.model_dump()) from exc
         raise HTTPException(status_code=500, detail=f'Failed to save layout: {exc}') from exc
 
-    saved_kpi = [str(code) for code in getattr(saved, 'kpi_codes', ()) or ()]
-    saved_charts_raw = getattr(saved, 'charts', ()) or ()
+    saved_kpi = [str(code) for code in (_record_value(saved, 'kpi_codes', ()) or ())]
+    saved_charts_raw = _record_value(saved, 'charts', ()) or ()
     saved_charts = [
         {
             'chart_id': str(
@@ -457,13 +477,13 @@ async def save_dashboard_layout(
     filtered_saved_kpi, filtered_saved_charts = _filter_layout_by_permissions(
         saved_kpi, saved_charts, role_id, config
     )
-    saved_updated = getattr(saved, 'updated_at', None)
+    saved_updated = _record_value(saved, 'updated_at', None)
     saved_updated_str = '' if saved_updated is None else str(saved_updated)
 
     return _build_layout_response(
         filtered_saved_kpi,
         filtered_saved_charts,
-        int(getattr(saved, 'version', 0) or 0),
+        int(_record_value(saved, 'version', 0) or 0),
         saved_updated_str,
     )
 

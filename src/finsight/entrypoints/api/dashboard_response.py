@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FingerprintsResponse(BaseModel):
@@ -33,7 +33,7 @@ class LayoutRequest(BaseModel):
     contract_version: Literal[1] = 1
     kpi_codes: list[str]
     charts: list[LayoutChartRequest]
-    version: int
+    version: int = Field(ge=0)
 
 
 class LayoutResponse(BaseModel):
