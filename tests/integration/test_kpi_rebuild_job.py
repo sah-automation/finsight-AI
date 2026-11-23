@@ -138,7 +138,7 @@ async def test_new_version_is_gated_until_rebuild_completes() -> None:
 
     first = await blocked.run([COMPANY, SECOND_COMPANY])
 
-    assert first['status'] == 'incomplete'
+    assert first['status'] == 'running'
     assert await state.get('rules-v3') == 'running'
     assert await blocked.is_active() is False
     assert await state.incomplete_versions() == ['rules-v3']
