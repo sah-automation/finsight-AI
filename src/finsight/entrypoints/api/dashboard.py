@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
@@ -12,7 +12,7 @@ from finsight.composition.container import get_container
 from finsight.core.config import get_config, load_config
 from finsight.core.config.loader import ConfigError
 from finsight.core.types import CompanyId
-from finsight.domain.ports.kpi_repository import FINGERPRINT_FIELDS as _FP_FIELDS
+from finsight.domain.ports.kpi_repository import FINGERPRINT_FIELDS
 from finsight.domain.services.fingerprint import FingerprintService
 
 from ._permissions import (
@@ -187,7 +187,7 @@ async def _save_layout_with_lock(
 
 
 @router.get('/fingerprints', operation_id='get_dashboard_fingerprints')
-async def get_dashboard_fingerprints(  # noqa: PLR0912, PLR0915
+async def get_dashboard_fingerprints(
     principal: ApiPrincipal = Depends(dashboard_view_dependency),
 ) -> FingerprintsResponse:
     """Get freshness fingerprints for all charts in the dashboard."""
@@ -232,80 +232,55 @@ async def get_dashboard_fingerprints(  # noqa: PLR0912, PLR0915
 
     fingerprints: dict[str, str] = {}
     for chart_id, chart_spec in (specs or {}).items():
+        if 'kpi_view' not in (principal.role_actions or ()):
+            continue
+
         rows: list[dict[str, Any]] = []
         getter = getattr(kpi_repository, 'get_current', None)
         if callable(getter):
-            try:
-                fetched = await _await(
-                    getter(
-                        principal.company_id,
-                        {
-                            'kpi_codes': list(
-                                getattr(chart_spec, 'kpi_codes', None)
-                                or (
-                                    chart_spec.get('kpi_codes', [])
-                                    if isinstance(chart_spec, dict)
-                                    else []
-                                )
+            fetched = await _await(
+                getter(
+                    principal.company_id,
+                    {
+                        'kpi_codes': list(
+                            getattr(chart_spec, 'kpi_codes', None)
+                            or (
+                                chart_spec.get('kpi_codes', [])
+                                if isinstance(chart_spec, dict)
+                                else []
                             )
-                        },
-                    )
+                        )
+                    },
                 )
-                rows = [dict(row) for row in (fetched or ())]
-            except Exception:  # noqa: BLE001
-                rows = []
+            )
+            rows = [dict(row) for row in (fetched or ())]
         else:
             gfd = getattr(kpi_repository, 'get_fingerprint_data', None)
             if callable(gfd):
-                try:
-                    projected = await _await(gfd(principal.company_id, [chart_spec]))
-                    rows = [dict(row) for row in (projected.get(str(chart_id), []) or ())]
-                except Exception:  # noqa: BLE001
-                    rows = []
+                projected = await _await(gfd(principal.company_id, [chart_spec]))
+                rows = [dict(row) for row in (projected.get(str(chart_id), []) or ())]
 
         visible_rows = visibility.filter(rows, versions)
         if not visible_rows:
             continue
 
-        if 'kpi_view' not in (principal.role_actions or ()):
-            continue
+        projected_visible = [
+            {field: row.get(field) for field in FINGERPRINT_FIELDS} for row in visible_rows
+        ]
 
-        repository_for_service = kpi_repository
-        if not hasattr(kpi_repository, 'get_fingerprint_data'):
+        class _VisibleRepository:
+            def __init__(self, chart_id: str, rows: list[dict[str, Any]]) -> None:
+                self._chart_id = chart_id
+                self._rows = rows
 
-            class _Adapter:
-                def __init__(self, repo: Any) -> None:
-                    self._repo = repo
+            async def get_fingerprint_data(
+                self, company_id: Any, chart_specs: Any, **kwargs: Any
+            ) -> dict[str, Any]:
+                return {self._chart_id: [dict(row) for row in self._rows]}
 
-                async def get_fingerprint_data(
-                    self, company_id: Any, chart_specs: Any, **kwargs: Any
-                ) -> dict[str, Any]:
-                    result: dict[str, Any] = {}
-                    for spec in chart_specs:
-                        cid = str(
-                            getattr(spec, 'chart_id', None)
-                            or (spec.get('chart_id') if isinstance(spec, dict) else '')
-                        )
-                        codes = getattr(spec, 'kpi_codes', None)
-                        if codes is None and isinstance(spec, dict):
-                            codes = spec.get('kpi_codes', [])
-                        codes = list(codes or [])
-                        gcur = getattr(self._repo, 'get_current', None)
-                        if callable(gcur):
-                            fetched = await _await(gcur(company_id, {'kpi_codes': codes, **kwargs}))
-                            result[cid] = [
-                                {field: row.get(field) for field in _FP_FIELDS}
-                                for row in (fetched or ())
-                            ]
-                        else:
-                            result[cid] = []
-                    return result
-
-            repository_for_service = _Adapter(kpi_repository)
-
-        fingerprint = await FingerprintService(repository_for_service).compute_fingerprint(
-            CompanyId(principal.company_id), chart_spec
-        )
+        fingerprint = await FingerprintService(
+            cast('Any', _VisibleRepository(str(chart_id), projected_visible))
+        ).compute_fingerprint(CompanyId(principal.company_id), chart_spec)
         fingerprints[chart_id] = fingerprint
 
     return FingerprintsResponse(
