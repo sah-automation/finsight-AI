@@ -2,44 +2,46 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
 
 
-class ChartPointResponse(BaseModel):
+class ChartPoint(BaseModel):
     """Single point in a chart dataset."""
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra='forbid', title='ChartPoint')
 
     value: str | None
     period: str
     chart_period: str
     source_citations: list[str]
-    computation_status: str
-    display_label: str | None = None
-    change: str | None = None
-    change_direction: str | None = None
-    share: str | None = None
-    reason: str | None = None
+    computation_status: Literal['computed', 'estimated', 'needs_review']
+    display_label: Literal['Draft', 'Estimated', 'Updating'] | None
+    change: str | None
+    change_direction: Literal['good', 'bad'] | None
+    share: str | None
+    reason: str | None
 
 
-class ChartDatasetResponse(BaseModel):
+class ChartDataset(BaseModel):
     """Chart dataset response."""
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra='forbid', title='ChartDataset')
 
-    series_type: str
+    series_type: Literal['kpi', 'forecast', 'anomaly']
     label: str
     currency: str
     units: str
     period: str
     data: list[str | None]
-    points: list[ChartPointResponse]
+    points: list[ChartPoint]
 
 
-class VarianceRowResponse(BaseModel):
+class VarianceRow(BaseModel):
     """Variance row for budget vs actual charts."""
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra='forbid', title='VarianceRow')
 
     name: str
     actual: str | None
@@ -48,10 +50,10 @@ class VarianceRowResponse(BaseModel):
     favourable: bool
 
 
-class ExportMetadataResponse(BaseModel):
+class ExportMetadata(BaseModel):
     """Export metadata for chart export."""
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra='forbid', title='ExportMetadata')
 
     generated_at: str
     company_name: str
@@ -67,19 +69,19 @@ class ChartResponse(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    contract_version: int = 1
+    contract_version: int
     chart_id: str
     labels: list[str]
-    datasets: list[ChartDatasetResponse]
-    variance_rows: list[VarianceRowResponse] = Field(default_factory=list)
-    reason: str | None = None
-    export: ExportMetadataResponse
+    datasets: list[ChartDataset]
+    variance_rows: list[VarianceRow]
+    reason: str | None
+    export: ExportMetadata
 
 
 __all__ = [
-    'ChartDatasetResponse',
-    'ChartPointResponse',
+    'ChartDataset',
+    'ChartPoint',
     'ChartResponse',
-    'ExportMetadataResponse',
-    'VarianceRowResponse',
+    'ExportMetadata',
+    'VarianceRow',
 ]

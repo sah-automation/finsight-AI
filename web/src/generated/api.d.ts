@@ -1725,12 +1725,12 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * ChartDatasetResponse
+         * ChartDataset
          * @description Chart dataset response.
          */
-        ChartDatasetResponse: {
-            /** Series Type */
-            series_type: string;
+        ChartDataset: {
+            /** @enum {string} */
+            series_type: "kpi" | "forecast" | "anomaly";
             /** Label */
             label: string;
             /** Currency */
@@ -1742,13 +1742,13 @@ export interface components {
             /** Data */
             data: (string | null)[];
             /** Points */
-            points: components["schemas"]["ChartPointResponse"][];
+            points: components["schemas"]["ChartPoint"][];
         };
         /**
-         * ChartPointResponse
+         * ChartPoint
          * @description Single point in a chart dataset.
          */
-        ChartPointResponse: {
+        ChartPoint: {
             /** Value */
             value: string | null;
             /** Period */
@@ -1757,40 +1757,40 @@ export interface components {
             chart_period: string;
             /** Source Citations */
             source_citations: string[];
-            /** Computation Status */
-            computation_status: string;
+            /**
+             * Computation Status
+             * @enum {string}
+             */
+            computation_status: "computed" | "estimated" | "needs_review";
             /** Display Label */
-            display_label?: string | null;
+            display_label: ("Draft" | "Estimated" | "Updating") | null;
             /** Change */
-            change?: string | null;
-            /** Change Direction */
-            change_direction?: string | null;
+            change: string | null;
+            /** @enum {string|null} */
+            change_direction: "good" | "bad" | null;
             /** Share */
-            share?: string | null;
+            share: string | null;
             /** Reason */
-            reason?: string | null;
+            reason: string | null;
         };
         /**
          * ChartResponse
          * @description Response for GET /charts/{chart_id}.
          */
         ChartResponse: {
-            /**
-             * Contract Version
-             * @default 1
-             */
+            /** Contract Version */
             contract_version: number;
             /** Chart Id */
             chart_id: string;
             /** Labels */
             labels: string[];
             /** Datasets */
-            datasets: components["schemas"]["ChartDatasetResponse"][];
+            datasets: components["schemas"]["ChartDataset"][];
             /** Variance Rows */
-            variance_rows?: components["schemas"]["VarianceRowResponse"][];
+            variance_rows: components["schemas"]["VarianceRow"][];
             /** Reason */
-            reason?: string | null;
-            export: components["schemas"]["ExportMetadataResponse"];
+            reason: string | null;
+            export: components["schemas"]["ExportMetadata"];
         };
         /**
          * CurrentUser
@@ -1861,10 +1861,10 @@ export interface components {
             };
         };
         /**
-         * ExportMetadataResponse
+         * ExportMetadata
          * @description Export metadata for chart export.
          */
-        ExportMetadataResponse: {
+        ExportMetadata: {
             /** Generated At */
             generated_at: string;
             /** Company Name */
@@ -2050,10 +2050,10 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
-         * VarianceRowResponse
+         * VarianceRow
          * @description Variance row for budget vs actual charts.
          */
-        VarianceRowResponse: {
+        VarianceRow: {
             /** Name */
             name: string;
             /** Actual */
@@ -2361,14 +2361,13 @@ export interface operations {
     get_chart: {
         parameters: {
             query?: {
-                context?: unknown;
-                chart_type?: string | null;
-                kpi_code?: string[] | null;
-                periods?: number[] | null;
-                breakdown_key?: string | null;
-                breakdown_period?: string | null;
-                period_from?: string | null;
-                period_to?: string | null;
+                chart_type?: "trend_line" | "comparison_bar" | "breakdown_bar";
+                kpi_code?: string[];
+                periods?: number[];
+                breakdown_key?: string;
+                breakdown_period?: string;
+                period_from?: string;
+                period_to?: string;
             };
             header?: never;
             path: {

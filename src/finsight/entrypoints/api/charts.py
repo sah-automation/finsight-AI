@@ -22,10 +22,10 @@ from ._shared import _await, _get
 from .action_permission import ActionPermission
 from .api_principal import ApiPrincipal  # noqa: TC001
 from .charts_response import (
-    ChartDatasetResponse,
+    ChartDataset,
     ChartResponse,
-    ExportMetadataResponse,
-    VarianceRowResponse,
+    ExportMetadata,
+    VarianceRow,
 )
 
 if TYPE_CHECKING:
@@ -243,10 +243,10 @@ def _source_documents(
 def _build_export_metadata(
     company_name: str,
     labels: Sequence[str],
-    datasets: Sequence[ChartDatasetResponse],
+    datasets: Sequence[ChartDataset],
     source_documents: Sequence[dict[str, str]],
-) -> ExportMetadataResponse:
-    return ExportMetadataResponse(
+) -> ExportMetadata:
+    return ExportMetadata(
         generated_at=_utc_now().strftime('%Y-%m-%dT%H:%M:%SZ'),
         company_name=company_name,
         company_slug=_opaque_slug(),
@@ -258,14 +258,14 @@ def _build_export_metadata(
 
 
 def _serialize_response(
-    chart_id: str, series: dict[str, Any], export: ExportMetadataResponse
+    chart_id: str, series: dict[str, Any], export: ExportMetadata
 ) -> ChartResponse:
     return ChartResponse(
         contract_version=1,
         chart_id=chart_id,
         labels=list(series['labels']),
-        datasets=[ChartDatasetResponse(**item) for item in series['datasets']],
-        variance_rows=[VarianceRowResponse(**item) for item in series['variance_rows']],
+        datasets=[ChartDataset(**item) for item in series['datasets']],
+        variance_rows=[VarianceRow(**item) for item in series['variance_rows']],
         reason=series['reason'],
         export=export,
     )
@@ -300,7 +300,7 @@ async def get_chart(
         diverging=spec.diverging,
         breakdown_key=breakdown_key,
     )
-    datasets = [ChartDatasetResponse(**item) for item in series['datasets']]
+    datasets = [ChartDataset(**item) for item in series['datasets']]
     export = _build_export_metadata(
         await _get_company_name(container, principal.company_id),
         series['labels'],

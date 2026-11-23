@@ -210,26 +210,16 @@
             }
           },
           {
-            "name": "context",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "title": "Context"
-            }
-          },
-          {
             "name": "chart_type",
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "enum": [
+                "trend_line",
+                "comparison_bar",
+                "breakdown_bar"
               ],
+              "type": "string",
               "title": "Chart Type"
             }
           },
@@ -238,17 +228,10 @@
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
               "title": "Kpi Code"
             }
           },
@@ -257,17 +240,10 @@
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ],
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
               "title": "Periods"
             }
           },
@@ -276,14 +252,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
+              "type": "string",
               "title": "Breakdown Key"
             }
           },
@@ -292,14 +261,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
+              "type": "string",
               "title": "Breakdown Period"
             }
           },
@@ -308,14 +270,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
+              "type": "string",
               "title": "Period From"
             }
           },
@@ -324,14 +279,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
+              "type": "string",
               "title": "Period To"
             }
           }
@@ -5227,11 +5175,15 @@
   },
   "components": {
     "schemas": {
-      "ChartDatasetResponse": {
+      "ChartDataset": {
         "properties": {
           "series_type": {
             "type": "string",
-            "title": "Series Type"
+            "enum": [
+              "kpi",
+              "forecast",
+              "anomaly"
+            ]
           },
           "label": {
             "type": "string",
@@ -5265,7 +5217,7 @@
           },
           "points": {
             "items": {
-              "$ref": "#/components/schemas/ChartPointResponse"
+              "$ref": "#/components/schemas/ChartPoint"
             },
             "type": "array",
             "title": "Points"
@@ -5282,10 +5234,10 @@
           "data",
           "points"
         ],
-        "title": "ChartDatasetResponse",
+        "title": "ChartDataset",
         "description": "Chart dataset response."
       },
-      "ChartPointResponse": {
+      "ChartPoint": {
         "properties": {
           "value": {
             "anyOf": [
@@ -5315,12 +5267,22 @@
           },
           "computation_status": {
             "type": "string",
+            "enum": [
+              "computed",
+              "estimated",
+              "needs_review"
+            ],
             "title": "Computation Status"
           },
           "display_label": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "Draft",
+                  "Estimated",
+                  "Updating"
+                ]
               },
               {
                 "type": "null"
@@ -5340,15 +5302,12 @@
             "title": "Change"
           },
           "change_direction": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+            "type": "string",
+            "enum": [
+              "good",
+              "bad"
             ],
-            "title": "Change Direction"
+            "nullable": true
           },
           "share": {
             "anyOf": [
@@ -5380,17 +5339,21 @@
           "period",
           "chart_period",
           "source_citations",
-          "computation_status"
+          "computation_status",
+          "display_label",
+          "change",
+          "change_direction",
+          "share",
+          "reason"
         ],
-        "title": "ChartPointResponse",
+        "title": "ChartPoint",
         "description": "Single point in a chart dataset."
       },
       "ChartResponse": {
         "properties": {
           "contract_version": {
             "type": "integer",
-            "title": "Contract Version",
-            "default": 1
+            "title": "Contract Version"
           },
           "chart_id": {
             "type": "string",
@@ -5405,14 +5368,14 @@
           },
           "datasets": {
             "items": {
-              "$ref": "#/components/schemas/ChartDatasetResponse"
+              "$ref": "#/components/schemas/ChartDataset"
             },
             "type": "array",
             "title": "Datasets"
           },
           "variance_rows": {
             "items": {
-              "$ref": "#/components/schemas/VarianceRowResponse"
+              "$ref": "#/components/schemas/VarianceRow"
             },
             "type": "array",
             "title": "Variance Rows"
@@ -5429,15 +5392,18 @@
             "title": "Reason"
           },
           "export": {
-            "$ref": "#/components/schemas/ExportMetadataResponse"
+            "$ref": "#/components/schemas/ExportMetadata"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "contract_version",
           "chart_id",
           "labels",
           "datasets",
+          "variance_rows",
+          "reason",
           "export"
         ],
         "title": "ChartResponse",
@@ -5549,7 +5515,7 @@
         "title": "CurrentUser",
         "description": "Authenticated user context used for navigation and access decisions."
       },
-      "ExportMetadataResponse": {
+      "ExportMetadata": {
         "properties": {
           "generated_at": {
             "type": "string",
@@ -5597,7 +5563,7 @@
           "units",
           "source_document_list"
         ],
-        "title": "ExportMetadataResponse",
+        "title": "ExportMetadata",
         "description": "Export metadata for chart export."
       },
       "FingerprintsResponse": {
@@ -5970,7 +5936,7 @@
         ],
         "title": "ValidationError"
       },
-      "VarianceRowResponse": {
+      "VarianceRow": {
         "properties": {
           "name": {
             "type": "string",
@@ -6023,7 +5989,7 @@
           "variance",
           "favourable"
         ],
-        "title": "VarianceRowResponse",
+        "title": "VarianceRow",
         "description": "Variance row for budget vs actual charts."
       },
       "_AskQuestionRequest": {

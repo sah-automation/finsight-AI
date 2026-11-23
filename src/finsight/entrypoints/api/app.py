@@ -73,6 +73,7 @@ def create_app() -> FastAPI:
     _include_routers(app)
     _install_ask_event_schema(app)
     _install_kpi_openapi_schema(app, config)
+    _install_chart_openapi_schema(app, config)
     return app
 
 
@@ -174,6 +175,41 @@ def _install_kpi_openapi_schema(app: FastAPI, config: Any) -> None:
                 if parameter.get('name') == 'limit':
                     parameter['schema']['default'] = kpi_config.page_size_default
                     parameter['schema']['maximum'] = kpi_config.page_size_max
+        return schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
+
+
+def _install_chart_openapi_schema(app: FastAPI, _config: Any) -> None:
+    """Publish the closed chart enums and required response fields."""
+
+    base_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        schema = base_openapi()
+        operation = schema['paths']['/charts/{chart_id}']['get']
+        for parameter in operation['parameters']:
+            parameter['schema'] = _flatten_optional_query_schema(parameter['schema'])
+            if parameter['name'] == 'chart_type':
+                parameter['schema']['enum'] = ['trend_line', 'comparison_bar', 'breakdown_bar']
+        components = schema.setdefault('components', {}).setdefault('schemas', {})
+        for name in ('ChartResponse', 'VarianceRow', 'ExportMetadata'):
+            component = components.get(name)
+            if component is not None and 'properties' in component:
+                component['required'] = list(component['properties'])
+        point_properties = components.get('ChartPoint', {}).get('properties', {})
+        if 'change_direction' in point_properties:
+            point_properties['change_direction'] = {
+                'type': 'string',
+                'enum': ['good', 'bad'],
+                'nullable': True,
+            }
+        dataset_properties = components.get('ChartDataset', {}).get('properties', {})
+        if 'series_type' in dataset_properties:
+            dataset_properties['series_type'] = {
+                'type': 'string',
+                'enum': ['kpi', 'forecast', 'anomaly'],
+            }
         return schema
 
     app.openapi = openapi  # type: ignore[method-assign]
