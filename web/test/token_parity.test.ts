@@ -4,8 +4,9 @@
  * The prototype is the binding visual source: `prototype/styles.css` owns the
  * colour, type and spacing values. This test parses that stylesheet and the
  * app token source (`web/src/app/globals.css`) and fails when any value the
- * prototype declares differs in the app, when a token is missing, or when a
- * component hand-copies a raw value instead of using a token.
+ * prototype declares differs in the app, when a token is missing, when the
+ * stylesheet references a token it never declares, or when a component
+ * hand-copies a raw value instead of using a token.
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -13,18 +14,23 @@ import { dirname, join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { customProperties, parseRules, type Rule } from './support/css';
+
 /** Walk up from the working directory to the checkout that owns prototype/. */
 function findRepoRoot(): string {
   let dir = process.cwd();
-  for (let i = 0; i < 6; i += 1) {
+  for (;;) {
     if (existsSync(join(dir, 'prototype', 'styles.css'))) return dir;
-    dir = dirname(dir);
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
   throw new Error('No checkout with prototype/styles.css found above the working directory');
 }
 
 const REPO_ROOT = findRepoRoot();
-const PROTOTYPE_CSS = join(REPO_ROOT, 'prototype', 'styles.css');
+const PROTOTYPE_DIR = join(REPO_ROOT, 'prototype');
+const PROTOTYPE_CSS = join(PROTOTYPE_DIR, 'styles.css');
 const APP_CSS = join(REPO_ROOT, 'web', 'src', 'app', 'globals.css');
 const APP_SRC = join(REPO_ROOT, 'web', 'src');
 
@@ -34,107 +40,13 @@ const RUNTIME_TOKENS = new Set(['--font-inter']);
 /** Prototype-only chrome that §0 of UI_STANDARDS.md forbids shipping. */
 const PROTOTYPE_ONLY_SELECTOR = '.pv';
 
-type Declaration = { property: string; value: string };
-type Rule = { selector: string; declarations: Declaration[] };
+/** The prototype's own sources: the stylesheet plus the screens and scripts. */
+const prototypeSources = readdirSync(PROTOTYPE_DIR)
+  .filter((name) => /\.(css|html|js)$/.test(name))
+  .map((name) => readFileSync(join(PROTOTYPE_DIR, name), 'utf8'));
 
 const prototypeCss = readFileSync(PROTOTYPE_CSS, 'utf8');
 const appCss = readFileSync(APP_CSS, 'utf8');
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
-function findClosingBrace(source: string, open: number): number {
-  let depth = 0;
-  for (let i = open; i < source.length; i += 1) {
-    const char = source[i];
-    if (char === '"' || char === "'") {
-      i = skipString(source, i);
-      continue;
-    }
-    if (char === '{') depth += 1;
-    if (char === '}') {
-      depth -= 1;
-      if (depth === 0) return i;
-    }
-  }
-  throw new Error(`Unbalanced braces at offset ${open}`);
-}
-
-function skipString(source: string, open: number): number {
-  const quote = source[open];
-  for (let i = open + 1; i < source.length; i += 1) {
-    if (source[i] === '\\') {
-      i += 1;
-      continue;
-    }
-    if (source[i] === quote) return i;
-  }
-  return source.length;
-}
-
-function parseDeclarations(body: string): Declaration[] {
-  const declarations: Declaration[] = [];
-  for (const chunk of body.split(';')) {
-    const text = chunk.trim();
-    if (!text || text.startsWith('@')) continue;
-    const colon = text.indexOf(':');
-    if (colon === -1) continue;
-    declarations.push({
-      property: text.slice(0, colon).trim(),
-      value: text
-        .slice(colon + 1)
-        .trim()
-        .replace(/\s*!important$/i, ''),
-    });
-  }
-  return declarations;
-}
-
-function parseRules(css: string): Rule[] {
-  const source = stripComments(css);
-  const rules: Rule[] = [];
-  let prelude = '';
-  let i = 0;
-  while (i < source.length) {
-    const char = source[i];
-    if (char === '{') {
-      const close = findClosingBrace(source, i);
-      const selector = prelude.trim();
-      const body = source.slice(i + 1, close);
-      if (/^@(media|supports|layer|container)\b/.test(selector)) {
-        for (const child of parseRules(body)) {
-          rules.push({ selector: `${selector} ${child.selector}`, declarations: child.declarations });
-        }
-      } else {
-        rules.push({ selector, declarations: parseDeclarations(body) });
-      }
-      i = close + 1;
-      prelude = '';
-      continue;
-    }
-    if (char === '}' || char === ';') {
-      prelude = '';
-      i += 1;
-      continue;
-    }
-    prelude += char;
-    i += 1;
-  }
-  return rules;
-}
-
-function customProperties(rules: Rule[], include: (selector: string) => boolean): Map<string, string> {
-  const properties = new Map<string, string>();
-  for (const rule of rules) {
-    if (!include(rule.selector)) continue;
-    for (const declaration of rule.declarations) {
-      if (!declaration.property.startsWith('--')) continue;
-      properties.set(declaration.property, declaration.value);
-    }
-  }
-  return properties;
-}
 
 const isTokenSelector = (selector: string): boolean =>
   selector.includes(':root') || selector.startsWith('@theme');
@@ -143,6 +55,21 @@ const prototypeTokens = customProperties(parseRules(prototypeCss), (selector) =>
   selector.includes(':root'),
 );
 const appTokens = customProperties(parseRules(appCss), isTokenSelector);
+
+function normalise(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, '').replace(/(^|[,/(])\./g, '$10.');
+}
+
+function normaliseColour(value: string): string {
+  const compact = normalise(value);
+  const digits = compact.match(/^#([0-9a-f]+)$/)?.[1];
+  if (digits === undefined) return compact;
+  return `#${digits.length === 3 ? digits.split('').map((d) => d + d).join('') : digits}`;
+}
+
+function normaliseFont(value: string): string {
+  return normalise(value).replace(/['"]/g, '').replace(/var\(--font-inter\)/g, 'inter');
+}
 
 const COLOUR = /^(#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})|(rgb|rgba|hsl|hsla)\([^)]*\))$/i;
 
@@ -157,36 +84,43 @@ function colourTokens(tokens: Map<string, string>): Map<string, string> {
 const prototypeColours = colourTokens(prototypeTokens);
 const appColours = colourTokens(appTokens);
 
-function normaliseColour(value: string): string {
-  const compact = value.toLowerCase().replace(/\s+/g, '');
-  const digits = compact.match(/^#([0-9a-f]+)$/)?.[1];
-  if (digits !== undefined) {
-    return `#${digits.length === 3 ? digits.split('').map((d) => d + d).join('') : digits}`;
-  }
-  return compact.replace(/(^|[,/(])\./g, '$10.');
-}
-
-function normalise(value: string): string {
-  return value.toLowerCase().replace(/\s+/g, '').replace(/(^|[,/(])\./g, '$10.');
-}
-
-function normaliseFont(value: string): string {
-  return normalise(value).replace(/['"]/g, '').replace(/var\(--font-inter\)/g, 'inter');
-}
-
 /** Every colour literal the prototype paints with, normalised for comparison. */
 const prototypeColourLiterals = new Set(
-  [...prototypeCss.matchAll(/#[0-9a-f]{3,8}\b|(?:rgb|rgba|hsla?)\([^)]*\)/gi)].map((match) =>
-    normaliseColour(match[0]),
-  ),
+  prototypeSources
+    .flatMap((source) => [...source.matchAll(/#[0-9a-f]{3,8}\b|(?:rgb|rgba|hsla?)\([^)]*\)/gi)])
+    .map((match) => normaliseColour(match[0])),
+);
+
+/** Every pixel dimension the prototype works with, e.g. `220px`. */
+const prototypeDimensions = new Set(
+  prototypeSources.flatMap((source) => [...source.matchAll(/\d+px/g)].map((match) => match[0])),
 );
 
 /** Geometry tokens: the 4px grid, radii and elevation (UI_STANDARDS §4.3). */
 const GEOMETRY = /^(--s\d+|--r-(sm|md)|--r-lg|--shadow-pop)$/;
 
+/** Compares an expected token map against the app's, in one place. */
+function compareTokens(
+  expected: Map<string, string>,
+  actual: Map<string, string>,
+  normaliseValue: (value: string) => string,
+): { missing: string[]; changed: string[] } {
+  const missing: string[] = [];
+  const changed: string[] = [];
+  for (const [name, value] of expected) {
+    const appValue = actual.get(name);
+    if (appValue === undefined) {
+      missing.push(name);
+    } else if (normaliseValue(appValue) !== normaliseValue(value)) {
+      changed.push(`${name}: prototype ${value}, app ${appValue}`);
+    }
+  }
+  return { missing, changed };
+}
+
 type TypeToken = { size: number; lineHeight: number | null };
 
-function prototypeTypeScale(css: string): { sizes: Set<number>; pairs: Set<string> } {
+function typeScaleFromRules(rules: Rule[]): { sizes: Set<number>; pairs: Set<string> } {
   const sizes = new Set<number>();
   const pairs = new Set<string>();
   const add = (selector: string, size: number, lineHeight: number | null): void => {
@@ -194,13 +128,13 @@ function prototypeTypeScale(css: string): { sizes: Set<number>; pairs: Set<strin
     sizes.add(size);
     if (lineHeight !== null) pairs.add(`${size}/${lineHeight}`);
   };
-  for (const rule of parseRules(css)) {
+  for (const rule of rules) {
     const fontSize = rule.declarations.find((d) => d.property === 'font-size')?.value;
     const lineHeight = rule.declarations.find((d) => d.property === 'line-height')?.value;
     const shorthand = rule.declarations.find((d) => d.property === 'font')?.value;
+    const height = Number(lineHeight?.match(/^(\d+(?:\.\d+)?)px$/)?.[1]);
     if (fontSize) {
       const size = Number(fontSize.match(/^(\d+(?:\.\d+)?)px$/)?.[1]);
-      const height = Number(lineHeight?.match(/^(\d+(?:\.\d+)?)px$/)?.[1]);
       if (size) add(rule.selector, size, Number.isNaN(height) ? null : height);
     } else if (shorthand && /\dpx/.test(shorthand)) {
       const match = shorthand.match(/(\d+(?:\.\d+)?)px(?:\/(\d+(?:\.\d+)?)px)?/);
@@ -210,19 +144,16 @@ function prototypeTypeScale(css: string): { sizes: Set<number>; pairs: Set<strin
   return { sizes, pairs };
 }
 
-function appTypeScale(tokens: Map<string, string>): { tokens: Map<string, TypeToken>; font: string } {
+function appTypeScale(): { tokens: Map<string, TypeToken>; font: string } {
   const typeTokens = new Map<string, TypeToken>();
-  for (const [name, value] of tokens) {
+  for (const [name, value] of appTokens) {
     const size = value.match(/^(\d+(?:\.\d+)?)px$/);
     if (!name.startsWith('--text-') || name.endsWith('--line-height') || !size) continue;
-    const line = tokens.get(`${name}--line-height`)?.match(/^(\d+(?:.\d+)?)px$/);
+    const line = appTokens.get(`${name}--line-height`)?.match(/^(\d+(?:\.\d+)?)px$/);
     typeTokens.set(name, { size: Number(size[1]), lineHeight: line ? Number(line[1]) : null });
   }
-  return { tokens: typeTokens, font: tokens.get('--font') ?? '' };
+  return { tokens: typeTokens, font: appTokens.get('--font') ?? '' };
 }
-
-const prototypeScale = prototypeTypeScale(prototypeCss);
-const appScale = appTypeScale(appTokens);
 
 function sourceFiles(dir: string): string[] {
   const files: string[] = [];
@@ -239,18 +170,12 @@ function sourceFiles(dir: string): string[] {
   return files;
 }
 
+const prototypeScale = typeScaleFromRules(parseRules(prototypeCss));
+const appScale = appTypeScale();
+
 describe('colour tokens', () => {
   it('declares every prototype colour token at the same value', () => {
-    const missing: string[] = [];
-    const changed: string[] = [];
-    for (const [name, value] of prototypeColours) {
-      const appValue = appColours.get(name);
-      if (appValue === undefined) {
-        missing.push(name);
-      } else if (normaliseColour(appValue) !== normaliseColour(value)) {
-        changed.push(`${name}: prototype ${value}, app ${appValue}`);
-      }
-    }
+    const { missing, changed } = compareTokens(prototypeColours, appColours, normaliseColour);
     expect(missing, 'colour tokens missing from web/src/app/globals.css').toEqual([]);
     expect(changed, 'colour tokens that differ from prototype/styles.css').toEqual([]);
   });
@@ -268,17 +193,10 @@ describe('colour tokens', () => {
 
 describe('spacing, radius and elevation tokens', () => {
   it('mirrors the prototype geometry tokens value for value', () => {
-    const prototypeGeometry = [...prototypeTokens].filter(([name]) => GEOMETRY.test(name));
-    const missing: string[] = [];
-    const changed: string[] = [];
-    for (const [name, value] of prototypeGeometry) {
-      const appValue = appTokens.get(name);
-      if (appValue === undefined) {
-        missing.push(name);
-      } else if (normalise(appValue) !== normalise(value)) {
-        changed.push(`${name}: prototype ${value}, app ${appValue}`);
-      }
-    }
+    const expected = new Map(
+      [...prototypeTokens].filter(([name]) => GEOMETRY.test(name)),
+    );
+    const { missing, changed } = compareTokens(expected, appTokens, normalise);
     expect(missing, 'geometry tokens missing from web/src/app/globals.css').toEqual([]);
     expect(changed, 'geometry tokens that differ from prototype/styles.css').toEqual([]);
   });
@@ -313,14 +231,34 @@ describe('type scale', () => {
     );
   });
 
-  it('uses the prototype font stack', () => {
+  it('uses the prototype font stack behind the next/font Inter variable', () => {
     expect(appScale.font, 'the --font token must match prototype/styles.css').not.toBe('');
+    expect(
+      normalise(appScale.font).startsWith('var(--font-inter)'),
+      'the primary family must stay the self-hosted Inter variable',
+    ).toBe(true);
     expect(normaliseFont(appScale.font)).toBe(normaliseFont(prototypeTokens.get('--font') ?? ''));
+  });
+});
+
+describe('token source', () => {
+  it('declares every token its own stylesheet references', () => {
+    const unresolved = new Set(
+      [...appCss.matchAll(/var\((--[a-z0-9-]+)\)/gi)]
+        .map((match) => match[1])
+        .filter((token): token is string => token !== undefined)
+        .filter((token) => !appTokens.has(token) && !RUNTIME_TOKENS.has(token)),
+    );
+    expect(
+      [...unresolved],
+      'globals.css must not reference a custom property it never declares',
+    ).toEqual([]);
   });
 });
 
 describe('component sources', () => {
   const files = sourceFiles(APP_SRC);
+  const label = (file: string): string => file.replace(APP_SRC, 'src');
 
   it('contain no hand-copied colour values', () => {
     const raw: string[] = [];
@@ -332,24 +270,45 @@ describe('component sources', () => {
         // Purely numeric 3-digit hashes read as fragment ids; real palette
         // colours always contain a letter or the full six/eight digits.
         if (digits.length === 3 && !/[a-fA-F]/.test(digits)) continue;
-        raw.push(`${file.replace(APP_SRC, 'src')}: #${digits}`);
+        raw.push(`${label(file)}: #${digits}`);
       }
       for (const match of content.matchAll(/\b(?:rgb|rgba|hsl|hsla)\([^)]*\)/g)) {
-        raw.push(`${file.replace(APP_SRC, 'src')}: ${match[0]}`);
+        raw.push(`${label(file)}: ${match[0]}`);
       }
     }
     expect(raw, 'components must take colour from tokens, never a literal').toEqual([]);
+  });
+
+  it('contain no hand-copied pixel values', () => {
+    const raw: string[] = [];
+    for (const file of files) {
+      const content = readFileSync(file, 'utf8');
+      for (const match of content.matchAll(/style=\{\{([^}]*)\}\}/g)) {
+        const style = match[1];
+        if (style === undefined) continue;
+        for (const px of style.matchAll(/\d+px/g)) {
+          raw.push(`${label(file)}: style ${px[0]}`);
+        }
+      }
+      for (const match of content.matchAll(/\[(\d+)px\]/g)) {
+        const dimension = match[1];
+        if (dimension === undefined) continue;
+        if (prototypeDimensions.has(`${dimension}px`)) continue;
+        raw.push(`${label(file)}: [${dimension}px] is not a dimension the prototype uses`);
+      }
+    }
+    expect(raw, 'components must take length from tokens, never a literal').toEqual([]);
   });
 
   it('reference only tokens the app declares', () => {
     const undeclared: string[] = [];
     for (const file of files) {
       const content = readFileSync(file, 'utf8');
-      for (const match of content.matchAll(/var\((--[a-z0-9-]+)\)/g)) {
+      for (const match of content.matchAll(/var\((--[a-z0-9-]+)\)/gi)) {
         const token = match[1];
         if (token === undefined) continue;
         if (appTokens.has(token) || RUNTIME_TOKENS.has(token)) continue;
-        undeclared.push(`${file.replace(APP_SRC, 'src')}: ${token}`);
+        undeclared.push(`${label(file)}: ${token}`);
       }
     }
     expect(undeclared, 'every var(--token) must be declared in globals.css').toEqual([]);

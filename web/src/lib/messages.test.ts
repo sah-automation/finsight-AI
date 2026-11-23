@@ -27,7 +27,7 @@ describe('approved messages', () => {
     expect(isSignInErrorCode('invalid_credentials')).toBe(true);
   });
 
-  it('holds the new §5.2 approved strings verbatim', () => {
+  it('holds the §5.2 ask status and dashboard conflict copy verbatim', () => {
     expect(messages.results.stillWorking).toBe('Still working on your question.');
     expect(messages.dashboard.figuresPreparing).toBe('Figures are being prepared.');
     expect(messages.dashboard.layoutChanged).toBe(
@@ -35,12 +35,15 @@ describe('approved messages', () => {
     );
   });
 
-  it('holds the §5.2 strings that are approved verbatim', () => {
+  it('holds the stop and dashboard empty copy verbatim', () => {
     expect(messages.results.stopped).toBe('Stopped. Ask again or rephrase.');
     expect(messages.dashboard.noFigures).toBe('No figures yet');
     expect(messages.dashboard.askFinanceTeam).toBe(
       'Ask your finance team to upload documents.',
     );
+  });
+
+  it('holds the access-denied copy verbatim', () => {
     expect(messages.permission.denied).toBe("You don't have access to this.");
   });
 
