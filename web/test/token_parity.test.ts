@@ -9,24 +9,13 @@
  * hand-copies a raw value instead of using a token.
  */
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { customProperties, parseRules, type Rule } from './support/css';
-
-/** Walk up from the working directory to the checkout that owns prototype/. */
-function findRepoRoot(): string {
-  let dir = process.cwd();
-  for (;;) {
-    if (existsSync(join(dir, 'prototype', 'styles.css'))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  throw new Error('No checkout with prototype/styles.css found above the working directory');
-}
+import { findRepoRoot, sourceFiles } from './support/files';
 
 const REPO_ROOT = findRepoRoot();
 const PROTOTYPE_DIR = join(REPO_ROOT, 'prototype');
@@ -153,21 +142,6 @@ function appTypeScale(): { tokens: Map<string, TypeToken>; font: string } {
     typeTokens.set(name, { size: Number(size[1]), lineHeight: line ? Number(line[1]) : null });
   }
   return { tokens: typeTokens, font: appTokens.get('--font') ?? '' };
-}
-
-function sourceFiles(dir: string): string[] {
-  const files: string[] = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name !== 'generated') files.push(...sourceFiles(path));
-      continue;
-    }
-    if (!/\.(ts|tsx)$/.test(entry.name)) continue;
-    if (/\.d\.ts$/.test(entry.name) || /\.test\.(ts|tsx)$/.test(entry.name)) continue;
-    files.push(path);
-  }
-  return files;
 }
 
 const prototypeScale = typeScaleFromRules(parseRules(prototypeCss));
