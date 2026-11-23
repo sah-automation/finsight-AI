@@ -108,6 +108,10 @@ def api(monkeypatch: pytest.MonkeyPatch) -> Any:
             _row(),
             _row(value='150.00', period='2025-Q2'),
             _row(kpi_code='burn_rate', value='60.00', version=BOARD_VERSION),
+            _row(kpi_code='gross_margin', value='10.00', period='2025-Q1'),
+            _row(kpi_code='gross_margin', value='11.00', period='2025-Q2'),
+            _row(kpi_code='gross_margin', value='12.00', period='2025-Q3'),
+            _row(kpi_code='gross_margin', value='13.00', period='2025-Q4'),
             _row(
                 kpi_code='budget_vs_actual',
                 value='20.00',
@@ -248,7 +252,7 @@ def test_export_metadata_is_server_generated_and_content_scoped(api: Any) -> Non
         ({'chart_type': 'comparison_bar'}, 400),
         ({'kpi_code': 'burn_rate'}, 400),
         ({'periods': [2, 99]}, 400),
-        ({'periods': [2]}, 400),
+        ({'periods': [99]}, 400),
         ({'breakdown_key': 'document_category'}, 400),
     ],
 )
@@ -277,11 +281,12 @@ def test_allowed_overrides_select_series_and_periods(api: Any) -> None:
 
     body = client.get(
         '/charts/margin_trend',
-        params={'kpi_code': ['gross_margin'], 'periods': [2, 3]},
+        params={'kpi_code': ['gross_margin'], 'periods': [2]},
         headers=HEADERS,
     ).json()
 
     assert [dataset['label'] for dataset in body['datasets']] == ['Gross Margin']
+    assert body['labels'] == ['2025-Q3', '2025-Q4']
 
 
 def test_missing_kpi_view_is_denied_before_data_access(api: Any) -> None:
@@ -326,12 +331,16 @@ def test_hidden_citations_drop_series_and_export_entries(api: Any) -> None:
     app.dependency_overrides[charts.kpi_view_dependency] = lambda: principal
 
     revenue = client.get('/charts/revenue_trend', headers=HEADERS).json()
-    breakdown = client.get('/charts/revenue_breakdown', headers=HEADERS).json()
+    variance = client.get('/charts/budget_variance', headers=HEADERS).json()
 
     assert [dataset['label'] for dataset in revenue['datasets']] == ['Revenue']
-    assert breakdown['reason'] == 'insufficient_data'
-    assert breakdown['datasets'] == []
-    assert breakdown['export']['source_document_list'] == []
+    assert revenue['export']['source_document_list'] == [
+        {'title': 'Q1 Management Report', 'version': '1'}
+    ]
+    assert variance['reason'] == 'insufficient_data'
+    assert variance['datasets'] == []
+    assert variance['variance_rows'] == []
+    assert variance['export']['source_document_list'] == []
 
 
 def test_empty_data_is_a_normal_200(api: Any) -> None:

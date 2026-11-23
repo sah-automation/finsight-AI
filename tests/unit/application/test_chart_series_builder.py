@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from finsight.application.chart_series_builder import ChartSeriesBuilder
 
 pytestmark = pytest.mark.unit
