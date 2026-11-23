@@ -90,10 +90,10 @@ jobs:
       gateway_sha256: ${{ steps.build.outputs.gateway_sha256 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -115,7 +115,7 @@ jobs:
           echo "gateway_sha256=$(cat dist/lambda/gateway.zip.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       - name: Upload Lambda artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lambda-packages-${{ needs.resolve.outputs.cdk_env }}
           path: |
@@ -139,10 +139,10 @@ jobs:
       api_endpoint: ${{ steps.endpoints.outputs.api_endpoint }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Lambda artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: lambda-packages-${{ needs.resolve.outputs.cdk_env }}
           path: dist/lambda
@@ -154,14 +154,14 @@ jobs:
           sha256sum -c gateway.zip.sha256
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-${{ needs.resolve.outputs.cdk_env }}-${{ github.run_id }}
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -326,10 +326,10 @@ jobs:
       SMOKE_TEST_STATIC_JWT: ${{ secrets.SMOKE_TEST_JWT_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -355,7 +355,7 @@ jobs:
 
       - name: Configure AWS credentials
         if: env.SMOKE_TEST_STATIC_JWT == ''
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
