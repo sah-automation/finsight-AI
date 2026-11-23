@@ -1778,8 +1778,12 @@ export interface components {
          * @description Response for GET /charts/{chart_id}.
          */
         ChartResponse: {
-            /** Contract Version */
-            contract_version: number;
+            /**
+             * Contract Version
+             * @constant
+             * @enum {integer}
+             */
+            contract_version: 1;
             /** Chart Id */
             chart_id: string;
             /** Labels */
@@ -1865,7 +1869,10 @@ export interface components {
          * @description Export metadata for chart export.
          */
         ExportMetadata: {
-            /** Generated At */
+            /**
+             * Generated At
+             * Format: date-time
+             */
             generated_at: string;
             /** Company Name */
             company_name: string;
@@ -1878,9 +1885,7 @@ export interface components {
             /** Units */
             units: string;
             /** Source Document List */
-            source_document_list: {
-                [key: string]: string;
-            }[];
+            source_document_list: components["schemas"]["SourceDocument"][];
         };
         /**
          * FingerprintsResponse
@@ -1889,9 +1894,10 @@ export interface components {
         FingerprintsResponse: {
             /**
              * Contract Version
-             * @default 1
+             * @constant
+             * @enum {integer}
              */
-            contract_version: number;
+            contract_version: 1;
             /** Charts */
             charts: {
                 [key: string]: string;
@@ -1997,8 +2003,24 @@ export interface components {
         LayoutChartRequest: {
             /** Chart Id */
             chart_id: string;
-            /** Span */
-            span: string;
+            /**
+             * Span
+             * @enum {string}
+             */
+            span: "full" | "half";
+        };
+        /**
+         * LayoutConflictResponse
+         * @description Response for 409 conflict on layout save.
+         */
+        LayoutConflictResponse: {
+            /**
+             * Error
+             * @constant
+             * @enum {string}
+             */
+            error: "layout_changed";
+            current_layout: components["schemas"]["LayoutResponse"];
         };
         /**
          * LayoutRequest
@@ -2007,9 +2029,10 @@ export interface components {
         LayoutRequest: {
             /**
              * Contract Version
-             * @default 1
+             * @constant
+             * @enum {integer}
              */
-            contract_version: number;
+            contract_version: 1;
             /** Kpi Codes */
             kpi_codes: string[];
             /** Charts */
@@ -2024,9 +2047,10 @@ export interface components {
         LayoutResponse: {
             /**
              * Contract Version
-             * @default 1
+             * @constant
+             * @enum {integer}
              */
-            contract_version: number;
+            contract_version: 1;
             /** Kpi Codes */
             kpi_codes: string[];
             /** Charts */
@@ -2035,6 +2059,16 @@ export interface components {
             version: number;
             /** Updated At */
             updated_at: string;
+        };
+        /**
+         * SourceDocument
+         * @description Source document entry in export metadata.
+         */
+        SourceDocument: {
+            /** Title */
+            title: string;
+            /** Version */
+            version: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -2399,9 +2433,7 @@ export interface operations {
     };
     get_dashboard_fingerprints: {
         parameters: {
-            query?: {
-                context?: unknown;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -2417,22 +2449,11 @@ export interface operations {
                     "application/json": components["schemas"]["FingerprintsResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_dashboard_layout: {
         parameters: {
-            query?: {
-                context?: unknown;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -2448,22 +2469,11 @@ export interface operations {
                     "application/json": components["schemas"]["LayoutResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     save_dashboard_layout: {
         parameters: {
-            query?: {
-                context?: unknown;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -2481,6 +2491,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LayoutResponse"];
+                };
+            };
+            /** @description Stale version; current layout returned for reapplication */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutConflictResponse"];
                 };
             };
             /** @description Validation Error */

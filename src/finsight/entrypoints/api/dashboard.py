@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
 from finsight.application.kpi_visibility_filter import KpiVisibilityFilter
 from finsight.composition.container import get_container
@@ -334,11 +335,21 @@ async def get_dashboard_layout(
     )
 
 
-@router.put('/layout', operation_id='save_dashboard_layout')
+@router.put(
+    '/layout',
+    operation_id='save_dashboard_layout',
+    response_model=LayoutResponse,
+    responses={
+        409: {
+            'description': 'Stale version; current layout returned for reapplication',
+            'model': LayoutConflictResponse,
+        }
+    },
+)
 async def save_dashboard_layout(
     principal: ApiPrincipal = Depends(dashboard_edit_layout_dependency),
     request: LayoutRequest = Body(...),
-) -> LayoutResponse:
+) -> LayoutResponse | JSONResponse:
     """Save dashboard layout with optimistic locking."""
     if 'dashboard_edit_layout' not in principal.role_actions:
         raise HTTPException(
@@ -444,8 +455,20 @@ async def save_dashboard_layout(
                     current_updated_str,
                 ),
             )
-            raise HTTPException(status_code=409, detail=conflict_response.model_dump()) from exc
-        raise HTTPException(status_code=409, detail={'error': 'layout_changed'}) from exc
+            return JSONResponse(status_code=409, content=conflict_response.model_dump())
+        # No stored layout could be read; offer the role-filtered config default
+        # so the 409 body still carries a current_layout for reapplication (§4.4).
+        default_kpi_codes, default_charts = _get_default_layout(config)
+        filtered_default_kpi, filtered_default_charts = _filter_layout_by_permissions(
+            default_kpi_codes, default_charts, role_id, config, visible_chart_ids=visible_chart_ids
+        )
+        conflict_response = LayoutConflictResponse(
+            error='layout_changed',
+            current_layout=_build_layout_response(
+                filtered_default_kpi, filtered_default_charts, 0, ''
+            ),
+        )
+        return JSONResponse(status_code=409, content=conflict_response.model_dump())
     except Exception as exc:
         message = str(exc).lower()
         if '409' in str(exc) or 'stale' in message or 'version' in message or 'conflict' in message:
@@ -488,7 +511,7 @@ async def save_dashboard_layout(
                         current_updated_str,
                     ),
                 )
-                raise HTTPException(status_code=409, detail=conflict_response.model_dump()) from exc
+                return JSONResponse(status_code=409, content=conflict_response.model_dump())
         raise HTTPException(status_code=500, detail=f'Failed to save layout: {exc}') from exc
 
     saved_kpi = [str(code) for code in (_record_value(saved, 'kpi_codes', ()) or ())]

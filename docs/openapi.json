@@ -379,6 +379,16 @@
               }
             }
           },
+          "409": {
+            "description": "Stale version; current layout returned for reapplication",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutConflictResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -5303,6 +5313,10 @@
         "properties": {
           "contract_version": {
             "type": "integer",
+            "enum": [
+              1
+            ],
+            "const": 1,
             "title": "Contract Version"
           },
           "chart_id": {
@@ -5469,6 +5483,7 @@
         "properties": {
           "generated_at": {
             "type": "string",
+            "format": "date-time",
             "title": "Generated At"
           },
           "company_name": {
@@ -5493,10 +5508,7 @@
           },
           "source_document_list": {
             "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
+              "$ref": "#/components/schemas/SourceDocument"
             },
             "type": "array",
             "title": "Source Document List"
@@ -5520,8 +5532,11 @@
         "properties": {
           "contract_version": {
             "type": "integer",
-            "title": "Contract Version",
-            "default": 1
+            "enum": [
+              1
+            ],
+            "const": 1,
+            "title": "Contract Version"
           },
           "charts": {
             "additionalProperties": {
@@ -5534,6 +5549,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "contract_version",
           "charts"
         ],
         "title": "FingerprintsResponse",
@@ -5773,13 +5789,38 @@
         "title": "LayoutChartRequest",
         "description": "Chart in a layout request."
       },
+      "LayoutConflictResponse": {
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "layout_changed"
+            ],
+            "const": "layout_changed",
+            "title": "Error"
+          },
+          "current_layout": {
+            "$ref": "#/components/schemas/LayoutResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error",
+          "current_layout"
+        ],
+        "title": "LayoutConflictResponse",
+        "description": "Response for 409 conflict on layout save."
+      },
       "LayoutRequest": {
         "properties": {
           "contract_version": {
             "type": "integer",
+            "enum": [
+              1
+            ],
             "const": 1,
-            "title": "Contract Version",
-            "default": 1
+            "title": "Contract Version"
           },
           "kpi_codes": {
             "items": {
@@ -5804,6 +5845,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "contract_version",
           "kpi_codes",
           "charts",
           "version"
@@ -5815,9 +5857,11 @@
         "properties": {
           "contract_version": {
             "type": "integer",
+            "enum": [
+              1
+            ],
             "const": 1,
-            "title": "Contract Version",
-            "default": 1
+            "title": "Contract Version"
           },
           "kpi_codes": {
             "items": {
@@ -5845,6 +5889,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "contract_version",
           "kpi_codes",
           "charts",
           "version",
@@ -5852,6 +5897,26 @@
         ],
         "title": "LayoutResponse",
         "description": "Response for GET/PUT /dashboard/layout."
+      },
+      "SourceDocument": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "version"
+        ],
+        "title": "SourceDocument",
+        "description": "Source document entry in export metadata."
       },
       "ValidationError": {
         "properties": {

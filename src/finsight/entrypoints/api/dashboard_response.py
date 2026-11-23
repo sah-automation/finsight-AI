@@ -12,7 +12,7 @@ class FingerprintsResponse(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    contract_version: int = 1
+    contract_version: Literal[1] = Field(..., json_schema_extra={'enum': [1]})
     charts: dict[str, str]
 
 
@@ -30,7 +30,7 @@ class LayoutRequest(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    contract_version: Literal[1] = 1
+    contract_version: Literal[1] = Field(..., json_schema_extra={'enum': [1]})
     kpi_codes: list[str]
     charts: list[LayoutChartRequest]
     version: int = Field(ge=0)
@@ -41,7 +41,7 @@ class LayoutResponse(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    contract_version: Literal[1] = 1
+    contract_version: Literal[1] = Field(..., json_schema_extra={'enum': [1]})
     kpi_codes: list[str]
     charts: list[LayoutChartRequest]
     version: int
@@ -53,7 +53,7 @@ class LayoutConflictResponse(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    error: str
+    error: Literal['layout_changed'] = Field(..., json_schema_extra={'enum': ['layout_changed']})
     current_layout: LayoutResponse
 
 

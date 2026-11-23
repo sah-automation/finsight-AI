@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class SourceDocument(BaseModel):
+    """Source document entry in export metadata."""
+
+    model_config = ConfigDict(extra='forbid', title='SourceDocument')
+
+    title: str
+    version: str
 
 
 class ChartPoint(BaseModel):
@@ -55,13 +64,13 @@ class ExportMetadata(BaseModel):
 
     model_config = ConfigDict(extra='forbid', title='ExportMetadata')
 
-    generated_at: str
+    generated_at: str = Field(..., json_schema_extra={'format': 'date-time'})
     company_name: str
     company_slug: str
     period_range: str
     currency: str
     units: str
-    source_document_list: list[dict[str, str]]
+    source_document_list: list[SourceDocument]
 
 
 class ChartResponse(BaseModel):
@@ -69,7 +78,7 @@ class ChartResponse(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    contract_version: int
+    contract_version: Literal[1] = Field(..., json_schema_extra={'enum': [1]})
     chart_id: str
     labels: list[str]
     datasets: list[ChartDataset]
@@ -83,5 +92,6 @@ __all__ = [
     'ChartPoint',
     'ChartResponse',
     'ExportMetadata',
+    'SourceDocument',
     'VarianceRow',
 ]
