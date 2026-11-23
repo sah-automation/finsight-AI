@@ -135,10 +135,19 @@ export const messages = {
   },
   results: {
     wakingUp: 'Waking up, please wait.',
+    stillWorking: 'Still working on your question.',
+    stopped: 'Stopped. Ask again or rephrase.',
     busy: "We're busy right now. Please try again in a moment.",
     temporarilyUnavailable: 'Temporarily unavailable. Please try again.',
     insufficientData: "I don't have enough data to answer this.",
     needsReview: "Needs review. Some numbers couldn't be read with confidence.",
+  },
+  dashboard: {
+    figuresPreparing: 'Figures are being prepared.',
+    noFigures: 'No figures yet',
+    askFinanceTeam: 'Ask your finance team to upload documents.',
+    layoutChanged:
+      'The layout changed elsewhere. Check the current layout and save again to reapply.',
   },
   actions: {
     tryAgain: 'Try again',
