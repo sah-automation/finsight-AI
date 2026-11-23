@@ -8,13 +8,22 @@ from .app_config import AppConfig
 from .auth_config import AuthConfig
 from .cache_config import CacheConfig
 from .caches_config import CachesConfig
+from .chart_spec import ChartSpec  # noqa: TC001
+from .charts_config import ChartsConfig
 from .consistency_config import ConsistencyConfig
+from .dashboard_config import DashboardConfig
 from .database_config import DatabaseConfig
 from .documents_config import DocumentsConfig
 from .edge_config import EdgeConfig
 from .encryption_config import EncryptionConfig
 from .environment import Environment
+from .golden_set_config import GoldenSetConfig
 from .ingestion_config import IngestionConfig
+from .kpi_config import KPI_CODES, KpiConfig
+from .kpi_tolerance import (
+    ToleranceAbsolute,
+    TolerancePercentOfExpectedPlusAbsoluteFloor,
+)
 from .lambda_config import LambdaConfig
 from .llm_config import LlmConfig
 from .metering_config import MeteringConfig
@@ -39,6 +48,7 @@ from .strict_base_model import (
 from .switches_config import SwitchesConfig
 from .traffic_config import TrafficConfig
 from .vector_store_config import VectorStoreConfig
+from .web_config import WebConfig
 
 
 class Config(StrictBaseModel):
@@ -74,6 +84,12 @@ class Config(StrictBaseModel):
     cache: CacheConfig | None = None
     edge: EdgeConfig | None = None
     scale: ScaleConfig | None = None
+    kpi: KpiConfig | None = None
+    # Phase 2 typed sections
+    charts: ChartsConfig | None = None
+    dashboard: DashboardConfig | None = None
+    web: WebConfig | None = None
+    golden_set: GoldenSetConfig | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -116,6 +132,11 @@ class Config(StrictBaseModel):
         self._validate_model_rules()
         self._validate_document_and_ingestion_rules()
         self._validate_access_and_permission_rules()
+        self._validate_kpi_rules()
+        self._validate_charts_rules()
+        self._validate_dashboard_rules()
+        self._validate_web_vercel_rules()
+        self._validate_golden_set_rules()
         return self
 
     def _validate_traffic_rules(self) -> None:
@@ -287,6 +308,225 @@ class Config(StrictBaseModel):
             ttl = getattr(role_cache, 'ttl_seconds', None)
             if ttl is not None and access.role_cache_seconds_privileged > ttl:
                 raise ValueError('role_cache_seconds_privileged must not exceed role_cache ttl')
+
+    def _validate_kpi_rules(self) -> None:
+        kpi = self.kpi
+        if kpi is None:
+            return
+
+        expected_codes = frozenset(KPI_CODES)
+        self._validate_kpi_codes(kpi, expected_codes)
+        self._validate_kpi_budget_match(kpi)
+        self._validate_kpi_tolerance_keys(kpi, expected_codes)
+        self._validate_kpi_page_sizes(kpi)
+        self._validate_kpi_rebuild_priority(kpi)
+        self._validate_kpi_estimation_methods(kpi, expected_codes)
+        self._validate_kpi_tolerance_kinds(kpi, expected_codes)
+
+    def _validate_kpi_codes(self, kpi: 'KpiConfig', expected_codes: frozenset[str]) -> None:
+        if kpi.code_set != expected_codes:
+            raise ValueError(f'kpi.codes must be exactly the closed set: {sorted(expected_codes)}')
+
+    def _validate_kpi_budget_match(self, kpi: 'KpiConfig') -> None:
+        if kpi.budget_vs_actual_match != 'strict':
+            raise ValueError("kpi.budget_vs_actual_match must be 'strict'")
+
+    def _validate_kpi_tolerance_keys(
+        self, kpi: 'KpiConfig', expected_codes: frozenset[str]
+    ) -> None:
+        tolerance_codes = frozenset(kpi.tolerances.keys())
+        if tolerance_codes != expected_codes:
+            raise ValueError(
+                f'kpi.tolerances keys must match kpi.codes exactly; '
+                f'missing: {sorted(expected_codes - tolerance_codes)}, '
+                f'extra: {sorted(tolerance_codes - expected_codes)}'
+            )
+
+    def _validate_kpi_page_sizes(self, kpi: 'KpiConfig') -> None:
+        if kpi.page_size_default > kpi.page_size_max:
+            raise ValueError('kpi.page_size_default must be <= kpi.page_size_max')
+
+    def _validate_kpi_rebuild_priority(self, kpi: 'KpiConfig') -> None:
+        if kpi.rebuild_priority not in ('rebuilds', 'background'):
+            raise ValueError(
+                "kpi.rebuild_priority must be 'rebuilds' or 'background' "
+                '(both rank below live questions and uploads)'
+            )
+
+    def _validate_kpi_estimation_methods(
+        self, kpi: 'KpiConfig', expected_codes: frozenset[str]
+    ) -> None:
+        estimation_codes = frozenset(kpi.estimation_methods.keys())
+        if estimation_codes != expected_codes:
+            raise ValueError(
+                f'kpi.estimation_methods keys must match kpi.codes exactly; '
+                f'missing: {sorted(expected_codes - estimation_codes)}, '
+                f'extra: {sorted(estimation_codes - expected_codes)}'
+            )
+
+    def _validate_kpi_tolerance_kinds(
+        self, kpi: 'KpiConfig', expected_codes: frozenset[str]
+    ) -> None:
+        for code in expected_codes:
+            tolerance = kpi.tolerances[code]  # type: ignore[index]
+            kind = tolerance.kind
+            if (
+                kind == 'percent_of_expected_plus_absolute_floor'
+                and isinstance(tolerance, TolerancePercentOfExpectedPlusAbsoluteFloor)
+                and tolerance.floor_unit != 'kpi_currency'
+            ):
+                raise ValueError(
+                    f'kpi.tolerances.{code}.floor_unit must be "kpi_currency" '
+                    f'for kind percent_of_expected_plus_absolute_floor'
+                )
+            if (
+                kind == 'absolute'
+                and isinstance(tolerance, ToleranceAbsolute)
+                and tolerance.unit not in ('percentage_points', 'days')
+            ):
+                raise ValueError(
+                    f'kpi.tolerances.{code}.unit must be "percentage_points" or "days" '
+                    f'for kind absolute'
+                )
+            if kind == 'percent_of_expected':
+                pass  # only percent field, validated by Field(gt=0)
+            elif kind == 'exact_or_needs_review':
+                pass  # no numeric fields
+            elif kind not in (
+                'percent_of_expected_plus_absolute_floor',
+                'absolute',
+                'percent_of_expected',
+                'exact_or_needs_review',
+            ):
+                raise ValueError(f'kpi.tolerances.{code}.kind: unknown kind {kind!r}')
+
+    def _validate_charts_rules(self) -> None:
+        charts = self.charts
+        if charts is None:
+            return
+        kpi = self.kpi
+        if kpi is None:
+            return
+
+        self._validate_chart_specs(charts)
+        self._validate_chart_spec_kpi_coverage(charts, kpi)
+
+    def _validate_chart_specs(self, charts: 'ChartsConfig') -> None:
+        expected_kpi_codes = frozenset(KPI_CODES)
+        for spec_id, spec in charts.specs.items():
+            self._validate_chart_spec_id_match(spec_id, spec)
+            self._validate_chart_spec_kpi_codes(spec_id, spec, expected_kpi_codes)
+            self._validate_chart_spec_diverging(spec_id, spec)
+
+    def _validate_chart_spec_id_match(self, spec_id: str, spec: 'ChartSpec') -> None:
+        if spec_id != spec.chart_id:
+            raise ValueError(f'charts.specs.{spec_id}.chart_id must match key: {spec_id}')
+
+    def _validate_chart_spec_kpi_codes(
+        self, spec_id: str, spec: 'ChartSpec', expected_kpi_codes: frozenset[str]
+    ) -> None:
+        for kpi_code in spec.kpi_codes:
+            if kpi_code not in expected_kpi_codes:
+                raise ValueError(
+                    f'charts.specs.{spec_id}.kpi_codes contains unknown KPI code: {kpi_code}'
+                )
+
+    def _validate_chart_spec_diverging(self, spec_id: str, spec: 'ChartSpec') -> None:
+        if not spec.diverging:
+            return
+        if spec.chart_type != 'comparison_bar':
+            raise ValueError(
+                f'charts.specs.{spec_id}: diverging=true only allowed on comparison_bar type'
+            )
+        if 'budget_vs_actual' not in spec.kpi_codes:
+            raise ValueError(
+                f'charts.specs.{spec_id}: diverging=true only allowed for budget_vs_actual'
+            )
+
+    def _validate_chart_spec_kpi_coverage(self, charts: 'ChartsConfig', kpi: 'KpiConfig') -> None:
+        expected_kpi_codes = frozenset(KPI_CODES)
+        covered_kpi_codes = set()
+        for spec in charts.specs.values():
+            covered_kpi_codes.update(spec.kpi_codes)
+
+        missing_kpi_codes = expected_kpi_codes - covered_kpi_codes
+        if missing_kpi_codes:
+            raise ValueError(
+                f'charts.specs must cover all KPI codes; missing: {sorted(missing_kpi_codes)}'
+            )
+
+    def _validate_dashboard_rules(self) -> None:
+        dashboard = self.dashboard
+        if dashboard is None:
+            return
+
+        # staleness_badge_enabled must be true (fixed on)
+        if dashboard.staleness_badge_enabled is not True:
+            raise ValueError('dashboard.staleness_badge_enabled must be true (fixed on)')
+
+        # Validate default_layout kpi_codes resolve to kpi.codes
+        kpi = self.kpi
+        if kpi is not None:
+            expected_kpi_codes = frozenset(KPI_CODES)
+            for code in dashboard.default_layout.kpi_codes:
+                if code not in expected_kpi_codes:
+                    raise ValueError(
+                        f'dashboard.default_layout.kpi_codes contains unknown KPI code: {code}'
+                    )
+            # Check for duplicates
+            if len(dashboard.default_layout.kpi_codes) != len(
+                set(dashboard.default_layout.kpi_codes)
+            ):
+                raise ValueError('dashboard.default_layout.kpi_codes must not contain duplicates')
+
+        # Validate default_layout charts resolve to charts.specs
+        charts = self.charts
+        if charts is not None:
+            expected_chart_ids = frozenset(charts.specs.keys())
+            for chart_entry in dashboard.default_layout.charts:
+                if chart_entry.chart_id not in expected_chart_ids:
+                    raise ValueError(
+                        f'dashboard.default_layout.charts contains unknown '
+                        f'chart_id: {chart_entry.chart_id}'
+                    )
+            # Check for duplicates
+            chart_ids = [c.chart_id for c in dashboard.default_layout.charts]
+            if len(chart_ids) != len(set(chart_ids)):
+                raise ValueError(
+                    'dashboard.default_layout.charts must not contain duplicate chart_ids'
+                )
+
+    def _validate_web_vercel_rules(self) -> None:
+        web = self.web
+        if web is None:
+            return
+        vercel = web.vercel
+        if vercel is None:
+            return
+
+        # sync_enabled must be true (fixed on)
+        if vercel.sync_enabled is not True:
+            raise ValueError('web.vercel.sync_enabled must be true (fixed on)')
+
+        # log_forwarding_enabled must be true (fixed on)
+        if vercel.log_forwarding_enabled is not True:
+            raise ValueError('web.vercel.log_forwarding_enabled must be true (fixed on)')
+
+        # never_log_file must be non-empty
+        if not vercel.never_log_file:
+            raise ValueError('web.vercel.never_log_file must be non-empty')
+
+    def _validate_golden_set_rules(self) -> None:
+        golden_set = self.golden_set
+        if golden_set is None:
+            return
+
+        # kpi_questions_path must be under tests/golden/questions/
+        path = golden_set.kpi_questions_path
+        if not path.startswith('tests/golden/questions/'):
+            raise ValueError(
+                f'golden_set.kpi_questions_path must be under tests/golden/questions/: {path}'
+            )
 
     @property
     def source_viewer_signing_key(self) -> str:

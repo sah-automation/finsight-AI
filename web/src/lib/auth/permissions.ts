@@ -15,7 +15,13 @@ export type PermissionAction =
   | 'approve'
   | 'manage_users'
   | 'manage_settings'
-  | 'view_audit_log';
+  | 'view_audit_log'
+  | 'dashboard_view'
+  | 'dashboard_edit_layout'
+  | 'chart_export'
+  | 'kpi_view'
+  | 'kpi_export'
+  | 'document_purge';
 
 export type NavigationId = 'ask' | 'documents' | 'upload' | 'settings';
 

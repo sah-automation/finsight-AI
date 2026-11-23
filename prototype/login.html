@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in | FinSight AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.page{min-height:100%;display:grid;place-items:center;padding:var(--s6)}
+.wrap{width:100%;max-width:400px}
+.brand{margin-bottom:var(--s6);font-size:18px}.mark{width:28px;height:28px;font-size:13px}
+.card{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:var(--s7);display:flex;flex-direction:column;gap:var(--s5)}
+h1{font:600 24px/30px var(--font);letter-spacing:-.01em}
+.sub{color:var(--text-secondary);margin-top:var(--s1)}
+.row{display:flex;justify-content:space-between;align-items:center}
+.card .btn-primary{height:40px;width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.notice{align-items:flex-start}
+.foot{margin-top:var(--s5);text-align:center;font-size:12px;line-height:16px;color:var(--text-muted)}
+.pvx{margin-top:var(--s4);border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:6px var(--s3);font-size:11px;line-height:16px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:var(--s2) var(--s3);align-items:center;justify-content:center}
+.pvx select{height:24px;font-size:11px;width:auto;padding:0 4px;appearance:auto}
+@media(max-width:480px){.page{padding:var(--s4)}.card{padding:var(--s5)}.card .btn-primary{height:44px!important}.pvx select{height:32px!important;font-size:14px!important}}
+</style></head>
+<!-- Accessibility: focus order - work email, password, forgot-password link, sign in/retry, then prototype controls. -->
+<body><main class="page"><div class="wrap">
+  <div class="brand"><span class="mark" aria-hidden="true">F</span>FinSight AI</div>
+  <form class="card" id="form">
+    <div><h1>Sign in</h1><p class="sub">Ask questions about your financial documents. Every number links to its source.</p></div>
+    <div class="notice hidden" id="msg" role="alert"></div>
+    <div class="field"><label for="email">Work email</label>
+      <input class="input" id="email" type="email" autocomplete="username" placeholder="name@company.com" required></div>
+    <div class="field"><div class="row"><label for="pw">Password</label><a href="#" style="font-size:13px">Forgot password?</a></div>
+      <input class="input" id="pw" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn-primary" id="go" type="submit">Sign in</button>
+    <button class="btn hidden" id="retry" type="button">Try again</button>
+  </form>
+  <p class="foot">Your data stays in your company workspace.<br>Need access? Contact your administrator.</p>
+  <div class="pvx"><span>Prototype</span>
+    <label for="role">Sign in as</label><select class="input" id="role"><option value="admin">System Admin</option><option value="audit">Audit &amp; Compliance</option><option value="fin" selected>Corporate Finance &amp; Planners</option><option value="exec">Executive Leadership</option></select>
+    <span>Show:</span><a href="#wrong">wrong password</a><a href="#session">session ended</a><a href="#down">unavailable</a><a href="#">reset</a></div>
+</div></main>
+<script>
+const $=id=>document.getElementById(id);
+const IC={al:'<svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+ inf:'<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'};
+const M={wrong:['warn','al','That email or password doesn’t match. Check both and try again.'],
+ session:['info','inf','Your session ended. Please sign in again.'],
+ down:['warn','al','Sign in is temporarily unavailable. Please try again in a few minutes.']};
+function show(){const k=location.hash.slice(1),m=M[k],down=k==='down';
+  $('msg').className='notice '+(m?m[0]:'hidden');$('msg').innerHTML=m?IC[m[1]]+'<span>'+m[2]+'</span>':'';
+  ['email','pw','go'].forEach(i=>$(i).disabled=down);$('go').classList.toggle('hidden',down);$('retry').classList.toggle('hidden',!down)}
+addEventListener('hashchange',show);show();
+$('retry').onclick=()=>{location.hash=''};
+$('form').onsubmit=e=>{e.preventDefault();try{sessionStorage.setItem('fs_role',$('role').value)}catch(x){}
+  location.href={admin:'settings.html#profile',exec:'dashboard.html'}[$('role').value]||'ask.html'};
+</script></body></html>

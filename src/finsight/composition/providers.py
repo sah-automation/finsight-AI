@@ -41,7 +41,18 @@ def init(container: CompositionContainer) -> None:
     if container is None:
         raise ProviderError('composition provider container must not be None')
     _validate_startup_use_cases(container)
+    _validate_rebuild_priority_ordering()
     _container = container
+
+
+def _validate_rebuild_priority_ordering() -> None:
+    """Keep rebuild work below live questions and uploads at startup."""
+    from finsight.core.work_priority import assert_rebuild_priority_ordering
+
+    try:
+        assert_rebuild_priority_ordering()
+    except ValueError as exc:
+        raise ProviderError(f'invalid KPI rebuild priority ordering: {exc}') from exc
 
 
 def _validate_startup_use_cases(container: CompositionContainer) -> None:

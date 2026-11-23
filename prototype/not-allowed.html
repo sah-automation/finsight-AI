@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>No access | FinSight AI</title>
+<link rel="stylesheet" href="styles.css">
+<style>.main{display:flex;flex-direction:column;min-width:0;min-height:0}</style></head>
+<!-- Accessibility: focus order - sidebar, home-route link, then Go back. -->
+<body>
+<div class="shell"><aside class="side" id="side" aria-label="Main"></aside><section class="main" id="main"></section></div>
+<script src="shell.js"></script>
+<script>FS.mount({});FS.deny(document.getElementById('main'));</script>
+</body></html>

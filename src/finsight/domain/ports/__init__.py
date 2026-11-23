@@ -7,6 +7,15 @@ from .audit_log import AuditLog
 from .change_event_publisher import ChangeEventPublisher
 from .chunk_repository import ChunkRepository
 from .company_repository import CompanyRepository
+from .dashboard_layout_repository import (
+    DashboardLayoutRepository,
+    DashboardLayoutRepositoryPort,
+    LayoutChart,
+    LayoutConflictError,
+    LayoutDraft,
+    LayoutRecord,
+    VisibleIds,
+)
 from .document_reader import DocumentReader
 from .document_repository import DocumentRepository
 from .document_table_repository import DocumentTableRepository
@@ -14,6 +23,8 @@ from .embedding_provider import EmbeddingGateway, EmbeddingProvider, Embeddings
 from .hybrid_search import HybridSearch, HybridSearchPort, VectorSearch
 from .job_progress_port import JobProgressPort
 from .job_repository import JobRepository
+from .kpi_rebuild_state import KpiRebuildState, KpiRebuildStatePort
+from .kpi_repository import KpiRepository, KpiRepositoryPort
 from .llm_gateway import LLM, LLMGateway
 from .metering_port import MeteringPort
 from .metric_repository import MetricRepository, MetricsRepository
@@ -45,6 +56,8 @@ __all__ = [
     'ChangeEventPublisher',
     'ChunkRepository',
     'CompanyRepository',
+    'DashboardLayoutRepository',
+    'DashboardLayoutRepositoryPort',
     'DocumentReader',
     'DocumentRepository',
     'DocumentTableRepository',
@@ -57,7 +70,15 @@ __all__ = [
     'HybridSearchPort',
     'JobProgressPort',
     'JobRepository',
+    'KpiRebuildState',
+    'KpiRebuildStatePort',
+    'KpiRepository',
+    'KpiRepositoryPort',
     'LLMGateway',
+    'LayoutChart',
+    'LayoutConflictError',
+    'LayoutDraft',
+    'LayoutRecord',
     'MeteringPort',
     'MetricRepository',
     'MetricsRepository',
@@ -83,6 +104,7 @@ __all__ = [
     'VectorWrite',
     'VectorWritePort',
     'VirusScanner',
+    'VisibleIds',
     'WaitingLine',
     'WaitingLinePort',
 ]

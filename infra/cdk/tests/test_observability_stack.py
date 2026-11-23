@@ -23,16 +23,16 @@ def test_log_group_is_defined() -> None:
     assert groups
 
 
-def test_five_metric_filters_exist() -> None:
+def test_six_metric_filters_exist() -> None:
     template = _template('dev')
     filters = template.find_resources('AWS::Logs::MetricFilter')
-    assert len(filters) == 5  # noqa: PLR2004
+    assert len(filters) == 6  # noqa: PLR2004
 
 
-def test_five_alarms_exist() -> None:
+def test_six_alarms_exist() -> None:
     template = _template('dev')
     alarms = template.find_resources('AWS::CloudWatch::Alarm')
-    assert len(alarms) == 5  # noqa: PLR2004
+    assert len(alarms) == 6  # noqa: PLR2004
 
 
 def test_alert_signals_are_declared() -> None:
@@ -61,7 +61,17 @@ def test_thresholds_match_config() -> None:
     template = _template('dev')
     alarms = list(template.find_resources('AWS::CloudWatch::Alarm').values())
     thresholds = {alarm['Properties']['Threshold'] for alarm in alarms}
-    assert {1.0, 3.0, 7200.0}.issubset(thresholds)
+    assert {1.0, 3.0, 7200.0, 2000.0}.issubset(thresholds)
+
+
+def test_dashboard_latency_period_from_config() -> None:
+    template = _template('dev')
+    alarms = list(template.find_resources('AWS::CloudWatch::Alarm').values())
+    dashboard_alarm = next(
+        a for a in alarms if 'DashboardLatency' in a['Properties'].get('AlarmName', '')
+    )
+    expected_period = 300  # 5 minutes in seconds
+    assert dashboard_alarm['Properties']['Period'] == expected_period
 
 
 def test_no_sensitive_request_content_in_filters() -> None:

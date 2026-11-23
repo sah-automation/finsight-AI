@@ -154,12 +154,18 @@ class TestPermissionPolicy:
         category: DocumentCategory,
         action: Action,
     ) -> None:
-        # Role actions (manage_users, manage_settings, view_audit_log, approve) are checked via role_actions
+        # Role actions are checked via role_actions
         if action in (
             Action.MANAGE_USERS,
             Action.MANAGE_SETTINGS,
             Action.VIEW_AUDIT_LOG,
             Action.APPROVE,
+            Action.DASHBOARD_VIEW,
+            Action.DASHBOARD_EDIT_LAYOUT,
+            Action.CHART_EXPORT,
+            Action.KPI_VIEW,
+            Action.KPI_EXPORT,
+            Action.DOCUMENT_PURGE,
         ):
             matrix_data = yaml.safe_load(PERMISSIONS_PATH.read_text())
             role_actions = matrix_data['permissions'].get(role.value, {}).get('role_actions', [])

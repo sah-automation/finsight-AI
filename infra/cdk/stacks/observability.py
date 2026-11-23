@@ -87,6 +87,8 @@ def _load_alert_thresholds(env_name: str) -> dict[str, Any]:
         'embedding_retries_exceeded': 3,
         'job_in_retry_list': 1,
         'role_cache_stale_seconds': 7200,
+        'dashboard_latency_ms': 2000,
+        'dashboard_latency_period_seconds': 300,
     }
 
     # Application config is optional for synthesis; fall back to the defaults
@@ -112,6 +114,12 @@ def _load_alert_thresholds(env_name: str) -> dict[str, Any]:
             thresholds['job_in_retry_list'] = 1 if alerts['job_in_retry_list'] else 0
         if isinstance(alerts.get('role_cache_stale_seconds'), int):
             thresholds['role_cache_stale_seconds'] = alerts['role_cache_stale_seconds']
+        if isinstance(alerts.get('dashboard_latency_ms'), int):
+            thresholds['dashboard_latency_ms'] = alerts['dashboard_latency_ms']
+        if isinstance(alerts.get('dashboard_latency_period_seconds'), int):
+            thresholds['dashboard_latency_period_seconds'] = alerts[
+                'dashboard_latency_period_seconds'
+            ]
     return thresholds
 
 
@@ -282,6 +290,39 @@ class ObservabilityStack(Stack):
             threshold=float(thresholds['role_cache_stale_seconds']),
             evaluation_periods=1,
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+
+        # 6. Dashboard latency alarm (issue #367): http_request spans for the
+        # dashboard/chart/KPI routes. Fires when the observed duration exceeds
+        # the configured threshold and evaluation period from config.
+        self.metric_filters['dashboard_latency_ms'] = logs.MetricFilter(
+            self,
+            'DashboardLatencyMetricFilter',
+            log_group=self.log_group,
+            filter_pattern=logs.FilterPattern.literal(
+                '{ ($.span.name = "http_request") && '
+                '(( $.span.attributes.route = "/kpis" ) || '
+                '( $.span.attributes.route = "/charts/*" ) || '
+                '( $.span.attributes.route = "/dashboard/*" )) }'
+            ),
+            metric_name='dashboard_latency_ms',
+            metric_namespace=namespace,
+            metric_value='$.span.attributes.duration',
+        )
+        self.alarms['dashboard_latency_ms'] = cloudwatch.Alarm(
+            self,
+            'DashboardLatencyAlarm',
+            alarm_name=f'finsight-{env_name}-dashboard-latency',
+            metric=cloudwatch.Metric(
+                namespace=namespace,
+                metric_name='dashboard_latency_ms',
+                statistic='Maximum',
+                period=Duration.seconds(thresholds['dashboard_latency_period_seconds']),
+            ),
+            threshold=float(thresholds['dashboard_latency_ms']),
+            evaluation_periods=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
 

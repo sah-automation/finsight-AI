@@ -206,6 +206,8 @@ ignore = [
     "S112", "SIM102", "SIM105", "SIM110", "SIM112", "SIM114", "B007",
     "TC001", "RUF100", "N818",
 ]
+# Dashboard endpoint aggregates config loading, layout CRUD, permission filtering, and conflict handling; complexity is inherent to the Phase 2 surface (issue #382).
+"src/finsight/entrypoints/api/dashboard.py" = ["PLR0912", "PLR0915"]
 # Upload endpoint exposes flexible surfaces for varied caller shapes.
 "src/finsight/entrypoints/api/upload.py" = [
     "ANN401", "ANN002", "ANN003", "PLR0911", "PLR0912", "PLR0913",

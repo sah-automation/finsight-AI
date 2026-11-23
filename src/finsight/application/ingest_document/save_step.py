@@ -78,6 +78,14 @@ class SaveStep(SaveStepOperations, PipelineStepWorker):
         metrics_repository: Any = None,
         figures: Any = None,
         extracted_metrics: Any = None,
+        kpi_repository: Any = None,
+        kpi_repo: Any = None,
+        kpi_store: Any = None,
+        kpi_computation_service: Any = None,
+        kpi_computation: Any = None,
+        kpi_compute_service: Any = None,
+        kpi_service: Any = None,
+        kpi_computation_rule_version: Any = None,
         answer_cache: Any = None,
         cache: Any = None,
         answer_cache_port: Any = None,
@@ -164,6 +172,21 @@ class SaveStep(SaveStepOperations, PipelineStepWorker):
                 'extracted_metrics': extracted_metrics,
             }
         )
+        kpi_repo = _pick(
+            {
+                'kpi_repository': kpi_repository,
+                'kpi_repo': kpi_repo,
+                'kpi_store': kpi_store,
+            }
+        )
+        kpi_compute = _pick(
+            {
+                'kpi_computation_service': kpi_computation_service,
+                'kpi_computation': kpi_computation,
+                'kpi_compute_service': kpi_compute_service,
+                'kpi_service': kpi_service,
+            }
+        )
         cache = _pick(
             {
                 'answer_cache': answer_cache,
@@ -217,6 +240,10 @@ class SaveStep(SaveStepOperations, PipelineStepWorker):
                 vector_store_value = getattr(container_obj, 'vector_store', vector_store_value)
             if metric_repo is None:
                 metric_repo = getattr(container_obj, 'metric_repository', metric_repo)
+            if kpi_repo is None:
+                kpi_repo = getattr(container_obj, 'kpi_repository', kpi_repo)
+            if kpi_compute is None:
+                kpi_compute = getattr(container_obj, 'kpi_computation_service', kpi_compute)
             if cache is None:
                 cache = getattr(container_obj, 'answer_cache', cache)
             if pub is None:
@@ -234,6 +261,9 @@ class SaveStep(SaveStepOperations, PipelineStepWorker):
             chunk_repository=chunk_repo,
             vector_store=vector_store_value,
             metric_repository=metric_repo,
+            kpi_repository=kpi_repo,
+            kpi_computation_service=kpi_compute,
+            kpi_computation_rule_version=kpi_computation_rule_version,
             answer_cache=cache,
             change_event_publisher=pub,
             config=cfg,

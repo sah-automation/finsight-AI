@@ -46,7 +46,16 @@ DATA_METHOD_KEYWORDS: tuple[str, ...] = (
 
 # Pipeline run state is keyed by a globally unique run/version id, not by
 # tenant. The state-store seam therefore has no company_id dimension (#157).
-NON_TENANT_CLASS_NAMES: frozenset[str] = frozenset({'StateStore', 'InMemoryStateStore'})
+# KPI rebuild state is likewise global: migration 0008 keys it by
+# computation_rule_version, with no company_id column (#377).
+NON_TENANT_CLASS_NAMES: frozenset[str] = frozenset(
+    {
+        'StateStore',
+        'InMemoryStateStore',
+        'KpiRebuildState',
+        'KpiRebuildStateRepository',
+    }
+)
 
 # Identifiers that must never be passed directly to a logger.
 SENSITIVE_LOG_IDENTIFIERS: frozenset[str] = frozenset(

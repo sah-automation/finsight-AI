@@ -120,6 +120,8 @@ def _normalise_action(value: Any) -> str:
 
 
 def _is_privileged(value: Any) -> bool:
+    # Permanent purge is granted only to upload-capable roles (planners),
+    # matching ``document_purge`` in ``config/permissions.yaml``.
     if value is None:
         return False
     if hasattr(value, 'role') and not isinstance(value, (str, Role, dict)):
@@ -133,8 +135,9 @@ def _is_privileged(value: Any) -> bool:
             if key in value:
                 return _is_privileged(value.get(key))
         return False
+
     text = str(value).strip().lower().replace(' ', '_').replace('-', '_')
-    return text in {'system_admin', 'executive_leadership', 'audit_compliance'}
+    return text == 'corporate_finance_planners'
 
 
 __all__ = [

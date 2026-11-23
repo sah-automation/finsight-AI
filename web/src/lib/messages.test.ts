@@ -27,6 +27,26 @@ describe('approved messages', () => {
     expect(isSignInErrorCode('invalid_credentials')).toBe(true);
   });
 
+  it('holds the §5.2 ask status and dashboard conflict copy verbatim', () => {
+    expect(messages.results.stillWorking).toBe('Still working on your question.');
+    expect(messages.dashboard.figuresPreparing).toBe('Figures are being prepared.');
+    expect(messages.dashboard.layoutChanged).toBe(
+      'The layout changed elsewhere. Check the current layout and save again to reapply.',
+    );
+  });
+
+  it('holds the stop and dashboard empty copy verbatim', () => {
+    expect(messages.results.stopped).toBe('Stopped. Ask again or rephrase.');
+    expect(messages.dashboard.noFigures).toBe('No figures yet');
+    expect(messages.dashboard.askFinanceTeam).toBe(
+      'Ask your finance team to upload documents.',
+    );
+  });
+
+  it('holds the access-denied copy verbatim', () => {
+    expect(messages.permission.denied).toBe("You don’t have access to this.");
+  });
+
   it('uses human role names for display only', () => {
     expect(roleDisplayName(null, 'executive_leadership')).toBe('Executive Leadership');
     expect(roleDisplayName('Finance Lead', 'executive_leadership')).toBe('Finance Lead');

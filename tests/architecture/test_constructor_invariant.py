@@ -20,6 +20,11 @@ APPLICATION_ROOT = SRC_ROOT / 'application'
 # The edit (UpdateDocument) and delete (DeleteDocument) flows are seeded here and
 # will drop when they are converted.
 BARE_KWARGS_CONSTRUCTOR_EXCEPTIONS: dict[str, dict[str, str]] = {
+    'application/metrics/kpi_materialisation_step.py::KpiMaterialisationStep': {
+        'reason': 'Pipeline step accepts composition-injected optional deps during incremental integration.',
+        'owner': 'application',
+        'removal_condition': 'Replace with typed constructor when KPI materialisation wiring stabilizes.',
+    },
     'application/delete_document/delete_document.py::DeleteDocument': {
         'reason': 'Delete flow retains alias-probing constructor resolution.',
         'owner': 'application',

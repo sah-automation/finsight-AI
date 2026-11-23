@@ -64,5 +64,5 @@ def test_permission_policy() -> None:
     assert is_permission_allowed(matrix, 'viewer', 'doc', 'read') is False
     assert (
         is_permission_allowed({'default': {'categories': {'doc': ['*']}}}, 'x', 'doc', 'delete')
-        is True
+        is False
     )

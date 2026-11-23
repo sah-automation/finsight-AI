@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, get_args
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -11,13 +11,17 @@ from fastapi.responses import JSONResponse
 from finsight.composition import build_container, providers
 from finsight.core.config.loader import ConfigError as LoaderConfigError
 from finsight.core.config.loader import load_config
+from finsight.core.config.models.chart_spec import ChartType
 from finsight.core.errors import ConfigError as CoreConfigError
 from finsight.core.logging import configure_logging, set_switch_values
 from finsight.entrypoints.api import (
     ask,
+    charts,
     current_user,
+    dashboard,
     documents,
     feedback,
+    kpis,
     onboarding,
     source_viewer,
     threads,
@@ -69,6 +73,8 @@ def create_app() -> FastAPI:
     _install_app_wiring(app, container)
     _include_routers(app)
     _install_ask_event_schema(app)
+    _install_kpi_openapi_schema(app, config)
+    _install_chart_openapi_schema(app, config)
     return app
 
 
@@ -102,8 +108,11 @@ def _include_routers(app: FastAPI) -> None:
     """Mount the primary routers and their legacy aliases."""
     primary_routers = (
         ask.router,
+        charts.router,
+        dashboard.router,
         documents.router,
         feedback.router,
+        kpis.router,
         onboarding.router,
         upload.router,
         source_viewer.router,
@@ -138,5 +147,72 @@ def _install_ask_event_schema(app: FastAPI) -> None:
             schemas['AskQuestionEvent'] = ask.AskQuestionEvent.model_json_schema()
             app.openapi_schema = schema
         return app.openapi_schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
+
+
+def _flatten_optional_query_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    variants = schema.get('anyOf')
+    if not isinstance(variants, list):
+        return schema
+    concrete = next((variant for variant in variants if variant.get('type') != 'null'), None)
+    if concrete is None:
+        return schema
+    extras = {key: value for key, value in schema.items() if key != 'anyOf'}
+    return {**concrete, **extras}
+
+
+def _install_kpi_openapi_schema(app: FastAPI, config: Any) -> None:
+    """Publish config-derived KPI page-size bounds in the OpenAPI schema."""
+    base_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        schema = base_openapi()
+        kpi_config = getattr(config, 'kpi', None)
+        if kpi_config is not None:
+            parameters = schema['paths']['/kpis']['get']['parameters']
+            for parameter in parameters:
+                parameter['schema'] = _flatten_optional_query_schema(parameter['schema'])
+                if parameter.get('name') == 'limit':
+                    parameter['schema']['default'] = kpi_config.page_size_default
+                    parameter['schema']['maximum'] = kpi_config.page_size_max
+        return schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
+
+
+def _install_chart_openapi_schema(app: FastAPI, _config: Any) -> None:
+    """Publish the closed chart enums and required response fields."""
+
+    chart_type_enum = list(get_args(ChartType))
+
+    base_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        schema = base_openapi()
+        operation = schema['paths']['/charts/{chart_id}']['get']
+        for parameter in operation['parameters']:
+            parameter['schema'] = _flatten_optional_query_schema(parameter['schema'])
+            if parameter['name'] == 'chart_type':
+                parameter['schema']['enum'] = chart_type_enum
+        components = schema.setdefault('components', {}).setdefault('schemas', {})
+        for name in ('ChartResponse', 'VarianceRow', 'ExportMetadata'):
+            component = components.get(name)
+            if component is not None and 'properties' in component:
+                component['required'] = list(component['properties'])
+        point_properties = components.get('ChartPoint', {}).get('properties', {})
+        if 'change_direction' in point_properties:
+            point_properties['change_direction'] = {
+                'type': 'string',
+                'enum': ['good', 'bad'],
+                'nullable': True,
+            }
+        dataset_properties = components.get('ChartDataset', {}).get('properties', {})
+        if 'series_type' in dataset_properties:
+            dataset_properties['series_type'] = {
+                'type': 'string',
+                'enum': ['kpi', 'forecast', 'anomaly'],
+            }
+        return schema
 
     app.openapi = openapi  # type: ignore[method-assign]

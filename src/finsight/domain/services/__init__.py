@@ -17,6 +17,7 @@ from .citation_checker import (
     check_citation,
     validate_citation,
 )
+from .citation_factory import CitationFactory
 from .delta_differ import DeltaDiffer
 from .delta_result import DeltaResult
 from .document_stamp import DocumentStamp
@@ -63,6 +64,7 @@ __all__ = [
     'Calculator',
     'CitationCheck',
     'CitationChecker',
+    'CitationFactory',
     'CitationValidationResult',
     'CitationValidator',
     'DeltaDiffer',

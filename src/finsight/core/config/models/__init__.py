@@ -9,17 +9,30 @@ from .approved_model_config import ApprovedModelConfig
 from .auth_config import AuthConfig
 from .cache_config import CacheConfig
 from .caches_config import CachesConfig
+from .chart_spec import BreakdownKey, ChartPolarity, ChartSpec, ChartType, ExportFormat
+from .charts_config import ChartsConfig
 from .chunking_config import ChunkingConfig
 from .chunking_strategy import ChunkingStrategy
 from .config import Config
 from .consistency_config import ConsistencyConfig
+from .dashboard_config import DashboardConfig
 from .database_config import DatabaseConfig
+from .default_layout import DefaultLayout
+from .default_layout_chart import DefaultLayoutChart, LayoutSpan
 from .documents_config import DocumentsConfig
 from .edge_config import EdgeConfig
 from .embedding_model_config import EmbeddingModelConfig
 from .encryption_config import EncryptionConfig
 from .environment import Environment
+from .golden_set_config import GoldenSetConfig
 from .ingestion_config import IngestionConfig
+from .kpi_config import KPI_CODES, KpiConfig
+from .kpi_tolerance import (
+    ToleranceAbsolute,
+    ToleranceExactOrNeedsReview,
+    TolerancePercentOfExpected,
+    TolerancePercentOfExpectedPlusAbsoluteFloor,
+)
 from .lambda_config import LambdaConfig
 from .llm_config import LlmConfig
 from .log_format import LogFormat
@@ -56,9 +69,12 @@ from .tesseract_config import TesseractConfig
 from .textract_config import TextractConfig
 from .traffic_config import TrafficConfig
 from .vector_store_config import VectorStoreConfig
+from .vercel_config import PreviewApiTarget, VercelConfig
+from .web_config import WebConfig
 
 __all__ = [
     'KNOWN_READER_NAMES',
+    'KPI_CODES',
     'REGISTERED_READER_NAMES',
     'VALID_READER_NAMES',
     'AccessConfig',
@@ -71,20 +87,32 @@ __all__ = [
     'ApprovedModelEntry',
     'ApprovedModelsConfig',
     'AuthConfig',
+    'BreakdownKey',
     'CacheConfig',
     'CachesConfig',
+    'ChartPolarity',
+    'ChartSpec',
+    'ChartType',
+    'ChartsConfig',
     'ChunkingConfig',
     'ChunkingStrategy',
     'Config',
     'ConsistencyConfig',
+    'DashboardConfig',
     'DatabaseConfig',
+    'DefaultLayout',
+    'DefaultLayoutChart',
     'DocumentsConfig',
     'EdgeConfig',
     'EmbeddingModelConfig',
     'EncryptionConfig',
     'Environment',
+    'ExportFormat',
+    'GoldenSetConfig',
     'IngestionConfig',
+    'KpiConfig',
     'LambdaConfig',
+    'LayoutSpan',
     'LlmConfig',
     'LogFormat',
     'MeteringConfig',
@@ -97,6 +125,7 @@ __all__ = [
     'OutputGateConfig',
     'PermissionsConfig',
     'PiiAction',
+    'PreviewApiTarget',
     'ProtectionConfig',
     'QuestionFlowConfig',
     'QueueConfig',
@@ -113,8 +142,14 @@ __all__ = [
     'SwitchesConfig',
     'TesseractConfig',
     'TextractConfig',
+    'ToleranceAbsolute',
+    'ToleranceExactOrNeedsReview',
+    'TolerancePercentOfExpected',
+    'TolerancePercentOfExpectedPlusAbsoluteFloor',
     'TrafficConfig',
     'VectorStoreConfig',
+    'VercelConfig',
+    'WebConfig',
 ]
 
 ApprovedModel = ApprovedModelConfig

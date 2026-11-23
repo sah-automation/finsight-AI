@@ -34,26 +34,29 @@ def _tracer_method(tracer: Any) -> Any:
     return None
 
 
-async def emit_step_span(
+async def emit_step_span(  # noqa: PLR0913
     tracer: Any,
     company_id: Any,
     operation: str,
     *,
     duration_ms: float,
     outcome: str,
+    attributes: dict[str, object] | None = None,
 ) -> None:
-    """Emit a completion span with ``duration_ms`` and ``outcome``."""
+    """Emit a completion span with timing, outcome and caller attributes."""
     if tracer is None:
         return
     method = _tracer_method(tracer)
     if method is None:
         return
     try:
-        attributes: dict[str, Any] = {'duration_ms': duration_ms, 'outcome': outcome}
+        span_attributes: dict[str, Any] = {'duration_ms': duration_ms, 'outcome': outcome}
+        if attributes:
+            span_attributes.update(attributes)
         trace_id = get_trace_id()
         if trace_id is not None:
-            attributes['trace_id'] = trace_id
-        res = method(company_id, operation, attributes=attributes)
+            span_attributes['trace_id'] = trace_id
+        res = method(company_id, operation, attributes=span_attributes)
         if inspect.isawaitable(res):
             await res
     except Exception:  # noqa: BLE001 - tracing is best-effort

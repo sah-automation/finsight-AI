@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import contextlib
+import json
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from starlette.requests import Request
 
 
@@ -34,34 +37,132 @@ def _attr(obj: Any, *names: str) -> Any:
 
 _MAX_CLAIMS_DEPTH = 8
 
+_SCOPE_KEYS = (
+    'custom:access_scope',
+    'custom:accessScope',
+    'custom:scope',
+    'access_scope',
+    'accessScope',
+    'scope',
+    'AccessScope',
+    'access',
+    'permission_scope',
+    'allowed_categories',
+    'allowedCategories',
+    'document_categories',
+    'allowed_document_categories',
+    'categories',
+)
 
-def _find_claims(obj: Any, depth: int = 0) -> list[dict[str, Any]]:
+_IDENTITY_CLAIM_KEYS = frozenset(
+    {
+        'custom:company_id',
+        'company_id',
+        'companyId',
+        'sub',
+        'user_id',
+        'userId',
+        'cognito:groups',
+        'groups',
+        'role',
+    }
+)
+_SCOPE_CLAIM_KEYS = frozenset(_SCOPE_KEYS)
+
+
+def _find_claims(
+    obj: Any,
+    depth: int = 0,
+    claim_keys: frozenset[str] = _IDENTITY_CLAIM_KEYS,
+) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     if depth > _MAX_CLAIMS_DEPTH or obj is None:
         return results
     if isinstance(obj, dict):
-        claim_keys = {
-            'custom:company_id',
-            'company_id',
-            'companyId',
-            'sub',
-            'user_id',
-            'userId',
-            'cognito:groups',
-            'groups',
-            'role',
-        }
         if claim_keys & set(obj.keys()):
             results.append(obj)
         for value in obj.values():
-            results.extend(_find_claims(value, depth + 1))
+            results.extend(_find_claims(value, depth + 1, claim_keys))
     elif isinstance(obj, (list, tuple, set)):
         for item in obj:
-            results.extend(_find_claims(item, depth + 1))
+            results.extend(_find_claims(item, depth + 1, claim_keys))
     elif hasattr(obj, 'claims'):
-        results.extend(_find_claims(obj.claims, depth + 1))
+        results.extend(_find_claims(obj.claims, depth + 1, claim_keys))
 
     return results
+
+
+def _split_scope_text(text: str) -> tuple[str, ...]:
+    if not text:
+        return ()
+    try:
+        decoded = json.loads(text)
+    except (TypeError, ValueError):
+        return tuple(part.strip() for part in text.split(',') if part.strip())
+    normalized = _normalize_scope(decoded)
+    return () if normalized is None else normalized
+
+
+def _normalize_scope(value: Any) -> tuple[str, ...] | None:
+    """Return an explicit scope, or ``None`` when no scope was declared."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return _split_scope_text(value.strip())
+    if isinstance(value, (list, tuple, set, frozenset)):
+        normalized: list[str] = []
+        for item in value:
+            part = _normalize_scope(item)
+            if part is None or not part:
+                return ()
+            normalized.extend(part)
+        return tuple(normalized)
+    return ()
+
+
+def _first_scope_value(claims: Mapping[str, Any]) -> Any:
+    for key in _SCOPE_KEYS:
+        if key in claims and claims[key] is not None:
+            return claims[key]
+    return None
+
+
+def _extract_access_scope(request: Request) -> tuple[str, ...] | None:
+    state = getattr(request, 'state', None)
+    if state is not None:
+        declared = _attr(state, *_SCOPE_KEYS)
+        if declared is not None:
+            return _normalize_scope(declared)
+
+    scope = getattr(request, 'scope', {}) or {}
+    candidates: list[Any] = []
+    for key in (
+        'aws.event',
+        'lambda.event',
+        'event',
+        'user',
+        'auth',
+        'claims',
+        'principal',
+        'identity',
+        'current_user',
+        'context',
+    ):
+        if key in scope:
+            candidates.append(scope[key])
+    if 'user' in scope:
+        with contextlib.suppress(Exception):
+            candidates.append(request.user)
+
+    claims_list: list[dict[str, Any]] = []
+    for candidate in candidates:
+        claims_list.extend(_find_claims(candidate, claim_keys=_SCOPE_CLAIM_KEYS))
+    claims_list.extend(_find_claims(scope, claim_keys=_SCOPE_CLAIM_KEYS))
+    for claims in claims_list:
+        declared = _first_scope_value(claims)
+        if declared is not None:
+            return _normalize_scope(declared)
+    return None
 
 
 _HEADER_COMPANY_ID = 'x-company-id'
@@ -150,7 +251,8 @@ def _extract_identity(request: Request) -> tuple[Any, Any, Any]:
     return company_id, user_id, role
 
 
-__all__ = ['extract_identity']
+__all__ = ['extract_access_scope', 'extract_identity']
 
 
 extract_identity = _extract_identity
+extract_access_scope = _extract_access_scope

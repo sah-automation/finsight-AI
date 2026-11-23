@@ -12,6 +12,7 @@ class ChangeEventType(str):
     DOCUMENT_PURGED = 'document.purged'
     DOCUMENT_REPROCESSED = 'document.reprocessed'
     CASCADE_REQUESTED = 'cascade.requested'
+    KPI_RECOMPUTED = 'kpi.recomputed'
 
     _VALUES = frozenset(
         {
@@ -21,6 +22,7 @@ class ChangeEventType(str):
             DOCUMENT_PURGED,
             DOCUMENT_REPROCESSED,
             CASCADE_REQUESTED,
+            KPI_RECOMPUTED,
         }
     )
 

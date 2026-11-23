@@ -102,6 +102,12 @@ class Action(StrEnum):
     MANAGE_SETTINGS = 'manage_settings'
     VIEW_AUDIT_LOG = 'view_audit_log'
     VIEW_ORIGINAL = 'view_original'
+    DASHBOARD_VIEW = 'dashboard_view'
+    DASHBOARD_EDIT_LAYOUT = 'dashboard_edit_layout'
+    CHART_EXPORT = 'chart_export'
+    KPI_VIEW = 'kpi_view'
+    KPI_EXPORT = 'kpi_export'
+    DOCUMENT_PURGE = 'document_purge'
     ADMIN = 'admin'
 
 
