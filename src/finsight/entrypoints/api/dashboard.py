@@ -52,10 +52,13 @@ def _filter_layout_by_permissions(
     charts: list[dict[str, str]],
     role_id: str,
     config: Any,
+    visible_chart_ids: set[str] | None = None,
 ) -> tuple[list[str], list[dict[str, str]]]:
     """Filter layout by role permissions - drop unknown/unpermitted IDs."""
     allowed_chart_ids = _get_allowed_chart_ids(config)
     allowed_kpi_codes = _get_allowed_kpi_codes(config)
+    if visible_chart_ids is not None:
+        allowed_chart_ids = allowed_chart_ids & visible_chart_ids
 
     filtered_kpi_codes = [code for code in kpi_codes if code in allowed_kpi_codes]
     filtered_charts = [chart for chart in charts if chart.get('chart_id') in allowed_chart_ids]
@@ -240,6 +243,68 @@ def _record_value(record: Any, name: str, default: Any = None) -> Any:
     return getattr(record, name, default)
 
 
+async def _visible_chart_ids(
+    principal: ApiPrincipal,
+    config: Any,
+    container: Any,
+) -> set[str] | None:
+    """Return chart ids with at least one KPI row visible to the principal.
+
+    Returns ``None`` when no KPI/document repositories are available, so
+    callers fall back to config-level filtering (preserving prior behaviour
+    for fakes and unit tests).
+    """
+    charts_config = getattr(config, 'charts', None)
+    specs = getattr(charts_config, 'specs', None) if charts_config is not None else None
+    if not isinstance(specs, dict) or not specs:
+        return None
+
+    document_repository = getattr(container, 'document_repository', None)
+    kpi_repository = getattr(container, 'kpi_repository', None)
+    if document_repository is None and kpi_repository is None:
+        return None
+
+    versions: list[Any] = []
+    if document_repository is not None and callable(
+        getattr(document_repository, 'list_document_versions', None)
+    ):
+        try:
+            versions = list(
+                await _await(document_repository.list_document_versions(principal.company_id)) or ()
+            )
+        except Exception:  # noqa: BLE001
+            versions = []
+
+    visibility = KpiVisibilityFilter(
+        category_permissions=principal.category_permissions,
+        access_scope=principal.access_scope,
+    )
+
+    visible: set[str] = set()
+    for chart_id, chart_spec in specs.items():
+        kpi_codes = getattr(chart_spec, 'kpi_codes', None)
+        if kpi_codes is None and isinstance(chart_spec, dict):
+            kpi_codes = chart_spec.get('kpi_codes', [])
+        kpi_codes = list(kpi_codes or ())
+        if not kpi_codes:
+            visible.add(str(chart_id))
+            continue
+        rows: list[dict[str, Any]] = []
+        if kpi_repository is not None and callable(getattr(kpi_repository, 'get_current', None)):
+            try:
+                fetched = await _await(
+                    kpi_repository.get_current(principal.company_id, {'kpi_codes': kpi_codes})
+                )
+                rows = [dict(row) for row in (fetched or ())]
+            except Exception:  # noqa: BLE001
+                rows = []
+
+        if visibility.filter(rows, versions):
+            visible.add(str(chart_id))
+
+    return visible
+
+
 def _resolve_config() -> Any:
     """Load config, raising a 500 HTTPException when unavailable."""
     try:
@@ -272,9 +337,17 @@ async def get_dashboard_layout(
     if layout_repository is None:
         raise HTTPException(status_code=500, detail='Dashboard layout repository not configured.')
 
+    visible_chart_ids = await _visible_chart_ids(principal, config, container)
+
     visible_ids = VisibleIds(
         tuple(sorted(_get_allowed_kpi_codes(config))),
-        tuple(sorted(_get_allowed_chart_ids(config))),
+        tuple(
+            sorted(
+                visible_chart_ids
+                if visible_chart_ids is not None
+                else _get_allowed_chart_ids(config)
+            )
+        ),
     )
 
     company_id = principal.company_id
@@ -304,7 +377,7 @@ async def get_dashboard_layout(
         for chart in charts_raw
     ]
     filtered_kpi_codes, filtered_charts = _filter_layout_by_permissions(
-        kpi_codes, charts, role_id, config
+        kpi_codes, charts, role_id, config, visible_chart_ids=visible_chart_ids
     )
 
     updated_at = _record_value(record, 'updated_at', None)
@@ -338,9 +411,17 @@ async def save_dashboard_layout(
     if layout_repository is None:
         raise HTTPException(status_code=500, detail='Dashboard layout repository not configured.')
 
+    visible_chart_ids = await _visible_chart_ids(principal, config, container)
+
     visible_ids = VisibleIds(
         tuple(sorted(_get_allowed_kpi_codes(config))),
-        tuple(sorted(_get_allowed_chart_ids(config))),
+        tuple(
+            sorted(
+                visible_chart_ids
+                if visible_chart_ids is not None
+                else _get_allowed_chart_ids(config)
+            )
+        ),
     )
 
     company_id = principal.company_id
@@ -350,7 +431,7 @@ async def save_dashboard_layout(
     kpi_codes = request.kpi_codes
     charts = [c.model_dump() for c in request.charts]
     filtered_kpi_codes, filtered_charts = _filter_layout_by_permissions(
-        kpi_codes, charts, role_id, config
+        kpi_codes, charts, role_id, config, visible_chart_ids=visible_chart_ids
     )
 
     draft = LayoutDraft(
@@ -409,7 +490,7 @@ async def save_dashboard_layout(
                 current_version = current.get('version', 0)
                 current_updated_str = str(current.get('updated_at', ''))
             filtered_current_kpi, filtered_current_charts = _filter_layout_by_permissions(
-                current_kpi, current_charts, role_id, config
+                current_kpi, current_charts, role_id, config, visible_chart_ids=visible_chart_ids
             )
             conflict_response = LayoutConflictResponse(
                 error='layout_changed',
@@ -449,7 +530,11 @@ async def save_dashboard_layout(
                 current_updated = _record_value(current, 'updated_at', None)
                 current_updated_str = '' if current_updated is None else str(current_updated)
                 filtered_current_kpi, filtered_current_charts = _filter_layout_by_permissions(
-                    current_kpi, current_charts, role_id, config
+                    current_kpi,
+                    current_charts,
+                    role_id,
+                    config,
+                    visible_chart_ids=visible_chart_ids,
                 )
                 conflict_response = LayoutConflictResponse(
                     error='layout_changed',
