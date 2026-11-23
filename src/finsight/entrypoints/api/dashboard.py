@@ -90,57 +90,6 @@ def _build_layout_response(
     )
 
 
-def _build_default_layout_response(
-    config: Any,
-    role_id: str,
-) -> LayoutResponse:
-    """Build response from config default layout."""
-    default_kpi_codes, default_charts = _get_default_layout(config)
-    filtered_kpi_codes, filtered_charts = _filter_layout_by_permissions(
-        default_kpi_codes, default_charts, role_id, config
-    )
-    return _build_layout_response(filtered_kpi_codes, filtered_charts, 0, '')
-
-
-def _build_saved_layout_response(
-    layout: dict[str, Any],
-    config: Any,
-    role_id: str,
-) -> LayoutResponse:
-    """Build response from saved layout."""
-    layout_kpi_codes = layout.get('kpi_codes', [])
-    layout_charts = layout.get('charts', [])
-    filtered_kpi_codes, filtered_charts = _filter_layout_by_permissions(
-        layout_kpi_codes, layout_charts, role_id, config
-    )
-    return _build_layout_response(
-        filtered_kpi_codes,
-        filtered_charts,
-        layout.get('version', 0),
-        str(layout.get('updated_at', '')),
-    )
-
-
-def _build_conflict_response(
-    current_layout: dict[str, Any],
-    config: Any,
-    role_id: str,
-) -> LayoutConflictResponse:
-    """Build 409 conflict response."""
-    filtered_kpi_codes, filtered_charts = _filter_layout_by_permissions(
-        current_layout.get('kpi_codes', []), current_layout.get('charts', []), role_id, config
-    )
-    return LayoutConflictResponse(
-        error='layout_changed',
-        current_layout=_build_layout_response(
-            filtered_kpi_codes,
-            filtered_charts,
-            current_layout.get('version', 0),
-            str(current_layout.get('updated_at', '')),
-        ),
-    )
-
-
 @router.get('/fingerprints', operation_id='get_dashboard_fingerprints')
 async def get_dashboard_fingerprints(
     principal: ApiPrincipal = Depends(dashboard_view_dependency),
@@ -268,12 +217,9 @@ async def _visible_chart_ids(
     if document_repository is not None and callable(
         getattr(document_repository, 'list_document_versions', None)
     ):
-        try:
-            versions = list(
-                await _await(document_repository.list_document_versions(principal.company_id)) or ()
-            )
-        except Exception:  # noqa: BLE001
-            versions = []
+        versions = list(
+            await _await(document_repository.list_document_versions(principal.company_id)) or ()
+        )
 
     visibility = KpiVisibilityFilter(
         category_permissions=principal.category_permissions,
@@ -291,13 +237,10 @@ async def _visible_chart_ids(
             continue
         rows: list[dict[str, Any]] = []
         if kpi_repository is not None and callable(getattr(kpi_repository, 'get_current', None)):
-            try:
-                fetched = await _await(
-                    kpi_repository.get_current(principal.company_id, {'kpi_codes': kpi_codes})
-                )
-                rows = [dict(row) for row in (fetched or ())]
-            except Exception:  # noqa: BLE001
-                rows = []
+            fetched = await _await(
+                kpi_repository.get_current(principal.company_id, {'kpi_codes': kpi_codes})
+            )
+            rows = [dict(row) for row in (fetched or ())]
 
         if visibility.filter(rows, versions):
             visible.add(str(chart_id))
